@@ -13,6 +13,11 @@ import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 
 const FEDERAL_REGISTER_API = 'https://www.federalregister.gov/api/v1/documents.json'
 
+// Safety cap on how many pages we'll follow in one sync run. Generous for
+// any realistic daily/weekly sync or even a multi-month backfill, while
+// still bounding a pathological request (e.g. a `since` date years back).
+const MAX_PAGES = 20
+
 // Agencies most relevant to a PE firm's GP operations, fund structures, and
 // typical portfolio-company sectors. Extend this list as new sectors are added.
 const AGENCY_SLUGS = [
@@ -47,19 +52,29 @@ Deno.serve(async (req) => {
       new URL(req.url).searchParams.get('since') ??
       new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-    const params = new URLSearchParams()
-    for (const slug of AGENCY_SLUGS) params.append('conditions[agencies][]', slug)
-    params.append('conditions[type][]', 'RULE')
-    params.append('conditions[type][]', 'PRORULE')
-    params.set('conditions[publication_date][gte]', since)
-    params.set('order', 'newest')
-    params.set('per_page', '100')
+    const documents: FederalRegisterDocument[] = []
+    let page = 1
 
-    const res = await fetch(`${FEDERAL_REGISTER_API}?${params.toString()}`)
-    if (!res.ok) throw new Error(`Federal Register API error: ${res.status} ${await res.text()}`)
+    while (page <= MAX_PAGES) {
+      const params = new URLSearchParams()
+      for (const slug of AGENCY_SLUGS) params.append('conditions[agencies][]', slug)
+      params.append('conditions[type][]', 'RULE')
+      params.append('conditions[type][]', 'PRORULE')
+      params.set('conditions[publication_date][gte]', since)
+      params.set('order', 'newest')
+      params.set('per_page', '100')
+      params.set('page', String(page))
 
-    const data = await res.json()
-    const documents: FederalRegisterDocument[] = data.results ?? []
+      const res = await fetch(`${FEDERAL_REGISTER_API}?${params.toString()}`)
+      if (!res.ok) throw new Error(`Federal Register API error: ${res.status} ${await res.text()}`)
+
+      const data = await res.json()
+      const results: FederalRegisterDocument[] = data.results ?? []
+      if (results.length === 0) break
+
+      documents.push(...results)
+      page += 1
+    }
 
     const rows = documents.map(doc => ({
       source: 'federal_register' as const,
@@ -84,7 +99,7 @@ Deno.serve(async (req) => {
       if (error) throw error
     }
 
-    return json({ synced: rows.length, since, agencies: AGENCY_SLUGS })
+    return json({ synced: rows.length, since, pages: page - 1, agencies: AGENCY_SLUGS })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }
