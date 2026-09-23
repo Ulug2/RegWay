@@ -7,6 +7,14 @@
 //     -H "Authorization: Bearer <SERVICE_ROLE_OR_ANON_KEY>"
 //
 // Optional query param `?since=YYYY-MM-DD` overrides the default 7-day lookback.
+//
+// Runs two separate queries and merges the results:
+// 1. RULE/PRORULE across the tracked agency list below.
+// 2. SEC NOTICE-type documents, filtered client-side to just FINRA rule
+//    filings (see FINRA_TITLE_MARKER below for why). NOTICE type is
+//    otherwise deliberately excluded — blanket inclusion runs ~6,000
+//    documents/9mo across these agencies, mostly administrative noise, a
+//    volume/cost mismatch against match-relevance's per-user rate limit.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
@@ -33,7 +41,8 @@ const MAX_PAGES = 20
 // - 'antitrust-division': 0 RULE/PRORULE items in the same 9-month sample —
 //   DOJ antitrust activity is enforcement actions/consent decrees, not
 //   codified rules, so it yields nothing under this pipeline's RULE/PRORULE
-//   filter. Revisit if NOTICE-type documents ever get included.
+//   filter. Blanket NOTICE-type inclusion was evaluated and rejected (see
+//   FINRA_TITLE_MARKER below) — not revisiting this exclusion via that path.
 const AGENCY_SLUGS = [
   'securities-and-exchange-commission',
   'commodity-futures-trading-commission',
@@ -76,6 +85,51 @@ function primaryAgency(doc: FederalRegisterDocument) {
   return doc.agencies?.find(a => TRACKED_SLUGS.has(a.slug)) ?? doc.agencies?.[0]
 }
 
+// FINRA has no Federal Register agency slug of its own — it's a private
+// self-regulatory organization, not a federal agency, so it only ever
+// appears inside SEC-filed notices. The API's `conditions[term]` full-text
+// search isn't a precise entity filter (even an exact quoted phrase only
+// matched the true subject in ~45% of results in testing — most hits were
+// other exchanges' filings that merely reference FINRA in body text), so
+// instead of trying to filter server-side, fetch all SEC NOTICE-type
+// documents (modest volume — ~7/day normally) and filter client-side on
+// the title, which reliably follows the pattern
+// "Self-Regulatory Organizations; <SRO Name>; <action>" whenever an SRO is
+// the actual subject.
+const FINRA_TITLE_MARKER = 'Financial Industry Regulatory Authority'
+
+interface FederalRegisterQuery {
+  agencies: string[]
+  types: string[]
+}
+
+async function fetchAllPages(since: string, query: FederalRegisterQuery): Promise<{ documents: FederalRegisterDocument[]; pages: number }> {
+  const documents: FederalRegisterDocument[] = []
+  let page = 1
+
+  while (page <= MAX_PAGES) {
+    const params = new URLSearchParams()
+    for (const slug of query.agencies) params.append('conditions[agencies][]', slug)
+    for (const type of query.types) params.append('conditions[type][]', type)
+    params.set('conditions[publication_date][gte]', since)
+    params.set('order', 'newest')
+    params.set('per_page', '100')
+    params.set('page', String(page))
+
+    const res = await fetch(`${FEDERAL_REGISTER_API}?${params.toString()}`)
+    if (!res.ok) throw new Error(`Federal Register API error: ${res.status} ${await res.text()}`)
+
+    const data = await res.json()
+    const results: FederalRegisterDocument[] = data.results ?? []
+    if (results.length === 0) break
+
+    documents.push(...results)
+    page += 1
+  }
+
+  return { documents, pages: page - 1 }
+}
+
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
@@ -85,29 +139,13 @@ Deno.serve(async (req) => {
       new URL(req.url).searchParams.get('since') ??
       new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-    const documents: FederalRegisterDocument[] = []
-    let page = 1
+    const [rulesResult, noticesResult] = await Promise.all([
+      fetchAllPages(since, { agencies: AGENCY_SLUGS, types: ['RULE', 'PRORULE'] }),
+      fetchAllPages(since, { agencies: ['securities-and-exchange-commission'], types: ['NOTICE'] }),
+    ])
 
-    while (page <= MAX_PAGES) {
-      const params = new URLSearchParams()
-      for (const slug of AGENCY_SLUGS) params.append('conditions[agencies][]', slug)
-      params.append('conditions[type][]', 'RULE')
-      params.append('conditions[type][]', 'PRORULE')
-      params.set('conditions[publication_date][gte]', since)
-      params.set('order', 'newest')
-      params.set('per_page', '100')
-      params.set('page', String(page))
-
-      const res = await fetch(`${FEDERAL_REGISTER_API}?${params.toString()}`)
-      if (!res.ok) throw new Error(`Federal Register API error: ${res.status} ${await res.text()}`)
-
-      const data = await res.json()
-      const results: FederalRegisterDocument[] = data.results ?? []
-      if (results.length === 0) break
-
-      documents.push(...results)
-      page += 1
-    }
+    const finraNotices = noticesResult.documents.filter(doc => doc.title.includes(FINRA_TITLE_MARKER))
+    const documents = [...rulesResult.documents, ...finraNotices]
 
     const rows = documents.map(doc => {
       const agencyName = primaryAgency(doc)?.name ?? null
@@ -135,7 +173,14 @@ Deno.serve(async (req) => {
       if (error) throw error
     }
 
-    return json({ synced: rows.length, since, pages: page - 1, agencies: AGENCY_SLUGS })
+    return json({
+      synced: rows.length,
+      since,
+      rulesPages: rulesResult.pages,
+      noticesPages: noticesResult.pages,
+      finraNotices: finraNotices.length,
+      agencies: AGENCY_SLUGS,
+    })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }
