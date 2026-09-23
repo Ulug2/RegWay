@@ -141,7 +141,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 <path d="M9 2v10M3 6l6 4 6-4" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
               </svg>
             </div>
-            <span className="font-semibold text-base" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>LexPulse</span>
+            <span className="font-semibold text-base" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
 
           <div className="ml-auto flex items-center gap-3">
@@ -360,8 +360,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 <path d="M9 2L3 6v6l6 4 6-4V6L9 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
               </svg>
             </div>
-            <span className="text-sm font-semibold" style={{ color: '#334155' }}>LexPulse</span>
-            <span className="text-xs ml-2" style={{ color: '#94a3b8' }}>© 2025 · Regulatory intelligence for private markets</span>
+            <span className="text-sm font-semibold" style={{ color: '#334155' }}>RegWay</span>
+            <span className="text-xs ml-2" style={{ color: '#94a3b8' }}>© 2026 · Regulatory intelligence for private markets</span>
           </div>
           <div className="flex items-center gap-6">
             {['About Us', 'Landing Page', 'Sources', 'Legal Disclaimers', 'Privacy Policy'].map(link => (

@@ -137,7 +137,7 @@ export default function App() {
                   className="text-3xl font-semibold mb-2"
                   style={{ color: '#0F172A', letterSpacing: '-0.03em' }}
                 >
-                  LexPulse
+                  RegWay
                 </h1>
                 <p className="text-base" style={{ color: '#64748B' }}>
                   AI-powered regulatory intelligence for private equity and general partners.

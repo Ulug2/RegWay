@@ -1,8 +1,8 @@
-# LexPulse
+# RegWay
 
 AI-powered regulatory intelligence for private equity firms and general partners.
 
-LexPulse watches real regulatory activity (starting with US federal rules) and
+RegWay watches real regulatory activity (starting with US federal rules) and
 filters it down to only what actually affects a given firm — its jurisdictions,
 its fund structures, and its portfolio companies — instead of dumping every
 new rule on the user. It's built as a private, single-firm-per-account

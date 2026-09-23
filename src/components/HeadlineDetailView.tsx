@@ -7,7 +7,7 @@ interface HeadlineDetailViewProps {
   headline?: Partial<Regulation>
 }
 
-const DATE_MODES = ["Today's Status", 'Recent Shifts', 'Custom Range'] as const
+const DATE_MODES = ["Today's Status", 'Custom Range'] as const
 
 function formatDate(iso?: string | null) {
   if (!iso) return null
@@ -84,7 +84,7 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
                 <path d="M9 2L3 6v6l6 4 6-4V6L9 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
               </svg>
             </div>
-            <span className="font-semibold text-sm" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>LexPulse</span>
+            <span className="font-semibold text-sm" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
         </div>
       </header>
@@ -108,12 +108,6 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
           >
             {title}
           </h1>
-          {headline?.summary && (
-            <p className="text-sm" style={{ color: '#64748B', lineHeight: 1.7, maxWidth: 760 }}>
-              {headline.summary}
-            </p>
-          )}
-
           {/* Contextual Date Filter */}
           <div className="flex items-center gap-3 flex-wrap mt-6 pt-5" style={{ borderTop: '1px solid rgba(186,230,253,0.30)' }}>
             <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>History</span>
@@ -258,11 +252,6 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
                   No summary is available for this item yet.
                 </p>
               )}
-              <p className="text-xs mt-4" style={{ color: '#94a3b8', lineHeight: 1.6 }}>
-                A deeper AI-generated breakdown — a side-by-side diff against the prior rule and a plain-language
-                list of operational obligations — isn't wired up yet for arbitrary regulations. That's the
-                natural next feature to build once this on-demand summary view is confirmed working.
-              </p>
             </div>
           </div>
 
@@ -332,7 +321,7 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
       >
         <div className="max-w-[1200px] mx-auto px-8 py-5 flex items-center justify-between">
           <div className="text-xs" style={{ color: '#94a3b8' }}>
-            LexPulse · Regulatory intelligence for private markets · © 2025
+            RegWay · Regulatory intelligence for private markets · © 2026
           </div>
           <div className="flex items-center gap-6">
             {['About Us', 'Sources', 'Legal Disclaimers'].map(link => (

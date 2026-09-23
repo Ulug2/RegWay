@@ -240,7 +240,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 <path d="M9 2v10M3 6l6 4 6-4" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
               </svg>
             </div>
-            <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>LexPulse</span>
+            <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
 
           {/* Progress Pills */}

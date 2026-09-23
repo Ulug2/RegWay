@@ -1,4 +1,4 @@
--- LexPulse core schema
+-- RegWay core schema
 -- Firms are the tenant boundary. Everything a PE firm owns (funds, portfolio
 -- companies, notes, flags) is scoped to a firm via RLS. Regulations are
 -- shared, public data fetched by backend jobs (Federal Register / EDGAR /
