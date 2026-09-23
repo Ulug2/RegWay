@@ -18,8 +18,22 @@ const FEDERAL_REGISTER_API = 'https://www.federalregister.gov/api/v1/documents.j
 // still bounding a pathological request (e.g. a `since` date years back).
 const MAX_PAGES = 20
 
-// Agencies most relevant to a PE firm's GP operations, fund structures, and
-// typical portfolio-company sectors. Extend this list as new sectors are added.
+// Agencies relevant to a PE firm's GP operations, fund structures, and
+// typical portfolio-company sectors: securities/derivatives regulators,
+// banking/financial-services regulators, tax, labor, competition, and the
+// sector-specific bodies (energy, healthcare, transportation, environment).
+// Extend this list as new portfolio-company sectors are added.
+//
+// Evaluated but deliberately excluded (see prompts/09-agency-list-investigate.md
+// for the volume data behind these calls):
+// - 'treasury-department' (the generic parent department): 157 RULE/PRORULE
+//   items in a 9-month sample, almost entirely duplicate tagging of the same
+//   joint OCC/FDIC/Fed rules already covered by the specific bureaus below,
+//   plus unrelated noise. Redundant once those bureaus are tracked directly.
+// - 'antitrust-division': 0 RULE/PRORULE items in the same 9-month sample —
+//   DOJ antitrust activity is enforcement actions/consent decrees, not
+//   codified rules, so it yields nothing under this pipeline's RULE/PRORULE
+//   filter. Revisit if NOTICE-type documents ever get included.
 const AGENCY_SLUGS = [
   'securities-and-exchange-commission',
   'commodity-futures-trading-commission',
@@ -30,6 +44,12 @@ const AGENCY_SLUGS = [
   'health-and-human-services-department',
   'federal-motor-carrier-safety-administration',
   'consumer-financial-protection-bureau',
+  'federal-reserve-system',
+  'comptroller-of-the-currency',
+  'federal-deposit-insurance-corporation',
+  'financial-crimes-enforcement-network',
+  'federal-trade-commission',
+  'national-labor-relations-board',
 ]
 
 interface FederalRegisterDocument {
@@ -39,8 +59,21 @@ interface FederalRegisterDocument {
   publication_date: string
   effective_on: string | null
   html_url: string
-  agencies: { name: string }[]
+  agencies: { name: string; slug: string }[]
   type: string
+}
+
+const TRACKED_SLUGS = new Set(AGENCY_SLUGS)
+
+// A document's `agencies` array often lists the parent department first even
+// when a specific bureau we track (e.g. Comptroller of the Currency, FinCEN)
+// is what actually matched our query — Federal Register's own convention,
+// not something specific to this document. Picking `agencies[0]` blindly
+// mislabels those as the generic parent. Prefer whichever entry's slug is
+// one we actually track, falling back to the first entry if somehow none
+// match (shouldn't happen, since the query itself filtered on these slugs).
+function primaryAgency(doc: FederalRegisterDocument) {
+  return doc.agencies?.find(a => TRACKED_SLUGS.has(a.slug)) ?? doc.agencies?.[0]
 }
 
 Deno.serve(async (req) => {
@@ -76,18 +109,21 @@ Deno.serve(async (req) => {
       page += 1
     }
 
-    const rows = documents.map(doc => ({
-      source: 'federal_register' as const,
-      external_id: doc.document_number,
-      title: doc.title,
-      agency: doc.agencies?.[0]?.name ?? null,
-      jurisdiction: doc.agencies?.[0]?.name ? `${doc.agencies[0].name} · Federal` : 'Federal Register',
-      summary: doc.abstract,
-      published_date: doc.publication_date,
-      effective_date: doc.effective_on,
-      source_url: doc.html_url,
-      raw: doc,
-    }))
+    const rows = documents.map(doc => {
+      const agencyName = primaryAgency(doc)?.name ?? null
+      return {
+        source: 'federal_register' as const,
+        external_id: doc.document_number,
+        title: doc.title,
+        agency: agencyName,
+        jurisdiction: agencyName ? `${agencyName} · Federal` : 'Federal Register',
+        summary: doc.abstract,
+        published_date: doc.publication_date,
+        effective_date: doc.effective_on,
+        source_url: doc.html_url,
+        raw: doc,
+      }
+    })
 
     const admin = createClient(
       Deno.env.get('SUPABASE_URL')!,

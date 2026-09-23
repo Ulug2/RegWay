@@ -43,6 +43,7 @@ Deno.serve(async (req) => {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
     let firmId: string
+    let rateLimitClient: ReturnType<typeof createClient> | null = null
     if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
       // Trusted admin/cron path: caller presented the service role key, so a
       // client-supplied firmId is safe to use as-is.
@@ -64,6 +65,13 @@ Deno.serve(async (req) => {
       const { data: membership } = await admin.from('firm_members').select('firm_id').eq('user_id', user.id).single()
       if (!membership) return json({ error: 'No firm associated with this user' }, 404)
       firmId = membership.firm_id
+
+      // Rate limit ordinary user-triggered calls only — the service-role/
+      // cron path above is trusted and exempt. The actual check happens
+      // further down, right before the Anthropic call, so the cheap
+      // early-exit checks below (no candidates / nothing unevaluated)
+      // don't burn quota on no-op calls.
+      rateLimitClient = userClient
     }
 
     const [{ data: firm }, { data: funds }, { data: companies }] = await Promise.all([
@@ -95,6 +103,15 @@ Deno.serve(async (req) => {
     const unevaluated = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
 
     if (unevaluated.length === 0) return json({ evaluated: 0, relevant: 0 })
+
+    if (rateLimitClient) {
+      const { data: allowed } = await rateLimitClient.rpc('check_rate_limit', {
+        p_function_name: 'match-relevance',
+        p_limit: 15,
+        p_window_minutes: 60,
+      })
+      if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
+    }
 
     const fundList = (funds ?? []).map(f => `- ${f.name} (${f.structure ?? 'structure n/a'}, jurisdictions: ${(f.jurisdictions ?? []).join('/')})`).join('\n') || 'none on file'
     const companyList =

@@ -67,6 +67,15 @@ Deno.serve(async (req) => {
 
     if (companyError || !company) return json({ error: 'Company not found or not accessible' }, 404)
 
+    // auth.uid() resolves server-side from the JWT already attached to
+    // `supabase` above — no separate user lookup needed here.
+    const { data: allowed } = await supabase.rpc('check_rate_limit', {
+      p_function_name: 'company-regulations',
+      p_limit: 15,
+      p_window_minutes: 60,
+    })
+    if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
+
     const locationDescriptor = company.hq_location || (company.regions ?? []).join(', ') || 'the United States'
     const sectorDescriptor = (company.sectors ?? []).join(' / ') || 'general business'
 

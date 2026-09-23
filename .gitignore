@@ -22,3 +22,8 @@ logs/
 
 # Supabase CLI local link state/cache — machine-specific, not project source.
 supabase/.temp/
+
+# Working notes: investigate/implement prompt pairs and the running roadmap.
+# Useful locally as a working log, not meant to be part of the published repo.
+/prompts/
+/plans/

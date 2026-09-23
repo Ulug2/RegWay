@@ -61,6 +61,13 @@ Portfolio companies: ${companySummary}.
 
 Use web search to ground every regulatory claim in a real, current source. Always cite the primary source (agency or publisher name, document title, URL, and date). If you are not confident a rule applies to this firm, say so plainly instead of guessing. Never assign an unprompted urgency label such as "critical" or "low impact" — describe obligations and deadlines factually and let the user judge priority themselves.`
 
+    const { data: allowed } = await supabase.rpc('check_rate_limit', {
+      p_function_name: 'harvey-chat',
+      p_limit: 30,
+      p_window_minutes: 60,
+    })
+    if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
