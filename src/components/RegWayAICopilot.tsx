@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { getFirmId, fetchFunds, fetchPortfolioCompanies } from '../lib/data'
 import type { Firm, Fund, PortfolioCompany } from '../lib/types'
 
-interface HarveyAICopilotProps {
+interface RegWayAICopilotProps {
   onClose: () => void
 }
 
@@ -14,13 +14,13 @@ interface Citation {
 }
 
 interface Message {
-  role: 'user' | 'harvey'
+  role: 'user' | 'ai'
   content: string
   citations?: Citation[]
 }
 
 const WELCOME_MESSAGE: Message = {
-  role: 'harvey',
+  role: 'ai',
   content: "Ask me anything about your firm's regulatory exposure — I'll search live sources and cite what I find.",
 }
 
@@ -28,7 +28,7 @@ function escapeHtml(text: string) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-export default function HarveyAICopilot({ onClose }: HarveyAICopilotProps) {
+export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -74,11 +74,11 @@ export default function HarveyAICopilot({ onClose }: HarveyAICopilotProps) {
 
     try {
       const result = await callFunction<{ content: string; citations: Citation[] }>('harvey-chat', { message: text })
-      setMessages(m => [...m, { role: 'harvey', content: result.content, citations: result.citations }])
+      setMessages(m => [...m, { role: 'ai', content: result.content, citations: result.citations }])
     } catch (err) {
       setMessages(m => [
         ...m,
-        { role: 'harvey', content: `Something went wrong: ${err instanceof Error ? err.message : 'please try again'}` },
+        { role: 'ai', content: `Something went wrong: ${err instanceof Error ? err.message : 'please try again'}` },
       ])
     } finally {
       setIsTyping(false)
@@ -134,7 +134,7 @@ export default function HarveyAICopilot({ onClose }: HarveyAICopilotProps) {
               H
             </div>
             <div>
-              <div className="font-semibold" style={{ color: '#0F172A', letterSpacing: '-0.01em' }}>Harvey AI Copilot</div>
+              <div className="font-semibold" style={{ color: '#0F172A', letterSpacing: '-0.01em' }}>RegWay AI Copilot</div>
               <div className="text-xs flex items-center gap-1.5" style={{ color: '#64748B' }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#38BDF8' }} />
                 {firm ? `Grounded in live web search for ${firm.name}` : 'Loading firm context…'}
@@ -172,7 +172,7 @@ export default function HarveyAICopilot({ onClose }: HarveyAICopilotProps) {
             <div className="flex-1 overflow-y-auto scrollable px-6 py-5 space-y-5">
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {msg.role === 'harvey' && (
+                  {msg.role === 'ai' && (
                     <div
                       className="w-7 h-7 flex items-center justify-center text-xs font-bold text-white mr-3 mt-1 flex-shrink-0"
                       style={{ background: 'linear-gradient(135deg,#0F172A,#334155)', borderRadius: 8 }}
@@ -182,7 +182,7 @@ export default function HarveyAICopilot({ onClose }: HarveyAICopilotProps) {
                   )}
                   <div className="max-w-[72%] space-y-2">
                     <div
-                      className={msg.role === 'harvey' ? 'glass-card p-4' : ''}
+                      className={msg.role === 'ai' ? 'glass-card p-4' : ''}
                       style={msg.role === 'user' ? {
                         background: 'rgba(2,132,199,0.12)',
                         border: '1px solid rgba(2,132,199,0.20)',
@@ -287,7 +287,7 @@ export default function HarveyAICopilot({ onClose }: HarveyAICopilotProps) {
                   <input
                     className="glass-input w-full py-3.5 px-5 pr-12 text-sm"
                     style={{ fontSize: 14, color: '#0F172A' }}
-                    placeholder="Ask Harvey about regulatory impact, compliance obligations, or fund exposure..."
+                    placeholder="Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure..."
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && sendMessage(input)}
@@ -304,7 +304,7 @@ export default function HarveyAICopilot({ onClose }: HarveyAICopilotProps) {
                 </div>
               </div>
               <div className="text-[10px] mt-2 text-center" style={{ color: '#94a3b8' }}>
-                Harvey AI references primary regulatory sources only. Always verify with qualified legal counsel.
+                RegWay AI references primary regulatory sources only. Always verify with qualified legal counsel.
               </div>
             </div>
           </div>

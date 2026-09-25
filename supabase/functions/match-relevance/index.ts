@@ -75,9 +75,9 @@ Deno.serve(async (req) => {
     }
 
     const [{ data: firm }, { data: funds }, { data: companies }] = await Promise.all([
-      admin.from('firms').select('name, hq_location, jurisdictions').eq('id', firmId).single(),
-      admin.from('funds').select('id, name, structure, jurisdictions').eq('firm_id', firmId),
-      admin.from('portfolio_companies').select('id, name, sectors, regions').eq('firm_id', firmId),
+      admin.from('firms').select('name, hq_location, jurisdictions, profile').eq('id', firmId).single(),
+      admin.from('funds').select('id, name, structure, jurisdictions, profile').eq('firm_id', firmId),
+      admin.from('portfolio_companies').select('id, name, sectors, regions, offerings, profile').eq('firm_id', firmId),
     ])
 
     if (!firm) return json({ error: 'Firm not found' }, 404)
@@ -113,9 +113,39 @@ Deno.serve(async (req) => {
       if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
     }
 
-    const fundList = (funds ?? []).map(f => `- ${f.name} (${f.structure ?? 'structure n/a'}, jurisdictions: ${(f.jurisdictions ?? []).join('/')})`).join('\n') || 'none on file'
+    // Questionnaire answers (stored in `profile`) sharpen the match: adviser
+    // registration decides which SEC rules apply, strategy/industries narrow
+    // sector rules, and the fund's proposed-vs-final preference is honoured.
+    const describe = (profile: Record<string, unknown> | null, keys: [string, string][]) =>
+      keys
+        .map(([k, label]) => {
+          const v = profile?.[k]
+          const text = Array.isArray(v) ? v.join('/') : typeof v === 'string' ? v : ''
+          return text ? `${label}: ${text}` : ''
+        })
+        .filter(Boolean)
+        .join('; ')
+
+    const firmProfile = describe(firm.profile, [
+      ['firm_type', 'firm type'],
+      ['adviser_registration', 'adviser registration'],
+      ['strategies', 'strategies'],
+      ['industries', 'industries'],
+      ['geographies', 'geographies'],
+    ])
+
+    const fundDetail = (profile: Record<string, unknown> | null) =>
+      describe(profile, [
+        ['status', 'status'],
+        ['strategy', 'strategy'],
+        ['ownership', 'ownership'],
+        ['priority_areas', 'priority areas'],
+        ['proposed_regs', 'proposed-rule preference'],
+      ])
+
+    const fundList = (funds ?? []).map(f => `- ${f.name} (${f.structure ?? 'structure n/a'}, jurisdictions: ${(f.jurisdictions ?? []).join('/')}${fundDetail(f.profile) ? '; ' + fundDetail(f.profile) : ''})`).join('\n') || 'none on file'
     const companyList =
-      (companies ?? []).map(c => `- ${c.name} (sectors: ${(c.sectors ?? []).join('/')}, regions: ${(c.regions ?? []).join('/')})`).join('\n') || 'none on file'
+      (companies ?? []).map(c => `- ${c.name} (sectors: ${(c.sectors ?? []).join('/')}, regions: ${(c.regions ?? []).join('/')}${c.offerings ? `; does: ${c.offerings}` : ''})`).join('\n') || 'none on file'
     const regList = unevaluated.map((r, i) => `${i}. [${r.agency ?? r.jurisdiction}] ${r.title} — ${r.summary ?? 'no summary'}`).join('\n')
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -158,7 +188,8 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: `Firm: ${firm.name}, headquartered in ${firm.hq_location ?? 'unknown'}, operating in: ${(firm.jurisdictions ?? []).join(', ') || 'unspecified'}.
+            content: `Firm: ${firm.name}, headquartered in ${firm.hq_location ?? 'unknown'}, operating in: ${(firm.jurisdictions ?? []).join(', ') || 'unspecified'}.${firmProfile ? `
+Firm profile — ${firmProfile}.` : ''}
 
 Funds:
 ${fundList}

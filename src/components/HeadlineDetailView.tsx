@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getFirmId, isFlagged, setFlagged as persistFlag, fetchNotes, addNote } from '../lib/data'
+import { getFirmId, getCachedFirmId, isFlagged, setFlagged as persistFlag, fetchNotes, addNote } from '../lib/data'
+import { readCache, writeCache } from '../lib/cache'
 import type { Regulation, RegulationNote } from '../lib/types'
 import LogoMark from './LogoMark'
 
@@ -25,13 +26,13 @@ function sourceDomain(url?: string) {
 }
 
 export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailViewProps) {
-  const [flagged, setFlaggedState] = useState(false)
+  const [flagged, setFlaggedState] = useState(() => readCache<boolean>(`flag:${headline?.id}`) ?? false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
-  const [notes, setNotes] = useState<RegulationNote[]>([])
+  const [notes, setNotes] = useState<RegulationNote[]>(() => readCache<RegulationNote[]>(`notes:${headline?.id}`) ?? [])
   const [dateMode, setDateMode] = useState<typeof DATE_MODES[number]>("Today's Status")
   const [customDate, setCustomDate] = useState('')
-  const [firmId, setFirmId] = useState<string | null>(null)
+  const [firmId, setFirmId] = useState<string | null>(getCachedFirmId)
 
   const regulationId = headline?.id
   const title = headline?.title || 'Untitled regulation'
@@ -41,15 +42,25 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
   useEffect(() => {
     if (!regulationId) return
     getFirmId().then(id => setFirmId(id))
-    isFlagged(regulationId).then(setFlaggedState)
-    fetchNotes(regulationId).then(setNotes)
+    isFlagged(regulationId).then(f => {
+      setFlaggedState(f)
+      writeCache(`flag:${regulationId}`, f)
+    })
+    fetchNotes(regulationId).then(n => {
+      setNotes(n)
+      writeCache(`notes:${regulationId}`, n)
+    })
   }, [regulationId])
 
   const toggleFlag = async () => {
     if (!regulationId || !firmId) return
     const next = !flagged
     setFlaggedState(next)
-    await persistFlag(regulationId, firmId, next).catch(() => setFlaggedState(!next))
+    writeCache(`flag:${regulationId}`, next)
+    await persistFlag(regulationId, firmId, next).catch(() => {
+      setFlaggedState(!next)
+      writeCache(`flag:${regulationId}`, !next)
+    })
   }
 
   const saveNote = async () => {
@@ -58,6 +69,7 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
     setNoteDraft('')
     const updated = await fetchNotes(regulationId)
     setNotes(updated)
+    writeCache(`notes:${regulationId}`, updated)
   }
 
   return (

@@ -1,15 +1,20 @@
 import { supabase } from './supabase'
+import { readCache, writeCache, patchCache } from './cache'
+import { toRow, type Answers } from './questionnaire'
 import type { Firm, Fund, PortfolioCompany, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
   const { data, error } = await supabase.from('firm_members').select('firm_id').maybeSingle()
   if (error) throw error
-  return data?.firm_id ?? null
+  const id = data?.firm_id ?? null
+  if (id) writeCache('firmId', id)
+  return id
 }
 
 export async function fetchFirm(firmId: string): Promise<Firm> {
   const { data, error } = await supabase.from('firms').select('*').eq('id', firmId).single()
   if (error) throw error
+  writeCache('firm', data)
   return data
 }
 
@@ -19,6 +24,7 @@ export async function updateFirm(
 ): Promise<void> {
   const { error } = await supabase.from('firms').update(updates).eq('id', firmId)
   if (error) throw error
+  patchCache<Firm>('firm', prev => ({ ...prev, ...updates }))
 }
 
 interface RelevanceRow {
@@ -58,14 +64,23 @@ export const fetchCompanyRegulations = (firmId: string, companyId: string) =>
 export async function fetchPortfolioCompanies(firmId: string): Promise<PortfolioCompany[]> {
   const { data, error } = await supabase.from('portfolio_companies').select('*').eq('firm_id', firmId).order('name')
   if (error) throw error
+  writeCache('companies', data ?? [])
   return data ?? []
 }
 
 export async function fetchFunds(firmId: string): Promise<Fund[]> {
   const { data, error } = await supabase.from('funds').select('*').eq('firm_id', firmId).order('name')
   if (error) throw error
+  writeCache('funds', data ?? [])
   return data ?? []
 }
+
+// Last-known values, readable synchronously so screens can render instantly
+// and then refresh from the network.
+export const getCachedFirmId = () => readCache<string>('firmId') ?? null
+export const getCachedFirm = () => readCache<Firm>('firm') ?? null
+export const getCachedCompanies = () => readCache<PortfolioCompany[]>('companies')
+export const getCachedFunds = () => readCache<Fund[]>('funds')
 
 export async function isFlagged(regulationId: string): Promise<boolean> {
   const { data } = await supabase.from('regulation_flags').select('regulation_id').eq('regulation_id', regulationId).maybeSingle()
@@ -118,19 +133,25 @@ export async function addNote(regulationId: string, firmId: string, body: string
   if (error) throw error
 }
 
-export type FundInput = Pick<Fund, 'name' | 'size' | 'structure' | 'jurisdictions'>
-export type PortfolioCompanyInput = Pick<
-  PortfolioCompany,
-  'name' | 'sectors' | 'regions' | 'hq_location' | 'aum' | 'offerings'
->
+// ---------------------------------------------------------------------------
+// Questionnaire-backed writes. Answers are mapped to rows by questionnaire.ts
+// (which also derives the legacy columns the AI functions read).
+// ---------------------------------------------------------------------------
 
-export async function addFund(firmId: string, fund: FundInput): Promise<void> {
-  const { error } = await supabase.from('funds').insert({ ...fund, firm_id: firmId })
+export async function saveFirmAnswers(firmId: string, answers: Answers): Promise<void> {
+  const row = toRow('firm', answers)
+  const { error } = await supabase.from('firms').update(row).eq('id', firmId)
+  if (error) throw error
+  patchCache<Firm>('firm', prev => ({ ...prev, ...row }) as Firm)
+}
+
+export async function addFund(firmId: string, answers: Answers): Promise<void> {
+  const { error } = await supabase.from('funds').insert({ ...toRow('fund', answers), firm_id: firmId })
   if (error) throw error
 }
 
-export async function updateFund(fundId: string, fund: FundInput): Promise<void> {
-  const { error } = await supabase.from('funds').update(fund).eq('id', fundId)
+export async function saveFundAnswers(fundId: string, answers: Answers): Promise<void> {
+  const { error } = await supabase.from('funds').update(toRow('fund', answers)).eq('id', fundId)
   if (error) throw error
 }
 
@@ -139,26 +160,25 @@ export async function removeFund(fundId: string): Promise<void> {
   if (error) throw error
 }
 
-export async function addPortfolioCompany(firmId: string, company: PortfolioCompanyInput): Promise<void> {
-  const { error } = await supabase.from('portfolio_companies').insert({ ...company, firm_id: firmId })
+export async function addPortfolioCompany(firmId: string, answers: Answers): Promise<void> {
+  const { error } = await supabase.from('portfolio_companies').insert({ ...toRow('company', answers), firm_id: firmId })
   if (error) throw error
 }
 
 // Cached company-regulations results were computed from the company's old
-// location/sectors/regions, so if any of those changed, drop them — the
-// dashboard re-scans on the next click when nothing is cached.
-export async function updatePortfolioCompany(
-  firmId: string,
-  previous: PortfolioCompany,
-  company: PortfolioCompanyInput,
-): Promise<void> {
-  const { error } = await supabase.from('portfolio_companies').update(company).eq('id', previous.id)
+// location/industry/operating footprint, so if any of those changed, drop
+// them — the dashboard re-scans on the next click when nothing is cached.
+export async function saveCompanyAnswers(firmId: string, previous: PortfolioCompany, answers: Answers): Promise<void> {
+  const row = toRow('company', answers)
+  const { error } = await supabase.from('portfolio_companies').update(row).eq('id', previous.id)
   if (error) throw error
 
+  const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
   const changed =
-    (previous.hq_location ?? '') !== (company.hq_location ?? '') ||
-    JSON.stringify(previous.sectors) !== JSON.stringify(company.sectors) ||
-    JSON.stringify(previous.regions) !== JSON.stringify(company.regions)
+    !same(previous.hq_location, row.hq_location) ||
+    !same(previous.sectors, row.sectors) ||
+    !same(previous.regions, row.regions) ||
+    !same(previous.website, row.website)
   if (changed) {
     const { error: clearError } = await supabase
       .from('regulation_relevance')
@@ -166,6 +186,10 @@ export async function updatePortfolioCompany(
       .eq('firm_id', firmId)
       .eq('portfolio_company_id', previous.id)
     if (clearError) throw clearError
+    patchCache<Record<string, unknown>>('regs:company', prev => {
+      const { [previous.id]: _dropped, ...rest } = prev
+      return rest
+    })
   }
 }
 

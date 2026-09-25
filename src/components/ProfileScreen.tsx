@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { getFirmId, fetchFirm, updateFirm } from '../lib/data'
+import { getFirmId, fetchFirm, updateFirm, getCachedFirmId, getCachedFirm } from '../lib/data'
+import { readCache, writeCache } from '../lib/cache'
 import LogoMark from './LogoMark'
 import PasswordInput from './PasswordInput'
-import FirmSettings from './settings/FirmSettings'
-import FundsSettings from './settings/FundsSettings'
-import PortfolioSettings from './settings/PortfolioSettings'
+import FirmProfile from './profile/FirmProfile'
+import FundsProfile from './profile/FundsProfile'
+import CompaniesProfile from './profile/CompaniesProfile'
 
 export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio'
 
@@ -19,18 +20,20 @@ const TABS: { key: ProfileTab; label: string }[] = [
 interface ProfileScreenProps {
   onBack: () => void
   initialTab?: ProfileTab
+  // A fund/company to open straight away (from a completion reminder).
+  focusId?: string | null
 }
 
-export default function ProfileScreen({ onBack, initialTab = 'account' }: ProfileScreenProps) {
+export default function ProfileScreen({ onBack, initialTab = 'account', focusId }: ProfileScreenProps) {
   const [tab, setTab] = useState<ProfileTab>(initialTab)
-  const [firmId, setFirmId] = useState<string | null>(null)
+  const [firmId, setFirmId] = useState<string | null>(getCachedFirmId)
 
-  const [name, setName] = useState('')
+  const [name, setName] = useState(() => getCachedFirm()?.lead_gp_name ?? '')
   const [nameLoading, setNameLoading] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const [nameSaved, setNameSaved] = useState(false)
 
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => readCache<string>('account:email') ?? '')
   const [emailLoading, setEmailLoading] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [emailCheckInbox, setEmailCheckInbox] = useState(false)
@@ -50,7 +53,9 @@ export default function ProfileScreen({ onBack, initialTab = 'account' }: Profil
     })
 
     supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? '')
+      const current = data.user?.email ?? ''
+      setEmail(current)
+      writeCache('account:email', current)
     })
   }, [])
 
@@ -157,16 +162,16 @@ export default function ProfileScreen({ onBack, initialTab = 'account' }: Profil
           ))}
         </div>
 
-        {tab === 'firm' && firmId && <FirmSettings firmId={firmId} />}
-        {tab === 'funds' && firmId && <FundsSettings firmId={firmId} />}
-        {tab === 'portfolio' && firmId && <PortfolioSettings firmId={firmId} />}
+        {tab === 'firm' && firmId && <FirmProfile firmId={firmId} />}
+        {tab === 'funds' && firmId && <FundsProfile firmId={firmId} focusId={focusId} />}
+        {tab === 'portfolio' && firmId && <CompaniesProfile firmId={firmId} focusId={focusId} />}
 
         {tab === 'account' && (
         <div className="space-y-6">
           {/* Name */}
           <div className="glass-card" style={{ padding: 28 }}>
             <h2 className="text-base font-semibold mb-1" style={{ color: '#0F172A' }}>Your name</h2>
-            <p className="text-xs mb-4" style={{ color: '#94a3b8' }}>Shown across the dashboard and in Harvey's context.</p>
+            <p className="text-xs mb-4" style={{ color: '#94a3b8' }}>Shown across the dashboard and in RegWay AI's context.</p>
             <div className="flex items-end gap-3">
               <div className="flex-1">
                 <input

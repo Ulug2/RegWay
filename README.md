@@ -8,7 +8,7 @@ its fund structures, and its portfolio companies — instead of dumping every
 new rule on the user. It's built as a private, single-firm-per-account
 workspace: sign up, describe your firm/funds/portfolio companies, and the app
 starts surfacing regulations that genuinely apply to you, with an AI copilot
-(Harvey) that can search the live web and answer questions grounded in real
+(RegWay AI) that can search the live web and answer questions grounded in real
 sources and citations.
 
 ## What it does
@@ -25,7 +25,7 @@ sources and citations.
   an on-demand Claude + web-search scan built from that company's sector and
   location, so a fintech company in New York and an energy company in Texas
   get different, relevant results instead of a generic feed.
-- **Harvey AI copilot** — a chat interface with full firm/fund/portfolio
+- **RegWay AI copilot** — a chat interface with full firm/fund/portfolio
   context, grounded in live web search, that always cites its sources.
 - **User-driven flags and notes** — no pre-baked "Critical/Flagged/Low Impact"
   labels. Users decide what matters to their firm and can flag items or leave
@@ -46,7 +46,7 @@ sources and citations.
 ```
 src/
   components/       React UI components (Dashboard, HeadlineDetailView,
-                     OnboardingModal, AuthScreen, HarveyAICopilot)
+                     OnboardingModal, AuthScreen, RegWayAICopilot)
   lib/               Supabase client, typed data-access helpers, edge
                      function caller
 supabase/
@@ -72,7 +72,7 @@ function secret, and deploying the Edge Functions.
 
 **Working:** authentication, onboarding (persists real firm/fund/portfolio
 data), the three-tab dashboard reading real relevance-filtered regulations,
-per-company AI web search, flags and notes, and the Harvey AI chat with live
+per-company AI web search, flags and notes, and the RegWay AI chat with live
 citations.
 
 **Not yet built:**

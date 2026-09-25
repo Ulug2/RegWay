@@ -4,6 +4,8 @@ export interface Firm {
   hq_location: string | null
   lead_gp_name: string | null
   jurisdictions: string[]
+  website: string | null
+  profile: Record<string, unknown>
 }
 
 export interface Fund {
@@ -13,6 +15,7 @@ export interface Fund {
   size: string | null
   structure: string | null
   jurisdictions: string[]
+  profile: Record<string, unknown>
 }
 
 export interface PortfolioCompany {
@@ -24,6 +27,8 @@ export interface PortfolioCompany {
   hq_location: string | null
   aum: string | null
   offerings: string | null
+  website: string | null
+  profile: Record<string, unknown>
 }
 
 export interface Regulation {

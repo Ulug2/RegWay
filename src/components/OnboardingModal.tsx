@@ -2,72 +2,76 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { callFunction } from '../lib/functions'
 import LogoMark from './LogoMark'
-import TagInput from './TagInput'
-import { JURISDICTIONS, SECTORS, LEGAL_STRUCTURES } from '../lib/options'
+import QuestionForm from './questionnaire/QuestionForm'
+import AddEntityCard from './profile/AddEntityCard'
+import { formatLocation, missingRequired, questionsFor, toRow, type Answers, type LocationValue } from '../lib/questionnaire'
 
 interface OnboardingModalProps {
   onComplete: () => void
 }
 
-interface PortfolioCompany {
-  name: string
-  sectors: string[]
-  regions: string[]
-  aum: string
-  offerings: string
-}
+const STEPS = [
+  { n: 1, label: 'Your Firm' },
+  { n: 2, label: 'First Fund' },
+  { n: 3, label: 'Portfolio' },
+]
 
-interface Fund {
-  name: string
-  size: string
-  structure: string
-  jurisdictions: string[]
+function AddedList({ items, onRemove, subtitle }: { items: Answers[]; onRemove: (i: number) => void; subtitle: (a: Answers) => string }) {
+  if (items.length === 0) return null
+  return (
+    <div className="space-y-2">
+      {items.map((item, i) => (
+        <div
+          key={i}
+          className="flex items-center justify-between p-3 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(186,230,253,0.40)' }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-8 h-8 shrink-0 flex items-center justify-center text-xs font-bold"
+              style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 8, color: 'white' }}
+            >
+              {String(item.name)[0]}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold truncate" style={{ color: '#0F172A' }}>{String(item.name)}</div>
+              <div className="text-xs truncate" style={{ color: '#64748B' }}>{subtitle(item)}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => onRemove(i)}
+            className="text-xs px-3 py-1 rounded-full hover:bg-sky-50 transition-colors"
+            style={{ color: '#64748B', border: '1px solid rgba(186,230,253,0.50)' }}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [step, setStep] = useState(1)
-
-  // Step 1
-  const [firmName, setFirmName] = useState('Meridian Capital Partners')
-  const [hqLocation, setHqLocation] = useState('New York, NY')
-  const [jurisdictions, setJurisdictions] = useState<string[]>(['Delaware', 'Luxembourg'])
-  const [gpName, setGpName] = useState('James Whitmore')
-
-  // Step 2
-  const [companies, setCompanies] = useState<PortfolioCompany[]>([
-    { name: 'NovaPay', sectors: ['Fintech'], regions: ['Delaware', 'New York'], aum: '$420M', offerings: 'B2B payments infrastructure' },
-  ])
-  const [newCompany, setNewCompany] = useState<PortfolioCompany>({ name: '', sectors: [], regions: [], aum: '', offerings: '' })
-
-  // Step 3
-  const [funds, setFunds] = useState<Fund[]>([
-    { name: 'Meridian Fund VI', size: '$2.4B', structure: 'Delaware LP', jurisdictions: ['Delaware', 'New York'] },
-    { name: 'Meridian Europe SCSp', size: '€800M', structure: 'Luxembourg SCSp', jurisdictions: ['Luxembourg', 'EU'] },
-  ])
-  const [newFund, setNewFund] = useState<Fund>({ name: '', size: '', structure: 'Delaware LP', jurisdictions: [] })
-
-  const steps = [
-    { n: 1, label: 'PE Firm Info' },
-    { n: 2, label: 'Portfolio' },
-    { n: 3, label: 'Fund Architecture' },
-  ]
-
-  const addCompany = () => {
-    if (newCompany.name) {
-      setCompanies(c => [...c, newCompany])
-      setNewCompany({ name: '', sectors: [], regions: [], aum: '', offerings: '' })
-    }
-  }
-
-  const addFund = () => {
-    if (newFund.name) {
-      setFunds(f => [...f, newFund])
-      setNewFund({ name: '', size: '', structure: 'Delaware LP', jurisdictions: [] })
-    }
-  }
+  const [yourName, setYourName] = useState('')
+  const [firm, setFirm] = useState<Answers>({})
+  const [funds, setFunds] = useState<Answers[]>([])
+  const [companies, setCompanies] = useState<Answers[]>([])
+  const [attempted, setAttempted] = useState(false)
 
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  const firmMissing = missingRequired('firm', firm, 'onboarding')
+  const step1Ready = yourName.trim() !== '' && firmMissing.length === 0
+
+  const next = () => {
+    if (step === 1 && !step1Ready) {
+      setAttempted(true)
+      return
+    }
+    setStep(s => s + 1)
+  }
 
   const handleComplete = async () => {
     setSaving(true)
@@ -86,36 +90,19 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       const firmId = crypto.randomUUID()
       const { error: firmError } = await supabase
         .from('firms')
-        .insert({ id: firmId, name: firmName, hq_location: hqLocation, lead_gp_name: gpName, jurisdictions })
+        .insert({ id: firmId, ...toRow('firm', firm), lead_gp_name: yourName.trim() })
       if (firmError) throw firmError
 
       const { error: memberError } = await supabase.from('firm_members').insert({ user_id: user.id, firm_id: firmId })
       if (memberError) throw memberError
 
-      if (companies.length > 0) {
-        const { error } = await supabase.from('portfolio_companies').insert(
-          companies.map(c => ({
-            firm_id: firmId,
-            name: c.name,
-            sectors: c.sectors,
-            regions: c.regions,
-            aum: c.aum,
-            offerings: c.offerings,
-          })),
-        )
+      if (funds.length > 0) {
+        const { error } = await supabase.from('funds').insert(funds.map(f => ({ ...toRow('fund', f), firm_id: firmId })))
         if (error) throw error
       }
 
-      if (funds.length > 0) {
-        const { error } = await supabase.from('funds').insert(
-          funds.map(f => ({
-            firm_id: firmId,
-            name: f.name,
-            size: f.size,
-            structure: f.structure,
-            jurisdictions: f.jurisdictions,
-          })),
-        )
+      if (companies.length > 0) {
+        const { error } = await supabase.from('portfolio_companies').insert(companies.map(c => ({ ...toRow('company', c), firm_id: firmId })))
         if (error) throw error
       }
 
@@ -138,6 +125,13 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     }
   }
 
+  const heading = (title: string, sub: string) => (
+    <div>
+      <h2 className="text-xl font-semibold mb-1" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>{title}</h2>
+      <p className="text-sm" style={{ color: '#64748B' }}>{sub}</p>
+    </div>
+  )
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-6"
@@ -145,7 +139,6 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     >
       <div className="glass-modal w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollable">
         <div className="p-8">
-          {/* Logo */}
           <div className="flex items-center gap-2 mb-8">
             <LogoMark size={36} />
             <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
@@ -153,322 +146,99 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
           {/* Progress Pills */}
           <div className="flex items-center gap-2 mb-8">
-            {steps.map((s, i) => (
+            {STEPS.map((s, i) => (
               <div key={s.n} className="flex items-center gap-2">
                 <button
                   onClick={() => step > s.n && setStep(s.n)}
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all"
                   style={{
                     borderRadius: 9999,
-                    background: step === s.n
-                      ? 'linear-gradient(135deg, #0284C7, #38BDF8)'
-                      : step > s.n
-                      ? 'rgba(2,132,199,0.12)'
-                      : 'rgba(186,230,253,0.25)',
+                    background: step === s.n ? 'linear-gradient(135deg, #0284C7, #38BDF8)' : step > s.n ? 'rgba(2,132,199,0.12)' : 'rgba(186,230,253,0.25)',
                     color: step === s.n ? 'white' : step > s.n ? '#0284C7' : '#94a3b8',
                     boxShadow: step === s.n ? '0 4px 12px rgba(2,132,199,0.25)' : 'none',
                   }}
                 >
                   <span
                     className="w-5 h-5 flex items-center justify-center text-xs font-bold"
-                    style={{
-                      borderRadius: 9999,
-                      background: step === s.n ? 'rgba(255,255,255,0.25)' : 'transparent',
-                    }}
+                    style={{ borderRadius: 9999, background: step === s.n ? 'rgba(255,255,255,0.25)' : 'transparent' }}
                   >
                     {step > s.n ? '✓' : s.n}
                   </span>
                   {s.label}
                 </button>
-                {i < steps.length - 1 && (
-                  <div
-                    className="w-8 h-px"
-                    style={{ background: step > s.n ? 'rgba(2,132,199,0.30)' : 'rgba(186,230,253,0.40)' }}
-                  />
+                {i < STEPS.length - 1 && (
+                  <div className="w-8 h-px" style={{ background: step > s.n ? 'rgba(2,132,199,0.30)' : 'rgba(186,230,253,0.40)' }} />
                 )}
               </div>
             ))}
           </div>
 
-          {/* Step 1 */}
           {step === 1 && (
-            <div className="space-y-5">
+            <div className="space-y-6">
+              {heading('Tell us about your firm', 'Just the essentials — this is what lets RegWay show relevant regulations right away.')}
               <div>
-                <h2 className="text-xl font-semibold mb-1" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>
-                  PE Firm & GP Information
-                </h2>
-                <p className="text-sm" style={{ color: '#64748B' }}>
-                  Tell us about your firm so we can tailor regulatory intelligence to your exposure.
-                </p>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Your name</label>
+                <input className="glass-input-rect" value={yourName} onChange={e => setYourName(e.target.value)} placeholder="e.g. James Whitmore" />
+                {attempted && !yourName.trim() && (
+                  <span className="inline-block text-[10px] font-medium px-2 py-0.5 mt-1.5" style={{ borderRadius: 9999, background: 'rgba(2,132,199,0.10)', color: '#0284C7' }}>Needed</span>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Firm Name</label>
-                  <input
-                    className="glass-input-rect"
-                    value={firmName}
-                    onChange={e => setFirmName(e.target.value)}
-                    placeholder="e.g. Meridian Capital Partners"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>HQ Location</label>
-                  <input
-                    className="glass-input-rect"
-                    value={hqLocation}
-                    onChange={e => setHqLocation(e.target.value)}
-                    placeholder="e.g. New York, NY"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Operating Jurisdictions</label>
-                <TagInput
-                  tags={jurisdictions}
-                  onAdd={j => setJurisdictions(jj => [...jj, j])}
-                  onRemove={j => setJurisdictions(jj => jj.filter(x => x !== j))}
-                  placeholder="Select jurisdictions..."
-                  options={JURISDICTIONS}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Lead General Partner</label>
-                <input
-                  className="glass-input-rect"
-                  value={gpName}
-                  onChange={e => setGpName(e.target.value)}
-                  placeholder="e.g. James Whitmore"
-                />
-              </div>
-              <div
-                className="p-4 rounded-xl text-sm"
-                style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.12)', color: '#334155' }}
-              >
-                <strong style={{ color: '#0284C7' }}>Why we ask:</strong> Jurisdiction data powers real-time regulatory
-                mapping across SEC, FCA, CSSF, and state-level compliance databases.
-              </div>
+              <QuestionForm
+                questions={questionsFor('firm', 'onboarding')}
+                answers={firm}
+                onChange={(id, v) => setFirm(a => ({ ...a, [id]: v }))}
+                flagMissing={attempted}
+                sections
+              />
             </div>
           )}
 
-          {/* Step 2 */}
           {step === 2 && (
             <div className="space-y-5">
-              <div>
-                <h2 className="text-xl font-semibold mb-1" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>
-                  Portfolio Companies & Investments
-                </h2>
-                <p className="text-sm" style={{ color: '#64748B' }}>
-                  Add your portfolio companies to receive sector-specific regulatory alerts.
-                </p>
-              </div>
-
-              {/* Existing companies */}
-              <div className="space-y-2">
-                {companies.map((co, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-3 rounded-xl"
-                    style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(186,230,253,0.40)' }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 flex items-center justify-center text-xs font-bold"
-                        style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 8, color: 'white' }}
-                      >
-                        {co.name[0]}
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold" style={{ color: '#0F172A' }}>{co.name}</div>
-                        <div className="text-xs" style={{ color: '#64748B' }}>{co.sectors.join(', ')} · {co.aum}</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setCompanies(c => c.filter((_, j) => j !== i))}
-                      className="text-xs px-3 py-1 rounded-full hover:bg-sky-50 transition-colors"
-                      style={{ color: '#64748B', border: '1px solid rgba(186,230,253,0.50)' }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* Add new company */}
-              <div
-                className="p-4 space-y-3 rounded-xl"
-                style={{ background: 'rgba(224,242,254,0.30)', border: '1px solid rgba(186,230,253,0.40)' }}
-              >
-                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>
-                  + Add Portfolio Company
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    className="glass-input-rect"
-                    placeholder="Company Name"
-                    value={newCompany.name}
-                    onChange={e => setNewCompany(c => ({ ...c, name: e.target.value }))}
-                  />
-                  <input
-                    className="glass-input-rect"
-                    placeholder="AUM / Investment Size"
-                    value={newCompany.aum}
-                    onChange={e => setNewCompany(c => ({ ...c, aum: e.target.value }))}
-                  />
-                </div>
-                <TagInput
-                  tags={newCompany.sectors}
-                  onAdd={s => setNewCompany(c => ({ ...c, sectors: [...c.sectors, s] }))}
-                  onRemove={s => setNewCompany(c => ({ ...c, sectors: c.sectors.filter(x => x !== s) }))}
-                  placeholder="Industry sectors..."
-                  options={SECTORS}
-                />
-                <input
-                  className="glass-input-rect"
-                  placeholder="Core offerings / client base"
-                  value={newCompany.offerings}
-                  onChange={e => setNewCompany(c => ({ ...c, offerings: e.target.value }))}
-                />
-                <button
-                  onClick={addCompany}
-                  className="text-sm font-medium px-4 py-2 rounded-full transition-all"
-                  style={{
-                    background: newCompany.name ? 'rgba(2,132,199,0.10)' : 'rgba(186,230,253,0.20)',
-                    color: newCompany.name ? '#0284C7' : '#94a3b8',
-                    border: '1px solid rgba(2,132,199,0.20)',
-                  }}
-                  disabled={!newCompany.name}
-                >
-                  Add Company
-                </button>
-              </div>
+              {heading('Add your first fund', 'Three quick answers. You can add more funds and fill in the rest from your profile any time.')}
+              <AddedList
+                items={funds}
+                onRemove={i => setFunds(f => f.filter((_, j) => j !== i))}
+                subtitle={a => [a.structure, formatLocation(a.domicile as LocationValue)].filter(Boolean).join(' · ')}
+              />
+              <AddEntityCard scope="fund" heading={funds.length ? 'Add another fund' : 'Fund'} cta="Add Fund" onAdd={async a => { setFunds(f => [...f, a]) }} />
             </div>
           )}
 
-          {/* Step 3 */}
           {step === 3 && (
             <div className="space-y-5">
-              <div>
-                <h2 className="text-xl font-semibold mb-1" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>
-                  Fund Architecture
-                </h2>
-                <p className="text-sm" style={{ color: '#64748B' }}>
-                  Define your fund structures to receive jurisdiction-specific compliance monitoring.
-                </p>
-              </div>
-
-              {/* Existing funds */}
-              <div className="space-y-2">
-                {funds.map((fund, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-3 rounded-xl"
-                    style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(186,230,253,0.40)' }}
-                  >
-                    <div>
-                      <div className="text-sm font-semibold" style={{ color: '#0F172A' }}>{fund.name}</div>
-                      <div className="text-xs" style={{ color: '#64748B' }}>
-                        {fund.size} · {fund.structure} · {fund.jurisdictions.join(', ')}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setFunds(f => f.filter((_, j) => j !== i))}
-                      className="text-xs px-3 py-1 rounded-full hover:bg-sky-50 transition-colors"
-                      style={{ color: '#64748B', border: '1px solid rgba(186,230,253,0.50)' }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* Add new fund */}
-              <div
-                className="p-4 space-y-3 rounded-xl"
-                style={{ background: 'rgba(224,242,254,0.30)', border: '1px solid rgba(186,230,253,0.40)' }}
-              >
-                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>
-                  + Add Fund
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    className="glass-input-rect"
-                    placeholder="Fund Name"
-                    value={newFund.name}
-                    onChange={e => setNewFund(f => ({ ...f, name: e.target.value }))}
-                  />
-                  <input
-                    className="glass-input-rect"
-                    placeholder="Fund Size (e.g. $1.2B)"
-                    value={newFund.size}
-                    onChange={e => setNewFund(f => ({ ...f, size: e.target.value }))}
-                  />
-                </div>
-                <select
-                  className="glass-input-rect"
-                  value={newFund.structure}
-                  onChange={e => setNewFund(f => ({ ...f, structure: e.target.value }))}
-                >
-                  {LEGAL_STRUCTURES.map(s => <option key={s}>{s}</option>)}
-                </select>
-                <TagInput
-                  tags={newFund.jurisdictions}
-                  onAdd={j => setNewFund(f => ({ ...f, jurisdictions: [...f.jurisdictions, j] }))}
-                  onRemove={j => setNewFund(f => ({ ...f, jurisdictions: f.jurisdictions.filter(x => x !== j) }))}
-                  placeholder="Target jurisdictions..."
-                  options={JURISDICTIONS}
-                />
-                <button
-                  onClick={addFund}
-                  className="text-sm font-medium px-4 py-2 rounded-full transition-all"
-                  style={{
-                    background: newFund.name ? 'rgba(2,132,199,0.10)' : 'rgba(186,230,253,0.20)',
-                    color: newFund.name ? '#0284C7' : '#94a3b8',
-                    border: '1px solid rgba(2,132,199,0.20)',
-                  }}
-                  disabled={!newFund.name}
-                >
-                  Add Fund
-                </button>
-              </div>
-
-              {/* Summary */}
-              <div
-                className="p-4 rounded-xl"
-                style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)' }}
-              >
-                <div className="text-xs font-semibold mb-2" style={{ color: '#0284C7' }}>Setup Summary</div>
-                <div className="text-sm space-y-1" style={{ color: '#334155' }}>
-                  <div><strong>{firmName}</strong> · {hqLocation}</div>
-                  <div>{jurisdictions.length} operating jurisdictions · {companies.length} portfolio companies · {funds.length} funds</div>
-                </div>
+              {heading('Add your portfolio companies', 'RegWay researches each one for the regulations that touch it. Start with the basics; details can wait.')}
+              <AddedList
+                items={companies}
+                onRemove={i => setCompanies(c => c.filter((_, j) => j !== i))}
+                subtitle={a => [a.industry, formatLocation(a.hq as LocationValue)].filter(Boolean).join(' · ')}
+              />
+              <AddEntityCard scope="company" heading={companies.length ? 'Add another company' : 'Portfolio company'} cta="Add Company" onAdd={async a => { setCompanies(c => [...c, a]) }} />
+              <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.12)', color: '#334155' }}>
+                <strong style={{ color: '#0284C7' }}>Almost there.</strong> After launch, your dashboard will show a short checklist for the remaining
+                details (operating locations, products, fund preferences…). The more you add, the sharper your alerts.
               </div>
             </div>
           )}
 
-          {/* Footer */}
           {saveError && (
             <div className="mt-6 p-3 rounded-lg text-xs" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155' }}>
               {saveError}
             </div>
           )}
           <div className="flex items-center justify-between mt-8 pt-6" style={{ borderTop: '1px solid rgba(186,230,253,0.35)' }}>
-            <button className="btn-ghost">Save Draft</button>
+            <div className="text-xs" style={{ color: '#94a3b8' }}>
+              {step === 1 ? 'Step 1 of 3' : step === 2 ? `${funds.length} fund${funds.length === 1 ? '' : 's'} added` : `${companies.length} compan${companies.length === 1 ? 'y' : 'ies'} added`}
+            </div>
             <div className="flex items-center gap-3">
-              {step > 1 && (
-                <button
-                  className="btn-ghost"
-                  onClick={() => setStep(s => s - 1)}
-                >
-                  ← Back
-                </button>
-              )}
+              {step > 1 && <button className="btn-ghost" onClick={() => setStep(s => s - 1)}>← Back</button>}
               {step < 3 ? (
-                <button className="btn-primary" onClick={() => setStep(s => s + 1)}>
-                  Continue →
+                <button className="btn-primary" onClick={next}>
+                  {step === 2 && funds.length === 0 ? 'Skip for now →' : 'Continue →'}
                 </button>
               ) : (
                 <button className="btn-primary" onClick={handleComplete} disabled={saving}>
-                  {saving ? 'Setting up…' : 'Complete Setup & Launch Dashboard'}
+                  {saving ? 'Setting up…' : companies.length === 0 ? 'Skip & Launch Dashboard' : 'Launch Dashboard'}
                 </button>
               )}
             </div>

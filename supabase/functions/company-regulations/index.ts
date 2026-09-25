@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 
     const { data: company, error: companyError } = await supabase
       .from('portfolio_companies')
-      .select('id, name, sectors, regions, hq_location, firm_id')
+      .select('id, name, sectors, regions, hq_location, firm_id, website, offerings, profile')
       .eq('id', companyId)
       .single()
 
@@ -79,6 +79,24 @@ Deno.serve(async (req) => {
     const locationDescriptor = company.hq_location || (company.regions ?? []).join(', ') || 'the United States'
     const sectorDescriptor = (company.sectors ?? []).join(' / ') || 'general business'
 
+    // Extra context from the questionnaire so the search targets what this
+    // company actually does and where, not just its sector and HQ.
+    const p = (company.profile ?? {}) as Record<string, unknown>
+    const list = (v: unknown) => (Array.isArray(v) ? v.join(', ') : typeof v === 'string' ? v : '')
+    const facts = [
+      company.website ? `website ${company.website}` : '',
+      company.offerings ? `what it does: ${company.offerings}` : '',
+      list(company.regions) ? `operates in: ${list(company.regions)}` : '',
+      list(p.customers) ? `customers: ${list(p.customers)}` : '',
+      p.consumer_facing === 'yes' ? 'sells directly to consumers' : '',
+      list(p.sensitive_data) && !list(p.sensitive_data).includes('None') ? `handles: ${list(p.sensitive_data)}` : '',
+      p.regulated === 'Yes' ? `licensed/regulated${list(p.license_types) ? ` (${list(p.license_types)})` : ''}` : '',
+      p.gov_contracts === 'Yes' ? `government contractor${list(p.gov_level) ? ` (${list(p.gov_level)})` : ''}` : '',
+      p.trade === 'Yes' ? `imports/exports${list(p.trade_regions) ? ` (${list(p.trade_regions)})` : ''}` : '',
+      p.outside_us === 'yes' && list(p.foreign_countries) ? `operates abroad in: ${list(p.foreign_countries)}` : '',
+    ].filter(Boolean)
+    const factsText = facts.length ? ` Known facts about the company — ${facts.join('; ')}.` : ''
+
     // Step 1: grounded search.
     const searchResult = await callClaude({
       max_tokens: 2048,
@@ -86,7 +104,7 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: 'user',
-          content: `Search for regulatory changes published or proposed in the last 90 days that would create compliance obligations for a company in the "${sectorDescriptor}" sector headquartered in ${locationDescriptor}. Include federal, state/local, and (if applicable) foreign regulators. For each distinct item found, report: the exact rule or document title, the issuing regulator/agency, the jurisdiction, the publication or effective date, a one-sentence plain-language summary, and the official source URL. Only include items you found real sources for — do not invent items.`,
+          content: `Search for regulatory changes published or proposed in the last 90 days that would create compliance obligations for a company in the "${sectorDescriptor}" sector headquartered in ${locationDescriptor}. Include federal, state/local, and (if applicable) foreign regulators. For each distinct item found, report: the exact rule or document title, the issuing regulator/agency, the jurisdiction, the publication or effective date, a one-sentence plain-language summary, and the official source URL. Only include items you found real sources for — do not invent items.${factsText}`,
         },
       ],
     })

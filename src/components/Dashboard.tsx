@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
+import { useCachedState } from '../lib/useCachedState'
 import { supabase } from '../lib/supabase'
 import { callFunction } from '../lib/functions'
 import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, getFirmId } from '../lib/data'
 import type { Regulation, PortfolioCompany, Firm } from '../lib/types'
 import LogoMark from './LogoMark'
+import ProfileReminder from './ProfileReminder'
+import { useProfileCompletion } from '../lib/useProfileCompletion'
 
-type View = 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'harvey'
+type View = 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai'
 
 interface DashboardProps {
   onNavigate: (view: View, payload?: unknown) => void
@@ -42,79 +45,96 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
-export default function Dashboard({ onNavigate }: DashboardProps) {
-  const [firmId, setFirmId] = useState<string | null>(null)
-  const [firm, setFirm] = useState<Firm | null>(null)
-  const [activeToggle, setActiveToggle] = useState<'pe' | 'fund' | 'portfolio' | null>(null)
-  const [selectedCompany, setSelectedCompany] = useState<string | null>(null)
-  const [harveyQuery, setHarveyQuery] = useState('')
+type Toggle = 'pe' | 'fund' | 'portfolio'
 
-  const [companies, setCompanies] = useState<PortfolioCompany[]>([])
-  const [peRegs, setPeRegs] = useState<Regulation[] | null>(null)
-  const [fundRegs, setFundRegs] = useState<Regulation[] | null>(null)
-  const [companyRegs, setCompanyRegs] = useState<Record<string, Regulation[]>>({})
-  const [loadingTab, setLoadingTab] = useState(false)
+// Company scans that are still running, so leaving the dashboard mid-scan and
+// coming back doesn't start a second (paid) scan for the same company.
+const scansInFlight = new Map<string, Promise<void>>()
+
+export default function Dashboard({ onNavigate }: DashboardProps) {
+  const [firmId, setFirmId] = useCachedState<string | null>('firmId', null)
+  const [firm, setFirm] = useCachedState<Firm | null>('firm', null)
+  const [companies, setCompanies] = useCachedState<PortfolioCompany[]>('companies', [])
+  // Which tab/company is open survives navigating to a headline and back.
+  const [activeToggle, setActiveToggle] = useCachedState<Toggle | null>('ui:activeToggle', null)
+  const [selectedCompany, setSelectedCompany] = useCachedState<string | null>('ui:selectedCompany', null)
+  const [aiQuery, setAiQuery] = useState('')
+
+  const [peRegs, setPeRegs] = useCachedState<Regulation[] | null>('regs:pe', null)
+  const [fundRegs, setFundRegs] = useCachedState<Regulation[] | null>('regs:fund', null)
+  const [companyRegs, setCompanyRegs] = useCachedState<Record<string, Regulation[]>>('regs:company', {})
   const [scanningCompany, setScanningCompany] = useState<string | null>(null)
 
+  const completion = useProfileCompletion()
+
+  const loadingTab = activeToggle === 'pe' ? peRegs === null : activeToggle === 'fund' ? fundRegs === null : false
+
+  // Refresh the firm and its companies. Cached values render immediately;
+  // this just brings them up to date.
   useEffect(() => {
-    let mounted = true
-    getFirmId().then(async id => {
-      if (!mounted || !id) return
-      setFirmId(id)
-      const [{ data: firmRow }, cos] = await Promise.all([
-        supabase.from('firms').select('*').eq('id', id).single(),
-        fetchPortfolioCompanies(id),
-      ])
-      if (!mounted) return
-      if (firmRow) setFirm(firmRow)
-      setCompanies(cos)
-    })
-    return () => {
-      mounted = false
-    }
+    getFirmId()
+      .then(async id => {
+        if (!id) return
+        setFirmId(id)
+        const [{ data: firmRow }, cos] = await Promise.all([
+          supabase.from('firms').select('*').eq('id', id).single(),
+          fetchPortfolioCompanies(id),
+        ])
+        if (firmRow) setFirm(firmRow)
+        setCompanies(cos)
+      })
+      .catch(() => {})
   }, [])
 
-  const toggles: { key: 'pe' | 'fund' | 'portfolio'; label: string }[] = [
+  // Refresh the open PE Firm / Fund Structure list in the background.
+  useEffect(() => {
+    if (!firmId) return
+    if (activeToggle === 'pe') fetchFirmRegulations(firmId).catch(() => null).then(r => r && setPeRegs(r))
+    if (activeToggle === 'fund') fetchFundRegulations(firmId).catch(() => null).then(r => r && setFundRegs(r))
+  }, [firmId, activeToggle])
+
+  // Refresh the open company's regulations. Only if nothing has ever been
+  // stored for it do we run the on-demand AI web-search scan (slow, rate
+  // limited and paid) — a cached empty result means a scan already found nothing.
+  useEffect(() => {
+    if (!firmId || activeToggle !== 'portfolio' || !selectedCompany) return
+    const id = selectedCompany
+    const neverScanned = companyRegs[id] === undefined
+    const load = async () => {
+      const running = scansInFlight.get(id)
+      if (running) {
+        setScanningCompany(id)
+        await running
+        setScanningCompany(null)
+      }
+      let regs = await fetchCompanyRegulations(firmId, id).catch(() => null)
+      if (regs && regs.length === 0 && neverScanned) {
+        setScanningCompany(id)
+        const scan = callFunction('company-regulations', { companyId: id }).then(() => true, () => false)
+        scansInFlight.set(id, scan.then(() => undefined))
+        const ok = await scan
+        scansInFlight.delete(id)
+        regs = ok ? await fetchCompanyRegulations(firmId, id).catch(() => null) : null
+        setScanningCompany(null)
+      }
+      if (regs) setCompanyRegs(prev => ({ ...prev, [id]: regs }))
+    }
+    load()
+  }, [firmId, activeToggle, selectedCompany])
+
+  const toggles: { key: Toggle; label: string }[] = [
     { key: 'pe', label: 'PE Firm' },
     { key: 'fund', label: 'Fund Structure' },
     { key: 'portfolio', label: 'Portfolio Companies' },
   ]
 
-  const selectToggle = async (key: 'pe' | 'fund' | 'portfolio') => {
-    const next = activeToggle === key ? null : key
-    setActiveToggle(next)
+  const selectToggle = (key: Toggle) => {
+    setActiveToggle(activeToggle === key ? null : key)
     setSelectedCompany(null)
-    if (!next || !firmId) return
-
-    if (next === 'pe' && peRegs === null) {
-      setLoadingTab(true)
-      const regs = await fetchFirmRegulations(firmId).catch(() => [])
-      setPeRegs(regs)
-      setLoadingTab(false)
-    }
-    if (next === 'fund' && fundRegs === null) {
-      setLoadingTab(true)
-      const regs = await fetchFundRegulations(firmId).catch(() => [])
-      setFundRegs(regs)
-      setLoadingTab(false)
-    }
   }
 
-  const selectCompany = async (companyId: string) => {
-    const next = selectedCompany === companyId ? null : companyId
-    setSelectedCompany(next)
-    if (!next || !firmId) return
-
-    let regs = await fetchCompanyRegulations(firmId, next).catch(() => [])
-    if (regs.length === 0) {
-      // Nothing cached yet — run the on-demand AI web-search scan for this
-      // company's sector + location, then re-read what it stored.
-      setScanningCompany(next)
-      await callFunction('company-regulations', { companyId: next }).catch(() => null)
-      regs = await fetchCompanyRegulations(firmId, next).catch(() => [])
-      setScanningCompany(null)
-    }
-    setCompanyRegs(prev => ({ ...prev, [next]: regs }))
+  const selectCompany = (companyId: string) => {
+    setSelectedCompany(selectedCompany === companyId ? null : companyId)
   }
 
   const firstName = firm?.lead_gp_name?.split(' ')[0] || 'there'
@@ -140,8 +160,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="ml-auto flex items-center gap-3">
             {/* Settings pill */}
             <button
-              onClick={() => onNavigate('profile', 'firm')}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:bg-sky-50"
+              onClick={() => onNavigate('profile', { tab: 'firm' })}
+              className="relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:bg-sky-50"
               style={{
                 background: 'rgba(255,255,255,0.60)',
                 border: '1px solid rgba(186,230,253,0.40)',
@@ -154,6 +174,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 <path d="M7 1v1.5M7 11.5V13M13 7h-1.5M2.5 7H1M11.1 2.9l-1.1 1.1M4 9l-1.1 1.1M11.1 11.1L10 10M4 5L2.9 3.9" stroke="#64748B" strokeWidth="1.3" strokeLinecap="round"/>
               </svg>
               Settings
+              {completion.ready && completion.incomplete.length > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+                  style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', boxShadow: '0 0 0 2px #FDFBF7' }}
+                  title="Profile incomplete"
+                />
+              )}
             </button>
 
             {/* Avatar — click for Profile */}
@@ -181,6 +208,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             {firm ? `Here's what's moving across ${firm.name} today.` : "Here's what's moving across your firm today."}
           </p>
         </div>
+
+        <ProfileReminder completion={completion} onOpen={(tab, focusId) => onNavigate('profile', { tab, focusId })} />
 
         {/* 3-Button Toggle Bar */}
         <div className="max-w-2xl mx-auto grid grid-cols-3 gap-4">
@@ -276,7 +305,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
               {selectedCompany && (
                 scanningCompany === selectedCompany ? (
-                  <EmptyState message="Harvey is searching the web for regulations affecting this company…" />
+                  <EmptyState message="RegWay AI is searching the web for regulations affecting this company…" />
                 ) : (companyRegs[selectedCompany]?.length ?? 0) === 0 ? (
                   <EmptyState message="No regulations found that affect this company right now." />
                 ) : (
@@ -291,17 +320,17 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           )}
         </div>
 
-        {/* Harvey AI Input Bar */}
+        {/* RegWay AI Input Bar */}
         <div className="max-w-2xl mx-auto" style={{ marginTop: activeToggle ? 0 : 48 }}>
           <div className="relative">
             <input
               className="glass-input w-full py-5 px-7 pr-28 text-sm"
               style={{ fontSize: 14, color: '#0F172A' }}
-              placeholder="Ask Harvey AI about today's regulatory impact across your funds and portfolio..."
-              value={harveyQuery}
-              onChange={e => setHarveyQuery(e.target.value)}
-              onFocus={() => onNavigate('harvey')}
-              onKeyDown={e => e.key === 'Enter' && onNavigate('harvey')}
+              placeholder="Ask RegWay AI about today's regulatory impact across your funds and portfolio..."
+              value={aiQuery}
+              onChange={e => setAiQuery(e.target.value)}
+              onFocus={() => onNavigate('ai')}
+              onKeyDown={e => e.key === 'Enter' && onNavigate('ai')}
             />
             {/* Attachment */}
             <button
@@ -324,7 +353,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </button>
             {/* Send */}
             <button
-              onClick={() => onNavigate('harvey')}
+              onClick={() => onNavigate('ai')}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-white"
               style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 9999, boxShadow: '0 4px 12px rgba(2,132,199,0.30)' }}
             >

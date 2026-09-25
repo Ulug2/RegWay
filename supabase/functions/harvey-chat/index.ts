@@ -1,4 +1,4 @@
-// Powers the Harvey AI copilot drawer. Loads the caller's firm/fund/
+// Powers the RegWay AI copilot drawer. Loads the caller's firm/fund/
 // portfolio-company context from the DB, asks Claude (with the web_search
 // tool) to answer grounded in live regulatory sources, and persists the
 // exchange to `harvey_messages` for conversation history.
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     const companySummary =
       (companies ?? []).map(c => `${c.name} (${(c.sectors ?? []).join('/')}, ${(c.regions ?? []).join('/')})`).join('; ') || 'none on file'
 
-    const systemPrompt = `You are Harvey, an AI regulatory intelligence copilot for private equity general partners. You are advising ${firm?.name ?? 'the firm'}, headquartered in ${firm?.hq_location ?? 'an unspecified location'}, operating in: ${(firm?.jurisdictions ?? []).join(', ') || 'unspecified jurisdictions'}.
+    const systemPrompt = `You are RegWay AI, an AI regulatory intelligence copilot for private equity general partners. You are advising ${firm?.name ?? 'the firm'}, headquartered in ${firm?.hq_location ?? 'an unspecified location'}, operating in: ${(firm?.jurisdictions ?? []).join(', ') || 'unspecified jurisdictions'}.
 
 Active funds: ${fundSummary}.
 Portfolio companies: ${companySummary}.

@@ -1,24 +1,26 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
-import { getFirmId } from './lib/data'
+import { getFirmId, getCachedFirmId } from './lib/data'
+import { bindCacheToUser, clearCache } from './lib/cache'
 import AuthScreen from './components/AuthScreen'
 import LandingPage from './components/LandingPage'
 import ProfileScreen, { type ProfileTab } from './components/ProfileScreen'
 import OnboardingModal from './components/OnboardingModal'
 import Dashboard from './components/Dashboard'
-import HarveyAICopilot from './components/HarveyAICopilot'
+import RegWayAICopilot from './components/RegWayAICopilot'
 import HeadlineDetailView from './components/HeadlineDetailView'
 import type { Regulation } from './lib/types'
 import LogoMark from './components/LogoMark'
 
-type View = 'loading' | 'landing' | 'auth' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'harvey'
+type View = 'loading' | 'landing' | 'auth' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai'
 
 export default function App() {
   const [view, setView] = useState<View>('loading')
   const [profileTab, setProfileTab] = useState<ProfileTab>('account')
+  const [profileFocus, setProfileFocus] = useState<string | null>(null)
   const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-up')
   const [detailPayload, setDetailPayload] = useState<unknown>(null)
-  const [showHarvey, setShowHarvey] = useState(false)
+  const [showAI, setShowAI] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -31,13 +33,20 @@ export default function App() {
         if (mounted) setView('landing')
         return
       }
-      const firmId = await getFirmId().catch(() => null)
+      bindCacheToUser(session.user.id)
+      // A known firm means we can show the dashboard straight away and
+      // confirm in the background, instead of a "Loading…" screen every visit.
+      if (getCachedFirmId() && mounted) setView('dashboard')
+      const firmId = await getFirmId().catch(() => getCachedFirmId())
       if (mounted) setView(firmId ? 'dashboard' : 'onboarding')
     }
     init()
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) setView('landing')
+      if (!session) {
+        clearCache()
+        setView('landing')
+      }
     })
 
     return () => {
@@ -52,16 +61,24 @@ export default function App() {
   }
 
   const navigate = (newView: View, payload?: unknown) => {
-    if (newView === 'harvey') {
-      setShowHarvey(true)
+    if (newView === 'ai') {
+      setShowAI(true)
       return
     }
-    if (newView === 'profile') setProfileTab((payload as ProfileTab | undefined) ?? 'account')
+    if (newView === 'profile') {
+      const p = payload as { tab?: ProfileTab; focusId?: string | null } | undefined
+      setProfileTab(p?.tab ?? 'account')
+      setProfileFocus(p?.focusId ?? null)
+    }
     else if (payload) setDetailPayload(payload)
     setView(newView)
   }
 
   const handleAuthenticated = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (session) bindCacheToUser(session.user.id)
     const firmId = await getFirmId().catch(() => null)
     setView(firmId ? 'dashboard' : 'onboarding')
   }
@@ -173,13 +190,13 @@ export default function App() {
         )}
 
         {view === 'profile' && (
-          <ProfileScreen onBack={() => setView('dashboard')} initialTab={profileTab} />
+          <ProfileScreen onBack={() => setView('dashboard')} initialTab={profileTab} focusId={profileFocus} />
         )}
       </div>
 
-      {/* Harvey AI drawer — rendered over any view */}
-      {showHarvey && (
-        <HarveyAICopilot onClose={() => setShowHarvey(false)} />
+      {/* RegWay AI drawer — rendered over any view */}
+      {showAI && (
+        <RegWayAICopilot onClose={() => setShowAI(false)} />
       )}
     </div>
   )
