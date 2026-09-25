@@ -1,93 +1,12 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { callFunction } from '../lib/functions'
+import LogoMark from './LogoMark'
+import TagInput from './TagInput'
+import { JURISDICTIONS, SECTORS, LEGAL_STRUCTURES } from '../lib/options'
 
 interface OnboardingModalProps {
   onComplete: () => void
-}
-
-const JURISDICTIONS = ['Delaware', 'New York', 'California', 'Texas', 'Luxembourg', 'Cayman Islands', 'UK', 'EU', 'Singapore', 'Ireland']
-const SECTORS = ['Fintech', 'Healthcare', 'Infrastructure', 'SaaS', 'Energy', 'Logistics', 'Real Estate', 'Consumer', 'Industrials', 'Media']
-const LEGAL_STRUCTURES = ['Delaware LP', 'Delaware LLC', 'Luxembourg SCSp', 'Luxembourg SCA', 'Cayman LP', 'UK LLP', 'Irish ICAV']
-
-function TagInput({ tags, onAdd, onRemove, placeholder, options }: {
-  tags: string[]
-  onAdd: (tag: string) => void
-  onRemove: (tag: string) => void
-  placeholder: string
-  options: string[]
-}) {
-  const [open, setOpen] = useState(false)
-  const available = options.filter(o => !tags.includes(o))
-
-  return (
-    <div className="relative">
-      <div
-        className="min-h-[44px] flex flex-wrap gap-2 p-2 cursor-text"
-        style={{
-          background: 'rgba(255,255,255,0.70)',
-          border: '1px solid rgba(186,230,253,0.50)',
-          borderRadius: 10,
-        }}
-        onClick={() => setOpen(true)}
-      >
-        {tags.map(tag => (
-          <span
-            key={tag}
-            className="flex items-center gap-1 px-3 py-1 text-xs font-medium"
-            style={{
-              background: 'rgba(2,132,199,0.10)',
-              color: '#0284C7',
-              borderRadius: 9999,
-              border: '1px solid rgba(2,132,199,0.20)',
-            }}
-          >
-            {tag}
-            <button
-              onClick={e => { e.stopPropagation(); onRemove(tag) }}
-              className="ml-1 hover:opacity-60 transition-opacity"
-              style={{ lineHeight: 1 }}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        {tags.length === 0 && (
-          <span className="text-sm" style={{ color: '#94a3b8', padding: '4px 6px' }}>{placeholder}</span>
-        )}
-      </div>
-      {open && available.length > 0 && (
-        <div
-          className="absolute top-full left-0 right-0 mt-1 z-50 py-2"
-          style={{
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(186,230,253,0.50)',
-            borderRadius: 12,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
-          }}
-        >
-          {available.map(opt => (
-            <button
-              key={opt}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-sky-50 transition-colors"
-              style={{ color: '#334155' }}
-              onClick={() => { onAdd(opt); setOpen(false) }}
-            >
-              {opt}
-            </button>
-          ))}
-          <button
-            className="w-full text-left px-4 py-2 text-xs border-t"
-            style={{ color: '#94a3b8', borderColor: 'rgba(186,230,253,0.30)' }}
-            onClick={() => setOpen(false)}
-          >
-            Close
-          </button>
-        </div>
-      )}
-    </div>
-  )
 }
 
 interface PortfolioCompany {
@@ -228,18 +147,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         <div className="p-8">
           {/* Logo */}
           <div className="flex items-center gap-2 mb-8">
-            <div
-              className="w-9 h-9 flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, #0284C7, #38BDF8)',
-                borderRadius: 10,
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M9 2L3 6v6l6 4 6-4V6L9 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-                <path d="M9 2v10M3 6l6 4 6-4" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-              </svg>
-            </div>
+            <LogoMark size={36} />
             <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
 

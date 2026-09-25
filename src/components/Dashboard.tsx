@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabase'
 import { callFunction } from '../lib/functions'
 import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, getFirmId } from '../lib/data'
 import type { Regulation, PortfolioCompany, Firm } from '../lib/types'
+import LogoMark from './LogoMark'
 
-type View = 'onboarding' | 'dashboard' | 'detail' | 'harvey'
+type View = 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'harvey'
 
 interface DashboardProps {
   onNavigate: (view: View, payload?: unknown) => void
@@ -132,21 +133,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         <div className="max-w-[1440px] mx-auto px-8 h-20 flex items-center">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 8 }}
-            >
-              <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-                <path d="M9 2L3 6v6l6 4 6-4V6L9 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-                <path d="M9 2v10M3 6l6 4 6-4" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-              </svg>
-            </div>
+            <LogoMark size={32} />
             <span className="font-semibold text-base" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
 
           <div className="ml-auto flex items-center gap-3">
             {/* Settings pill */}
             <button
+              onClick={() => onNavigate('profile', 'firm')}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:bg-sky-50"
               style={{
                 background: 'rgba(255,255,255,0.60)',
@@ -162,12 +156,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               Settings
             </button>
 
-            {/* Avatar — click to sign out */}
+            {/* Avatar — click for Profile */}
             <button
               className="w-9 h-9 flex items-center justify-center text-sm font-semibold text-white rounded-full"
               style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)' }}
-              title="Sign out"
-              onClick={() => supabase.auth.signOut()}
+              title="Profile"
+              onClick={() => onNavigate('profile')}
             >
               {initials}
             </button>
@@ -352,14 +346,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       >
         <div className="max-w-[1440px] mx-auto px-8 py-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div
-              className="w-6 h-6 flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 6 }}
-            >
-              <svg width="12" height="12" viewBox="0 0 18 18" fill="none">
-                <path d="M9 2L3 6v6l6 4 6-4V6L9 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-              </svg>
-            </div>
+            <LogoMark size={24} />
             <span className="text-sm font-semibold" style={{ color: '#334155' }}>RegWay</span>
             <span className="text-xs ml-2" style={{ color: '#94a3b8' }}>© 2026 · Regulatory intelligence for private markets</span>
           </div>

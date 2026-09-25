@@ -1,10 +1,24 @@
 import { supabase } from './supabase'
-import type { Fund, PortfolioCompany, Regulation, RegulationNote } from './types'
+import type { Firm, Fund, PortfolioCompany, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
   const { data, error } = await supabase.from('firm_members').select('firm_id').maybeSingle()
   if (error) throw error
   return data?.firm_id ?? null
+}
+
+export async function fetchFirm(firmId: string): Promise<Firm> {
+  const { data, error } = await supabase.from('firms').select('*').eq('id', firmId).single()
+  if (error) throw error
+  return data
+}
+
+export async function updateFirm(
+  firmId: string,
+  updates: Partial<Pick<Firm, 'name' | 'hq_location' | 'lead_gp_name' | 'jurisdictions'>>,
+): Promise<void> {
+  const { error } = await supabase.from('firms').update(updates).eq('id', firmId)
+  if (error) throw error
 }
 
 interface RelevanceRow {
@@ -101,5 +115,61 @@ export async function addNote(regulationId: string, firmId: string, body: string
     user_id: user.id,
     body,
   })
+  if (error) throw error
+}
+
+export type FundInput = Pick<Fund, 'name' | 'size' | 'structure' | 'jurisdictions'>
+export type PortfolioCompanyInput = Pick<
+  PortfolioCompany,
+  'name' | 'sectors' | 'regions' | 'hq_location' | 'aum' | 'offerings'
+>
+
+export async function addFund(firmId: string, fund: FundInput): Promise<void> {
+  const { error } = await supabase.from('funds').insert({ ...fund, firm_id: firmId })
+  if (error) throw error
+}
+
+export async function updateFund(fundId: string, fund: FundInput): Promise<void> {
+  const { error } = await supabase.from('funds').update(fund).eq('id', fundId)
+  if (error) throw error
+}
+
+export async function removeFund(fundId: string): Promise<void> {
+  const { error } = await supabase.from('funds').delete().eq('id', fundId)
+  if (error) throw error
+}
+
+export async function addPortfolioCompany(firmId: string, company: PortfolioCompanyInput): Promise<void> {
+  const { error } = await supabase.from('portfolio_companies').insert({ ...company, firm_id: firmId })
+  if (error) throw error
+}
+
+// Cached company-regulations results were computed from the company's old
+// location/sectors/regions, so if any of those changed, drop them — the
+// dashboard re-scans on the next click when nothing is cached.
+export async function updatePortfolioCompany(
+  firmId: string,
+  previous: PortfolioCompany,
+  company: PortfolioCompanyInput,
+): Promise<void> {
+  const { error } = await supabase.from('portfolio_companies').update(company).eq('id', previous.id)
+  if (error) throw error
+
+  const changed =
+    (previous.hq_location ?? '') !== (company.hq_location ?? '') ||
+    JSON.stringify(previous.sectors) !== JSON.stringify(company.sectors) ||
+    JSON.stringify(previous.regions) !== JSON.stringify(company.regions)
+  if (changed) {
+    const { error: clearError } = await supabase
+      .from('regulation_relevance')
+      .delete()
+      .eq('firm_id', firmId)
+      .eq('portfolio_company_id', previous.id)
+    if (clearError) throw clearError
+  }
+}
+
+export async function removePortfolioCompany(companyId: string): Promise<void> {
+  const { error } = await supabase.from('portfolio_companies').delete().eq('id', companyId)
   if (error) throw error
 }

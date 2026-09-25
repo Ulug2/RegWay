@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getFirmId, isFlagged, setFlagged as persistFlag, fetchNotes, addNote } from '../lib/data'
 import type { Regulation, RegulationNote } from '../lib/types'
+import LogoMark from './LogoMark'
 
 interface HeadlineDetailViewProps {
   onBack: () => void
@@ -76,14 +77,7 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
             Back to Dashboard
           </button>
           <div className="flex items-center gap-2">
-            <div
-              className="w-6 h-6 flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 6 }}
-            >
-              <svg width="12" height="12" viewBox="0 0 18 18" fill="none">
-                <path d="M9 2L3 6v6l6 4 6-4V6L9 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-              </svg>
-            </div>
+            <LogoMark size={24} />
             <span className="font-semibold text-sm" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
         </div>

@@ -2,16 +2,21 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { getFirmId } from './lib/data'
 import AuthScreen from './components/AuthScreen'
+import LandingPage from './components/LandingPage'
+import ProfileScreen, { type ProfileTab } from './components/ProfileScreen'
 import OnboardingModal from './components/OnboardingModal'
 import Dashboard from './components/Dashboard'
 import HarveyAICopilot from './components/HarveyAICopilot'
 import HeadlineDetailView from './components/HeadlineDetailView'
 import type { Regulation } from './lib/types'
+import LogoMark from './components/LogoMark'
 
-type View = 'loading' | 'auth' | 'onboarding' | 'dashboard' | 'detail' | 'harvey'
+type View = 'loading' | 'landing' | 'auth' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'harvey'
 
 export default function App() {
   const [view, setView] = useState<View>('loading')
+  const [profileTab, setProfileTab] = useState<ProfileTab>('account')
+  const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-up')
   const [detailPayload, setDetailPayload] = useState<unknown>(null)
   const [showHarvey, setShowHarvey] = useState(false)
 
@@ -23,7 +28,7 @@ export default function App() {
         data: { session },
       } = await supabase.auth.getSession()
       if (!session) {
-        if (mounted) setView('auth')
+        if (mounted) setView('landing')
         return
       }
       const firmId = await getFirmId().catch(() => null)
@@ -32,7 +37,7 @@ export default function App() {
     init()
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) setView('auth')
+      if (!session) setView('landing')
     })
 
     return () => {
@@ -41,12 +46,18 @@ export default function App() {
     }
   }, [])
 
+  const goToAuth = (mode: 'sign-in' | 'sign-up') => {
+    setAuthMode(mode)
+    setView('auth')
+  }
+
   const navigate = (newView: View, payload?: unknown) => {
     if (newView === 'harvey') {
       setShowHarvey(true)
       return
     }
-    if (payload) setDetailPayload(payload)
+    if (newView === 'profile') setProfileTab((payload as ProfileTab | undefined) ?? 'account')
+    else if (payload) setDetailPayload(payload)
     setView(newView)
   }
 
@@ -117,22 +128,24 @@ export default function App() {
           </div>
         )}
 
-        {view === 'auth' && <AuthScreen onAuthenticated={handleAuthenticated} />}
+        {view === 'landing' && (
+          <LandingPage onGetStarted={() => goToAuth('sign-up')} onSignIn={() => goToAuth('sign-in')} />
+        )}
+
+        {view === 'auth' && (
+          <AuthScreen
+            onAuthenticated={handleAuthenticated}
+            initialMode={authMode}
+            onBack={() => setView('landing')}
+          />
+        )}
 
         {view === 'onboarding' && (
           <>
             {/* Landing behind modal */}
             <div className="min-h-screen flex items-center justify-center" style={{ padding: 24 }}>
               <div className="text-center max-w-md">
-                <div
-                  className="w-16 h-16 flex items-center justify-center mx-auto mb-6"
-                  style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 20 }}
-                >
-                  <svg width="32" height="32" viewBox="0 0 18 18" fill="none">
-                    <path d="M9 2L3 6v6l6 4 6-4V6L9 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-                    <path d="M9 2v10M3 6l6 4 6-4" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-                  </svg>
-                </div>
+                <LogoMark size={64} />
                 <h1
                   className="text-3xl font-semibold mb-2"
                   style={{ color: '#0F172A', letterSpacing: '-0.03em' }}
@@ -157,6 +170,10 @@ export default function App() {
             onBack={() => setView('dashboard')}
             headline={detailPayload as Partial<Regulation> | undefined}
           />
+        )}
+
+        {view === 'profile' && (
+          <ProfileScreen onBack={() => setView('dashboard')} initialTab={profileTab} />
         )}
       </div>
 

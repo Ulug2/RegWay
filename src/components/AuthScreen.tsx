@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import LogoMark from './LogoMark'
+import PasswordInput from './PasswordInput'
 
 interface AuthScreenProps {
   onAuthenticated: () => void
+  initialMode?: 'sign-in' | 'sign-up'
+  onBack?: () => void
 }
 
-export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-up')
+export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', onBack }: AuthScreenProps) {
+  const [mode, setMode] = useState<'sign-in' | 'sign-up'>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,16 +45,20 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="glass-modal w-full max-w-sm" style={{ padding: 32 }}>
-        <div className="flex items-center gap-2 mb-8">
-          <div
-            className="w-9 h-9 flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #0284C7, #38BDF8)', borderRadius: 10 }}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-xs font-medium mb-6"
+            style={{ color: '#64748B' }}
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M9 2L3 6v6l6 4 6-4V6L9 2z" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-              <path d="M9 2v10M3 6l6 4 6-4" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-          </div>
+            Back
+          </button>
+        )}
+        <div className="flex items-center gap-2 mb-8">
+          <LogoMark size={36} />
           <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
         </div>
 
@@ -90,13 +98,11 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={6}
-                  className="glass-input-rect"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={setPassword}
                   placeholder="At least 6 characters"
                 />
               </div>
