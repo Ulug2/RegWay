@@ -81,7 +81,7 @@ export default function ProfileScreen({ onBack, initialTab = 'account', focusId 
     setEmailError(null)
     setEmailCheckInbox(false)
     try {
-      const { error } = await supabase.auth.updateUser({ email })
+      const { error } = await supabase.auth.updateUser({ email }, { emailRedirectTo: window.location.origin })
       if (error) throw error
       setEmailCheckInbox(true)
     } catch (err) {

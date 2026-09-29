@@ -23,7 +23,11 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
     setLoading(true)
     try {
       if (mode === 'sign-up') {
-        const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        })
         if (signUpError) throw signUpError
         if (!data.session) {
           // Email confirmation is required by the project's auth settings.
