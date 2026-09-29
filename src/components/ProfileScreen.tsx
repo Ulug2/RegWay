@@ -7,14 +7,16 @@ import PasswordInput from './PasswordInput'
 import FirmProfile from './profile/FirmProfile'
 import FundsProfile from './profile/FundsProfile'
 import CompaniesProfile from './profile/CompaniesProfile'
+import DismissedRegulations from './profile/DismissedRegulations'
 
-export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio'
+export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio' | 'dismissed'
 
 const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'account', label: 'Account' },
   { key: 'firm', label: 'Firm' },
   { key: 'funds', label: 'Funds' },
   { key: 'portfolio', label: 'Portfolio Companies' },
+  { key: 'dismissed', label: 'Dismissed' },
 ]
 
 interface ProfileScreenProps {
@@ -165,6 +167,8 @@ export default function ProfileScreen({ onBack, initialTab = 'account', focusId 
         {tab === 'firm' && firmId && <FirmProfile firmId={firmId} />}
         {tab === 'funds' && firmId && <FundsProfile firmId={firmId} focusId={focusId} />}
         {tab === 'portfolio' && firmId && <CompaniesProfile firmId={firmId} focusId={focusId} />}
+
+        {tab === 'dismissed' && firmId && <DismissedRegulations firmId={firmId} />}
 
         {tab === 'account' && (
         <div className="space-y-6">

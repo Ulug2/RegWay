@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { getFirmId, getCachedFirmId, isFlagged, setFlagged as persistFlag, fetchNotes, addNote } from '../lib/data'
+import { getFirmId, getCachedFirmId, dismissRegulation, isFlagged, setFlagged as persistFlag, fetchNotes, addNote } from '../lib/data'
 import { readCache, writeCache } from '../lib/cache'
 import type { Regulation, RegulationNote } from '../lib/types'
 import LogoMark from './LogoMark'
+import ImpactPanel from './ImpactPanel'
 
 interface HeadlineDetailViewProps {
   onBack: () => void
@@ -28,6 +29,8 @@ function sourceDomain(url?: string) {
 export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailViewProps) {
   const [flagged, setFlaggedState] = useState(() => readCache<boolean>(`flag:${headline?.id}`) ?? false)
   const [noteOpen, setNoteOpen] = useState(false)
+  const [confirmDismiss, setConfirmDismiss] = useState(false)
+  const [dismissing, setDismissing] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
   const [notes, setNotes] = useState<RegulationNote[]>(() => readCache<RegulationNote[]>(`notes:${headline?.id}`) ?? [])
   const [dateMode, setDateMode] = useState<typeof DATE_MODES[number]>("Today's Status")
@@ -61,6 +64,18 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
       setFlaggedState(!next)
       writeCache(`flag:${regulationId}`, !next)
     })
+  }
+
+  const dismiss = async () => {
+    if (!regulationId || !firmId) return
+    setDismissing(true)
+    try {
+      await dismissRegulation(firmId, regulationId)
+      onBack()
+    } catch {
+      setDismissing(false)
+      setConfirmDismiss(false)
+    }
   }
 
   const saveNote = async () => {
@@ -180,6 +195,25 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
               {notes.length > 0 ? `Notes (${notes.length})` : 'Add Note'}
             </button>
 
+            {confirmDismiss ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs" style={{ color: '#64748B' }}>Remove from your dashboard? Restore any time in Profile → Dismissed.</span>
+                <button className="btn-primary" onClick={dismiss} disabled={dismissing}>{dismissing ? 'Dismissing…' : 'Dismiss'}</button>
+                <button className="btn-ghost" onClick={() => setConfirmDismiss(false)}>Cancel</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDismiss(true)}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:bg-sky-50"
+                style={{ background: 'rgba(255,255,255,0.60)', color: '#334155', border: '1px solid rgba(186,230,253,0.50)' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+                Not relevant — dismiss
+              </button>
+            )}
+
             {headline?.source_url && (
               <a
                 href={headline.source_url}
@@ -248,17 +282,7 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
 
-            {/* Context & Overview */}
-            <div className="glass-card" style={{ padding: 32 }}>
-              <h2 className="text-lg font-semibold mb-4" style={{ color: '#0F172A' }}>Context & Overview</h2>
-              {headline?.summary ? (
-                <p className="text-sm" style={{ color: '#334155', lineHeight: 1.75 }}>{headline.summary}</p>
-              ) : (
-                <p className="text-sm" style={{ color: '#94a3b8', lineHeight: 1.7 }}>
-                  No summary is available for this item yet.
-                </p>
-              )}
-            </div>
+            <ImpactPanel regulationId={regulationId} fallbackSummary={headline?.summary} />
           </div>
 
           {/* Sidebar */}

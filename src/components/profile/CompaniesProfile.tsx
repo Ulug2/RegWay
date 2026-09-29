@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchPortfolioCompanies, getCachedCompanies, addPortfolioCompany, saveCompanyAnswers, removePortfolioCompany } from '../../lib/data'
 import type { PortfolioCompany } from '../../lib/types'
+import { prewarmCompanies } from '../../lib/scans'
 import EntityCard from './EntityCard'
 import AddEntityCard from './AddEntityCard'
 
@@ -20,11 +21,11 @@ export default function CompaniesProfile({ firmId, focusId }: { firmId: string; 
           subtitle={co.hq_location ?? undefined}
           row={co as unknown as Record<string, unknown>}
           defaultOpen={co.id === focusId || (!focusId && companies.length === 1)}
-          onSave={async a => { await saveCompanyAnswers(firmId, co, a); await reload() }}
+          onSave={async a => { await saveCompanyAnswers(firmId, co, a); await reload(); prewarmCompanies(firmId) }}
           onRemove={async () => { await removePortfolioCompany(co.id); await reload() }}
         />
       ))}
-      <AddEntityCard scope="company" heading="Add a portfolio company" cta="Add Company" onAdd={async a => { await addPortfolioCompany(firmId, a); await reload() }} />
+      <AddEntityCard scope="company" heading="Add a portfolio company" cta="Add Company" onAdd={async a => { await addPortfolioCompany(firmId, a); await reload(); prewarmCompanies(firmId) }} />
     </div>
   )
 }

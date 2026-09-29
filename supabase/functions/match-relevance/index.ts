@@ -18,9 +18,12 @@
 //   Authorization: Bearer <service role key>
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { generateImpacts } from '../_shared/impact.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 
 const MODEL = 'claude-sonnet-4-5'
+declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
+
 const BATCH_SIZE = 40
 
 interface Verdict {
@@ -237,6 +240,12 @@ ${regList}`,
     }
 
     const relevantCount = verdicts.filter(v => v.relevant).length
+
+    // Prepare the detailed impact analysis for newly relevant regulations in
+    // the background so it's ready before anyone opens them.
+    const newlyRelevantIds = [...new Set(verdicts.filter(v => v.relevant).map(v => unevaluated[v.index]?.id).filter((id): id is string => !!id))]
+    if (newlyRelevantIds.length > 0) EdgeRuntime.waitUntil(generateImpacts(admin, newlyRelevantIds, firmId))
+
     return json({ evaluated: rows.length, relevant: relevantCount })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)

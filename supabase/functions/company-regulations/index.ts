@@ -12,8 +12,11 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { generateImpacts } from '../_shared/impact.ts'
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
+declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
+
 const MODEL = 'claude-sonnet-4-5'
 
 interface RegulationItem {
@@ -201,6 +204,13 @@ Deno.serve(async (req) => {
 
       insertedIds.push(reg.id)
     }
+
+    // Mark the scan complete even when it found nothing, so the app doesn't
+    // keep re-scanning a company whose result is genuinely empty.
+    await admin.from('portfolio_companies').update({ last_scanned_at: new Date().toISOString() }).eq('id', company.id)
+
+    // Prepare the detailed impact analysis in the background.
+    if (insertedIds.length > 0) EdgeRuntime.waitUntil(generateImpacts(admin, insertedIds, company.firm_id))
 
     return json({ found: items.length, stored: insertedIds.length })
   } catch (err) {

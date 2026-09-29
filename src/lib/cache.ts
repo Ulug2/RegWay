@@ -44,6 +44,17 @@ export function patchCache<T>(key: string, update: (prev: T) => T): void {
   if (prev !== undefined) writeCache(key, update(prev))
 }
 
+export function dropCache(...keys: string[]): void {
+  for (const key of keys) {
+    mem.delete(key)
+    try {
+      localStorage.removeItem(PREFIX + key)
+    } catch {
+      // ignore
+    }
+  }
+}
+
 export function clearCache(): void {
   mem.clear()
   try {

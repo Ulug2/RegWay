@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useCachedState } from '../lib/useCachedState'
+import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } from '../lib/scans'
+import { readCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { callFunction } from '../lib/functions'
-import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, getFirmId } from '../lib/data'
+import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, dismissRegulation, getCachedCompanies, getFirmId } from '../lib/data'
 import type { Regulation, PortfolioCompany, Firm } from '../lib/types'
 import LogoMark from './LogoMark'
 import ProfileReminder from './ProfileReminder'
@@ -19,21 +20,34 @@ function formatDate(iso: string | null) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function HeadlineItem({ regulation, onClick }: { regulation: Regulation; onClick: () => void }) {
+function HeadlineItem({ regulation, onClick, onDismiss }: { regulation: Regulation; onClick: () => void; onDismiss: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className="glass-card-light glass-lift w-full text-left p-6 block"
-    >
-      <div className="text-sm font-semibold mb-3" style={{ color: '#0F172A', lineHeight: 1.5 }}>
-        {regulation.title}
-      </div>
-      <div className="flex items-center gap-2 text-xs" style={{ color: '#64748B' }}>
-        <span>{regulation.jurisdiction || regulation.agency || 'Unknown'}</span>
-        <span style={{ color: '#BAE6FD' }}>●</span>
-        <span>{formatDate(regulation.effective_date || regulation.published_date)}</span>
-      </div>
-    </button>
+    <div className="relative group">
+      <button
+        onClick={onClick}
+        className="glass-card-light glass-lift w-full text-left p-6 block"
+      >
+        <div className="text-sm font-semibold mb-3 pr-8" style={{ color: '#0F172A', lineHeight: 1.5 }}>
+          {regulation.title}
+        </div>
+        <div className="flex items-center gap-2 text-xs" style={{ color: '#64748B' }}>
+          <span>{regulation.jurisdiction || regulation.agency || 'Unknown'}</span>
+          <span style={{ color: '#BAE6FD' }}>●</span>
+          <span>{formatDate(regulation.effective_date || regulation.published_date)}</span>
+        </div>
+      </button>
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss regulation"
+        title="Not relevant — dismiss (restore in Profile → Dismissed)"
+        className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-sky-50"
+        style={{ color: '#94a3b8', background: 'rgba(255,255,255,0.85)' }}
+      >
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+          <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
   )
 }
 
@@ -47,10 +61,6 @@ function EmptyState({ message }: { message: string }) {
 
 type Toggle = 'pe' | 'fund' | 'portfolio'
 
-// Company scans that are still running, so leaving the dashboard mid-scan and
-// coming back doesn't start a second (paid) scan for the same company.
-const scansInFlight = new Map<string, Promise<void>>()
-
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const [firmId, setFirmId] = useCachedState<string | null>('firmId', null)
   const [firm, setFirm] = useCachedState<Firm | null>('firm', null)
@@ -63,7 +73,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [peRegs, setPeRegs] = useCachedState<Regulation[] | null>('regs:pe', null)
   const [fundRegs, setFundRegs] = useCachedState<Regulation[] | null>('regs:fund', null)
   const [companyRegs, setCompanyRegs] = useCachedState<Record<string, Regulation[]>>('regs:company', {})
-  const [scanningCompany, setScanningCompany] = useState<string | null>(null)
+  const [, forceRender] = useState(0)
 
   const completion = useProfileCompletion()
 
@@ -82,9 +92,26 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         ])
         if (firmRow) setFirm(firmRow)
         setCompanies(cos)
+        // Research every company that needs it now, in the background, so
+        // results are already there when a company is opened.
+        prewarmCompanies(id, cos)
       })
       .catch(() => {})
   }, [])
+
+  // Scans finish in the background (possibly while on another screen): pick
+  // up their results from the cache and re-render "researching" indicators.
+  useEffect(
+    () =>
+      onScanChange(() => {
+        const cos = getCachedCompanies()
+        if (cos) setCompanies(cos)
+        const regs = readCache<Record<string, Regulation[]>>('regs:company')
+        if (regs) setCompanyRegs(regs)
+        forceRender(n => n + 1)
+      }),
+    [],
+  )
 
   // Refresh the open PE Firm / Fund Structure list in the background.
   useEffect(() => {
@@ -93,34 +120,34 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     if (activeToggle === 'fund') fetchFundRegulations(firmId).catch(() => null).then(r => r && setFundRegs(r))
   }, [firmId, activeToggle])
 
-  // Refresh the open company's regulations. Only if nothing has ever been
-  // stored for it do we run the on-demand AI web-search scan (slow, rate
-  // limited and paid) — a cached empty result means a scan already found nothing.
+  // Opening a company: results are normally already stored (pre-warmed), so
+  // just refresh them. If it still needs a scan (e.g. added a moment ago),
+  // start or join one — the result arrives through the scan listener above.
   useEffect(() => {
     if (!firmId || activeToggle !== 'portfolio' || !selectedCompany) return
     const id = selectedCompany
-    const neverScanned = companyRegs[id] === undefined
-    const load = async () => {
-      const running = scansInFlight.get(id)
-      if (running) {
-        setScanningCompany(id)
-        await running
-        setScanningCompany(null)
-      }
-      let regs = await fetchCompanyRegulations(firmId, id).catch(() => null)
-      if (regs && regs.length === 0 && neverScanned) {
-        setScanningCompany(id)
-        const scan = callFunction('company-regulations', { companyId: id }).then(() => true, () => false)
-        scansInFlight.set(id, scan.then(() => undefined))
-        const ok = await scan
-        scansInFlight.delete(id)
-        regs = ok ? await fetchCompanyRegulations(firmId, id).catch(() => null) : null
-        setScanningCompany(null)
-      }
-      if (regs) setCompanyRegs(prev => ({ ...prev, [id]: regs }))
+    const company = companies.find(c => c.id === id)
+    if (company && needsScan(company) && !isScanning(id)) {
+      scanCompany(firmId, id).catch(() => {})
+      return
     }
-    load()
+    if (isScanning(id)) return
+    fetchCompanyRegulations(firmId, id)
+      .then(regs => setCompanyRegs(prev => ({ ...prev, [id]: regs })))
+      .catch(() => {})
   }, [firmId, activeToggle, selectedCompany])
+
+  const dismiss = (regulationId: string) => {
+    if (!firmId) return
+    dismissRegulation(firmId, regulationId)
+      .then(() => {
+        const without = (list: Regulation[] | null) => list && list.filter(r => r.id !== regulationId)
+        setPeRegs(without)
+        setFundRegs(without)
+        setCompanyRegs(prev => Object.fromEntries(Object.entries(prev).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)])))
+      })
+      .catch(() => {})
+  }
 
   const toggles: { key: Toggle; label: string }[] = [
     { key: 'pe', label: 'PE Firm' },
@@ -252,7 +279,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             ) : (
               <div className="max-w-2xl mx-auto space-y-4">
                 {peRegs!.map(r => (
-                  <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} />
+                  <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
                 ))}
               </div>
             )
@@ -266,7 +293,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             ) : (
               <div className="max-w-2xl mx-auto space-y-4">
                 {fundRegs!.map(r => (
-                  <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} />
+                  <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
                 ))}
               </div>
             )
@@ -297,6 +324,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         </div>
                         <div className="text-sm font-semibold" style={{ color: '#0F172A' }}>{co.name}</div>
                         <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>{(co.sectors ?? []).join(', ')}</div>
+                        {(isScanning(co.id) || needsScan(co)) && (
+                          <div className="flex items-center gap-1.5 mt-3 text-[11px]" style={{ color: '#0284C7' }}>
+                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#38BDF8' }} />
+                            Researching…
+                          </div>
+                        )}
                       </button>
                     )
                   })}
@@ -304,14 +337,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               )}
 
               {selectedCompany && (
-                scanningCompany === selectedCompany ? (
-                  <EmptyState message="RegWay AI is searching the web for regulations affecting this company…" />
+                isScanning(selectedCompany) ? (
+                  <EmptyState message="RegWay AI is researching regulations for this company. This can take a minute the first time — results are saved." />
+                ) : companyRegs[selectedCompany] === undefined ? (
+                  <EmptyState message="Loading…" />
                 ) : (companyRegs[selectedCompany]?.length ?? 0) === 0 ? (
                   <EmptyState message="No regulations found that affect this company right now." />
                 ) : (
                   <div className="max-w-2xl mx-auto space-y-4">
                     {companyRegs[selectedCompany]!.map(r => (
-                      <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} />
+                      <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
                     ))}
                   </div>
                 )
