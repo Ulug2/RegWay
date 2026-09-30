@@ -27,3 +27,4 @@ supabase/.temp/
 # Useful locally as a working log, not meant to be part of the published repo.
 /prompts/
 /plans/
+.DS_Store

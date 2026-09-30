@@ -34,7 +34,8 @@ export interface PortfolioCompany {
 
 export interface Regulation {
   id: string
-  source: 'federal_register' | 'sec_edgar' | 'ai_search' | 'manual'
+  source: 'federal_register' | 'sec_edgar' | 'ai_search' | 'manual' | 'sec_enforcement'
+  category: 'regulatory' | 'enforcement' | 'geopolitical'
   title: string
   agency: string | null
   jurisdiction: string | null

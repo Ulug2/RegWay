@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, dismissRegulation, getCachedCompanies, getFirmId } from '../lib/data'
 import type { Regulation, PortfolioCompany, Firm } from '../lib/types'
 import LogoMark from './LogoMark'
+import CategoryBadge from './CategoryBadge'
 import ProfileReminder from './ProfileReminder'
 import { useProfileCompletion } from '../lib/useProfileCompletion'
 
@@ -27,6 +28,9 @@ function HeadlineItem({ regulation, onClick, onDismiss }: { regulation: Regulati
         onClick={onClick}
         className="glass-card-light glass-lift w-full text-left p-6 block"
       >
+        <div className="flex items-center gap-2 mb-3 pr-8">
+          <CategoryBadge category={regulation.category} />
+        </div>
         <div className="text-sm font-semibold mb-3 pr-8" style={{ color: '#0F172A', lineHeight: 1.5 }}>
           {regulation.title}
         </div>

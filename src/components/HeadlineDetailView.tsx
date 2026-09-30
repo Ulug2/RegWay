@@ -3,6 +3,7 @@ import { getFirmId, getCachedFirmId, dismissRegulation, isFlagged, setFlagged as
 import { readCache, writeCache } from '../lib/cache'
 import type { Regulation, RegulationNote } from '../lib/types'
 import LogoMark from './LogoMark'
+import CategoryBadge from './CategoryBadge'
 import ImpactPanel from './ImpactPanel'
 
 interface HeadlineDetailViewProps {
@@ -115,6 +116,7 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
         {/* Article Header */}
         <div className="glass-card" style={{ padding: 40, marginBottom: 32 }}>
           <div className="flex items-center gap-3 mb-4 flex-wrap">
+            {headline?.category && <CategoryBadge category={headline.category} />}
             <span
               className="text-xs font-medium px-3 py-1"
               style={{ background: 'rgba(2,132,199,0.08)', color: '#0284C7', borderRadius: 9999 }}

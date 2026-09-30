@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchDismissed, restoreRegulation } from '../../lib/data'
 import type { Regulation } from '../../lib/types'
+import CategoryBadge from '../CategoryBadge'
 
 const fmt = (iso: string | null) =>
   iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
@@ -31,6 +32,7 @@ export default function DismissedRegulations({ firmId }: { firmId: string }) {
       {items.map(r => (
         <div key={r.id} className="glass-card flex items-center gap-4" style={{ padding: 20 }}>
           <div className="flex-1 min-w-0">
+            <div className="mb-1.5"><CategoryBadge category={r.category} /></div>
             <div className="text-sm font-semibold" style={{ color: '#0F172A', lineHeight: 1.5 }}>{r.title}</div>
             <div className="text-xs mt-1" style={{ color: '#64748B' }}>
               {r.jurisdiction || r.agency || 'Unknown'} · {fmt(r.effective_date || r.published_date)}

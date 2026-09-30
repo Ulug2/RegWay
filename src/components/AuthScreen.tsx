@@ -10,18 +10,25 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', onBack }: AuthScreenProps) {
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>(initialMode)
+  const [mode, setMode] = useState<'sign-in' | 'sign-up' | 'forgot'>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [checkEmail, setCheckEmail] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
     try {
+      if (mode === 'forgot') {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+        if (resetError) throw resetError
+        setResetSent(true)
+        return
+      }
       if (mode === 'sign-up') {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -44,6 +51,12 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
     } finally {
       setLoading(false)
     }
+  }
+
+  const backToSignIn = () => {
+    setMode('sign-in')
+    setResetSent(false)
+    setError(null)
   }
 
   return (
@@ -79,13 +92,27 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
               Back to sign in
             </button>
           </div>
+        ) : mode === 'forgot' && resetSent ? (
+          <div className="text-center py-4">
+            <h2 className="text-lg font-semibold mb-2" style={{ color: '#0F172A' }}>Check your email</h2>
+            <p className="text-sm" style={{ color: '#64748B', lineHeight: 1.6 }}>
+              If an account exists for <strong>{email}</strong>, we sent a link to reset your password.
+            </p>
+            <button className="btn-ghost mt-6" onClick={backToSignIn}>
+              Back to sign in
+            </button>
+          </div>
         ) : (
           <>
             <h2 className="text-xl font-semibold mb-1" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>
-              {mode === 'sign-up' ? 'Create your account' : 'Welcome back'}
+              {mode === 'sign-up' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}
             </h2>
             <p className="text-sm mb-6" style={{ color: '#64748B' }}>
-              {mode === 'sign-up' ? 'Set up regulatory intelligence for your firm.' : 'Sign in to your firm workspace.'}
+              {mode === 'sign-up'
+                ? 'Set up regulatory intelligence for your firm.'
+                : mode === 'forgot'
+                  ? "Enter your email and we'll send you a reset link."
+                  : 'Sign in to your firm workspace.'}
             </p>
 
             <form onSubmit={submit} className="space-y-4">
@@ -100,16 +127,30 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
                   placeholder="you@firm.com"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Password</label>
-                <PasswordInput
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={setPassword}
-                  placeholder="At least 6 characters"
-                />
-              </div>
+              {mode !== 'forgot' && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-medium" style={{ color: '#334155' }}>Password</label>
+                    {mode === 'sign-in' && (
+                      <button
+                        type="button"
+                        className="text-xs font-medium"
+                        style={{ color: '#0284C7' }}
+                        onClick={() => { setMode('forgot'); setError(null) }}
+                      >
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
+                  <PasswordInput
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={setPassword}
+                    placeholder="At least 6 characters"
+                  />
+                </div>
+              )}
 
               {error && (
                 <div className="text-xs p-3 rounded-lg" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155' }}>
@@ -118,17 +159,23 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
               )}
 
               <button type="submit" className="btn-primary w-full" disabled={loading}>
-                {loading ? 'Please wait…' : mode === 'sign-up' ? 'Create Account' : 'Sign In'}
+                {loading ? 'Please wait…' : mode === 'sign-up' ? 'Create Account' : mode === 'forgot' ? 'Send Reset Link' : 'Sign In'}
               </button>
             </form>
 
-            <button
-              className="text-xs mt-5 w-full text-center"
-              style={{ color: '#0284C7' }}
-              onClick={() => { setMode(m => (m === 'sign-up' ? 'sign-in' : 'sign-up')); setError(null) }}
-            >
-              {mode === 'sign-up' ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
-            </button>
+            {mode === 'forgot' ? (
+              <button className="text-xs mt-5 w-full text-center" style={{ color: '#0284C7' }} onClick={backToSignIn}>
+                Back to sign in
+              </button>
+            ) : (
+              <button
+                className="text-xs mt-5 w-full text-center"
+                style={{ color: '#0284C7' }}
+                onClick={() => { setMode(m => (m === 'sign-up' ? 'sign-in' : 'sign-up')); setError(null) }}
+              >
+                {mode === 'sign-up' ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
+              </button>
+            )}
           </>
         )}
       </div>
