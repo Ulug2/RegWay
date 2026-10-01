@@ -3,8 +3,8 @@ import { useCachedState } from '../lib/useCachedState'
 import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } from '../lib/scans'
 import { readCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources } from '../lib/data'
-import type { Regulation, PortfolioCompany, Firm } from '../lib/types'
+import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources } from '../lib/data'
+import type { Regulation, PortfolioCompany, Fund, Firm } from '../lib/types'
 import LogoMark from './LogoMark'
 import CategoryBadge from './CategoryBadge'
 import ProfileReminder from './ProfileReminder'
@@ -69,19 +69,21 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [firmId, setFirmId] = useCachedState<string | null>('firmId', null)
   const [firm, setFirm] = useCachedState<Firm | null>('firm', null)
   const [companies, setCompanies] = useCachedState<PortfolioCompany[]>('companies', [])
-  // Which tab/company is open survives navigating to a headline and back.
+  const [funds, setFunds] = useCachedState<Fund[]>('funds', [])
+  // Which tab/company/fund is open survives navigating to a headline and back.
   const [activeToggle, setActiveToggle] = useCachedState<Toggle | null>('ui:activeToggle', null)
   const [selectedCompany, setSelectedCompany] = useCachedState<string | null>('ui:selectedCompany', null)
+  const [selectedFund, setSelectedFund] = useCachedState<string | null>('ui:selectedFund', null)
   const [aiQuery, setAiQuery] = useState('')
 
   const [peRegs, setPeRegs] = useCachedState<Regulation[] | null>('regs:pe', null)
-  const [fundRegs, setFundRegs] = useCachedState<Regulation[] | null>('regs:fund', null)
+  const [fundRegs, setFundRegs] = useCachedState<Record<string, Regulation[]>>('regs:fund', {})
   const [companyRegs, setCompanyRegs] = useCachedState<Record<string, Regulation[]>>('regs:company', {})
   const [, forceRender] = useState(0)
 
   const completion = useProfileCompletion()
 
-  const loadingTab = activeToggle === 'pe' ? peRegs === null : activeToggle === 'fund' ? fundRegs === null : false
+  const loadingTab = activeToggle === 'pe' ? peRegs === null : false
 
   // Refresh the firm and its companies. Cached values render immediately;
   // this just brings them up to date.
@@ -90,12 +92,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       .then(async id => {
         if (!id) return
         setFirmId(id)
-        const [{ data: firmRow }, cos] = await Promise.all([
+        const [{ data: firmRow }, cos, fs] = await Promise.all([
           supabase.from('firms').select('*').eq('id', id).single(),
           fetchPortfolioCompanies(id),
+          fetchFunds(id),
         ])
         if (firmRow) setFirm(firmRow)
         setCompanies(cos)
+        setFunds(fs)
         // Research every company that needs it now, in the background, so
         // results are already there when a company is opened.
         prewarmCompanies(id, cos)
@@ -117,12 +121,20 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     [],
   )
 
-  // Refresh the open PE Firm / Fund Structure list in the background.
+  // Refresh the open PE Firm list in the background.
   useEffect(() => {
     if (!firmId) return
     if (activeToggle === 'pe') fetchFirmRegulations(firmId).catch(() => null).then(r => r && setPeRegs(r))
-    if (activeToggle === 'fund') fetchFundRegulations(firmId).catch(() => null).then(r => r && setFundRegs(r))
   }, [firmId, activeToggle])
+
+  // Opening a fund: fetch just that fund's relevant regulations.
+  useEffect(() => {
+    if (!firmId || activeToggle !== 'fund' || !selectedFund) return
+    const id = selectedFund
+    fetchFundRegulations(firmId, id)
+      .then(regs => setFundRegs(prev => ({ ...prev, [id]: regs })))
+      .catch(() => {})
+  }, [firmId, activeToggle, selectedFund])
 
   // Platform-wide, not per-firm — so a quiet dashboard reads as a stated
   // data-source limitation rather than silently implying nothing is relevant.
@@ -154,7 +166,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       .then(() => {
         const without = (list: Regulation[] | null) => list && list.filter(r => r.id !== regulationId)
         setPeRegs(without)
-        setFundRegs(without)
+        setFundRegs(prev => Object.fromEntries(Object.entries(prev).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)])))
         setCompanyRegs(prev => Object.fromEntries(Object.entries(prev).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)])))
       })
       .catch(() => {})
@@ -169,10 +181,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const selectToggle = (key: Toggle) => {
     setActiveToggle(activeToggle === key ? null : key)
     setSelectedCompany(null)
+    setSelectedFund(null)
   }
 
   const selectCompany = (companyId: string) => {
     setSelectedCompany(selectedCompany === companyId ? null : companyId)
+  }
+
+  const selectFund = (fundId: string) => {
+    setSelectedFund(selectedFund === fundId ? null : fundId)
   }
 
   const firstName = firm?.lead_gp_name?.split(' ')[0] || 'there'
@@ -308,17 +325,50 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           )}
 
           {activeToggle === 'fund' && (
-            loadingTab ? (
-              <EmptyState message="Loading regulations relevant to your fund structures…" />
-            ) : (fundRegs?.length ?? 0) === 0 ? (
-              <EmptyState message="No regulations have been confirmed relevant to your fund structures yet." />
-            ) : (
-              <div className="max-w-2xl mx-auto space-y-4">
-                {fundRegs!.map(r => (
-                  <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
-                ))}
-              </div>
-            )
+            <div className="space-y-8">
+              {funds.length === 0 ? (
+                <EmptyState message="No funds on file yet." />
+              ) : (
+                <div className="flex gap-4 overflow-x-auto scrollable justify-center flex-wrap pb-2">
+                  {funds.map(f => {
+                    const selected = selectedFund === f.id
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => selectFund(f.id)}
+                        className="glass-card-light glass-lift flex-shrink-0 w-44 text-left p-5"
+                        style={{
+                          boxShadow: selected ? 'inset 0 0 0 2px rgba(56,189,248,0.55)' : undefined,
+                        }}
+                      >
+                        <div
+                          className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4"
+                          style={{ background: 'rgba(224,242,254,0.85)', color: '#0284C7', borderRadius: 12 }}
+                        >
+                          {f.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="text-sm font-semibold" style={{ color: '#0F172A' }}>{f.name}</div>
+                        <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>{f.structure ?? 'Structure n/a'}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {selectedFund && (
+                fundRegs[selectedFund] === undefined ? (
+                  <EmptyState message="Loading…" />
+                ) : (fundRegs[selectedFund]?.length ?? 0) === 0 ? (
+                  <EmptyState message="No regulations have been confirmed relevant to this fund yet." />
+                ) : (
+                  <div className="max-w-2xl mx-auto space-y-4">
+                    {fundRegs[selectedFund]!.map(r => (
+                      <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
           )}
 
           {activeToggle === 'portfolio' && (
