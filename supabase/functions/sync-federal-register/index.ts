@@ -18,6 +18,9 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { recordSyncRun } from '../_shared/syncRun.ts'
+
+const SOURCE = 'federal_register'
 
 const FEDERAL_REGISTER_API = 'https://www.federalregister.gov/api/v1/documents.json'
 
@@ -134,6 +137,8 @@ Deno.serve(async (req) => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
 
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
   try {
     const since =
       new URL(req.url).searchParams.get('since') ??
@@ -163,15 +168,12 @@ Deno.serve(async (req) => {
       }
     })
 
-    const admin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    )
-
     if (rows.length > 0) {
       const { error } = await admin.from('regulations').upsert(rows, { onConflict: 'source,external_id' })
       if (error) throw error
     }
+
+    await recordSyncRun(admin, SOURCE, true, `${rows.length} synced (${finraNotices.length} FINRA notices)`)
 
     return json({
       synced: rows.length,
@@ -182,6 +184,7 @@ Deno.serve(async (req) => {
       agencies: AGENCY_SLUGS,
     })
   } catch (err) {
+    await recordSyncRun(admin, SOURCE, false, (err as Error).message)
     return json({ error: (err as Error).message }, 500)
   }
 })

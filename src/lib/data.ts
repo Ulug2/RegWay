@@ -61,6 +61,46 @@ async function fetchRelevantRegulations(filters: {
     .sort((a, b) => (b.published_date ?? '').localeCompare(a.published_date ?? ''))
 }
 
+export interface RelatedEntityMatch {
+  entity_type: 'firm' | 'fund' | 'company'
+  entity_name: string
+  fund_id: string | null
+  portfolio_company_id: string | null
+  relevance_reason: string | null
+}
+
+interface RelatedMatchRow {
+  fund_id: string | null
+  portfolio_company_id: string | null
+  relevance_reason: string | null
+  funds: { name: string } | null
+  portfolio_companies: { name: string } | null
+}
+
+// The other funds/portfolio companies (and the firm itself) this regulation
+// was matched to, straight from `regulation_relevance` — the live source of
+// truth, not the AI-generated impact analysis (which is only regenerated on
+// demand and can go stale relative to the actual relevance rows).
+export async function fetchRelatedEntityMatches(firmId: string, regulationId: string, firmName: string): Promise<RelatedEntityMatch[]> {
+  const { data, error } = await supabase
+    .from('regulation_relevance')
+    .select('fund_id, portfolio_company_id, relevance_reason, funds(name), portfolio_companies(name)')
+    .eq('firm_id', firmId)
+    .eq('regulation_id', regulationId)
+    .is('dismissed_at', null)
+  if (error) throw error
+
+  return (data as unknown as RelatedMatchRow[])
+    .filter(r => !r.relevance_reason?.startsWith('NOT_RELEVANT:'))
+    .map(r => ({
+      entity_type: r.fund_id ? ('fund' as const) : r.portfolio_company_id ? ('company' as const) : ('firm' as const),
+      entity_name: r.fund_id ? (r.funds?.name ?? 'Fund') : r.portfolio_company_id ? (r.portfolio_companies?.name ?? 'Company') : firmName,
+      fund_id: r.fund_id,
+      portfolio_company_id: r.portfolio_company_id,
+      relevance_reason: r.relevance_reason,
+    }))
+}
+
 export const fetchFirmRegulations = (firmId: string) => fetchRelevantRegulations({ firmId, scope: 'firm' })
 export const fetchFundRegulations = (firmId: string) => fetchRelevantRegulations({ firmId, scope: 'fund' })
 export const fetchCompanyRegulations = (firmId: string, companyId: string) =>
@@ -205,6 +245,23 @@ export async function removePortfolioCompany(companyId: string): Promise<void> {
   if (error) throw error
 }
 
+// Public bucket (logos aren't sensitive) so the returned URL renders directly
+// with no signed-URL step; storage RLS still restricts who can write to a
+// given company's folder to members of the firm that owns it.
+export async function uploadCompanyLogo(companyId: string, file: File): Promise<string> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
+  const path = `${companyId}/${Date.now()}.${ext}`
+  const { error: uploadError } = await supabase.storage.from('company-logos').upload(path, file, { cacheControl: '3600' })
+  if (uploadError) throw uploadError
+
+  const { data } = supabase.storage.from('company-logos').getPublicUrl(path)
+  const { error } = await supabase.from('portfolio_companies').update({ logo_url: data.publicUrl }).eq('id', companyId)
+  if (error) throw error
+
+  patchCache<PortfolioCompany[]>('companies', list => list.map(c => (c.id === companyId ? { ...c, logo_url: data.publicUrl } : c)))
+  return data.publicUrl
+}
+
 // ---------------------------------------------------------------------------
 // Impact analysis and dismissals
 // ---------------------------------------------------------------------------
@@ -268,4 +325,29 @@ export async function fetchDismissed(firmId: string): Promise<Regulation[]> {
     .sort((a, b) => b.dismissed_at.localeCompare(a.dismissed_at))
     .map(r => r.regulations as Regulation)
     .filter(r => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+}
+
+// ---------------------------------------------------------------------------
+// Data source health
+// ---------------------------------------------------------------------------
+
+const SOURCE_LABELS: Record<string, string> = {
+  federal_register: 'Federal Register',
+  sec_enforcement: 'SEC litigation releases',
+  finra_enforcement: 'FINRA enforcement',
+  sec_admin_proceedings: 'SEC administrative proceedings',
+}
+
+// A source is "failing" when its most recent recorded sync run didn't
+// succeed — shown so an empty or stale-looking dashboard reads as a stated
+// limitation rather than silently implying nothing is relevant. Platform-
+// wide status, not per-firm, so no firmId filter.
+export async function fetchFailingSources(): Promise<string[]> {
+  const { data, error } = await supabase.from('sync_runs').select('source, ok').order('ran_at', { ascending: false }).limit(100)
+  if (error || !data) return []
+  const latestBySource = new Map<string, boolean>()
+  for (const row of data as { source: string; ok: boolean }[]) {
+    if (!latestBySource.has(row.source)) latestBySource.set(row.source, row.ok)
+  }
+  return [...latestBySource.entries()].filter(([, ok]) => !ok).map(([source]) => SOURCE_LABELS[source] ?? source)
 }

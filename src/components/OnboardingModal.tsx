@@ -110,6 +110,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       // dashboard isn't empty on first load. Fire-and-forget — the dashboard
       // will simply show more items once this finishes in the background.
       callFunction('match-relevance').catch(() => {})
+      callFunction('match-enforcement-relevance').catch(() => {})
 
       onComplete()
     } catch (err) {
@@ -139,9 +140,18 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     >
       <div className="glass-modal w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollable">
         <div className="p-8">
-          <div className="flex items-center gap-2 mb-8">
-            <LogoMark size={36} />
-            <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-2">
+              <LogoMark size={36} />
+              <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
+            </div>
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="text-xs font-medium"
+              style={{ color: '#64748B' }}
+            >
+              Cancel
+            </button>
           </div>
 
           {/* Progress Pills */}

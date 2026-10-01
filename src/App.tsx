@@ -6,13 +6,14 @@ import AuthScreen from './components/AuthScreen'
 import LandingPage from './components/LandingPage'
 import ProfileScreen, { type ProfileTab } from './components/ProfileScreen'
 import OnboardingModal from './components/OnboardingModal'
+import ResetPasswordScreen from './components/ResetPasswordScreen'
 import Dashboard from './components/Dashboard'
 import RegWayAICopilot from './components/RegWayAICopilot'
 import HeadlineDetailView from './components/HeadlineDetailView'
 import type { Regulation } from './lib/types'
 import LogoMark from './components/LogoMark'
 
-type View = 'loading' | 'landing' | 'auth' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai'
+type View = 'loading' | 'landing' | 'auth' | 'reset-password' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai'
 
 export default function App() {
   const [view, setView] = useState<View>('loading')
@@ -42,7 +43,13 @@ export default function App() {
     }
     init()
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      // Fires when the client parses a password-recovery link's token from
+      // the URL — takes priority over the normal signed-in routing below.
+      if (event === 'PASSWORD_RECOVERY') {
+        if (mounted) setView('reset-password')
+        return
+      }
       if (!session) {
         clearCache()
         setView('landing')
@@ -155,6 +162,10 @@ export default function App() {
             initialMode={authMode}
             onBack={() => setView('landing')}
           />
+        )}
+
+        {view === 'reset-password' && (
+          <ResetPasswordScreen onDone={handleAuthenticated} />
         )}
 
         {view === 'onboarding' && (

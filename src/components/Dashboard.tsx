@@ -3,9 +3,10 @@ import { useCachedState } from '../lib/useCachedState'
 import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } from '../lib/scans'
 import { readCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, dismissRegulation, getCachedCompanies, getFirmId } from '../lib/data'
+import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources } from '../lib/data'
 import type { Regulation, PortfolioCompany, Firm } from '../lib/types'
 import LogoMark from './LogoMark'
+import CategoryBadge from './CategoryBadge'
 import ProfileReminder from './ProfileReminder'
 import { useProfileCompletion } from '../lib/useProfileCompletion'
 
@@ -27,6 +28,9 @@ function HeadlineItem({ regulation, onClick, onDismiss }: { regulation: Regulati
         onClick={onClick}
         className="glass-card-light glass-lift w-full text-left p-6 block"
       >
+        <div className="flex items-center gap-2 mb-3 pr-8">
+          <CategoryBadge category={regulation.category} />
+        </div>
         <div className="text-sm font-semibold mb-3 pr-8" style={{ color: '#0F172A', lineHeight: 1.5 }}>
           {regulation.title}
         </div>
@@ -119,6 +123,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     if (activeToggle === 'pe') fetchFirmRegulations(firmId).catch(() => null).then(r => r && setPeRegs(r))
     if (activeToggle === 'fund') fetchFundRegulations(firmId).catch(() => null).then(r => r && setFundRegs(r))
   }, [firmId, activeToggle])
+
+  // Platform-wide, not per-firm — so a quiet dashboard reads as a stated
+  // data-source limitation rather than silently implying nothing is relevant.
+  const [failingSources, setFailingSources] = useState<string[]>([])
+  useEffect(() => {
+    fetchFailingSources().then(setFailingSources).catch(() => {})
+  }, [])
 
   // Opening a company: results are normally already stored (pre-warmed), so
   // just refresh them. If it still needs a scan (e.g. added a moment ago),
@@ -236,6 +247,17 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           </p>
         </div>
 
+        {failingSources.length > 0 && (
+          <div
+            className="max-w-2xl mx-auto text-xs text-center"
+            style={{ marginBottom: 32, padding: '10px 16px', borderRadius: 12, background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155' }}
+          >
+            {failingSources.length === 1
+              ? `${failingSources[0]} hasn't updated successfully recently — recent items from this source may be missing.`
+              : `${failingSources.join(', ')} haven't updated successfully recently — recent items from these sources may be missing.`}
+          </div>
+        )}
+
         <ProfileReminder completion={completion} onOpen={(tab, focusId) => onNavigate('profile', { tab, focusId })} />
 
         {/* 3-Button Toggle Bar */}
@@ -317,10 +339,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         }}
                       >
                         <div
-                          className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4"
-                          style={{ background: 'rgba(224,242,254,0.85)', color: '#0284C7', borderRadius: 12 }}
+                          className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4 overflow-hidden"
+                          style={co.logo_url ? { borderRadius: 12 } : { background: 'rgba(224,242,254,0.85)', color: '#0284C7', borderRadius: 12 }}
                         >
-                          {co.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                          {co.logo_url ? (
+                            <img src={co.logo_url} alt="" className="w-full h-full block object-cover" />
+                          ) : (
+                            co.name.split(' ').map(w => w[0]).join('').slice(0, 2)
+                          )}
                         </div>
                         <div className="text-sm font-semibold" style={{ color: '#0F172A' }}>{co.name}</div>
                         <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>{(co.sectors ?? []).join(', ')}</div>
@@ -367,23 +393,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               onFocus={() => onNavigate('ai')}
               onKeyDown={e => e.key === 'Enter' && onNavigate('ai')}
             />
-            {/* Attachment */}
+            {/* Attachment — opens the AI drawer, where files can actually be attached */}
             <button
-              className="absolute right-24 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
+              onClick={() => onNavigate('ai')}
+              className="absolute right-14 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
               style={{ color: '#94a3b8' }}
+              title="Attach a file"
             >
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                 <path d="M11.5 5L6.2 10.3a2 2 0 002.8 2.8l5.3-5.3a3.5 3.5 0 00-5-5L3.5 8.6a5 5 0 007 7L15 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-            </button>
-            {/* Mic */}
-            <button
-              className="absolute right-14 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
-              style={{ color: '#94a3b8' }}
-            >
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M2 8c0 3.3 2.7 6 6 6s6-2.7 6-6M8 14v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
               </svg>
             </button>
             {/* Send */}

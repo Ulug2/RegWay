@@ -20,69 +20,26 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { generateImpacts } from '../_shared/impact.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { resolveFirmContext, loadFirmEntities, describe, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, type Verdict } from '../_shared/relevance.ts'
+import { recordUsage } from '../_shared/usage.ts'
 
 const MODEL = 'claude-sonnet-4-5'
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
 const BATCH_SIZE = 40
 
-interface Verdict {
-  index: number
-  relevant: boolean
-  reason: string
-  scope: 'firm' | 'fund' | 'company'
-  entity_name: string | null
-}
-
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return json({ error: 'Missing Authorization header' }, 401)
-    const token = authHeader.replace(/^Bearer\s+/i, '')
-
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
-    let firmId: string
-    let rateLimitClient: ReturnType<typeof createClient> | null = null
-    if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
-      // Trusted admin/cron path: caller presented the service role key, so a
-      // client-supplied firmId is safe to use as-is.
-      const body = await req.json()
-      if (!body.firmId) return json({ error: 'firmId is required' }, 400)
-      firmId = body.firmId
-    } else {
-      // Ordinary user session: never trust a client-supplied firmId — derive
-      // it from the caller's own membership so a user can only ever trigger
-      // matching for their own firm.
-      const userClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-        global: { headers: { Authorization: authHeader } },
-      })
-      const {
-        data: { user },
-      } = await userClient.auth.getUser()
-      if (!user) return json({ error: 'Not authenticated' }, 401)
+    const ctx = await resolveFirmContext(req, admin)
+    if (ctx instanceof Response) return ctx
+    const { firmId, rateLimitClient } = ctx
 
-      const { data: membership } = await admin.from('firm_members').select('firm_id').eq('user_id', user.id).single()
-      if (!membership) return json({ error: 'No firm associated with this user' }, 404)
-      firmId = membership.firm_id
-
-      // Rate limit ordinary user-triggered calls only — the service-role/
-      // cron path above is trusted and exempt. The actual check happens
-      // further down, right before the Anthropic call, so the cheap
-      // early-exit checks below (no candidates / nothing unevaluated)
-      // don't burn quota on no-op calls.
-      rateLimitClient = userClient
-    }
-
-    const [{ data: firm }, { data: funds }, { data: companies }] = await Promise.all([
-      admin.from('firms').select('name, hq_location, jurisdictions, profile').eq('id', firmId).single(),
-      admin.from('funds').select('id, name, structure, jurisdictions, profile').eq('firm_id', firmId),
-      admin.from('portfolio_companies').select('id, name, sectors, regions, offerings, profile').eq('firm_id', firmId),
-    ])
-
+    const { firm, funds, companies } = await loadFirmEntities(admin, firmId)
     if (!firm) return json({ error: 'Firm not found' }, 404)
 
     // Regulations not yet evaluated for this firm (no relevance row of any
@@ -108,27 +65,13 @@ Deno.serve(async (req) => {
     if (unevaluated.length === 0) return json({ evaluated: 0, relevant: 0 })
 
     if (rateLimitClient) {
-      const { data: allowed } = await rateLimitClient.rpc('check_rate_limit', {
-        p_function_name: 'match-relevance',
-        p_limit: 15,
-        p_window_minutes: 60,
-      })
+      const allowed = await checkRateLimit(rateLimitClient, 'match-relevance', 15, 60)
       if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
     }
 
     // Questionnaire answers (stored in `profile`) sharpen the match: adviser
     // registration decides which SEC rules apply, strategy/industries narrow
     // sector rules, and the fund's proposed-vs-final preference is honoured.
-    const describe = (profile: Record<string, unknown> | null, keys: [string, string][]) =>
-      keys
-        .map(([k, label]) => {
-          const v = profile?.[k]
-          const text = Array.isArray(v) ? v.join('/') : typeof v === 'string' ? v : ''
-          return text ? `${label}: ${text}` : ''
-        })
-        .filter(Boolean)
-        .join('; ')
-
     const firmProfile = describe(firm.profile, [
       ['firm_type', 'firm type'],
       ['adviser_registration', 'adviser registration'],
@@ -186,12 +129,23 @@ Deno.serve(async (req) => {
               },
               required: ['verdicts'],
             },
+            // Static across every call — cached so a batch sequence for the
+            // same firm doesn't re-bill this definition every time.
+            cache_control: { type: 'ephemeral' },
           },
         ],
         messages: [
           {
             role: 'user',
-            content: `Firm: ${firm.name}, headquartered in ${firm.hq_location ?? 'unknown'}, operating in: ${(firm.jurisdictions ?? []).join(', ') || 'unspecified'}.${firmProfile ? `
+            content: [
+              {
+                // Identical across every batch for this firm (changes only
+                // when the firm edits its profile/funds/companies) — its own
+                // cache breakpoint, separate from the per-batch regulation
+                // list below which never repeats.
+                type: 'text',
+                cache_control: { type: 'ephemeral' },
+                text: `Firm: ${firm.name}, headquartered in ${firm.hq_location ?? 'unknown'}, operating in: ${(firm.jurisdictions ?? []).join(', ') || 'unspecified'}.${firmProfile ? `
 Firm profile — ${firmProfile}.` : ''}
 
 Funds:
@@ -200,9 +154,10 @@ ${fundList}
 Portfolio companies:
 ${companyList}
 
-For each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like "may have," "could be exposed to," or "might apply," mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just "this firm is generally in a regulated industry."
-
-${regList}`,
+For each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like "may have," "could be exposed to," or "might apply," mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just "this firm is generally in a regulated industry."`,
+              },
+              { type: 'text', text: regList },
+            ],
           },
         ],
       }),
@@ -213,31 +168,18 @@ ${regList}`,
     const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
     const verdicts: Verdict[] = toolUse?.input?.verdicts ?? []
 
-    const fundByName = new Map((funds ?? []).map(f => [f.name.toLowerCase(), f.id]))
-    const companyByName = new Map((companies ?? []).map(c => [c.name.toLowerCase(), c.id]))
+    await recordUsage(admin, {
+      functionName: 'match-relevance',
+      firmId,
+      model: MODEL,
+      inputTokens: result.usage?.input_tokens,
+      cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
+      cacheReadInputTokens: result.usage?.cache_read_input_tokens,
+      outputTokens: result.usage?.output_tokens,
+    })
 
-    const rows = verdicts.map(v => {
-      const reg = unevaluated[v.index]
-      if (!reg) return null
-      const fundId = v.scope === 'fund' && v.entity_name ? fundByName.get(v.entity_name.toLowerCase()) ?? null : null
-      const companyId = v.scope === 'company' && v.entity_name ? companyByName.get(v.entity_name.toLowerCase()) ?? null : null
-      return {
-        regulation_id: reg.id,
-        firm_id: firmId,
-        fund_id: fundId,
-        portfolio_company_id: companyId,
-        // `relevant: false` rows are kept as a "already evaluated, skip" marker
-        // so we don't re-ask Claude about the same regulation every run.
-        relevance_reason: v.relevant ? v.reason : `NOT_RELEVANT: ${v.reason}`,
-      }
-    }).filter((r): r is NonNullable<typeof r> => r !== null)
-
-    if (rows.length > 0) {
-      const { error } = await admin.from('regulation_relevance').upsert(rows, {
-        onConflict: 'regulation_id,firm_id,portfolio_company_id,fund_id',
-      })
-      if (error) throw error
-    }
+    const rows = buildRelevanceRows(verdicts, unevaluated, firmId, funds, companies)
+    await upsertRelevanceRows(admin, rows)
 
     const relevantCount = verdicts.filter(v => v.relevant).length
 

@@ -3,20 +3,41 @@
 // tool) to answer grounded in live regulatory sources, and persists the
 // exchange to `harvey_messages` for conversation history.
 //
-//   POST /functions/v1/harvey-chat   { "message": "..." }
+// Streams the response back as raw Anthropic SSE (text/event-stream) so the
+// frontend can render text as it arrives instead of waiting for the full
+// reply. The full exchange is still saved to `harvey_messages` once the
+// stream ends — this function tees the upstream bytes: forwarded to the
+// client unchanged, and parsed in parallel just to accumulate the final
+// text/citations/usage for that one DB write.
+//
+// The system prompt and the web_search tool definition are marked
+// cache_control: ephemeral — both are identical across every message in a
+// session (same firm/fund/company context, same tool), so repeat messages
+// within the 5-minute cache window get that portion of input billed at a
+// fraction of normal price instead of re-sent-and-rebilled from scratch.
+//
+//   POST /functions/v1/harvey-chat   { "message": "...", "attachment"?: { "name": string, "mimeType": string, "content": string (text) | "base64Data": string (pdf) } }
 //   Authorization: Bearer <user session access_token>
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { mergeUsage, recordUsage, type UsageTotals } from '../_shared/usage.ts'
 
 const MODEL = 'claude-sonnet-4-5'
+
+interface Attachment {
+  name: string
+  mimeType: string
+  content?: string // already-decoded text (.txt/.md)
+  base64Data?: string // raw base64 (.pdf)
+}
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
 
   try {
-    const { message } = await req.json()
+    const { message, attachment } = (await req.json()) as { message?: string; attachment?: Attachment }
     if (!message) return json({ error: 'message is required' }, 400)
 
     const authHeader = req.headers.get('Authorization')
@@ -27,6 +48,9 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } },
     )
+    // usage_events has no RLS policies for authenticated users (internal
+    // cost telemetry, not firm-scoped data) — needs the service role.
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
     const {
       data: { user },
@@ -68,7 +92,17 @@ Use web search to ground every regulatory claim in a real, current source. Alway
     })
     if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    // Text attachments (.txt/.md) are inlined into the message; a .pdf is
+    // sent as a native Anthropic `document` content block — no separate
+    // parsing needed. Not persisted anywhere; scoped to this one turn.
+    const userContent: unknown[] = []
+    if (attachment?.base64Data) {
+      userContent.push({ type: 'document', source: { type: 'base64', media_type: attachment.mimeType || 'application/pdf', data: attachment.base64Data } })
+    }
+    const textWithAttachment = attachment?.content ? `${message}\n\n--- Attached file: ${attachment.name} ---\n${attachment.content}` : message
+    userContent.push({ type: 'text', text: textWithAttachment })
+
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
@@ -77,26 +111,72 @@ Use web search to ground every regulatory claim in a real, current source. Alway
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1536,
-        system: systemPrompt,
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
-        messages: [{ role: 'user', content: message }],
+        max_tokens: 4096,
+        stream: true,
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5, cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content: userContent }],
       }),
     })
 
-    if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`)
-    const result = await res.json()
+    if (!anthropicRes.ok || !anthropicRes.body) {
+      throw new Error(`Anthropic API error: ${anthropicRes.status} ${await anthropicRes.text()}`)
+    }
 
-    const textBlocks = (result.content ?? []).filter((b: { type: string }) => b.type === 'text')
-    const content = textBlocks.map((b: { text: string }) => b.text).join('\n')
-    const citations = textBlocks.flatMap((b: { citations?: unknown[] }) => b.citations ?? [])
+    const decoder = new TextDecoder()
+    let sseBuffer = ''
+    let fullText = ''
+    const citations: unknown[] = []
+    const usage: UsageTotals = {}
+    let persisted = false
 
-    await supabase.from('harvey_messages').insert([
-      { firm_id: membership.firm_id, user_id: user.id, role: 'user', content: message },
-      { firm_id: membership.firm_id, user_id: user.id, role: 'assistant', content, citations },
-    ])
+    const persist = async () => {
+      if (persisted) return
+      persisted = true
+      await Promise.all([
+        supabase.from('harvey_messages').insert([
+          { firm_id: membership.firm_id, user_id: user.id, role: 'user', content: message },
+          { firm_id: membership.firm_id, user_id: user.id, role: 'assistant', content: fullText, citations },
+        ]),
+        recordUsage(admin, { functionName: 'harvey-chat', firmId: membership.firm_id, model: MODEL, ...usage }),
+      ])
+    }
 
-    return json({ content, citations })
+    const tee = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        // Forward bytes to the client immediately and unchanged — parsing
+        // below is only to accumulate the final record for harvey_messages
+        // and usage_events.
+        controller.enqueue(chunk)
+        sseBuffer += decoder.decode(chunk, { stream: true })
+        const lines = sseBuffer.split('\n')
+        sseBuffer = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const evt = JSON.parse(line.slice(6))
+            if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+              fullText += evt.delta.text
+            } else if (evt.type === 'content_block_delta' && evt.delta?.type === 'citations_delta' && evt.delta.citation) {
+              citations.push(evt.delta.citation)
+            } else if (evt.type === 'message_start') {
+              mergeUsage(usage, evt.message?.usage)
+            } else if (evt.type === 'message_delta') {
+              mergeUsage(usage, evt.usage)
+            }
+          } catch {
+            // Partial line (split across chunks) or a non-JSON SSE comment — skip.
+          }
+        }
+      },
+      async flush() {
+        await persist()
+      },
+    })
+
+    return new Response(anthropicRes.body.pipeThrough(tee), {
+      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+    })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }

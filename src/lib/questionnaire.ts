@@ -338,6 +338,10 @@ export function toRow(scope: Scope, answers: Answers): Record<string, unknown> {
     const products = ((answers.products as string[] | undefined) ?? []).join(', ')
     row.offerings = [answers.description, products].filter(Boolean).join(' — ') || null
   }
+  // Single funnel for every insert/update of this entity (onboarding,
+  // "complete later" forms, Profile edits) — stamping it here means every
+  // save path gets it for free, with no per-call-site changes needed.
+  row.profile_updated_at = new Date().toISOString()
   return row
 }
 

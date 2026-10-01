@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { callFunction } from '../lib/functions'
+import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
 import { getFirmId, fetchFunds, fetchPortfolioCompanies } from '../lib/data'
+import { renderMarkdown } from '../lib/markdown'
 import type { Firm, Fund, PortfolioCompany } from '../lib/types'
 
 interface RegWayAICopilotProps {
@@ -17,6 +18,8 @@ interface Message {
   role: 'user' | 'ai'
   content: string
   citations?: Citation[]
+  attachmentName?: string
+  status?: string
 }
 
 const WELCOME_MESSAGE: Message = {
@@ -24,19 +27,143 @@ const WELCOME_MESSAGE: Message = {
   content: "Ask me anything about your firm's regulatory exposure — I'll search live sources and cite what I find.",
 }
 
-function escapeHtml(text: string) {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
+
+// Shown in the empty AI bubble while waiting for the first token — cycles
+// every couple of seconds so a slow web-search phase (Claude's tool-use
+// round-trip before any text arrives) doesn't look stalled.
+// One word — the wobbling dots next to it already carry the "…" meaning.
+const STATUS_PHRASES = ['Diligencing', 'Underwriting', 'Benchmarking', 'Sourcing', 'Structuring', 'Modeling', 'Auditing', 'Researching']
+const pickStatusPhrase = (exclude?: string) => {
+  const options = exclude ? STATUS_PHRASES.filter(p => p !== exclude) : STATUS_PHRASES
+  return options[Math.floor(Math.random() * options.length)]
+}
+
+// Decoupled from network timing: the stream can deliver text in uneven
+// bursts, but the display reveals it at a steady, readable pace.
+const REVEAL_INTERVAL_MS = 16
+const REVEAL_CHARS_PER_TICK = 2
+const STATUS_CYCLE_MS = 1800
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      resolve(result.slice(result.indexOf(',') + 1))
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+// Inserts a blinking cursor right before the final closing tag of a
+// markdown-rendered HTML string, so it sits at the true visual end of the
+// text rather than on its own line after a block element. Safe here only
+// because we fully control what renderMarkdown produces.
+function withCursor(html: string): string {
+  const cursor = '<span class="cursor-blink"></span>'
+  const idx = html.lastIndexOf('</')
+  return idx === -1 ? html + cursor : html.slice(0, idx) + cursor + html.slice(idx)
+}
+
+interface SseEvent {
+  type: string
+  delta?: { type: string; text?: string; citation?: Citation; stop_reason?: string }
+}
+
+// Reads one SSE stream, calling onEvent for each parsed `data: {...}` line.
+// A line split across two network chunks is held in `buffer` until complete.
+async function consumeSse(body: ReadableStream<Uint8Array>, onEvent: (evt: SseEvent) => void): Promise<void> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      try {
+        onEvent(JSON.parse(line.slice(6)))
+      } catch {
+        // Partial/non-JSON SSE line — skip.
+      }
+    }
+  }
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      return
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return (
+    <button
+      onClick={copy}
+      className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity flex items-center gap-1 text-[11px] mt-2"
+      style={{ color: '#94a3b8' }}
+      title="Copy message"
+    >
+      {copied ? (
+        <>
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="#0284C7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span style={{ color: '#0284C7' }}>Copied</span>
+        </>
+      ) : (
+        <>
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+            <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M3.5 10.5h-1a1 1 0 01-1-1v-7a1 1 0 011-1h7a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.3"/>
+          </svg>
+          Copy
+        </>
+      )}
+    </button>
+  )
 }
 
 export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false)
   const [visible, setVisible] = useState(false)
   const [firm, setFirm] = useState<Firm | null>(null)
   const [funds, setFunds] = useState<Fund[]>([])
   const [companies, setCompanies] = useState<PortfolioCompany[]>([])
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [attachError, setAttachError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  // Set for exactly one tick when the user sends a message — forces the
+  // scroll to bottom unconditionally that once (their own new message plus
+  // the AI placeholder can grow the content past the normal "near bottom"
+  // threshold even if they were sitting right at the bottom a moment ago).
+  const forceScrollRef = useRef(false)
+  // True once the user has manually scrolled during the current response —
+  // stays true (auto-follow stays off) for the rest of that message, reset
+  // only when a new message starts or they click "scroll to latest". Set
+  // only from real input events (wheel/touch), never from the generic
+  // 'scroll' event, since our own programmatic scrollTop assignment fires
+  // that same event and would otherwise immediately re-disable itself.
+  const userScrolledAwayRef = useRef(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+  // Timers for the active response, so the stop button can kill them
+  // directly rather than hoping the abort propagates through the stream
+  // read loop in time.
+  const revealTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const statusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     setTimeout(() => setVisible(true), 30)
@@ -57,32 +184,165 @@ export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
   }, [])
 
   useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    if (forceScrollRef.current) {
+      forceScrollRef.current = false
+      userScrolledAwayRef.current = false
+      el.scrollTop = el.scrollHeight
+      return
+    }
+    // Once the user has taken manual control (see onWheel/onTouchMove
+    // below), auto-follow stays off for the rest of this message — no
+    // distance threshold to fight with, which is what let small manual
+    // scrolls get silently overridden before.
+    if (userScrolledAwayRef.current) return
+    el.scrollTop = el.scrollHeight
+  }, [messages])
+
+  // Real user-initiated scroll intent. Deliberately not the generic 'scroll'
+  // event: that fires identically for our own programmatic `el.scrollTop =
+  // ...` assignment above, which would otherwise immediately flip this back
+  // off right after we set it.
+  const handleUserScrollIntent = () => {
+    userScrolledAwayRef.current = true
+  }
+
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setShowScrollButton(distanceFromBottom >= 80)
+  }
+
+  const scrollToBottom = () => {
+    userScrolledAwayRef.current = false
+    setShowScrollButton(false)
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isTyping])
+  }
 
   const handleClose = () => {
     setVisible(false)
     setTimeout(onClose, 300)
   }
 
+  const pickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const isSupported = /\.(txt|md|pdf)$/i.test(file.name)
+    if (!isSupported) {
+      setAttachError('Only .txt, .md, or .pdf files are supported')
+      return
+    }
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setAttachError('File must be under 15MB')
+      return
+    }
+    setAttachError(null)
+    setPendingFile(file)
+  }
+
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isTyping) return
-    const userMsg: Message = { role: 'user', content: text }
-    setMessages(m => [...m, userMsg])
+    const file = pendingFile
+    if ((!text.trim() && !file) || isTyping) return
+
+    forceScrollRef.current = true
+    setShowScrollButton(false)
+    setHasStarted(true)
+    const userMsg: Message = { role: 'user', content: text, attachmentName: file?.name }
+    setMessages(m => [...m, userMsg, { role: 'ai', content: '', status: pickStatusPhrase() }])
     setInput('')
+    setPendingFile(null)
     setIsTyping(true)
 
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    let target = ''
+    let revealed = 0
+    let streamDone = false
+    const citations: Citation[] = []
+
+    const statusTimer = setInterval(() => {
+      setMessages(m => {
+        const last = m[m.length - 1]
+        if (last.role !== 'ai' || last.content !== '') return m
+        const copy = [...m]
+        copy[copy.length - 1] = { ...last, status: pickStatusPhrase(last.status) }
+        return copy
+      })
+    }, STATUS_CYCLE_MS)
+    statusTimerRef.current = statusTimer
+
+    const revealTimer = setInterval(() => {
+      if (revealed >= target.length) {
+        if (streamDone) clearInterval(revealTimer)
+        return
+      }
+      revealed = Math.min(target.length, revealed + REVEAL_CHARS_PER_TICK)
+      setMessages(m => {
+        const copy = [...m]
+        copy[copy.length - 1] = { role: 'ai', content: target.slice(0, revealed), citations: [...citations] }
+        return copy
+      })
+    }, REVEAL_INTERVAL_MS)
+    revealTimerRef.current = revealTimer
+
     try {
-      const result = await callFunction<{ content: string; citations: Citation[] }>('harvey-chat', { message: text })
-      setMessages(m => [...m, { role: 'ai', content: result.content, citations: result.citations }])
+      let attachment: { name: string; mimeType: string; content?: string; base64Data?: string } | undefined
+      if (file) {
+        attachment = /\.pdf$/i.test(file.name)
+          ? { name: file.name, mimeType: 'application/pdf', base64Data: await fileToBase64(file) }
+          : { name: file.name, mimeType: file.type || 'text/plain', content: await file.text() }
+      }
+
+      const res = await streamFunction('harvey-chat', { message: text, attachment }, controller.signal)
+      if (!res.body) throw new Error('No response stream')
+
+      await consumeSse(res.body, evt => {
+        // Surfaced honestly rather than just silently cutting off — the
+        // reader should know the model ran out of room, not wonder if
+        // something broke.
+        if (evt.type === 'message_delta' && evt.delta?.stop_reason === 'max_tokens') {
+          target += '\n\n*(Response cut off — reached the length limit. Ask me to continue for more.)*'
+          return
+        }
+        if (evt.type !== 'content_block_delta' || !evt.delta) return
+        if (evt.delta.type === 'text_delta' && evt.delta.text) {
+          if (!target) clearInterval(statusTimer)
+          target += evt.delta.text
+        } else if (evt.delta.type === 'citations_delta' && evt.delta.citation) {
+          citations.push(evt.delta.citation)
+        }
+      })
     } catch (err) {
-      setMessages(m => [
-        ...m,
-        { role: 'ai', content: `Something went wrong: ${err instanceof Error ? err.message : 'please try again'}` },
-      ])
+      clearInterval(statusTimer)
+      if ((err as Error).name !== 'AbortError') {
+        target += (target ? '\n\n' : '') + `Something went wrong: ${err instanceof Error ? err.message : 'please try again'}`
+      }
     } finally {
-      setIsTyping(false)
+      streamDone = true
+      clearInterval(statusTimer)
+      // Guards against a stop button click (which already force-cleared
+      // these and flipped isTyping off) racing with this same async chain's
+      // own cleanup once the aborted fetch/stream finally settles — and
+      // against this *stale* cleanup clobbering a newer message the user
+      // already started sending in the meantime.
+      if (abortRef.current === controller) {
+        clearInterval(revealTimer)
+        setIsTyping(false)
+        abortRef.current = null
+      }
     }
+  }
+
+  const stopGenerating = () => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    if (statusTimerRef.current) clearInterval(statusTimerRef.current)
+    if (revealTimerRef.current) clearInterval(revealTimerRef.current)
+    setIsTyping(false)
   }
 
   const chips = [
@@ -95,31 +355,34 @@ export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
     <div
       className="fixed inset-0 z-50 flex flex-col"
       style={{
-        background: 'rgba(15,23,42,0.25)',
-        backdropFilter: 'blur(4px)',
-        transition: 'opacity 0.3s ease',
+        background: hasStarted ? 'transparent' : 'rgba(15,23,42,0.25)',
+        backdropFilter: hasStarted ? 'none' : 'blur(4px)',
+        transition: 'opacity 0.3s ease, background 0.4s ease',
         opacity: visible ? 1 : 0,
       }}
-      onClick={e => e.target === e.currentTarget && handleClose()}
+      onClick={e => !hasStarted && e.target === e.currentTarget && handleClose()}
     >
-      {/* Drawer panel */}
+      {/* Drawer panel — expands to fill the screen like its own page once a
+          real conversation starts, instead of staying a partial bottom sheet. */}
       <div
         className="mt-auto flex flex-col"
         style={{
-          height: '90vh',
+          height: hasStarted ? '100vh' : '90vh',
           background: 'rgba(253,251,247,0.96)',
           backdropFilter: 'blur(24px)',
-          borderTop: '1px solid rgba(186,230,253,0.50)',
-          borderRadius: '24px 24px 0 0',
-          boxShadow: '0 -20px 60px rgba(0,0,0,0.14)',
+          borderTop: hasStarted ? 'none' : '1px solid rgba(186,230,253,0.50)',
+          borderRadius: hasStarted ? 0 : '24px 24px 0 0',
+          boxShadow: hasStarted ? 'none' : '0 -20px 60px rgba(0,0,0,0.14)',
           transform: visible ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)',
+          transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), height 0.4s ease, border-radius 0.4s ease',
         }}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-4 pb-2 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(186,230,253,0.60)' }} />
-        </div>
+        {/* Drag handle — only meaningful while this still reads as a sheet */}
+        {!hasStarted && (
+          <div className="flex justify-center pt-4 pb-2 flex-shrink-0">
+            <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(186,230,253,0.60)' }} />
+          </div>
+        )}
 
         {/* Header */}
         <div
@@ -165,11 +428,17 @@ export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
         </div>
 
         {/* Content area: conversation + sidebar */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden min-h-0">
 
           {/* Conversation */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto scrollable px-6 py-5 space-y-5">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0 relative">
+            <div
+              ref={scrollRef}
+              onScroll={handleScroll}
+              onWheel={handleUserScrollIntent}
+              onTouchMove={handleUserScrollIntent}
+              className="flex-1 overflow-y-auto scrollable min-h-0 px-6 py-5 space-y-5"
+            >
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {msg.role === 'ai' && (
@@ -180,7 +449,7 @@ export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
                       H
                     </div>
                   )}
-                  <div className="max-w-[72%] space-y-2">
+                  <div className="max-w-[72%] space-y-2 group">
                     <div
                       className={msg.role === 'ai' ? 'glass-card p-4' : ''}
                       style={msg.role === 'user' ? {
@@ -191,115 +460,163 @@ export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
                         color: '#0F172A',
                       } : {}}
                     >
-                      <div
-                        className="text-sm leading-relaxed whitespace-pre-line"
-                        style={{ color: '#0F172A' }}
-                        dangerouslySetInnerHTML={{
-                          __html: escapeHtml(msg.content)
-                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/\n\n/g, '<br/><br/>')
-                            .replace(/\n/g, '<br/>'),
-                        }}
-                      />
+                      {msg.role === 'ai' && msg.content === '' && isTyping && i === messages.length - 1 ? (
+                        <div className="flex items-center gap-2.5 py-1">
+                          {msg.status && <span className="text-sm italic" style={{ color: '#64748B' }}>{msg.status}</span>}
+                          <div className="flex items-center gap-1">
+                            {[0, 1, 2].map(d => (
+                              <span
+                                key={d}
+                                className="dot-wobble"
+                                style={{ width: 5, height: 5, background: '#94a3b8', animationDelay: `${d * 0.15}s` }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {msg.attachmentName && (
+                            <div className="text-xs mb-1.5 flex items-center gap-1" style={{ color: msg.role === 'user' ? '#0369A1' : '#64748B' }}>
+                              <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                                <path d="M11.5 5L6.2 10.3a2 2 0 002.8 2.8l5.3-5.3a3.5 3.5 0 00-5-5L3.5 8.6a5 5 0 007 7L15 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                              </svg>
+                              {msg.attachmentName}
+                            </div>
+                          )}
+                          <div
+                            className={msg.role === 'ai' ? 'ai-markdown text-sm leading-relaxed' : 'text-sm leading-relaxed whitespace-pre-line'}
+                            style={{ color: '#0F172A' }}
+                            dangerouslySetInnerHTML={{
+                              __html:
+                                msg.role === 'ai'
+                                  ? isTyping && i === messages.length - 1
+                                    ? withCursor(renderMarkdown(msg.content))
+                                    : renderMarkdown(msg.content)
+                                  : msg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+                            }}
+                          />
+                        </>
+                      )}
                       {msg.citations && msg.citations.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {msg.citations
-                            .filter(c => c.url)
-                            .map((c, ci) => (
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {Array.from(new Map(msg.citations.filter(c => c.url).map(c => [c.url, c])).values()).map((c, ci) => (
                               <a
                                 key={ci}
                                 href={c.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-xs font-medium flex items-center gap-1 hover:underline px-2 py-1"
+                                className="text-xs font-medium flex items-center gap-1 hover:underline"
                                 style={{
                                   background: 'rgba(15,23,42,0.05)',
                                   color: '#0284C7',
                                   borderRadius: 6,
                                   border: '1px solid rgba(15,23,42,0.08)',
+                                  padding: '3px 7px',
+                                  maxWidth: 220,
                                 }}
                               >
-                                {c.title || c.url}
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <span className="truncate">{c.title || c.url}</span>
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="flex-shrink-0">
                                   <path d="M1 9L9 1M9 1H4M9 1v5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                                 </svg>
                               </a>
                             ))}
                         </div>
                       )}
+                      {msg.role === 'ai' && msg.content !== '' && !(isTyping && i === messages.length - 1) && (
+                        <CopyButton text={msg.content} />
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
 
-              {isTyping && (
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-7 h-7 flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg,#0F172A,#334155)', borderRadius: 8 }}
-                  >
-                    H
-                  </div>
-                  <div
-                    className="glass-card px-4 py-3 flex items-center gap-1.5"
-                  >
-                    {[0, 1, 2].map(i => (
-                      <div
-                        key={i}
-                        className="w-1.5 h-1.5 rounded-full animate-bounce"
-                        style={{
-                          background: '#94a3b8',
-                          animationDelay: `${i * 0.15}s`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
               <div ref={bottomRef} />
             </div>
 
-            {/* Action chips */}
-            <div
-              className="px-6 py-3 flex gap-2 overflow-x-auto flex-shrink-0"
-              style={{ borderTop: '1px solid rgba(186,230,253,0.25)' }}
-            >
-              {chips.map(chip => (
-                <button
-                  key={chip}
-                  onClick={() => sendMessage(chip)}
-                  className="text-xs px-3 py-2 rounded-full whitespace-nowrap flex-shrink-0 transition-all hover:shadow-sm"
-                  style={{
-                    background: 'rgba(224,242,254,0.60)',
-                    color: '#0284C7',
-                    border: '1px solid rgba(186,230,253,0.50)',
-                  }}
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
+            {showScrollButton && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute left-1/2 -translate-x-1/2 w-9 h-9 flex items-center justify-center rounded-full transition-all hover:shadow-md"
+                style={{ bottom: hasStarted ? 160 : 180, background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(186,230,253,0.60)', boxShadow: '0 4px 16px rgba(2,132,199,0.18)', color: '#0284C7' }}
+                title="Scroll to latest"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 6l5 5 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
+
+            {/* Action chips — only before the conversation gets going */}
+            {!hasStarted && (
+              <div
+                className="px-6 py-3 flex gap-2 overflow-x-auto flex-shrink-0"
+                style={{ borderTop: '1px solid rgba(186,230,253,0.25)' }}
+              >
+                {chips.map(chip => (
+                  <button
+                    key={chip}
+                    onClick={() => sendMessage(chip)}
+                    className="text-xs px-3 py-2 rounded-full whitespace-nowrap flex-shrink-0 transition-all hover:shadow-sm"
+                    style={{
+                      background: 'rgba(224,242,254,0.60)',
+                      color: '#0284C7',
+                      border: '1px solid rgba(186,230,253,0.50)',
+                    }}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Input */}
             <div className="px-6 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(186,230,253,0.25)' }}>
+              {pendingFile && (
+                <div className="flex items-center gap-2 mb-2 text-xs" style={{ color: '#0284C7' }}>
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                    <path d="M11.5 5L6.2 10.3a2 2 0 002.8 2.8l5.3-5.3a3.5 3.5 0 00-5-5L3.5 8.6a5 5 0 007 7L15 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                  </svg>
+                  {pendingFile.name}
+                  <button onClick={() => setPendingFile(null)} style={{ color: '#94a3b8' }}>✕</button>
+                </div>
+              )}
+              {attachError && <div className="text-xs mb-2" style={{ color: '#334155' }}>{attachError}</div>}
               <div className="flex items-center gap-3">
                 <div className="relative flex-1">
                   <input
-                    className="glass-input w-full py-3.5 px-5 pr-12 text-sm"
+                    className="glass-input w-full py-3.5 px-5 pr-20 text-sm"
                     style={{ fontSize: 14, color: '#0F172A' }}
                     placeholder="Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure..."
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && sendMessage(input)}
+                    onKeyDown={e => e.key === 'Enter' && !isTyping && sendMessage(input)}
                   />
+                  <input ref={fileInputRef} type="file" accept=".txt,.md,.pdf" onChange={pickFile} style={{ display: 'none' }} />
                   <button
-                    onClick={() => sendMessage(input)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-white"
-                    style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 9999 }}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isTyping}
+                    className="absolute right-12 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors disabled:opacity-40"
+                    style={{ color: '#94a3b8' }}
+                    title="Attach a .txt, .md, or .pdf file"
                   >
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                      <path d="M14 8L2 2l3 6-3 6 12-6z" fill="white"/>
+                      <path d="M11.5 5L6.2 10.3a2 2 0 002.8 2.8l5.3-5.3a3.5 3.5 0 00-5-5L3.5 8.6a5 5 0 007 7L15 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                     </svg>
+                  </button>
+                  <button
+                    onClick={() => (isTyping ? stopGenerating() : sendMessage(input))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-white transition-all"
+                    style={{ background: isTyping ? '#334155' : 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 9999 }}
+                    title={isTyping ? 'Stop generating' : 'Send'}
+                  >
+                    {isTyping ? (
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" fill="white"/></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                        <path d="M14 8L2 2l3 6-3 6 12-6z" fill="white"/>
+                      </svg>
+                    )}
                   </button>
                 </div>
               </div>
