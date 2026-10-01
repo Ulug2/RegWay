@@ -37,6 +37,7 @@ async function fetchRelevantRegulations(filters: {
   firmId: string
   scope: 'firm' | 'fund' | 'company'
   companyId?: string
+  fundId?: string
 }): Promise<Regulation[]> {
   let query = supabase
     .from('regulation_relevance')
@@ -46,6 +47,8 @@ async function fetchRelevantRegulations(filters: {
 
   if (filters.scope === 'company' && filters.companyId) {
     query = query.eq('portfolio_company_id', filters.companyId)
+  } else if (filters.scope === 'fund' && filters.fundId) {
+    query = query.eq('fund_id', filters.fundId)
   } else if (filters.scope === 'fund') {
     query = query.not('fund_id', 'is', null)
   } else {
@@ -102,7 +105,7 @@ export async function fetchRelatedEntityMatches(firmId: string, regulationId: st
 }
 
 export const fetchFirmRegulations = (firmId: string) => fetchRelevantRegulations({ firmId, scope: 'firm' })
-export const fetchFundRegulations = (firmId: string) => fetchRelevantRegulations({ firmId, scope: 'fund' })
+export const fetchFundRegulations = (firmId: string, fundId?: string) => fetchRelevantRegulations({ firmId, scope: 'fund', fundId })
 export const fetchCompanyRegulations = (firmId: string, companyId: string) =>
   fetchRelevantRegulations({ firmId, scope: 'company', companyId })
 
