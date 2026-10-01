@@ -22,7 +22,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { fetchPlainText } from '../_shared/text.ts'
 import { parseRssItems } from '../_shared/rss.ts'
+import { recordSyncRun } from '../_shared/syncRun.ts'
 
+const SOURCE = 'finra_enforcement'
 const NEWS_RSS = 'https://www.finra.org/media-center/newsreleases/rss'
 const MAX_ITEMS = 30
 
@@ -53,6 +55,8 @@ Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
 
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
   try {
     const feedRes = await fetch(NEWS_RSS, {
       signal: AbortSignal.timeout(20000),
@@ -62,8 +66,6 @@ Deno.serve(async req => {
     const items = parseRssItems(await feedRes.text())
       .filter(i => ENFORCEMENT_TITLE_PATTERN.test(i.title))
       .slice(0, MAX_ITEMS)
-
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
     // No release-number equivalent here (`dc:creator` is empty on this feed)
     // — the URL path is stable and unique per release, so it's the external_id.
@@ -101,8 +103,10 @@ Deno.serve(async req => {
       if (error) throw error
     }
 
+    await recordSyncRun(admin, SOURCE, true, `${rows.length} new of ${items.length} fetched`)
     return json({ fetched: items.length, new: rows.length })
   } catch (err) {
+    await recordSyncRun(admin, SOURCE, false, (err as Error).message)
     return json({ error: (err as Error).message }, 500)
   }
 })

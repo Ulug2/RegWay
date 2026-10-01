@@ -18,7 +18,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { fetchPlainText } from '../_shared/text.ts'
 import { parseRssItems } from '../_shared/rss.ts'
+import { recordSyncRun } from '../_shared/syncRun.ts'
 
+const SOURCE = 'sec_enforcement'
 const LITIGATION_RELEASES_RSS = 'https://www.sec.gov/enforcement-litigation/litigation-releases/rss'
 // Safety cap on how many recent releases we fetch full text for in one run —
 // the RSS feed itself has no date filter, it's just "most recent N". Generous
@@ -58,6 +60,8 @@ Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
 
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
   try {
     const feedRes = await fetch(LITIGATION_RELEASES_RSS, {
       signal: AbortSignal.timeout(20000),
@@ -68,8 +72,6 @@ Deno.serve(async req => {
     // `dc:creator` — used as the external_id, so an item without one isn't
     // usable.
     const items = parseRssItems(await feedRes.text()).filter(i => i.creator).slice(0, MAX_ITEMS)
-
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
     // Skip releases already stored — no point re-fetching and re-analyzing a
     // page we already have, and it keeps a daily run cheap (only the handful
@@ -107,8 +109,10 @@ Deno.serve(async req => {
       if (error) throw error
     }
 
+    await recordSyncRun(admin, SOURCE, true, `${rows.length} new of ${items.length} fetched`)
     return json({ fetched: items.length, new: rows.length })
   } catch (err) {
+    await recordSyncRun(admin, SOURCE, false, (err as Error).message)
     return json({ error: (err as Error).message }, 500)
   }
 })

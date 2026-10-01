@@ -326,3 +326,28 @@ export async function fetchDismissed(firmId: string): Promise<Regulation[]> {
     .map(r => r.regulations as Regulation)
     .filter(r => (seen.has(r.id) ? false : (seen.add(r.id), true)))
 }
+
+// ---------------------------------------------------------------------------
+// Data source health
+// ---------------------------------------------------------------------------
+
+const SOURCE_LABELS: Record<string, string> = {
+  federal_register: 'Federal Register',
+  sec_enforcement: 'SEC litigation releases',
+  finra_enforcement: 'FINRA enforcement',
+  sec_admin_proceedings: 'SEC administrative proceedings',
+}
+
+// A source is "failing" when its most recent recorded sync run didn't
+// succeed — shown so an empty or stale-looking dashboard reads as a stated
+// limitation rather than silently implying nothing is relevant. Platform-
+// wide status, not per-firm, so no firmId filter.
+export async function fetchFailingSources(): Promise<string[]> {
+  const { data, error } = await supabase.from('sync_runs').select('source, ok').order('ran_at', { ascending: false }).limit(100)
+  if (error || !data) return []
+  const latestBySource = new Map<string, boolean>()
+  for (const row of data as { source: string; ok: boolean }[]) {
+    if (!latestBySource.has(row.source)) latestBySource.set(row.source, row.ok)
+  }
+  return [...latestBySource.entries()].filter(([, ok]) => !ok).map(([source]) => SOURCE_LABELS[source] ?? source)
+}

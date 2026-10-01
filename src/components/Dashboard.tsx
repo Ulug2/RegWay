@@ -3,7 +3,7 @@ import { useCachedState } from '../lib/useCachedState'
 import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } from '../lib/scans'
 import { readCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, dismissRegulation, getCachedCompanies, getFirmId } from '../lib/data'
+import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources } from '../lib/data'
 import type { Regulation, PortfolioCompany, Firm } from '../lib/types'
 import LogoMark from './LogoMark'
 import CategoryBadge from './CategoryBadge'
@@ -124,6 +124,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     if (activeToggle === 'fund') fetchFundRegulations(firmId).catch(() => null).then(r => r && setFundRegs(r))
   }, [firmId, activeToggle])
 
+  // Platform-wide, not per-firm — so a quiet dashboard reads as a stated
+  // data-source limitation rather than silently implying nothing is relevant.
+  const [failingSources, setFailingSources] = useState<string[]>([])
+  useEffect(() => {
+    fetchFailingSources().then(setFailingSources).catch(() => {})
+  }, [])
+
   // Opening a company: results are normally already stored (pre-warmed), so
   // just refresh them. If it still needs a scan (e.g. added a moment ago),
   // start or join one — the result arrives through the scan listener above.
@@ -239,6 +246,17 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             {firm ? `Here's what's moving across ${firm.name} today.` : "Here's what's moving across your firm today."}
           </p>
         </div>
+
+        {failingSources.length > 0 && (
+          <div
+            className="max-w-2xl mx-auto text-xs text-center"
+            style={{ marginBottom: 32, padding: '10px 16px', borderRadius: 12, background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155' }}
+          >
+            {failingSources.length === 1
+              ? `${failingSources[0]} hasn't updated successfully recently — recent items from this source may be missing.`
+              : `${failingSources.join(', ')} haven't updated successfully recently — recent items from these sources may be missing.`}
+          </div>
+        )}
 
         <ProfileReminder completion={completion} onOpen={(tab, focusId) => onNavigate('profile', { tab, focusId })} />
 

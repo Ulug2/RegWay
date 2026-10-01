@@ -1,13 +1,13 @@
-// NOT YET SCHEDULED / NOT PRODUCTION-READY (see migration
-// 0015_unschedule_sec_admin_proceedings.sql): this function was observed to
-// hang indefinitely — no response, no error — rather than fail fast when the
-// SEC feed is unreachable or rate-limiting, during real-data testing. Root
-// cause unconfirmed; this session had no access to edge-function server logs
-// to diagnose further. The extraction logic itself (PDF -> Claude -> clean
-// text) was verified correct in isolation. Needs that hang fixed and a fresh
-// real-data verification pass before re-enabling the cron schedule. SEC
-// litigation releases (`sync-sec-enforcement`) and FINRA enforcement
-// (`sync-finra-enforcement`) are unaffected and already scheduled.
+// Root cause of an earlier observed hang (no response, no error, indefinitely)
+// is fixed and verified: the Claude extraction call in `extractFromPdf` had
+// no timeout, unlike every other fetch in this function, so one stalled
+// request (e.g. during an SEC rate-limit window) hung the whole invocation
+// forever. Added a 45s AbortSignal, confirmed via real logs that a stalled
+// request now times out and the run still completes and records its outcome
+// in `sync_runs`. Still not on a cron schedule (see migration
+// 0015_unschedule_sec_admin_proceedings.sql) — that was a separate decision,
+// not blocked on this fix; re-enable deliberately, not as a side effect of
+// reading this comment.
 //
 // Pulls new SEC Administrative Proceedings (the SEC's in-house enforcement
 // track — orders instituting proceedings, settled orders, notices — as
@@ -29,7 +29,9 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { parseRssItems, type FeedItem } from '../_shared/rss.ts'
+import { recordSyncRun } from '../_shared/syncRun.ts'
 
+const SOURCE = 'sec_admin_proceedings'
 const ADMIN_PROCEEDINGS_RSS = 'https://www.sec.gov/enforcement-litigation/administrative-proceedings/rss'
 const MODEL = 'claude-sonnet-4-5'
 // Conservative cap: each item costs a real Claude call (PDF extraction) that
@@ -58,8 +60,14 @@ function toBase64(buf: ArrayBuffer): string {
 }
 
 async function extractFromPdf(pdfBase64: string): Promise<{ headline: string; narrative_text: string } | null> {
+  // Every other fetch in this function has a timeout; this one didn't, and a
+  // single stalled Anthropic request would hang the entire invocation
+  // indefinitely with no error ever surfaced — exactly what was observed
+  // during real-data testing (requests that never completed, no log entry
+  // anywhere since the invocation hadn't finished from the platform's view).
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: AbortSignal.timeout(45000),
     headers: {
       'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
       'anthropic-version': '2023-06-01',
@@ -172,6 +180,8 @@ Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
 
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
   try {
     const feedRes = await fetch(ADMIN_PROCEEDINGS_RSS, {
       signal: AbortSignal.timeout(20000),
@@ -181,8 +191,6 @@ Deno.serve(async req => {
     // Every real item carries an order number in `dc:creator` — used as the
     // external_id.
     const items = parseRssItems(await feedRes.text()).filter(i => i.creator).slice(0, MAX_ITEMS)
-
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
     const { data: existing } = await admin
       .from('regulations')
@@ -194,8 +202,10 @@ Deno.serve(async req => {
 
     const newCount = newItems.length > 0 ? await processItems(admin, newItems) : 0
 
+    await recordSyncRun(admin, SOURCE, true, `${newCount} new of ${items.length} fetched`)
     return json({ fetched: items.length, new: newCount })
   } catch (err) {
+    await recordSyncRun(admin, SOURCE, false, (err as Error).message)
     return json({ error: (err as Error).message }, 500)
   }
 })
