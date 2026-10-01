@@ -187,6 +187,11 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_HEIGHT)}px`
+    // Once capped, the browser's native "scroll caret into view" only
+    // reveals the caret's line, not the padding below it — leaving the
+    // line being typed flush against the bottom edge. Scrolling fully to
+    // the bottom keeps that padding visible beneath the last line.
+    el.scrollTop = el.scrollHeight
   }, [input])
 
   useEffect(() => {
@@ -615,8 +620,8 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                   <textarea
                     ref={textareaRef}
                     rows={1}
-                    className="glass-input w-full py-3.5 px-5 pr-20 text-sm resize-none block"
-                    style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto' }}
+                    className="glass-input w-full pt-3.5 pb-5 px-5 pr-20 text-sm resize-none block"
+                    style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto', borderRadius: 18 }}
                     placeholder="Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure..."
                     value={input}
                     onChange={e => setInput(e.target.value)}
