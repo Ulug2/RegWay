@@ -13,6 +13,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { generateImpacts } from '../_shared/impact.ts'
+import { recordUsage } from '../_shared/usage.ts'
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
@@ -70,6 +71,10 @@ Deno.serve(async (req) => {
 
     if (companyError || !company) return json({ error: 'Company not found or not accessible' }, 404)
 
+    // Needed early for usage logging after each Claude call below —
+    // usage_events has no RLS policies for authenticated users.
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
     // auth.uid() resolves server-side from the JWT already attached to
     // `supabase` above — no separate user lookup needed here.
     const { data: allowed } = await supabase.rpc('check_rate_limit', {
@@ -110,6 +115,17 @@ Deno.serve(async (req) => {
           content: `Search for regulatory changes published or proposed in the last 90 days that would create compliance obligations for a company in the "${sectorDescriptor}" sector headquartered in ${locationDescriptor}. Include federal, state/local, and (if applicable) foreign regulators. For each distinct item found, report: the exact rule or document title, the issuing regulator/agency, the jurisdiction, the publication or effective date, a one-sentence plain-language summary, and the official source URL. Only include items you found real sources for — do not invent items.${factsText}`,
         },
       ],
+    })
+
+    await recordUsage(admin, {
+      functionName: 'company-regulations:search',
+      firmId: company.firm_id,
+      model: MODEL,
+      inputTokens: searchResult.usage?.input_tokens,
+      cacheCreationInputTokens: searchResult.usage?.cache_creation_input_tokens,
+      cacheReadInputTokens: searchResult.usage?.cache_read_input_tokens,
+      outputTokens: searchResult.usage?.output_tokens,
+      webSearchRequests: searchResult.usage?.server_tool_use?.web_search_requests,
     })
 
     const searchText = (searchResult.content ?? [])
@@ -158,13 +174,18 @@ Deno.serve(async (req) => {
       ],
     })
 
+    await recordUsage(admin, {
+      functionName: 'company-regulations:extract',
+      firmId: company.firm_id,
+      model: MODEL,
+      inputTokens: extraction.usage?.input_tokens,
+      cacheCreationInputTokens: extraction.usage?.cache_creation_input_tokens,
+      cacheReadInputTokens: extraction.usage?.cache_read_input_tokens,
+      outputTokens: extraction.usage?.output_tokens,
+    })
+
     const toolUse = (extraction.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
     const items: RegulationItem[] = toolUse?.input?.items ?? []
-
-    const admin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    )
 
     const insertedIds: string[] = []
     for (const item of items) {

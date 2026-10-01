@@ -6,6 +6,7 @@
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { fetchPlainText } from './text.ts'
+import { recordUsage } from './usage.ts'
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 const MODEL = 'claude-sonnet-4-5'
@@ -136,7 +137,9 @@ export async function generateImpact(
   const result = await callClaude({
     max_tokens: 6000,
     tool_choice: { type: 'tool', name: 'submit_impact_analysis' },
-    system,
+    // Identical for every firm analyzing this same category of item — its
+    // own cache breakpoint, separate from the per-regulation text below.
+    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
     tools: [
       {
         name: 'submit_impact_analysis',
@@ -224,24 +227,50 @@ export async function generateImpact(
           },
           required: ['overview', 'scope', 'status', 'key_provisions', 'key_dates', 'impacts', 'considerations', 'limitations'],
         },
+        // Static per isEnforcement branch — cached so a run of several
+        // firms/regulations in the same branch doesn't re-bill it each time.
+        cache_control: { type: 'ephemeral' },
       },
     ],
     messages: [
       {
         role: 'user',
-        content: `${isEnforcement ? 'ENFORCEMENT ACTION (SEC or FINRA — state procedural posture exactly as the source describes it)' : 'REGULATION'}
+        content: [
+          {
+            // Regulation-level, not firm-level — identical whether this is
+            // firm #1 or firm #50 analyzing the same item, and identical on
+            // a `force: true` regeneration. Its own cache breakpoint,
+            // separate from the firm-specific entity block below, so that
+            // reuse isn't defeated by the one part that actually varies.
+            type: 'text',
+            cache_control: { type: 'ephemeral' },
+            text: `${isEnforcement ? 'ENFORCEMENT ACTION (SEC or FINRA — state procedural posture exactly as the source describes it)' : 'REGULATION'}
 Title: ${reg.title}
 Agency: ${reg.agency ?? 'n/a'} · Jurisdiction: ${reg.jurisdiction ?? 'n/a'}
 Published: ${reg.published_date ?? 'n/a'} · Effective: ${reg.effective_date ?? 'n/a'}
 Official summary: ${reg.summary ?? 'none'}
-${reasons.length ? `Why it was matched to this firm: ${reasons.join(' | ')}\n` : ''}
 TEXT${truncated ? ' (first portion only — the document is longer)' : ''}:
-${text}
-
+${text}`,
+          },
+          {
+            type: 'text',
+            text: `${reasons.length ? `Why it was matched to this firm: ${reasons.join(' | ')}\n` : ''}
 ENTITIES (use only these facts)
 ${entities.join('\n')}`,
+          },
+        ],
       },
     ],
+  })
+
+  await recordUsage(admin, {
+    functionName: 'regulation-impact',
+    firmId,
+    model: MODEL,
+    inputTokens: result.usage?.input_tokens,
+    cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
+    cacheReadInputTokens: result.usage?.cache_read_input_tokens,
+    outputTokens: result.usage?.output_tokens,
   })
 
   const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')

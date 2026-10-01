@@ -30,6 +30,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { parseRssItems, type FeedItem } from '../_shared/rss.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
+import { recordUsage } from '../_shared/usage.ts'
 
 const SOURCE = 'sec_admin_proceedings'
 const ADMIN_PROCEEDINGS_RSS = 'https://www.sec.gov/enforcement-litigation/administrative-proceedings/rss'
@@ -59,7 +60,7 @@ function toBase64(buf: ArrayBuffer): string {
   return btoa(binary)
 }
 
-async function extractFromPdf(pdfBase64: string): Promise<{ headline: string; narrative_text: string } | null> {
+async function extractFromPdf(admin: SupabaseClient, pdfBase64: string): Promise<{ headline: string; narrative_text: string } | null> {
   // Every other fetch in this function has a timeout; this one didn't, and a
   // single stalled Anthropic request would hang the entire invocation
   // indefinitely with no error ever surfaced — exactly what was observed
@@ -93,6 +94,9 @@ async function extractFromPdf(pdfBase64: string): Promise<{ headline: string; na
             },
             required: ['headline', 'narrative_text'],
           },
+          // Static across every item — cached so a multi-item batch doesn't
+          // re-bill this definition on every single PDF.
+          cache_control: { type: 'ephemeral' },
         },
       ],
       messages: [
@@ -108,14 +112,23 @@ async function extractFromPdf(pdfBase64: string): Promise<{ headline: string; na
   })
   if (!res.ok) {
     console.error('admin-proceedings PDF extraction failed', res.status, await res.text())
+    await recordUsage(admin, { functionName: 'sync-sec-admin-proceedings', model: MODEL, ok: false })
     return null
   }
   const result = await res.json()
+  await recordUsage(admin, {
+    functionName: 'sync-sec-admin-proceedings',
+    model: MODEL,
+    inputTokens: result.usage?.input_tokens,
+    cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
+    cacheReadInputTokens: result.usage?.cache_read_input_tokens,
+    outputTokens: result.usage?.output_tokens,
+  })
   const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
   return toolUse?.input ?? null
 }
 
-async function buildRow(item: FeedItem) {
+async function buildRow(admin: SupabaseClient, item: FeedItem) {
   let extracted: { headline: string; narrative_text: string } | null = null
   try {
     const pdfRes = await fetch(item.link, {
@@ -125,7 +138,7 @@ async function buildRow(item: FeedItem) {
     if (pdfRes.ok) {
       const buf = await pdfRes.arrayBuffer()
       if (buf.byteLength > 0 && buf.byteLength <= MAX_PDF_BYTES) {
-        extracted = await extractFromPdf(toBase64(buf))
+        extracted = await extractFromPdf(admin, toBase64(buf))
       }
     }
   } catch (err) {
@@ -164,7 +177,7 @@ async function processItems(admin: SupabaseClient, newItems: FeedItem[]) {
   const worker = async () => {
     while (queue.length) {
       const item = queue.shift()!
-      rows.push(await buildRow(item))
+      rows.push(await buildRow(admin, item))
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker))
