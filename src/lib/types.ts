@@ -6,6 +6,7 @@ export interface Firm {
   jurisdictions: string[]
   website: string | null
   profile: Record<string, unknown>
+  profile_updated_at: string | null
 }
 
 export interface Fund {
@@ -16,6 +17,7 @@ export interface Fund {
   structure: string | null
   jurisdictions: string[]
   profile: Record<string, unknown>
+  profile_updated_at: string | null
 }
 
 export interface PortfolioCompany {
@@ -30,6 +32,8 @@ export interface PortfolioCompany {
   website: string | null
   profile: Record<string, unknown>
   last_scanned_at: string | null
+  profile_updated_at: string | null
+  logo_url: string | null
 }
 
 export interface Regulation {

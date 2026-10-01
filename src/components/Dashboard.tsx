@@ -321,10 +321,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         }}
                       >
                         <div
-                          className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4"
-                          style={{ background: 'rgba(224,242,254,0.85)', color: '#0284C7', borderRadius: 12 }}
+                          className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4 overflow-hidden"
+                          style={co.logo_url ? { borderRadius: 12 } : { background: 'rgba(224,242,254,0.85)', color: '#0284C7', borderRadius: 12 }}
                         >
-                          {co.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                          {co.logo_url ? (
+                            <img src={co.logo_url} alt="" className="w-full h-full block object-cover" />
+                          ) : (
+                            co.name.split(' ').map(w => w[0]).join('').slice(0, 2)
+                          )}
                         </div>
                         <div className="text-sm font-semibold" style={{ color: '#0F172A' }}>{co.name}</div>
                         <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>{(co.sectors ?? []).join(', ')}</div>

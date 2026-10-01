@@ -23,6 +23,10 @@ logs/
 # Supabase CLI local link state/cache — machine-specific, not project source.
 supabase/.temp/
 
+# Claude Code per-machine local settings (e.g. which project MCP servers this
+# machine has approved) — not shared project config, unlike .mcp.json.
+.claude/settings.local.json
+
 # Working notes: investigate/implement prompt pairs and the running roadmap.
 # Useful locally as a working log, not meant to be part of the published repo.
 /prompts/

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchImpact, getCachedImpact, requestImpact } from '../lib/data'
 import type { ImpactContent, ImpactEntity } from '../lib/types'
 
@@ -105,14 +105,14 @@ function SummaryView({ impact }: { impact: ImpactContent }) {
   )
 }
 
-function ImpactCard({ entity, defaultOpen }: { entity: ImpactEntity; defaultOpen: boolean }) {
-  const [open, setOpen] = useState(defaultOpen)
+function ImpactCard({ entity, open, onToggle, cardRef }: { entity: ImpactEntity; open: boolean; onToggle: () => void; cardRef?: (el: HTMLDivElement | null) => void }) {
   return (
     <div
+      ref={cardRef}
       className="glass-card-light overflow-hidden transition-all"
       style={{ boxShadow: open ? 'inset 0 0 0 1.5px rgba(56,189,248,0.45), 0 8px 24px rgba(2,132,199,0.10)' : undefined }}
     >
-      <button className="w-full text-left flex items-start gap-4 p-5" onClick={() => setOpen(o => !o)}>
+      <button className="w-full text-left flex items-start gap-4 p-5" onClick={onToggle}>
         <div
           className="w-10 h-10 shrink-0 flex items-center justify-center text-sm font-bold"
           style={{ background: 'rgba(224,242,254,0.85)', color: '#0284C7', borderRadius: 12 }}
@@ -179,13 +179,20 @@ interface ImpactPanelProps {
   regulationId?: string
   // The short official abstract, shown while the full analysis is prepared.
   fallbackSummary?: string | null
+  // Set (to an ImpactEntity.entity_name) to switch to Impact Cards and open
+  // that entity's card — used by the "also relevant to" cross-links above.
+  // Bump focusToken to re-trigger the same entity a second time.
+  focusEntityName?: string | null
+  focusToken?: number
 }
 
-export default function ImpactPanel({ regulationId, fallbackSummary }: ImpactPanelProps) {
+export default function ImpactPanel({ regulationId, fallbackSummary, focusEntityName, focusToken }: ImpactPanelProps) {
   const [view, setView] = useState<PanelView>('summary')
   const [impact, setImpact] = useState<ImpactContent | null>(() => (regulationId ? getCachedImpact(regulationId) ?? null : null))
   const [state, setState] = useState<'loading' | 'ready' | 'error'>(impact ? 'ready' : 'loading')
   const [attempt, setAttempt] = useState(0)
+  const [openEntity, setOpenEntity] = useState<string | null>(null)
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
     if (!regulationId) return
@@ -197,6 +204,7 @@ export default function ImpactPanel({ regulationId, fallbackSummary }: ImpactPan
         if (!alive) return
         setImpact(found)
         setState('ready')
+        setOpenEntity(prev => prev ?? found.impacts[0]?.entity_name ?? null)
       } catch {
         if (alive) setState(s => (impact ? s : 'error'))
       }
@@ -205,6 +213,14 @@ export default function ImpactPanel({ regulationId, fallbackSummary }: ImpactPan
       alive = false
     }
   }, [regulationId, attempt])
+
+  useEffect(() => {
+    if (!focusEntityName || !impact) return
+    setView('cards')
+    setOpenEntity(focusEntityName)
+    // Scroll after the cards view has had a chance to render.
+    requestAnimationFrame(() => cardRefs.current[focusEntityName]?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }, [focusEntityName, focusToken, impact])
 
   return (
     <div className="glass-card" style={{ padding: 32 }}>
@@ -248,8 +264,14 @@ export default function ImpactPanel({ regulationId, fallbackSummary }: ImpactPan
         <p className="text-sm" style={{ color: '#94a3b8' }}>This regulation does not map to a specific entity in your firm.</p>
       ) : (
         <div className="space-y-4">
-          {impact.impacts.map((e, i) => (
-            <ImpactCard key={`${e.entity_type}-${e.entity_name}`} entity={e} defaultOpen={i === 0} />
+          {impact.impacts.map(e => (
+            <ImpactCard
+              key={`${e.entity_type}-${e.entity_name}`}
+              entity={e}
+              open={openEntity === e.entity_name}
+              onToggle={() => setOpenEntity(o => (o === e.entity_name ? null : e.entity_name))}
+              cardRef={el => { cardRefs.current[e.entity_name] = el }}
+            />
           ))}
         </div>
       )}

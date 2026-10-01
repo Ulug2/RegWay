@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getFirmId, getCachedFirmId, dismissRegulation, isFlagged, setFlagged as persistFlag, fetchNotes, addNote } from '../lib/data'
+import { getFirmId, getCachedFirmId, getCachedFirm, dismissRegulation, isFlagged, setFlagged as persistFlag, fetchNotes, addNote, fetchRelatedEntityMatches, type RelatedEntityMatch } from '../lib/data'
 import { readCache, writeCache } from '../lib/cache'
 import type { Regulation, RegulationNote } from '../lib/types'
 import LogoMark from './LogoMark'
@@ -37,6 +37,9 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
   const [dateMode, setDateMode] = useState<typeof DATE_MODES[number]>("Today's Status")
   const [customDate, setCustomDate] = useState('')
   const [firmId, setFirmId] = useState<string | null>(getCachedFirmId)
+  const [relatedMatches, setRelatedMatches] = useState<RelatedEntityMatch[]>([])
+  const [focusEntity, setFocusEntity] = useState<string | null>(null)
+  const [focusToken, setFocusToken] = useState(0)
 
   const regulationId = headline?.id
   const title = headline?.title || 'Untitled regulation'
@@ -55,6 +58,14 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
       writeCache(`notes:${regulationId}`, n)
     })
   }, [regulationId])
+
+  useEffect(() => {
+    if (!regulationId || !firmId) return
+    const firmName = getCachedFirm()?.name ?? 'Firm'
+    fetchRelatedEntityMatches(firmId, regulationId, firmName)
+      .then(matches => setRelatedMatches(matches.length > 1 ? matches : []))
+      .catch(() => setRelatedMatches([]))
+  }, [regulationId, firmId])
 
   const toggleFlag = async () => {
     if (!regulationId || !firmId) return
@@ -131,6 +142,24 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
           >
             {title}
           </h1>
+
+          {relatedMatches.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap mt-2">
+              <span className="text-xs" style={{ color: '#64748B' }}>Also relevant to:</span>
+              {relatedMatches.map(m => (
+                <button
+                  key={`${m.entity_type}-${m.entity_name}`}
+                  onClick={() => { setFocusEntity(m.entity_name); setFocusToken(t => t + 1) }}
+                  title={m.relevance_reason ?? undefined}
+                  className="text-xs font-medium px-3 py-1 transition-colors hover:bg-sky-50"
+                  style={{ borderRadius: 9999, border: '1px solid rgba(186,230,253,0.50)', color: '#0284C7', background: 'rgba(255,255,255,0.6)' }}
+                >
+                  {m.entity_name}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Contextual Date Filter */}
           <div className="flex items-center gap-3 flex-wrap mt-6 pt-5" style={{ borderTop: '1px solid rgba(186,230,253,0.30)' }}>
             <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>History</span>
@@ -284,7 +313,7 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
 
-            <ImpactPanel regulationId={regulationId} fallbackSummary={headline?.summary} />
+            <ImpactPanel regulationId={regulationId} fallbackSummary={headline?.summary} focusEntityName={focusEntity} focusToken={focusToken} />
           </div>
 
           {/* Sidebar */}
