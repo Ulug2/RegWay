@@ -4,7 +4,7 @@ import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } fr
 import { readCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
 import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources } from '../lib/data'
-import type { Regulation, PortfolioCompany, Fund, Firm } from '../lib/types'
+import type { Regulation, PortfolioCompany, Fund, Firm, AiContext } from '../lib/types'
 import LogoMark from './LogoMark'
 import CategoryBadge from './CategoryBadge'
 import ProfileReminder from './ProfileReminder'
@@ -356,17 +356,30 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               )}
 
               {selectedFund && (
-                fundRegs[selectedFund] === undefined ? (
-                  <EmptyState message="Loading…" />
-                ) : (fundRegs[selectedFund]?.length ?? 0) === 0 ? (
-                  <EmptyState message="No regulations have been confirmed relevant to this fund yet." />
-                ) : (
-                  <div className="max-w-2xl mx-auto space-y-4">
-                    {fundRegs[selectedFund]!.map(r => (
-                      <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
-                    ))}
+                <>
+                  <div className="max-w-2xl mx-auto flex justify-end">
+                    <button
+                      onClick={() =>
+                        onNavigate('ai', { type: 'fund', id: selectedFund, name: funds.find(f => f.id === selectedFund)?.name ?? 'this fund' } satisfies AiContext)
+                      }
+                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-full transition-all hover:bg-sky-50"
+                      style={{ background: 'rgba(2,132,199,0.08)', color: '#0284C7', border: '1px solid rgba(2,132,199,0.20)' }}
+                    >
+                      Ask AI about this fund
+                    </button>
                   </div>
-                )
+                  {fundRegs[selectedFund] === undefined ? (
+                    <EmptyState message="Loading…" />
+                  ) : (fundRegs[selectedFund]?.length ?? 0) === 0 ? (
+                    <EmptyState message="No regulations have been confirmed relevant to this fund yet." />
+                  ) : (
+                    <div className="max-w-2xl mx-auto space-y-4">
+                      {fundRegs[selectedFund]!.map(r => (
+                        <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -413,19 +426,32 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               )}
 
               {selectedCompany && (
-                isScanning(selectedCompany) ? (
-                  <EmptyState message="RegWay AI is researching regulations for this company. This can take a minute the first time — results are saved." />
-                ) : companyRegs[selectedCompany] === undefined ? (
-                  <EmptyState message="Loading…" />
-                ) : (companyRegs[selectedCompany]?.length ?? 0) === 0 ? (
-                  <EmptyState message="No regulations found that affect this company right now." />
-                ) : (
-                  <div className="max-w-2xl mx-auto space-y-4">
-                    {companyRegs[selectedCompany]!.map(r => (
-                      <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
-                    ))}
+                <>
+                  <div className="max-w-2xl mx-auto flex justify-end">
+                    <button
+                      onClick={() =>
+                        onNavigate('ai', { type: 'company', id: selectedCompany, name: companies.find(c => c.id === selectedCompany)?.name ?? 'this company' } satisfies AiContext)
+                      }
+                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-full transition-all hover:bg-sky-50"
+                      style={{ background: 'rgba(2,132,199,0.08)', color: '#0284C7', border: '1px solid rgba(2,132,199,0.20)' }}
+                    >
+                      Ask AI about this company
+                    </button>
                   </div>
-                )
+                  {isScanning(selectedCompany) ? (
+                    <EmptyState message="RegWay AI is researching regulations for this company. This can take a minute the first time — results are saved." />
+                  ) : companyRegs[selectedCompany] === undefined ? (
+                    <EmptyState message="Loading…" />
+                  ) : (companyRegs[selectedCompany]?.length ?? 0) === 0 ? (
+                    <EmptyState message="No regulations found that affect this company right now." />
+                  ) : (
+                    <div className="max-w-2xl mx-auto space-y-4">
+                      {companyRegs[selectedCompany]!.map(r => (
+                        <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

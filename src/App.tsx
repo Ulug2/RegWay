@@ -10,7 +10,7 @@ import ResetPasswordScreen from './components/ResetPasswordScreen'
 import Dashboard from './components/Dashboard'
 import RegWayAICopilot from './components/RegWayAICopilot'
 import HeadlineDetailView from './components/HeadlineDetailView'
-import type { Regulation } from './lib/types'
+import type { Regulation, AiContext } from './lib/types'
 import LogoMark from './components/LogoMark'
 
 type View = 'loading' | 'landing' | 'auth' | 'reset-password' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai'
@@ -22,6 +22,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-up')
   const [detailPayload, setDetailPayload] = useState<unknown>(null)
   const [showAI, setShowAI] = useState(false)
+  const [aiContext, setAiContext] = useState<AiContext | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -70,6 +71,7 @@ export default function App() {
   const navigate = (newView: View, payload?: unknown) => {
     if (newView === 'ai') {
       setShowAI(true)
+      setAiContext((payload as AiContext | undefined) ?? null)
       return
     }
     if (newView === 'profile') {
@@ -197,6 +199,7 @@ export default function App() {
           <HeadlineDetailView
             onBack={() => setView('dashboard')}
             headline={detailPayload as Partial<Regulation> | undefined}
+            onAskAI={ctx => navigate('ai', ctx)}
           />
         )}
 
@@ -207,7 +210,7 @@ export default function App() {
 
       {/* RegWay AI drawer — rendered over any view */}
       {showAI && (
-        <RegWayAICopilot onClose={() => setShowAI(false)} />
+        <RegWayAICopilot context={aiContext} onClose={() => { setShowAI(false); setAiContext(null) }} />
       )}
     </div>
   )
