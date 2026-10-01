@@ -620,7 +620,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                   <textarea
                     ref={textareaRef}
                     rows={1}
-                    className="glass-input w-full pt-3.5 pb-5 px-5 pr-20 text-sm resize-none block"
+                    className="glass-input w-full pt-3.5 pb-4 px-5 pr-20 text-sm resize-none block"
                     style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto', borderRadius: 18 }}
                     placeholder="Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure..."
                     value={input}
