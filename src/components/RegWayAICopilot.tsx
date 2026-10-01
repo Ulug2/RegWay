@@ -35,6 +35,10 @@ function welcomeMessage(context?: AiContext | null): Message {
 
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
 
+// How tall the chat input is allowed to auto-grow before it scrolls
+// internally instead of pushing the rest of the drawer around.
+const MAX_INPUT_HEIGHT = 160
+
 // Shown in the empty AI bubble while waiting for the first token — cycles
 // every couple of seconds so a slow web-search phase (Claude's tool-use
 // round-trip before any text arrives) doesn't look stalled.
@@ -151,6 +155,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   // Set for exactly one tick when the user sends a message — forces the
   // scroll to bottom unconditionally that once (their own new message plus
@@ -174,6 +179,15 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
   useEffect(() => {
     setTimeout(() => setVisible(true), 30)
   }, [])
+
+  // Auto-grow the chat textarea as the user types past one line, capping
+  // at MAX_INPUT_HEIGHT and letting it scroll internally beyond that.
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_HEIGHT)}px`
+  }, [input])
 
   useEffect(() => {
     getFirmId().then(async id => {
@@ -598,19 +612,26 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               {attachError && <div className="text-xs mb-2" style={{ color: '#334155' }}>{attachError}</div>}
               <div className="flex items-center gap-3">
                 <div className="relative flex-1">
-                  <input
-                    className="glass-input w-full py-3.5 px-5 pr-20 text-sm"
-                    style={{ fontSize: 14, color: '#0F172A' }}
+                  <textarea
+                    ref={textareaRef}
+                    rows={1}
+                    className="glass-input w-full py-3.5 px-5 pr-20 text-sm resize-none block"
+                    style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto' }}
                     placeholder="Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure..."
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && !isTyping && sendMessage(input)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        if (!isTyping) sendMessage(input)
+                      }
+                    }}
                   />
                   <input ref={fileInputRef} type="file" accept=".txt,.md,.pdf" onChange={pickFile} style={{ display: 'none' }} />
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isTyping}
-                    className="absolute right-12 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors disabled:opacity-40"
+                    className="absolute right-12 bottom-[9px] w-8 h-8 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors disabled:opacity-40"
                     style={{ color: '#94a3b8' }}
                     title="Attach a .txt, .md, or .pdf file"
                   >
@@ -620,7 +641,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                   </button>
                   <button
                     onClick={() => (isTyping ? stopGenerating() : sendMessage(input))}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-white transition-all"
+                    className="absolute right-2 bottom-[9px] w-8 h-8 flex items-center justify-center text-white transition-all"
                     style={{ background: isTyping ? '#334155' : 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 9999 }}
                     title={isTyping ? 'Stop generating' : 'Send'}
                   >
