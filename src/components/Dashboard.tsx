@@ -393,23 +393,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               onFocus={() => onNavigate('ai')}
               onKeyDown={e => e.key === 'Enter' && onNavigate('ai')}
             />
-            {/* Attachment */}
+            {/* Attachment — opens the AI drawer, where files can actually be attached */}
             <button
-              className="absolute right-24 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
+              onClick={() => onNavigate('ai')}
+              className="absolute right-14 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
               style={{ color: '#94a3b8' }}
+              title="Attach a file"
             >
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                 <path d="M11.5 5L6.2 10.3a2 2 0 002.8 2.8l5.3-5.3a3.5 3.5 0 00-5-5L3.5 8.6a5 5 0 007 7L15 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-            </button>
-            {/* Mic */}
-            <button
-              className="absolute right-14 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
-              style={{ color: '#94a3b8' }}
-            >
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M2 8c0 3.3 2.7 6 6 6s6-2.7 6-6M8 14v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
               </svg>
             </button>
             {/* Send */}
