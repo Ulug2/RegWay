@@ -32,12 +32,46 @@ interface Attachment {
   base64Data?: string // raw base64 (.pdf)
 }
 
+// Mirrors src/lib/types.ts's AiContext — set when the copilot was opened
+// from a specific regulation/fund/company page instead of the generic
+// Dashboard bar, so the system prompt can focus on that item without the
+// user having to restate what they're asking about.
+interface AiContext {
+  type: 'regulation' | 'fund' | 'company'
+  id: string
+  name: string
+  regulation?: {
+    agency?: string | null
+    jurisdiction?: string | null
+    summary?: string | null
+    published_date?: string | null
+    effective_date?: string | null
+  }
+}
+
+function contextInstruction(context?: AiContext): string {
+  if (!context) return ''
+  if (context.type === 'regulation') {
+    const r = context.regulation
+    const details = [
+      r?.agency ? `agency: ${r.agency}` : '',
+      r?.jurisdiction ? `jurisdiction: ${r.jurisdiction}` : '',
+      r?.published_date ? `published: ${r.published_date}` : '',
+      r?.effective_date ? `effective: ${r.effective_date}` : '',
+    ].filter(Boolean).join(', ')
+    const summary = r?.summary ? ` Summary: ${r.summary}` : ''
+    return `\n\nThe user opened this chat directly from the regulation "${context.name}"${details ? ` (${details})` : ''}.${summary} Treat the conversation as being about this regulation unless the user clearly asks about something else — don't make them restate what they're asking about.`
+  }
+  const label = context.type === 'fund' ? 'fund' : 'portfolio company'
+  return `\n\nThe user opened this chat directly from the ${label} "${context.name}". Treat the conversation as being about this specific ${label} unless the user clearly asks about something else — don't make them restate what they're asking about.`
+}
+
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
 
   try {
-    const { message, attachment } = (await req.json()) as { message?: string; attachment?: Attachment }
+    const { message, attachment, context } = (await req.json()) as { message?: string; attachment?: Attachment; context?: AiContext }
     if (!message) return json({ error: 'message is required' }, 400)
 
     const authHeader = req.headers.get('Authorization')
@@ -78,12 +112,17 @@ Deno.serve(async (req) => {
     const companySummary =
       (companies ?? []).map(c => `${c.name} (${(c.sectors ?? []).join('/')}, ${(c.regions ?? []).join('/')})`).join('; ') || 'none on file'
 
+    const ambiguityInstruction =
+      !context && ((funds?.length ?? 0) > 1 || (companies?.length ?? 0) > 1)
+        ? '\n\nIf the user refers to "my fund", "this company", "the portfolio company", or similar without naming which one, and more than one exists, ask them which one they mean instead of guessing.'
+        : ''
+
     const systemPrompt = `You are RegWay AI, an AI regulatory intelligence copilot for private equity general partners. You are advising ${firm?.name ?? 'the firm'}, headquartered in ${firm?.hq_location ?? 'an unspecified location'}, operating in: ${(firm?.jurisdictions ?? []).join(', ') || 'unspecified jurisdictions'}.
 
 Active funds: ${fundSummary}.
 Portfolio companies: ${companySummary}.
 
-Use web search to ground every regulatory claim in a real, current source. Always cite the primary source (agency or publisher name, document title, URL, and date). If you are not confident a rule applies to this firm, say so plainly instead of guessing. Never assign an unprompted urgency label such as "critical" or "low impact" — describe obligations and deadlines factually and let the user judge priority themselves.`
+Use web search to ground every regulatory claim in a real, current source. Always cite the primary source (agency or publisher name, document title, URL, and date). If you are not confident a rule applies to this firm, say so plainly instead of guessing. Never assign an unprompted urgency label such as "critical" or "low impact" — describe obligations and deadlines factually and let the user judge priority themselves.${contextInstruction(context)}${ambiguityInstruction}`
 
     const { data: allowed } = await supabase.rpc('check_rate_limit', {
       p_function_name: 'harvey-chat',

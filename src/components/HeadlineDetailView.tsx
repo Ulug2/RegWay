@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getFirmId, getCachedFirmId, getCachedFirm, dismissRegulation, isFlagged, setFlagged as persistFlag, fetchNotes, addNote, fetchRelatedEntityMatches, type RelatedEntityMatch } from '../lib/data'
 import { readCache, writeCache } from '../lib/cache'
-import type { Regulation, RegulationNote } from '../lib/types'
+import type { Regulation, RegulationNote, AiContext } from '../lib/types'
 import LogoMark from './LogoMark'
 import CategoryBadge from './CategoryBadge'
 import ImpactPanel from './ImpactPanel'
@@ -9,6 +9,7 @@ import ImpactPanel from './ImpactPanel'
 interface HeadlineDetailViewProps {
   onBack: () => void
   headline?: Partial<Regulation>
+  onAskAI: (context: AiContext) => void
 }
 
 const DATE_MODES = ["Today's Status", 'Custom Range'] as const
@@ -27,7 +28,7 @@ function sourceDomain(url?: string) {
   }
 }
 
-export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailViewProps) {
+export default function HeadlineDetailView({ onBack, headline, onAskAI }: HeadlineDetailViewProps) {
   const [flagged, setFlaggedState] = useState(() => readCache<boolean>(`flag:${headline?.id}`) ?? false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [confirmDismiss, setConfirmDismiss] = useState(false)
@@ -194,6 +195,32 @@ export default function HeadlineDetailView({ onBack, headline }: HeadlineDetailV
             className="flex items-center gap-3 flex-wrap mt-5 pt-5"
             style={{ borderTop: '1px solid rgba(186,230,253,0.30)' }}
           >
+            {regulationId && (
+              <button
+                onClick={() =>
+                  onAskAI({
+                    type: 'regulation',
+                    id: regulationId,
+                    name: title,
+                    regulation: {
+                      agency: headline?.agency,
+                      jurisdiction: headline?.jurisdiction,
+                      summary: headline?.summary,
+                      published_date: headline?.published_date,
+                      effective_date: headline?.effective_date,
+                    },
+                  })
+                }
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:bg-sky-50"
+                style={{ background: 'rgba(2,132,199,0.08)', color: '#0284C7', border: '1px solid rgba(2,132,199,0.20)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 1.5l1.2 3 3 1.2-3 1.2L7 10l-1.2-3-3-1.2 3-1.2L7 1.5z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
+                </svg>
+                Ask RegWay AI about this
+              </button>
+            )}
+
             <button
               onClick={toggleFlag}
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"

@@ -36,6 +36,19 @@ export interface PortfolioCompany {
   logo_url: string | null
 }
 
+export interface AiContext {
+  type: 'regulation' | 'fund' | 'company'
+  id: string
+  name: string
+  regulation?: {
+    agency?: string | null
+    jurisdiction?: string | null
+    summary?: string | null
+    published_date?: string | null
+    effective_date?: string | null
+  }
+}
+
 export interface Regulation {
   id: string
   source: 'federal_register' | 'sec_edgar' | 'ai_search' | 'manual' | 'sec_enforcement'

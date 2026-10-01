@@ -3,10 +3,11 @@ import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
 import { getFirmId, fetchFunds, fetchPortfolioCompanies } from '../lib/data'
 import { renderMarkdown } from '../lib/markdown'
-import type { Firm, Fund, PortfolioCompany } from '../lib/types'
+import type { Firm, Fund, PortfolioCompany, AiContext } from '../lib/types'
 
 interface RegWayAICopilotProps {
   onClose: () => void
+  context?: AiContext | null
 }
 
 interface Citation {
@@ -22,9 +23,14 @@ interface Message {
   status?: string
 }
 
-const WELCOME_MESSAGE: Message = {
-  role: 'ai',
-  content: "Ask me anything about your firm's regulatory exposure — I'll search live sources and cite what I find.",
+function welcomeMessage(context?: AiContext | null): Message {
+  if (context?.type === 'regulation') {
+    return { role: 'ai', content: `Ask me anything about "${context.name}" — I'll search live sources and cite what I find.` }
+  }
+  if (context?.type === 'fund' || context?.type === 'company') {
+    return { role: 'ai', content: `Ask me anything about ${context.name}'s regulatory exposure — I'll search live sources and cite what I find.` }
+  }
+  return { role: 'ai', content: "Ask me anything about your firm's regulatory exposure — I'll search live sources and cite what I find." }
 }
 
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
@@ -131,8 +137,8 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE])
+export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotProps) {
+  const [messages, setMessages] = useState<Message[]>(() => [welcomeMessage(context)])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
@@ -277,7 +283,17 @@ export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
 
     const revealTimer = setInterval(() => {
       if (revealed >= target.length) {
-        if (streamDone) clearInterval(revealTimer)
+        if (streamDone) {
+          clearInterval(revealTimer)
+          // Only the call that's still "current" flips isTyping off / frees
+          // abortRef — a stale reveal finishing after the user already
+          // stopped generation or started a newer message must not clobber
+          // that newer state.
+          if (abortRef.current === controller) {
+            setIsTyping(false)
+            abortRef.current = null
+          }
+        }
         return
       }
       revealed = Math.min(target.length, revealed + REVEAL_CHARS_PER_TICK)
@@ -297,7 +313,7 @@ export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
           : { name: file.name, mimeType: file.type || 'text/plain', content: await file.text() }
       }
 
-      const res = await streamFunction('harvey-chat', { message: text, attachment }, controller.signal)
+      const res = await streamFunction('harvey-chat', { message: text, attachment, context }, controller.signal)
       if (!res.body) throw new Error('No response stream')
 
       await consumeSse(res.body, evt => {
@@ -322,18 +338,16 @@ export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
         target += (target ? '\n\n' : '') + `Something went wrong: ${err instanceof Error ? err.message : 'please try again'}`
       }
     } finally {
+      // Deliberately does NOT clear revealTimer or flip isTyping here: the
+      // network stream finishing doesn't mean the on-screen reveal has
+      // caught up to the full text yet (it lags behind by design). Ending
+      // things here would cut a long response off mid-sentence the instant
+      // the stream closes. revealTimer's own tick (above) detects
+      // `streamDone` and finishes the job once `revealed` actually reaches
+      // `target.length` — that's also what keeps isTyping true (blocking a
+      // new message) until the full answer is actually on screen.
       streamDone = true
       clearInterval(statusTimer)
-      // Guards against a stop button click (which already force-cleared
-      // these and flipped isTyping off) racing with this same async chain's
-      // own cleanup once the aborted fetch/stream finally settles — and
-      // against this *stale* cleanup clobbering a newer message the user
-      // already started sending in the meantime.
-      if (abortRef.current === controller) {
-        clearInterval(revealTimer)
-        setIsTyping(false)
-        abortRef.current = null
-      }
     }
   }
 
@@ -400,7 +414,7 @@ export default function RegWayAICopilot({ onClose }: RegWayAICopilotProps) {
               <div className="font-semibold" style={{ color: '#0F172A', letterSpacing: '-0.01em' }}>RegWay AI Copilot</div>
               <div className="text-xs flex items-center gap-1.5" style={{ color: '#64748B' }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#38BDF8' }} />
-                {firm ? `Grounded in live web search for ${firm.name}` : 'Loading firm context…'}
+                {context ? `Focused on ${context.name}` : firm ? `Grounded in live web search for ${firm.name}` : 'Loading firm context…'}
               </div>
             </div>
           </div>
