@@ -213,6 +213,21 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     setSelectedFund(selectedFund === fundId ? null : fundId)
   }
 
+  // Whatever fund/company is currently open on the dashboard — the AI bar
+  // opens already scoped to it instead of requiring a separate "Ask AI
+  // about this" click.
+  const selectedAiContext = (): AiContext | undefined => {
+    if (activeToggle === 'fund' && selectedFund) {
+      const f = funds.find(x => x.id === selectedFund)
+      if (f) return { type: 'fund', id: f.id, name: f.name }
+    }
+    if (activeToggle === 'portfolio' && selectedCompany) {
+      const c = companies.find(x => x.id === selectedCompany)
+      if (c) return { type: 'company', id: c.id, name: c.name }
+    }
+    return undefined
+  }
+
   const firstName = firm?.lead_gp_name?.split(' ')[0] || 'there'
   const initials = (firm?.lead_gp_name || 'GP')
     .split(' ')
@@ -378,17 +393,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
               {selectedFund && (
                 <>
-                  <div className="max-w-2xl mx-auto flex justify-end">
-                    <button
-                      onClick={() =>
-                        onNavigate('ai', { type: 'fund', id: selectedFund, name: funds.find(f => f.id === selectedFund)?.name ?? 'this fund' } satisfies AiContext)
-                      }
-                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-full transition-all hover:bg-sky-50"
-                      style={{ background: 'rgba(2,132,199,0.08)', color: '#0284C7', border: '1px solid rgba(2,132,199,0.20)' }}
-                    >
-                      Ask AI about this fund
-                    </button>
-                  </div>
                   {fundRegs[selectedFund] === undefined ? (
                     <EmptyState message="Loading…" />
                   ) : (fundRegs[selectedFund]?.length ?? 0) === 0 ? (
@@ -448,17 +452,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
               {selectedCompany && (
                 <>
-                  <div className="max-w-2xl mx-auto flex justify-end">
-                    <button
-                      onClick={() =>
-                        onNavigate('ai', { type: 'company', id: selectedCompany, name: companies.find(c => c.id === selectedCompany)?.name ?? 'this company' } satisfies AiContext)
-                      }
-                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-full transition-all hover:bg-sky-50"
-                      style={{ background: 'rgba(2,132,199,0.08)', color: '#0284C7', border: '1px solid rgba(2,132,199,0.20)' }}
-                    >
-                      Ask AI about this company
-                    </button>
-                  </div>
                   {isScanning(selectedCompany) ? (
                     <EmptyState message="RegWay AI is researching regulations for this company. This can take a minute the first time — results are saved." />
                   ) : companyRegs[selectedCompany] === undefined ? (
@@ -478,21 +471,25 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           )}
         </div>
 
-        {/* RegWay AI Input Bar */}
+        {/* RegWay AI Input Bar — already scoped to whatever fund/company is open */}
         <div className="max-w-2xl mx-auto" style={{ marginTop: activeToggle ? 0 : 48 }}>
           <div className="relative">
             <input
               className="glass-input w-full py-5 px-7 pr-28 text-sm"
               style={{ fontSize: 14, color: '#0F172A' }}
-              placeholder="Ask RegWay AI about today's regulatory impact across your funds and portfolio..."
+              placeholder={
+                selectedAiContext()
+                  ? `Ask RegWay AI about ${selectedAiContext()!.name}...`
+                  : "Ask RegWay AI about today's regulatory impact across your funds and portfolio..."
+              }
               value={aiQuery}
               onChange={e => setAiQuery(e.target.value)}
-              onFocus={() => onNavigate('ai')}
-              onKeyDown={e => e.key === 'Enter' && onNavigate('ai')}
+              onFocus={() => onNavigate('ai', selectedAiContext())}
+              onKeyDown={e => e.key === 'Enter' && onNavigate('ai', selectedAiContext())}
             />
             {/* Attachment — opens the AI drawer, where files can actually be attached */}
             <button
-              onClick={() => onNavigate('ai')}
+              onClick={() => onNavigate('ai', selectedAiContext())}
               className="absolute right-14 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
               style={{ color: '#94a3b8' }}
               title="Attach a file"
@@ -503,7 +500,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </button>
             {/* Send */}
             <button
-              onClick={() => onNavigate('ai')}
+              onClick={() => onNavigate('ai', selectedAiContext())}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-white"
               style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 9999, boxShadow: '0 4px 12px rgba(2,132,199,0.30)' }}
             >
