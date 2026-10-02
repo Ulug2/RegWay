@@ -160,6 +160,7 @@ export const QUESTIONS: Question[] = [
   { id: 'website', scope: 'firm', stage: 'later', section: 'Your firm', label: "Firm website", type: 'url', required: true, placeholder: 'https://' },
   { id: 'legal_name', scope: 'firm', stage: 'later', section: 'Your firm', label: 'Legal name of your management company', type: 'text', required: false, help: 'If you are unsure, you can skip this for now.' },
   { id: 'gp_entity', scope: 'firm', stage: 'later', section: 'Your firm', label: 'Name of the General Partner entity', type: 'text', required: false },
+  { id: 'legal_domicile', scope: 'firm', stage: 'later', section: 'Your firm', label: 'Where is your management company or GP entity legally domiciled?', type: 'location', required: false, help: 'Its state or country of formation/incorporation, if different from your headquarters above (e.g. a Delaware LLC headquartered in New York).' },
   { id: 'offices', scope: 'firm', stage: 'later', section: 'Your firm', label: 'Other office locations', type: 'tags', required: false, placeholder: 'e.g. London, UK' },
   { id: 'strategies', scope: 'firm', stage: 'later', section: 'Investment focus', label: 'What investment strategies does your firm primarily use?', type: 'multi', required: true, options: FIRM_STRATEGIES },
   { id: 'key_states', scope: 'firm', stage: 'later', section: 'Investment focus', label: 'Which U.S. states are particularly important to your firm?', type: 'multi', required: false, options: US_STATES, showIf: a => includesUS(a.geographies) },
@@ -201,6 +202,7 @@ export const QUESTIONS: Question[] = [
   { id: 'foreign_countries', scope: 'company', stage: 'later', section: 'Where it operates', label: 'Which countries?', type: 'multi', required: false, options: COUNTRIES.filter(c => c !== 'United States'), showIf: a => a.outside_us === 'yes' },
   { id: 'facilities', scope: 'company', stage: 'later', section: 'Where it operates', label: 'Does the company operate physical facilities or locations?', type: 'yesno', required: true, help: 'Hospitals, plants, stores, warehouses, clinics, offices, data centers…' },
   { id: 'facility_locations', scope: 'company', stage: 'later', section: 'Where it operates', label: 'Where are the main facilities located?', type: 'tags', required: false, placeholder: 'e.g. Austin, TX', showIf: a => a.facilities === 'yes' },
+  { id: 'supplier_locations', scope: 'company', stage: 'later', section: 'Where it operates', label: 'Where are its key suppliers, manufacturers, or vendors based?', type: 'multi', required: false, options: OPERATING_OPTIONS, help: 'Distinct from where the company itself operates — used for supply-chain and trade-exposure monitoring (sanctions, tariffs, export controls).' },
   { id: 'secondary_industries', scope: 'company', stage: 'later', section: 'Business', label: 'Secondary industries', type: 'multi', required: false, options: INDUSTRIES },
   { id: 'products', scope: 'company', stage: 'later', section: 'Business', label: 'Main products or services', type: 'tags', required: true, placeholder: 'Type and press Enter' },
   { id: 'customers', scope: 'company', stage: 'later', section: 'Business', label: 'Primary customers', type: 'multi', required: true, options: CUSTOMERS },
@@ -312,9 +314,11 @@ export function toRow(scope: Scope, answers: Answers): Record<string, unknown> {
   // Derived legacy columns the AI functions already read.
   if (scope === 'firm') {
     const hq = answers.hq as LocationValue | undefined
+    const legalDomicile = answers.legal_domicile as LocationValue | undefined
     row.hq_location = formatLocation(hq) || null
     row.jurisdictions = uniq([
       hq?.state ?? '',
+      legalDomicile?.state || legalDomicile?.country || '',
       ...((answers.geographies as string[] | undefined) ?? []),
       ...((answers.key_states as string[] | undefined) ?? []),
     ])

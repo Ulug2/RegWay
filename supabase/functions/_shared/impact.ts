@@ -45,13 +45,28 @@ async function loadRegulationText(reg: { raw: Record<string, unknown> | null; so
   return text || reg.summary || ''
 }
 
+// {country, state, city} objects (the questionnaire's LocationValue shape,
+// stored raw in `profile` for fields with no legacy string-column mirror)
+// get formatted like an address instead of dumped as JSON.
+const isLocationValue = (v: unknown): v is { city?: string; state?: string; country?: string } =>
+  !!v && typeof v === 'object' && !Array.isArray(v) && ('city' in v || 'state' in v || 'country' in v)
+
 const facts = (row: Record<string, unknown> | null | undefined, keys: string[]) => {
   if (!row) return ''
   const profile = (row.profile ?? {}) as Record<string, unknown>
   const parts = keys
     .map(k => [k, row[k] ?? profile[k]] as const)
     .filter(([, v]) => v != null && v !== '' && !(Array.isArray(v) && v.length === 0))
-    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : v}`)
+    .map(([k, v]) => {
+      const formatted = isLocationValue(v)
+        ? [v.city, v.state, v.country].map(x => x?.trim()).filter(Boolean).join(', ')
+        : Array.isArray(v)
+          ? v.join(', ')
+          : typeof v === 'object'
+            ? JSON.stringify(v)
+            : v
+      return `${k}: ${formatted}`
+    })
   return parts.join('; ')
 }
 
@@ -101,7 +116,7 @@ export async function generateImpact(
   const reasons = (links ?? []).map(l => l.relevance_reason).filter((r): r is string => !!r && !r.startsWith('NOT_RELEVANT'))
 
   const entities = [
-    `FIRM — ${firm.name}: ${facts(firm as Record<string, unknown>, ['hq_location', 'jurisdictions', 'firm_type', 'adviser_registration', 'strategies', 'industries', 'geographies'])}`,
+    `FIRM — ${firm.name}: ${facts(firm as Record<string, unknown>, ['hq_location', 'legal_domicile', 'jurisdictions', 'firm_type', 'adviser_registration', 'strategies', 'industries', 'geographies'])}`,
     ...(funds ?? [])
       .filter(f => linkedFunds.has(f.id))
       .map(f => `FUND — ${f.name}: ${facts(f as Record<string, unknown>, ['structure', 'size', 'jurisdictions', 'status', 'strategy', 'ownership', 'industries', 'geographies'])}`),
