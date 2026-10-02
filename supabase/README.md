@@ -33,7 +33,7 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 supabase functions deploy sync-federal-register
 supabase functions deploy match-relevance
 supabase functions deploy company-regulations
-supabase functions deploy harvey-chat
+supabase functions deploy regway-ai-chat
 ```
 
 ## 6. Do a first data sync
@@ -50,6 +50,6 @@ This pulls the last 7 days of federal rules into the `regulations` table. To kee
 - `sync-federal-register` — pulls new/proposed federal rules from the free Federal Register API for a curated list of agencies (SEC, CFTC, IRS, DOL, EPA, FERC, HHS, FMCSA, CFPB) and upserts them as shared `regulations` rows. This is raw, unfiltered federal data — every firm's regulations still have to go through relevance matching below before anyone sees them.
 - `match-relevance` — **the filter.** Takes a `firmId`, finds regulations not yet evaluated for that firm, and asks Claude (given that firm's real jurisdictions, funds, and portfolio companies) which ones actually create a compliance obligation or exposure, and for whom (the firm, a specific fund, or a specific portfolio company). Only regulations marked relevant get a `regulation_relevance` row; irrelevant ones get a `NOT_RELEVANT:` marker row so we don't re-ask about them every run. **The dashboard must always query through `regulation_relevance` (excluding rows whose `relevance_reason` starts with `NOT_RELEVANT:`), never straight from `regulations`** — that's what guarantees a firm never sees a regulation nothing has confirmed applies to them. Call this once right after onboarding (so a new firm isn't staring at an empty dashboard) and again after every `sync-federal-register` run.
 - `company-regulations` — the on-demand version of the same idea, scoped to one portfolio company: given a `portfolio_company_id`, builds a query from that company's sector + location, asks Claude (with web search) to find recent relevant regulatory activity, forces the answer into a structured list, and stores each item as its own `regulations` row **already linked** via `regulation_relevance` — no separate matching step needed since it was already searched specifically for that company. This is what powers clicking into a company on the "Portfolio Companies" tab.
-- `harvey-chat` — the conversational copilot. Loads the caller's firm/fund/portfolio context, asks Claude (with web search) to answer grounded in real sources, and saves the exchange to `harvey_messages`.
+- `regway-ai-chat` — the conversational copilot. Loads the caller's firm/fund/portfolio context, asks Claude (with web search) to answer grounded in real sources, and saves the exchange to `regway_ai_messages`.
 
 All four keep `ANTHROPIC_API_KEY` server-side only. The frontend never talks to Anthropic directly.

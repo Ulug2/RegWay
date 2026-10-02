@@ -1,11 +1,11 @@
 // Powers the RegWay AI copilot drawer. Loads the caller's firm/fund/
 // portfolio-company context from the DB, asks Claude (with the web_search
 // tool) to answer grounded in live regulatory sources, and persists the
-// exchange to `harvey_messages` for conversation history.
+// exchange to `regway_ai_messages` for conversation history.
 //
 // Streams the response back as raw Anthropic SSE (text/event-stream) so the
 // frontend can render text as it arrives instead of waiting for the full
-// reply. The full exchange is still saved to `harvey_messages` once the
+// reply. The full exchange is still saved to `regway_ai_messages` once the
 // stream ends — this function tees the upstream bytes: forwarded to the
 // client unchanged, and parsed in parallel just to accumulate the final
 // text/citations/usage for that one DB write.
@@ -16,7 +16,7 @@
 // within the 5-minute cache window get that portion of input billed at a
 // fraction of normal price instead of re-sent-and-rebilled from scratch.
 //
-//   POST /functions/v1/harvey-chat   { "message": "...", "attachment"?: { "name": string, "mimeType": string, "content": string (text) | "base64Data": string (pdf) } }
+//   POST /functions/v1/regway-ai-chat   { "message": "...", "attachment"?: { "name": string, "mimeType": string, "content": string (text) | "base64Data": string (pdf) } }
 //   Authorization: Bearer <user session access_token>
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
@@ -125,7 +125,7 @@ Portfolio companies: ${companySummary}.
 Use web search to ground every regulatory claim in a real, current source. Always cite the primary source (agency or publisher name, document title, URL, and date). If you are not confident a rule applies to this firm, say so plainly instead of guessing. Never assign an unprompted urgency label such as "critical" or "low impact" — describe obligations and deadlines factually and let the user judge priority themselves.${contextInstruction(context)}${ambiguityInstruction}`
 
     const { data: allowed } = await supabase.rpc('check_rate_limit', {
-      p_function_name: 'harvey-chat',
+      p_function_name: 'regway-ai-chat',
       p_limit: 30,
       p_window_minutes: 60,
     })
@@ -173,18 +173,18 @@ Use web search to ground every regulatory claim in a real, current source. Alway
       if (persisted) return
       persisted = true
       await Promise.all([
-        supabase.from('harvey_messages').insert([
+        supabase.from('regway_ai_messages').insert([
           { firm_id: membership.firm_id, user_id: user.id, role: 'user', content: message },
           { firm_id: membership.firm_id, user_id: user.id, role: 'assistant', content: fullText, citations },
         ]),
-        recordUsage(admin, { functionName: 'harvey-chat', firmId: membership.firm_id, model: MODEL, ...usage }),
+        recordUsage(admin, { functionName: 'regway-ai-chat', firmId: membership.firm_id, model: MODEL, ...usage }),
       ])
     }
 
     const tee = new TransformStream<Uint8Array, Uint8Array>({
       transform(chunk, controller) {
         // Forward bytes to the client immediately and unchanged — parsing
-        // below is only to accumulate the final record for harvey_messages
+        // below is only to accumulate the final record for regway_ai_messages
         // and usage_events.
         controller.enqueue(chunk)
         sseBuffer += decoder.decode(chunk, { stream: true })

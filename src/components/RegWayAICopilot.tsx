@@ -332,7 +332,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
           : { name: file.name, mimeType: file.type || 'text/plain', content: await file.text() }
       }
 
-      const res = await streamFunction('harvey-chat', { message: text, attachment, context }, controller.signal)
+      const res = await streamFunction('regway-ai-chat', { message: text, attachment, context }, controller.signal)
       if (!res.body) throw new Error('No response stream')
 
       await consumeSse(res.body, evt => {
