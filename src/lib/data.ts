@@ -279,6 +279,27 @@ export async function fetchImpact(regulationId: string): Promise<ImpactContent |
   return content
 }
 
+// Lightweight batch read of just the `status` text for a set of regulations,
+// for list views that want a badge without pulling each full analysis.
+// Regulations with no generated impact yet (or where generation hasn't
+// reached this firm) are simply absent from the returned map.
+export async function fetchImpactStatuses(firmId: string, regulationIds: string[]): Promise<Record<string, string>> {
+  if (regulationIds.length === 0) return {}
+  const { data, error } = await supabase
+    .from('regulation_impacts')
+    .select('regulation_id, content')
+    .eq('firm_id', firmId)
+    .in('regulation_id', regulationIds)
+  if (error) throw error
+
+  const statuses: Record<string, string> = {}
+  for (const row of data ?? []) {
+    const status = (row.content as ImpactContent | null)?.status
+    if (status) statuses[row.regulation_id] = status
+  }
+  return statuses
+}
+
 // Asks the backend to generate the analysis now (it's normally prepared in the
 // background as soon as a regulation is matched, so this is the fallback).
 export async function requestImpact(regulationId: string): Promise<ImpactContent> {

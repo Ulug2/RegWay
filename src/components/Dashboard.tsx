@@ -3,10 +3,11 @@ import { useCachedState } from '../lib/useCachedState'
 import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } from '../lib/scans'
 import { readCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources } from '../lib/data'
+import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchImpactStatuses } from '../lib/data'
 import type { Regulation, PortfolioCompany, Fund, Firm, AiContext } from '../lib/types'
 import LogoMark from './LogoMark'
 import CategoryBadge from './CategoryBadge'
+import StatusBadge from './StatusBadge'
 import ProfileReminder from './ProfileReminder'
 import { useProfileCompletion } from '../lib/useProfileCompletion'
 
@@ -21,7 +22,7 @@ function formatDate(iso: string | null) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function HeadlineItem({ regulation, onClick, onDismiss }: { regulation: Regulation; onClick: () => void; onDismiss: () => void }) {
+function HeadlineItem({ regulation, status, onClick, onDismiss }: { regulation: Regulation; status?: string; onClick: () => void; onDismiss: () => void }) {
   return (
     <div className="relative group">
       <button
@@ -30,6 +31,7 @@ function HeadlineItem({ regulation, onClick, onDismiss }: { regulation: Regulati
       >
         <div className="flex items-center gap-2 mb-3 pr-8">
           <CategoryBadge category={regulation.category} />
+          <StatusBadge status={status} />
         </div>
         <div className="text-sm font-semibold mb-3 pr-8" style={{ color: '#0F172A', lineHeight: 1.5 }}>
           {regulation.title}
@@ -79,6 +81,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [peRegs, setPeRegs] = useCachedState<Regulation[] | null>('regs:pe', null)
   const [fundRegs, setFundRegs] = useCachedState<Record<string, Regulation[]>>('regs:fund', {})
   const [companyRegs, setCompanyRegs] = useCachedState<Record<string, Regulation[]>>('regs:company', {})
+  // regulation_id -> the AI-written status sentence, for the "Proposed"/"Final"
+  // badge on list items (regulatory category only — see StatusBadge).
+  const [impactStatuses, setImpactStatuses] = useCachedState<Record<string, string>>('regs:impactStatus', {})
   const [, forceRender] = useState(0)
 
   const completion = useProfileCompletion()
@@ -135,6 +140,22 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       .then(regs => setFundRegs(prev => ({ ...prev, [id]: regs })))
       .catch(() => {})
   }, [firmId, activeToggle, selectedFund])
+
+  // Fetch the proposed/final status for whichever regulatory items are
+  // currently visible, so the list badge doesn't require opening the item.
+  useEffect(() => {
+    if (!firmId) return
+    const visible =
+      activeToggle === 'pe' ? peRegs ?? [] :
+      activeToggle === 'fund' && selectedFund ? fundRegs[selectedFund] ?? [] :
+      activeToggle === 'portfolio' && selectedCompany ? companyRegs[selectedCompany] ?? [] :
+      []
+    const ids = visible.filter(r => r.category === 'regulatory').map(r => r.id)
+    if (ids.length === 0) return
+    fetchImpactStatuses(firmId, ids)
+      .then(statuses => setImpactStatuses(prev => ({ ...prev, ...statuses })))
+      .catch(() => {})
+  }, [firmId, activeToggle, peRegs, fundRegs, selectedFund, companyRegs, selectedCompany])
 
   // Platform-wide, not per-firm — so a quiet dashboard reads as a stated
   // data-source limitation rather than silently implying nothing is relevant.
@@ -318,7 +339,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             ) : (
               <div className="max-w-2xl mx-auto space-y-4">
                 {peRegs!.map(r => (
-                  <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
+                  <HeadlineItem key={r.id} regulation={r} status={impactStatuses[r.id]} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
                 ))}
               </div>
             )
@@ -375,7 +396,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   ) : (
                     <div className="max-w-2xl mx-auto space-y-4">
                       {fundRegs[selectedFund]!.map(r => (
-                        <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
+                        <HeadlineItem key={r.id} regulation={r} status={impactStatuses[r.id]} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
                       ))}
                     </div>
                   )}
@@ -447,7 +468,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   ) : (
                     <div className="max-w-2xl mx-auto space-y-4">
                       {companyRegs[selectedCompany]!.map(r => (
-                        <HeadlineItem key={r.id} regulation={r} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
+                        <HeadlineItem key={r.id} regulation={r} status={impactStatuses[r.id]} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
                       ))}
                     </div>
                   )}
