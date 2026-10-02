@@ -184,9 +184,13 @@ interface ImpactPanelProps {
   // Bump focusToken to re-trigger the same entity a second time.
   focusEntityName?: string | null
   focusToken?: number
+  // Bump after the backend force-regenerates the analysis (e.g. a rematch
+  // or a profile-edit refresh) to pull the new content instead of the
+  // cached one.
+  refreshToken?: number
 }
 
-export default function ImpactPanel({ regulationId, fallbackSummary, focusEntityName, focusToken }: ImpactPanelProps) {
+export default function ImpactPanel({ regulationId, fallbackSummary, focusEntityName, focusToken, refreshToken }: ImpactPanelProps) {
   const [view, setView] = useState<PanelView>('summary')
   const [impact, setImpact] = useState<ImpactContent | null>(() => (regulationId ? getCachedImpact(regulationId) ?? null : null))
   const [state, setState] = useState<'loading' | 'ready' | 'error'>(impact ? 'ready' : 'loading')
@@ -212,7 +216,7 @@ export default function ImpactPanel({ regulationId, fallbackSummary, focusEntity
     return () => {
       alive = false
     }
-  }, [regulationId, attempt])
+  }, [regulationId, attempt, refreshToken])
 
   useEffect(() => {
     if (!focusEntityName || !impact) return

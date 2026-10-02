@@ -186,11 +186,21 @@ export async function addNote(regulationId: string, firmId: string, body: string
 // (which also derives the legacy columns the AI functions read).
 // ---------------------------------------------------------------------------
 
+// Fire-and-forget: force-regenerates the impact analysis (the AI-written
+// explanation) for whatever this entity is already matched to, so an edit
+// here doesn't leave a stale explanation behind — see refresh-entity-impacts.
+// Never awaited by callers; a failure here shouldn't block the profile save
+// that triggered it.
+function refreshEntityImpacts(scope: 'firm' | 'fund' | 'company', entityId?: string): void {
+  callFunction('refresh-entity-impacts', { scope, entityId }).catch(() => {})
+}
+
 export async function saveFirmAnswers(firmId: string, answers: Answers): Promise<void> {
   const row = toRow('firm', answers)
   const { error } = await supabase.from('firms').update(row).eq('id', firmId)
   if (error) throw error
   patchCache<Firm>('firm', prev => ({ ...prev, ...row }) as Firm)
+  refreshEntityImpacts('firm')
 }
 
 export async function addFund(firmId: string, answers: Answers): Promise<void> {
@@ -201,6 +211,7 @@ export async function addFund(firmId: string, answers: Answers): Promise<void> {
 export async function saveFundAnswers(fundId: string, answers: Answers): Promise<void> {
   const { error } = await supabase.from('funds').update(toRow('fund', answers)).eq('id', fundId)
   if (error) throw error
+  refreshEntityImpacts('fund', fundId)
 }
 
 export async function removeFund(fundId: string): Promise<void> {
@@ -241,6 +252,11 @@ export async function saveCompanyAnswers(firmId: string, previous: PortfolioComp
       return rest
     })
   }
+  // Covers the other case too: a fact changed (e.g. regulated status,
+  // sensitive data) that doesn't trigger a rescan above but does feed the
+  // impact analysis, so its existing matches' explanations would otherwise
+  // go stale silently.
+  refreshEntityImpacts('company', previous.id)
 }
 
 export async function removePortfolioCompany(companyId: string): Promise<void> {
@@ -306,6 +322,21 @@ export async function requestImpact(regulationId: string): Promise<ImpactContent
   const { content } = await callFunction<{ content: ImpactContent }>('regulation-impact', { regulationId })
   writeCache(`impact:${regulationId}`, content)
   return content
+}
+
+export interface RematchResult {
+  relevant: boolean
+  reason: string
+}
+
+// "Flag an incorrect match": re-evaluates one regulation against the firm's
+// current profile data on demand, optionally weighing a user's stated
+// correction. Updates the relevance row in place (upsert on the same
+// conflict key) and, if still relevant, force-regenerates the impact
+// analysis so the explanation visibly reflects the re-check. Regulatory
+// category only — see rematch-regulation.
+export async function rematchRegulation(regulationId: string, note?: string): Promise<RematchResult> {
+  return callFunction<RematchResult>('rematch-regulation', { regulationId, note })
 }
 
 // Dismissing hides a regulation from every dashboard list. The row stays, so

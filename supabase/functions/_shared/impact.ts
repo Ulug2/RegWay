@@ -301,14 +301,23 @@ ${entities.join('\n')}`,
 
 // Generates impacts for several regulations without blocking the caller:
 // a few at a time, capped, newest first, never throwing. Meant to be passed to
-// EdgeRuntime.waitUntil().
-export async function generateImpacts(admin: SupabaseClient, regulationIds: string[], firmId: string, max = 8): Promise<void> {
+// EdgeRuntime.waitUntil(). `opts.force` re-generates even where a
+// (now possibly stale) analysis already exists — used after a profile edit
+// so the explanation for already-matched regulations catches up to the
+// corrected facts instead of silently keeping the old text.
+export async function generateImpacts(
+  admin: SupabaseClient,
+  regulationIds: string[],
+  firmId: string,
+  max = 8,
+  opts: { force?: boolean } = {},
+): Promise<void> {
   const queue = regulationIds.slice(0, max)
   const worker = async () => {
     while (queue.length) {
       const id = queue.shift()!
       try {
-        await generateImpact(admin, id, firmId)
+        await generateImpact(admin, id, firmId, opts)
       } catch (err) {
         console.error('impact generation failed', id, (err as Error).message)
       }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getFirmId, getCachedFirmId, getCachedFirm, dismissRegulation, isFlagged, setFlagged as persistFlag, fetchNotes, addNote, fetchRelatedEntityMatches, type RelatedEntityMatch } from '../lib/data'
+import { getFirmId, getCachedFirmId, getCachedFirm, dismissRegulation, isFlagged, setFlagged as persistFlag, fetchNotes, addNote, fetchRelatedEntityMatches, rematchRegulation, type RelatedEntityMatch, type RematchResult } from '../lib/data'
 import { readCache, writeCache } from '../lib/cache'
 import type { Regulation, RegulationNote, AiContext } from '../lib/types'
 import LogoMark from './LogoMark'
@@ -41,6 +41,12 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
   const [relatedMatches, setRelatedMatches] = useState<RelatedEntityMatch[]>([])
   const [focusEntity, setFocusEntity] = useState<string | null>(null)
   const [focusToken, setFocusToken] = useState(0)
+  const [disputeOpen, setDisputeOpen] = useState(false)
+  const [disputeNote, setDisputeNote] = useState('')
+  const [disputing, setDisputing] = useState(false)
+  const [disputeResult, setDisputeResult] = useState<RematchResult | null>(null)
+  const [disputeError, setDisputeError] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState(0)
 
   const regulationId = headline?.id
   const title = headline?.title || 'Untitled regulation'
@@ -58,6 +64,10 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
       setNotes(n)
       writeCache(`notes:${regulationId}`, n)
     })
+    setDisputeOpen(false)
+    setDisputeNote('')
+    setDisputeResult(null)
+    setDisputeError(null)
   }, [regulationId])
 
   useEffect(() => {
@@ -88,6 +98,21 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
     } catch {
       setDismissing(false)
       setConfirmDismiss(false)
+    }
+  }
+
+  const submitDispute = async () => {
+    if (!regulationId) return
+    setDisputing(true)
+    setDisputeError(null)
+    try {
+      const result = await rematchRegulation(regulationId, disputeNote.trim() || undefined)
+      setDisputeResult(result)
+      setRefreshToken(t => t + 1)
+    } catch (err) {
+      setDisputeError((err as Error).message || 'Something went wrong — try again.')
+    } finally {
+      setDisputing(false)
     }
   }
 
@@ -237,6 +262,24 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
               {flagged ? 'Flagged for Review' : 'Flag for Review'}
             </button>
 
+            {regulationId && headline?.category === 'regulatory' && (
+              <button
+                onClick={() => setDisputeOpen(o => !o)}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"
+                style={{
+                  background: disputeOpen ? 'rgba(2,132,199,0.10)' : 'rgba(255,255,255,0.60)',
+                  color: disputeOpen ? '#0284C7' : '#334155',
+                  border: disputeOpen ? '1px solid rgba(2,132,199,0.25)' : '1px solid rgba(186,230,253,0.50)',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M7 4.5v3M7 9.5h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+                This match looks wrong?
+              </button>
+            )}
+
             <button
               onClick={() => setNoteOpen(o => !o)}
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"
@@ -292,6 +335,59 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
             )}
           </div>
 
+          {/* Dispute drawer */}
+          {disputeOpen && (
+            <div
+              className="mt-4 p-5 rounded-xl space-y-4"
+              style={{ background: 'rgba(255,255,255,0.70)', border: '1px solid rgba(186,230,253,0.45)' }}
+            >
+              {disputeResult ? (
+                <div className="space-y-3">
+                  <div className="text-sm font-semibold" style={{ color: disputeResult.relevant ? '#0284C7' : '#B45309' }}>
+                    {disputeResult.relevant ? 'Re-checked — still considered relevant.' : 'Re-checked — no longer considered relevant.'}
+                  </div>
+                  <p className="text-sm" style={{ color: '#334155', lineHeight: 1.6 }}>{disputeResult.reason}</p>
+                  {!disputeResult.relevant && (
+                    <p className="text-xs" style={{ color: '#94a3b8' }}>This will stop appearing on your dashboard the next time it loads.</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs" style={{ color: '#64748B' }}>
+                    RegWay AI will re-check this match against your firm, fund, and company profiles as they stand right now. If a profile fact was wrong, correct it in Settings first — or describe what's off below and submit anyway.
+                  </p>
+                  <textarea
+                    className="w-full text-sm resize-none"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      color: '#0F172A',
+                      lineHeight: 1.6,
+                      minHeight: 64,
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                    placeholder={`Optional: what's wrong with this match? (e.g. "we don't actually operate in Texas")`}
+                    value={disputeNote}
+                    onChange={e => setDisputeNote(e.target.value)}
+                    disabled={disputing}
+                  />
+                  {disputeError && <p className="text-xs" style={{ color: '#B45309' }}>{disputeError}</p>}
+                  <div className="flex justify-end">
+                    <button
+                      className="text-xs px-4 py-2 rounded-full disabled:opacity-60"
+                      style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', color: 'white' }}
+                      onClick={submitDispute}
+                      disabled={disputing}
+                    >
+                      {disputing ? 'Re-checking…' : 'Re-check this match'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Notes drawer */}
           {noteOpen && (
             <div
@@ -340,7 +436,7 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
 
-            <ImpactPanel regulationId={regulationId} fallbackSummary={headline?.summary} focusEntityName={focusEntity} focusToken={focusToken} />
+            <ImpactPanel regulationId={regulationId} fallbackSummary={headline?.summary} focusEntityName={focusEntity} focusToken={focusToken} refreshToken={refreshToken} />
           </div>
 
           {/* Sidebar */}
