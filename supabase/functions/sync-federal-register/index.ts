@@ -46,6 +46,25 @@ const MAX_PAGES = 20
 //   codified rules, so it yields nothing under this pipeline's RULE/PRORULE
 //   filter. Blanket NOTICE-type inclusion was evaluated and rejected (see
 //   FINRA_TITLE_MARKER below) — not revisiting this exclusion via that path.
+//
+// 2026-10-02 expansion (healthcare + trade/sanctions, from the regulatory
+// source registry doc), each confirmed via real 9-month volume before
+// adding — same bar as the original list:
+// - 'food-and-drug-administration' (88) and 'centers-for-medicare-medicaid-services'
+//   (28): every sampled document from both is *also* tagged with the
+//   already-tracked 'health-and-human-services-department' parent, so these
+//   were already being synced — just mislabeled as generic "Health and
+//   Human Services Department" via `primaryAgency()`'s fallback, the same
+//   bug class as the earlier OCC/FinCEN mislabeling. Adding the specific
+//   slugs doesn't meaningfully change sync volume, it fixes the label.
+// - 'drug-enforcement-administration' (21), 'foreign-assets-control-office'
+//   (20, sanctions), 'industry-and-security-bureau' (20, export controls),
+//   'u-s-customs-and-border-protection' (15): genuinely new coverage — each
+//   tags only with its own (untracked, correctly so) parent department
+//   (Justice/Treasury/Commerce/Homeland Security respectively), so none of
+//   this was reaching the feed before. All four volumes are in the same
+//   range as existing tracked agencies (e.g. SEC 25, FDIC 12, FTC 10 over
+//   the same window) — not noise.
 const AGENCY_SLUGS = [
   'securities-and-exchange-commission',
   'commodity-futures-trading-commission',
@@ -62,6 +81,12 @@ const AGENCY_SLUGS = [
   'financial-crimes-enforcement-network',
   'federal-trade-commission',
   'national-labor-relations-board',
+  'food-and-drug-administration',
+  'centers-for-medicare-medicaid-services',
+  'drug-enforcement-administration',
+  'foreign-assets-control-office',
+  'industry-and-security-bureau',
+  'u-s-customs-and-border-protection',
 ]
 
 interface FederalRegisterDocument {
@@ -71,7 +96,7 @@ interface FederalRegisterDocument {
   publication_date: string
   effective_on: string | null
   html_url: string
-  agencies: { name: string; slug: string }[]
+  agencies: { name: string; slug: string; parent_id: number | null }[]
   type: string
 }
 
@@ -81,11 +106,17 @@ const TRACKED_SLUGS = new Set(AGENCY_SLUGS)
 // when a specific bureau we track (e.g. Comptroller of the Currency, FinCEN)
 // is what actually matched our query — Federal Register's own convention,
 // not something specific to this document. Picking `agencies[0]` blindly
-// mislabels those as the generic parent. Prefer whichever entry's slug is
-// one we actually track, falling back to the first entry if somehow none
-// match (shouldn't happen, since the query itself filtered on these slugs).
+// mislabels those as the generic parent.
+//
+// Since the 2026-10-02 expansion tracks both a parent (HHS) and its own
+// children (FDA, CMS), a naive "first tracked match" still picks the
+// parent — it's listed first and is tracked too, so `.find()` short-circuits
+// before reaching the more specific child. Prefer whichever tracked entry
+// has a parent_id (a sub-agency) over one without (a top-level department),
+// falling back to the first tracked match, then the first entry overall.
 function primaryAgency(doc: FederalRegisterDocument) {
-  return doc.agencies?.find(a => TRACKED_SLUGS.has(a.slug)) ?? doc.agencies?.[0]
+  const tracked = doc.agencies?.filter(a => TRACKED_SLUGS.has(a.slug)) ?? []
+  return tracked.find(a => a.parent_id != null) ?? tracked[0] ?? doc.agencies?.[0]
 }
 
 // FINRA has no Federal Register agency slug of its own — it's a private
