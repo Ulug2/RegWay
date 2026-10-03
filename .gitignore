@@ -27,8 +27,16 @@ supabase/.temp/
 # machine has approved) — not shared project config, unlike .mcp.json.
 .claude/settings.local.json
 
-# Working notes: investigate/implement prompt pairs and the running roadmap.
-# Useful locally as a working log, not meant to be part of the published repo.
+# Working notes: investigate/implement prompt pairs. Useful locally as a
+# working log, not meant to be part of the published repo.
 /prompts/
-/plans/
+
+# Everything in /plans/ stays local-only by default (YC execution doc,
+# cost-model notes, etc.) EXCEPT the two roadmap docs below, which are
+# tracked deliberately so a cloud Claude Code session (e.g. started from
+# the Claude app, no laptop needed) can actually see current priorities.
+/plans/*
+!/plans/regway-mvp-roadmap.md
+!/plans/regway-ai-multi-agent-architecture.md
+
 .DS_Store
