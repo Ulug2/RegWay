@@ -8,9 +8,11 @@
 //     -H "Authorization: Bearer <SERVICE_ROLE_OR_ANON_KEY>"
 //
 // One feed item per country, re-issued in place whenever the advisory is
-// reviewed. A row's identity is (country page, level), so a level change
-// (e.g. 2 → 4 after a coup) arrives as a new development to match, while a
-// same-level re-issue just refreshes the existing row's text and date.
+// reviewed. A row's identity is (countries, level), so a level change (e.g.
+// 2 → 4 after a coup) arrives as a new development to match, while a
+// same-level re-issue just refreshes the existing row's text and date. Not
+// the page URL: the site is migrating URL schemes and serves the same
+// country under either one from run to run.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { handleOptions, json } from '../_shared/cors.ts'
@@ -34,6 +36,17 @@ const TITLE_PATTERN = /^(.+?)\s+[-–]\s+Level\s+(\d)\s*:\s*(.+)$/
 // Macau - See Summaries"), so every country named counts. A bare name the
 // free-text extractor skips as ambiguous ("Jordan", "Chad") is still a
 // country here, since the title's subject is always a place.
+// A re-issue opens its description with a note about what changed ("There
+// were no changes to the advisory level or risk indicators. Advisory summary
+// was updated."), half the feed on any given day. The summary shown in the
+// app starts at the advisory itself; the full text keeps the note.
+const CHANGE_NOTE =
+  /^(?:(?:Reissued statement:\s*)?(?:There (?:were|was|are|is) no changes?\b[^.]*\.|Reissued\b[^.]*\.|Advisory summary was updated\b[^.]*\.)\s*)+/i
+
+// "Curaçao" → "curacao": accents dropped, anything else non-alphanumeric → "-".
+const slug = (s: string) =>
+  s.normalize('NFKD').replace(/\p{M}/gu, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
+
 function parseAdvisory(title: string) {
   const match = TITLE_PATTERN.exec(title.trim())
   if (!match) return null
@@ -66,11 +79,11 @@ Deno.serve(async req => {
         source: SOURCE,
         category: 'geopolitical' as const,
         countries: advisory!.countries,
-        external_id: `${new URL(item.link).pathname}#level-${advisory!.level}`,
+        external_id: `${advisory!.countries.map(slug).join('+')}#level-${advisory!.level}`,
         title: item.title,
         agency: 'U.S. Department of State',
         jurisdiction: advisory!.countries.join(', '),
-        summary: (item.description || `${advisory!.place}: Level ${advisory!.level}, ${advisory!.label}.`).slice(0, 600),
+        summary: (item.description.replace(CHANGE_NOTE, '') || `${advisory!.place}: Level ${advisory!.level}, ${advisory!.label}.`).slice(0, 600),
         published_date: new Date(item.pubDate).toISOString().slice(0, 10),
         effective_date: null,
         source_url: item.link,

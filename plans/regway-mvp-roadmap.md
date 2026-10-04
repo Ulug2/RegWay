@@ -55,6 +55,12 @@ Item 1 below is now its Phase 2 remainder. Audit and implementation notes:
 `prompts/geopolitical-monitoring-investigate.md` and `-implement.md` (now
 tracked in git, so cloud sessions can read them).
 
+**2026-10-04 (later):** Phase 1 rechecked with full network access (see
+"Geopolitical Phase 1 recheck" under Completed): the Federal Register
+CAPTCHA fix (old item 1.2) is done, the feeds were checked against their
+live shape and fixed, and every function was redeployed with the CLI.
+Notes: `prompts/geopolitical-phase1-recheck-*.md`.
+
 ## Priority order
 
 ### 1. Geopolitical monitoring, Phase 2
@@ -65,28 +71,13 @@ Phase 1 is done (see Completed). What's left, roughly in order of value:
    relationship doesn't exist anywhere today, and spec §3 forbids guessing
    it, so the geopolitical matcher never scopes a verdict to a fund. This is
    also prerequisite data for fund-level regulatory/enforcement exposure.
-2. **Federal Register full text can silently be a CAPTCHA page (do
-   first).** Found 2026-10-04 once the network allowed federalregister.gov:
-   both the HTML page and the `.txt` full-text URL (which matches the API's
-   own `raw_text_url`) can answer automated requests with a 302 to
-   `unblock.federalregister.gov`. `_shared/text.ts` follows redirects, so a
-   blocked fetch returns the CAPTCHA page as if it were the document. This
-   likely explains why 45 of 103 SDN notices got no countries, and it can
-   still feed a CAPTCHA page to an impact analysis when Supabase's IP is
-   rate-limited (the fixed A.L.A. analysis did read the real proclamation,
-   so it isn't blocked every time). Fix: treat a redirect to
-   `unblock.federalregister.gov` (or a CAPTCHA body) as a failed fetch, and
-   fall back to GovInfo's official copy
-   (`https://www.govinfo.gov/content/pkg/FR-<date>/html/<doc number>.htm`),
-   which needs `www.govinfo.gov` allowed to test from the cloud container.
-   Then re-run the backfill and re-check the 45 country-less notices.
-3. **`rematch-regulation` for geopolitical.** The "This match looks wrong?"
+2. **`rematch-regulation` for geopolitical.** The "This match looks wrong?"
    drawer still refuses non-regulatory categories. Dismiss works.
-4. **Category filter** (item 6), now that three categories exist.
-5. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
+3. **Category filter** (item 6), now that three categories exist.
+4. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
    Recent Actions, once a portfolio company with UK/EU-specific exposure
    makes them worth a connector.
-6. **One known residual false positive** in the H.I.G. test data: a
+5. **One known residual false positive** in the H.I.G. test data: a
    Section 301 "manufacturing sectors" investigation matched to 3Pillar
    Global (software) via India. The model's own reason says the sector fit
    isn't confirmed. Left in place as an honest example of the limit, not
@@ -430,6 +421,58 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
 
 ## Completed
 
+### Geopolitical Phase 1 recheck (2026-10-04, later)
+Rechecked with full network access. Notes:
+`prompts/geopolitical-phase1-recheck-investigate.md` and `-implement.md`.
+- **Federal Register CAPTCHA (was item 1.2).** Every federalregister.gov
+  document URL (`.txt`, `.xml`, HTML) can 302 to `unblock.federalregister.gov`
+  for automated clients. `_shared/text.ts` now treats a response that
+  ended on that host as a failed fetch (no retry), and the new
+  `_shared/federalRegister.ts` gives the sync and `impact.ts` one ordered
+  list of text URLs: FR `.txt`, then GovInfo's official copy
+  (`govinfo.gov/content/pkg/FR-<date>/html/<doc>.htm`, which also carries
+  same-day documents and corrections), then the HTML page. Verified on four
+  real documents from a blocked client.
+- **The 45 (now 46) country-less SDN notices weren't CAPTCHA casualties.**
+  Re-read from GovInfo: 35 publish the designee list as an image, 11 name
+  no country, 0 name one. The country is in the authority line instead
+  (`E.O. 13902` = Iran), so new `_shared/sanctionsPrograms.ts` maps
+  single-country program orders to their country (program-wide ones like
+  13224/13382 stay global on purpose). After the backfill: 46 → 32
+  country-less, 14 now Iran (one also Mali). That moves them from
+  "global, ask the AI for every firm with foreign exposure" to the free
+  country pre-filter.
+- **Impact analyses from a CAPTCHA page:** of 3 Federal Register analyses,
+  2 read the real text. The third (`C1-2026-18574`, Cartesian) was written
+  blind, but its relevance row is now not-relevant, so it's an orphan no
+  screen shows; left in place rather than regenerated against no match.
+- **Travel advisories RSS, live:** 216 items, every title and date parses.
+  Fixed: summaries lost their opening words (`rss.ts` read
+  `<![CDATA[Do not travel<p>` as one tag; CDATA is now unwrapped first,
+  verified byte-identical on the SEC/FINRA feeds); summaries were often
+  just the re-issue note (now skipped); and the site serves each country
+  under two URL schemes from run to run, so rows keyed on the URL path
+  duplicated 7 countries. Rows are now keyed by countries + level; the 60
+  old rows were deleted (approved, nothing referenced them) and re-synced
+  as 53.
+- **Presidential documents, last 9 months:** 213 total, 59 kept. The kept
+  set was right, but the filter missed real actions on word form
+  ("Importation", "Duty-Free", "Trading With the Enemy Act", "Customs",
+  "de minimis"). Widened; adds exactly those 8, no ceremonial documents.
+- **Matcher:** the first run over the new items matched the global de
+  minimis suspension to 3Pillar and A.L.A. on "could affect … if it
+  imports". One rule added (foreign facilities alone aren't import
+  activity); re-run rejects all four new items. Test verdicts and the one
+  impact they spawned were removed.
+- **Deploys:** all 13 functions redeployed with the CLI; production now
+  matches the repo.
+
+Found, not fixed: `finraNotices` hits the 20-page cap on a 9-month
+backfill (daily runs are far below it); Federal Register republications
+(`R1-…`) are stored next to the original (item 8); inside functions,
+`SUPABASE_SERVICE_ROLE_KEY` is now the `sb_secret_…` key, so a manual
+service-role call to a matcher must use that key, not the legacy JWT.
+
 ### Geopolitical monitoring, Phase 1 (2026-10-04)
 Spec §8. Audit first (`prompts/geopolitical-monitoring-investigate.md`):
 OFAC and BIS documents were already being synced but labelled
@@ -498,8 +541,7 @@ page and opens to the analysis; country search filters 200 options.
 Deployed to production in this pass: `sync-federal-register`,
 `sync-travel-advisories`, `match-geopolitical-relevance`, `match-relevance`
 (now regulatory-only), `regulation-impact`, `refresh-entity-impacts`.
-**Not redeployed** (they still run the previous `_shared` code, which is
-behaviorally the same for their categories): `match-enforcement-relevance`,
+**Not redeployed at the time** (redeployed in the recheck above): `match-enforcement-relevance`,
 `rematch-regulation`, `company-regulations`, `sync-sec-enforcement`,
 `sync-finra-enforcement`, `sync-sec-admin-proceedings`. Redeploy them with the
 CLI to pick up the shared `upsertRelevanceRows` dedupe and RSS entity

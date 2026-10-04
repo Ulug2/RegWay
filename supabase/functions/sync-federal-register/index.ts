@@ -24,6 +24,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { extractCountries } from '../_shared/countries.ts'
+import { federalRegisterTextUrl, federalRegisterTextUrls } from '../_shared/federalRegister.ts'
+import { sanctionsProgramCountries } from '../_shared/sanctionsPrograms.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
 import { fetchPlainText } from '../_shared/text.ts'
 
@@ -152,8 +154,10 @@ const GEOPOLITICAL_AGENCY_SLUGS = new Set([
 // observance). The ones that matter here create or extend a sanctions
 // program (IEEPA national emergencies, blocking orders) or change trade
 // terms (Section 232/301 tariff proclamations).
+// Word forms matter: titles say "Importation", "Duty-Free", "Trading With
+// the Enemy Act" (the Cuba program) as often as "imports" or "tariffs".
 const GEOPOLITICAL_TOPIC_PATTERN =
-  /\b(sanctions?|sanctioned|tariffs?|duties|imports?|exports?|embargo(es)?|national emergency|blocking property|International Emergency Economic Powers|Section 232|Section 301|trade)\b/i
+  /\b(sanctions?|sanctioned|tariffs?|duty|duties|imports?|importation|exports?|exportation|embargo(es)?|national emergency|blocking property|International Emergency Economic Powers|Trading With the Enemy|Section 232|Section 301|trade|customs|de minimis)\b/i
 
 // USTR's NOTICE stream also carries advisory-committee nominations and
 // hearing logistics; keep only actual trade actions.
@@ -190,9 +194,10 @@ const FEEDS: Feed[] = [
   },
   // OFAC publishes each round of SDN designations as a "Notice of OFAC
   // Sanctions Actions": the official record of who was sanctioned and under
-  // which program. Every one carries the same boilerplate abstract; the
-  // designees' nationalities and addresses are only in the body, so the
-  // countries come from the full text (~5 notices a week).
+  // which program. Every one carries the same boilerplate abstract, and the
+  // designee list itself is usually an image, so the countries come from the
+  // full text: any it names, plus the country of the sanctions program its
+  // authority line cites (_shared/sanctionsPrograms.ts). ~5 notices a week.
   { name: 'ofacNotices', query: { agencies: ['foreign-assets-control-office'], types: ['NOTICE'] }, countriesFromFullText: true },
   {
     name: 'tradeActions',
@@ -212,19 +217,10 @@ const FEEDS: Feed[] = [
 // President, Treasury), which Federal Register lists first.
 const TRACKED_SLUGS = new Set(FEEDS.flatMap(feed => feed.query.agencies))
 
-// Federal Register serves every document's body as plain text at a stable
-// path derived from its publication date and number. Stored on each row as
-// `raw.raw_text_url`, which _shared/impact.ts reads before falling back to
-// the HTML page, and the HTML page answers automated requests with a CAPTCHA
-// (verified: 2 of 3 existing Federal Register impact analyses were written
-// from the CAPTCHA page rather than the rule).
-const fullTextUrl = (doc: FederalRegisterDocument) =>
-  `https://www.federalregister.gov/documents/full_text/text/${doc.publication_date.replaceAll('-', '/')}/${doc.document_number}.txt`
-
 async function countriesOf(doc: FederalRegisterDocument, feed: Feed): Promise<string[]> {
   if (!feed.countriesFromFullText) return extractCountries(docText(doc))
-  const body = await fetchPlainText([fullTextUrl(doc), doc.html_url], { minLength: 200 })
-  return extractCountries(`${docText(doc)} ${body}`)
+  const body = await fetchPlainText(federalRegisterTextUrls(doc), { minLength: 200 })
+  return [...new Set([...extractCountries(`${docText(doc)} ${body}`), ...sanctionsProgramCountries(body)])]
 }
 
 // Bounded parallelism for the per-document full-text fetches, so a long
@@ -311,7 +307,7 @@ Deno.serve(async (req) => {
           published_date: doc.publication_date,
           effective_date: doc.effective_on,
           source_url: doc.html_url,
-          raw: { ...doc, raw_text_url: fullTextUrl(doc) },
+          raw: { ...doc, raw_text_url: federalRegisterTextUrl(doc) },
         })
       })
     }
