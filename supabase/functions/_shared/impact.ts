@@ -117,12 +117,13 @@ export async function generateImpact(
     if (existing) return 'exists'
   }
 
-  const [{ data: reg }, { data: firm }, { data: funds }, { data: companies }, { data: links }] = await Promise.all([
+  const [{ data: reg }, { data: firm }, { data: funds }, { data: companies }, { data: links }, { data: holdings }] = await Promise.all([
     admin.from('regulations').select('id, source, title, agency, jurisdiction, summary, published_date, effective_date, source_url, raw, category').eq('id', regulationId).single(),
     admin.from('firms').select('name, hq_location, jurisdictions, profile').eq('id', firmId).single(),
     admin.from('funds').select('id, name, structure, size, jurisdictions, profile').eq('firm_id', firmId),
     admin.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile').eq('firm_id', firmId),
     admin.from('regulation_relevance').select('fund_id, portfolio_company_id, relevance_reason').eq('regulation_id', regulationId).eq('firm_id', firmId),
+    admin.from('fund_holdings').select('fund_id, portfolio_company_id').eq('firm_id', firmId),
   ])
   if (!reg || !firm) throw new Error('Regulation or firm not found')
 
@@ -134,7 +135,12 @@ export async function generateImpact(
     `FIRM — ${firm.name}: ${facts(firm as Record<string, unknown>, ['hq_location', 'legal_domicile', 'jurisdictions', 'firm_type', 'adviser_registration', 'strategies', 'industries', 'geographies'])}`,
     ...(funds ?? [])
       .filter(f => linkedFunds.has(f.id))
-      .map(f => `FUND — ${f.name}: ${facts(f as Record<string, unknown>, ['structure', 'size', 'jurisdictions', 'status', 'strategy', 'ownership', 'industries', 'geographies'])}`),
+      .map(f => {
+        // The companies a fund holds (fund_holdings), so an indirect match
+        // can be written as a path: fund → company → location.
+        const holds = (holdings ?? []).filter(h => h.fund_id === f.id).map(h => companies?.find(c => c.id === h.portfolio_company_id)?.name).filter(Boolean)
+        return `FUND — ${f.name}: ${facts({ ...f, holds } as Record<string, unknown>, ['structure', 'size', 'jurisdictions', 'status', 'strategy', 'ownership', 'industries', 'geographies', 'holds'])}`
+      }),
     ...(companies ?? [])
       .filter(c => linkedCompanies.has(c.id))
       .map(

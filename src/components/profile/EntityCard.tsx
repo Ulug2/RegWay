@@ -16,6 +16,9 @@ interface EntityCardProps {
   // Omitted entirely for firm/fund scopes, which have no logo concept.
   logoUrl?: string | null
   onUploadLogo?: (file: File) => Promise<void>
+  // Relationship controls that save on their own, outside the questionnaire
+  // (e.g. which funds hold a company), shown above the form.
+  extra?: React.ReactNode
 }
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
@@ -76,7 +79,7 @@ function formatLastUpdated(iso: unknown): string | null {
 // One firm / fund / company: a collapsible glass card holding its full
 // questionnaire. Signup answers and "complete later" answers live in the same
 // form, with the still-needed required ones softly flagged.
-export default function EntityCard({ scope, title, subtitle, row, defaultOpen, onSave, onRemove, logoUrl, onUploadLogo }: EntityCardProps) {
+export default function EntityCard({ scope, title, subtitle, row, defaultOpen, onSave, onRemove, logoUrl, onUploadLogo, extra }: EntityCardProps) {
   const [open, setOpen] = useState(!!defaultOpen)
   const [answers, setAnswers] = useState<Answers>(() => fromRow(scope, row))
   const [busy, setBusy] = useState(false)
@@ -146,6 +149,7 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
       {open && (
         <div style={{ padding: '4px 28px 28px' }}>
           {onUploadLogo && <LogoUpload title={title} logoUrl={logoUrl} onUpload={onUploadLogo} />}
+          {extra && <div className="mb-7">{extra}</div>}
           <QuestionForm questions={questionsFor(scope)} answers={answers} onChange={change} flagMissing sections />
           <div className="flex items-center gap-4 mt-7 pt-5" style={{ borderTop: '1px solid rgba(186,230,253,0.35)' }}>
             <button className="btn-primary" onClick={save} disabled={busy || !dirty}>{busy ? 'Saving…' : 'Save changes'}</button>

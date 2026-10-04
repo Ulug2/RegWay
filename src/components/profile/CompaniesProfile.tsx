@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react'
-import { fetchPortfolioCompanies, getCachedCompanies, addPortfolioCompany, saveCompanyAnswers, removePortfolioCompany, uploadCompanyLogo } from '../../lib/data'
-import type { PortfolioCompany } from '../../lib/types'
+import { fetchPortfolioCompanies, getCachedCompanies, addPortfolioCompany, saveCompanyAnswers, removePortfolioCompany, uploadCompanyLogo, fetchFunds, getCachedFunds, fetchHoldings, setHolding } from '../../lib/data'
+import type { Fund, FundHolding, PortfolioCompany } from '../../lib/types'
 import { prewarmCompanies } from '../../lib/scans'
 import EntityCard from './EntityCard'
 import AddEntityCard from './AddEntityCard'
+import { HeldByFundsField } from './FundHoldings'
 
 export default function CompaniesProfile({ firmId, focusId }: { firmId: string; focusId?: string | null }) {
   const [companies, setCompanies] = useState<PortfolioCompany[] | null>(() => getCachedCompanies() ?? null)
+  const [funds, setFunds] = useState<Fund[]>(() => getCachedFunds() ?? [])
+  const [holdings, setHoldings] = useState<FundHolding[] | null>(null)
   const reload = () => fetchPortfolioCompanies(firmId).then(setCompanies)
-  useEffect(() => { reload() }, [firmId])
+  const reloadHoldings = () => fetchHoldings(firmId).then(setHoldings)
+  useEffect(() => {
+    reload()
+    fetchFunds(firmId).then(setFunds)
+    reloadHoldings()
+  }, [firmId])
+
+  const heldBy = (companyId: string) => holdings && new Set(holdings.filter(h => h.portfolio_company_id === companyId).map(h => h.fund_id))
 
   return (
     <div className="space-y-5">
@@ -25,6 +35,13 @@ export default function CompaniesProfile({ firmId, focusId }: { firmId: string; 
           onRemove={async () => { await removePortfolioCompany(co.id); await reload() }}
           logoUrl={co.logo_url}
           onUploadLogo={async file => { await uploadCompanyLogo(co.id, file); await reload() }}
+          extra={
+            <HeldByFundsField
+              funds={funds}
+              heldFundIds={heldBy(co.id)}
+              onToggle={async (fundId, held) => { await setHolding(firmId, fundId, co.id, held); await reloadHoldings() }}
+            />
+          }
         />
       ))}
       <AddEntityCard scope="company" heading="Add a portfolio company" cta="Add Company" onAdd={async a => { await addPortfolioCompany(firmId, a); await reload(); prewarmCompanies(firmId) }} />

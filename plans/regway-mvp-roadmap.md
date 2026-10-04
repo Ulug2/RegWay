@@ -59,29 +59,28 @@ tracked in git, so cloud sessions can read them).
 "Geopolitical Phase 1 recheck" under Completed): the Federal Register
 CAPTCHA fix (old item 1.2) is done, the feeds were checked against their
 live shape and fixed, and every function was redeployed with the CLI.
-Notes: `prompts/geopolitical-phase1-recheck-*.md`.
+Notes: `prompts/geopolitical-phase1-recheck-*.md`. Fund → company
+holdings (old item 1.1) followed: `prompts/fund-holdings-*.md`.
 
 ## Priority order
 
 ### 1. Geopolitical monitoring, Phase 2
-Phase 1 is done (see Completed). What's left, roughly in order of value:
-1. **Fund → company holdings.** Spec §9/§13's indirect path ("the fund
-   holds Lumen, which has a supplier in Region C") needs a
-   `fund_holdings (fund_id, portfolio_company_id)` table plus UI. The
-   relationship doesn't exist anywhere today, and spec §3 forbids guessing
-   it, so the geopolitical matcher never scopes a verdict to a fund. This is
-   also prerequisite data for fund-level regulatory/enforcement exposure.
-2. **`rematch-regulation` for geopolitical.** The "This match looks wrong?"
+Phase 1 and fund → company holdings are done (see Completed). What's
+left, roughly in order of value:
+1. **`rematch-regulation` for geopolitical.** The "This match looks wrong?"
    drawer still refuses non-regulatory categories. Dismiss works.
-3. **Category filter** (item 6), now that three categories exist.
-4. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
+2. **Category filter** (item 6), now that three categories exist.
+3. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
    Recent Actions, once a portfolio company with UK/EU-specific exposure
    makes them worth a connector.
-5. **One known residual false positive** in the H.I.G. test data: a
+4. **One known residual false positive** in the H.I.G. test data: a
    Section 301 "manufacturing sectors" investigation matched to 3Pillar
    Global (software) via India. The model's own reason says the sector fit
    isn't confirmed. Left in place as an honest example of the limit, not
-   fixed by more prompt tuning.
+   fixed by more prompt tuning. Same class seen on the holdings test firm
+   (2026-10-04): a drone-export rule matched to an aerospace-logistics
+   company "if it manufactures UAVs … not recorded". A structural fix is
+   the Skeptic pass (item 5), not another prompt rule.
 
 "Live regulation monitoring" (below) is the other large net-new piece of
 work. It should be scoped as its own investigate/implement pass.
@@ -420,6 +419,49 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Fund → company holdings (2026-10-04)
+Spec §3/§9/§13's indirect path ("the fund holds Lumen, which has a supplier
+in Region C"). Notes: `prompts/fund-holdings-investigate.md` and
+`-implement.md`.
+- **`fund_holdings`** (migrations 0024/0025): many to many, user-entered
+  only. Composite FKs to `funds (id, firm_id)` and
+  `portfolio_companies (id, firm_id)` make a cross-firm holding impossible
+  whatever a client sends; RLS = the firm's members.
+- **UI**: each company card has a "Which of your funds hold this company?"
+  chip picker that saves per toggle (outside the questionnaire, like the
+  logo); each fund card lists what it holds. Empty reads "Not recorded",
+  and nothing is claimed while holdings are still loading.
+- **Fund matches are derived, not asked** (`_shared/holdings.ts`): a fund's
+  geopolitical exposure is exactly "a company it holds has a supported
+  connection", so every `match-geopolitical-relevance` call recomputes
+  fund rows from the company verdicts plus holdings (no AI call, no way for
+  the model to invent ownership). Marked `via_holdings`, so they're
+  added, rewritten and removed as holdings or company verdicts change;
+  direct fund verdicts and dismissals are never touched. Sibling companies
+  in the same fund get nothing (§13). Changed fund rows force-regenerate
+  that analysis so the fund's card appears or goes; fund lines in the
+  analysis prompt name what the fund holds, so it writes the path.
+- The helper takes a category, so regulatory/enforcement could opt in later
+  (today their matchers ask Claude for fund verdicts from the fund's own
+  profile instead).
+
+Verified live with a throwaway firm (deleted afterwards, along with its
+login; its 23 `usage_events` rows are kept as spend records). The firm had
+a fund holding an Italian aerospace-logistics company and a U.S.-only
+software sibling. The matcher evaluated 99 candidates in 3 calls; the
+aero company matched 2 items, each produced exactly one fund row, and the
+sibling got none. The fund's analysis card wrote "Fund holds … which is
+headquartered in Naples" and noted on its own that the sibling has no
+connection. Rewording, holding removal (both fund rows deleted, analysis
+regenerated) and a repeat no-op run all behaved. Composite FK rejected a
+cross-firm holding; RLS hid the test firm's holdings from H.I.G.'s user and
+refused an insert into them. In the browser as the test user: the picker
+showed "Not recorded" and then the selected chip, the click persisted the
+holding and re-derived the fund rows, the fund card listed both companies,
+and the dashboard's Fund Structure tab showed the derived geopolitical
+items under the fund. H.I.G.'s own holdings were not entered (unknown;
+§3), so its fund pages stay unchanged until someone records them.
 
 ### Geopolitical Phase 1 recheck (2026-10-04, later)
 Rechecked with full network access. Notes:

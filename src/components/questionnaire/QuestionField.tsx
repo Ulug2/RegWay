@@ -4,7 +4,7 @@ import { COUNTRIES, RECOMMENDED, US_STATES, emptyLocation, isEmpty, type Locatio
 
 const CHIP_LIMIT = 24
 
-function Chip({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
+export function Chip({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"

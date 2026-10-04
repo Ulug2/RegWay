@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
 import { toRow, type Answers } from './questionnaire'
-import type { Firm, Fund, ImpactContent, PortfolioCompany, Regulation, RegulationNote } from './types'
+import type { Firm, Fund, FundHolding, ImpactContent, PortfolioCompany, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
   const { data, error } = await supabase.from('firm_members').select('firm_id').maybeSingle()
@@ -236,6 +236,27 @@ export async function saveFundAnswers(fundId: string, answers: Answers): Promise
 export async function removeFund(fundId: string): Promise<void> {
   const { error } = await supabase.from('funds').delete().eq('id', fundId)
   if (error) throw error
+}
+
+// Which fund holds which portfolio company. Only ever entered by the user
+// (spec §3: ownership is never inferred), so a company with no rows is
+// "not recorded", not "held by no fund".
+export async function fetchHoldings(firmId: string): Promise<FundHolding[]> {
+  const { data, error } = await supabase.from('fund_holdings').select('fund_id, portfolio_company_id').eq('firm_id', firmId)
+  if (error) throw error
+  return data ?? []
+}
+
+// Records or removes one holding, then lets the geopolitical matcher bring
+// fund-level matches in line (a fund's exposure is derived from the
+// companies it holds; no AI call is made for that part).
+export async function setHolding(firmId: string, fundId: string, companyId: string, held: boolean): Promise<void> {
+  const { error } = held
+    ? await supabase.from('fund_holdings').upsert({ firm_id: firmId, fund_id: fundId, portfolio_company_id: companyId })
+    : await supabase.from('fund_holdings').delete().eq('fund_id', fundId).eq('portfolio_company_id', companyId)
+  if (error) throw error
+  dropCache('regs:fund')
+  matchGeopoliticalDevelopments().catch(() => {})
 }
 
 export async function addPortfolioCompany(firmId: string, answers: Answers): Promise<void> {

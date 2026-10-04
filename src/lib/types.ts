@@ -20,6 +20,12 @@ export interface Fund {
   profile_updated_at: string | null
 }
 
+// One fund holding one portfolio company (`fund_holdings`). Many to many.
+export interface FundHolding {
+  fund_id: string
+  portfolio_company_id: string
+}
+
 export interface PortfolioCompany {
   id: string
   firm_id: string

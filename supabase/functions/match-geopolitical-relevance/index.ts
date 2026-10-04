@@ -16,9 +16,10 @@
 //    facts already computed, so the verdict explains a connection the code
 //    found rather than inventing one.
 //
-// Fund-level indirect matches ("the fund holds a company that operates
-// there") need a fund → company holdings relationship, which doesn't exist
-// yet. Spec §3 forbids guessing it, so funds are not matched here.
+// 3. Fund-level indirect matches ("the fund holds a company that operates
+//    there") are derived from recorded holdings plus the company verdicts
+//    (_shared/holdings.ts), never asked of the model, so ownership is
+//    never guessed (spec §3).
 //
 //   POST /functions/v1/match-geopolitical-relevance   {}
 //   Authorization: Bearer <user session access_token>   — matches the caller's own firm
@@ -26,6 +27,9 @@
 //   POST /functions/v1/match-geopolitical-relevance   { "reevaluate": true }
 //   — after a location edit: forgets this firm's "not relevant" geopolitical
 //   verdicts first, so items rejected under the old footprint get another look.
+//
+// Every call also re-derives fund rows from holdings, so calling it with {}
+// after a holdings edit is how fund pages catch up.
 //
 // Or, for cron/admin use:
 //   POST /functions/v1/match-geopolitical-relevance   { "firmId": "<uuid>" }
@@ -35,7 +39,8 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { generateImpacts } from '../_shared/impact.ts'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { companyFootprint, describeFootprint, firmFootprint, foreignCountries, hasForeignExposure, overlaps, type EntityFootprint } from '../_shared/footprint.ts'
-import { buildRelevanceRows, checkRateLimit, loadFirmEntities, resolveFirmContext, upsertRelevanceRows, type Verdict } from '../_shared/relevance.ts'
+import { syncHoldingsRollup } from '../_shared/holdings.ts'
+import { buildRelevanceRows, checkRateLimit, loadFirmEntities, resolveFirmContext, upsertRelevanceRows, type CompanyRow, type FirmRow, type FundRow, type Verdict } from '../_shared/relevance.ts'
 import { recordUsage } from '../_shared/usage.ts'
 
 const MODEL = 'claude-sonnet-4-5'
@@ -130,7 +135,144 @@ Language rules for every reason (these are hard rules):
 - Say which kind of connection it is: "direct" (the entity's own headquarters, facilities, or operations) or "indirect" (a supplier location).
 - State the possible effect conditionally ("could affect", "if it sources from") and name what is unknown.
 
-Scope: "company" (with the exact company name) for a portfolio company's connection; "firm" only for the firm's own headquarters/domicile. Never use "fund": fund-to-company holdings are not recorded, so no fund-level connection can be supported. Return at least one verdict for every numbered development; add one verdict per additional company the same development connects to.`
+Scope: "company" (with the exact company name) for a portfolio company's connection; "firm" only for the firm's own headquarters/domicile. Never use "fund": a fund's exposure is derived automatically from the companies it is recorded as holding, so judge companies and the firm only. Return at least one verdict for every numbered development; add one verdict per additional company the same development connects to.`
+
+interface EvaluationResult {
+  evaluated: number
+  relevantIds: string[]
+  candidates: number
+}
+
+// Pre-filter, then one AI call over the developments this firm hasn't been
+// evaluated against yet. Returns a Response only when the caller is rate
+// limited.
+async function evaluateNew(
+  admin: SupabaseClient,
+  firmId: string,
+  { firm, funds, companies }: { firm: FirmRow; funds: FundRow[]; companies: CompanyRow[] },
+  rateLimitClient: SupabaseClient | null,
+): Promise<EvaluationResult | Response> {
+  const footprints = [firmFootprint(firm), ...companies.map(companyFootprint)]
+  const candidates = await loadCandidates(admin, footprints)
+  if (candidates.length === 0) return { evaluated: 0, relevantIds: [], candidates: 0 }
+
+  const { data: alreadyEvaluated, error: evaluatedError } = await admin
+    .from('regulation_relevance')
+    .select('regulation_id')
+    .eq('firm_id', firmId)
+    .in('regulation_id', candidates.map(c => c.id))
+  if (evaluatedError) throw evaluatedError
+
+  const evaluatedIds = new Set((alreadyEvaluated ?? []).map(r => r.regulation_id))
+  const unevaluated = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
+  if (unevaluated.length === 0) return { evaluated: 0, relevantIds: [], candidates: candidates.length }
+
+  // Only checked once there's real work, so a no-op run (the common case
+  // on dashboard load) never uses up the caller's allowance.
+  if (rateLimitClient) {
+    const allowed = await checkRateLimit(rateLimitClient, FUNCTION_NAME, 15, 60)
+    if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
+  }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 4096,
+      tool_choice: { type: 'tool', name: 'submit_verdicts' },
+      tools: [
+        {
+          name: 'submit_verdicts',
+          description: 'Submit a relevance verdict for every numbered geopolitical development.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              verdicts: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    index: { type: 'integer' },
+                    relevant: { type: 'boolean' },
+                    reason: {
+                      type: 'string',
+                      description:
+                        'One or two sentences: the recorded location fact, whether the connection is direct or indirect, and the possible effect stated conditionally. Never imply the entity is sanctioned or prohibited from anything.',
+                    },
+                    scope: { type: 'string', enum: ['firm', 'company'] },
+                    entity_name: { type: 'string', description: 'Exact portfolio company name if scope is company, else empty string' },
+                  },
+                  required: ['index', 'relevant', 'reason', 'scope'],
+                },
+              },
+            },
+            required: ['verdicts'],
+          },
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              // Changes only when the firm edits a location — cached
+              // separately from the per-batch development list.
+              type: 'text',
+              cache_control: { type: 'ephemeral' },
+              text: `Firm: ${firm.name}. Recorded location footprints:
+${footprints.map(describeFootprint).join('\n')}
+
+${INSTRUCTIONS}`,
+            },
+            { type: 'text', text: unevaluated.map((c, i) => candidateLine(c, i, footprints)).join('\n\n') },
+          ],
+        },
+      ],
+    }),
+  })
+
+  if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`)
+  const result = await res.json()
+  const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
+  // A company verdict naming no real company would otherwise fall through
+  // buildRelevanceRows to a firm-level row, putting a company's connection
+  // on the firm page. Drop it; the item is re-evaluated next run.
+  const companyNames = new Set(companies.map(c => c.name.toLowerCase()))
+  const verdicts: Verdict[] = (toolUse?.input?.verdicts ?? []).filter(
+    (v: Verdict) => v.scope === 'firm' || (v.scope === 'company' && !!v.entity_name && companyNames.has(v.entity_name.toLowerCase())),
+  )
+
+  await recordUsage(admin, {
+    functionName: FUNCTION_NAME,
+    firmId,
+    model: MODEL,
+    inputTokens: result.usage?.input_tokens,
+    cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
+    cacheReadInputTokens: result.usage?.cache_read_input_tokens,
+    outputTokens: result.usage?.output_tokens,
+  })
+
+  // Any development the model skipped still gets a firm-level marker, so
+  // it isn't re-sent (and re-billed) on every run.
+  const answered = new Set(verdicts.map(v => v.index))
+  const skipped: Verdict[] = unevaluated
+    .map((_, index) => index)
+    .filter(index => !answered.has(index))
+    .map(index => ({ index, relevant: false, reason: 'No verdict returned for this development.', scope: 'firm', entity_name: null }))
+
+  const rows = buildRelevanceRows([...verdicts, ...skipped], unevaluated, firmId, funds, companies)
+  await upsertRelevanceRows(admin, rows)
+
+  const newlyRelevantIds = [...new Set(verdicts.filter(v => v.relevant).map(v => unevaluated[v.index]?.id).filter((id): id is string => !!id))]
+
+  return { evaluated: unevaluated.length, relevantIds: newlyRelevantIds, candidates: candidates.length }
+}
 
 Deno.serve(async req => {
   const preflight = handleOptions(req)
@@ -149,127 +291,27 @@ Deno.serve(async req => {
 
     if (body?.reevaluate === true) await forgetRejections(admin, firmId)
 
-    const footprints = [firmFootprint(firm), ...companies.map(companyFootprint)]
-    const candidates = await loadCandidates(admin, footprints)
-    if (candidates.length === 0) return json({ evaluated: 0, relevant: 0, candidates: 0 })
+    const result = await evaluateNew(admin, firmId, { firm, funds, companies }, rateLimitClient)
 
-    const { data: alreadyEvaluated, error: evaluatedError } = await admin
-      .from('regulation_relevance')
-      .select('regulation_id')
-      .eq('firm_id', firmId)
-      .in('regulation_id', candidates.map(c => c.id))
-    if (evaluatedError) throw evaluatedError
+    // Fund rows follow from holdings + company matches (no AI). Runs on every
+    // call, rate limited or not, so a holdings edit is always reflected.
+    const fundRowsChanged = await syncHoldingsRollup(admin, firmId, 'geopolitical', { funds, companies })
+    if (result instanceof Response) return result
 
-    const evaluatedIds = new Set((alreadyEvaluated ?? []).map(r => r.regulation_id))
-    const unevaluated = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
-    if (unevaluated.length === 0) return json({ evaluated: 0, relevant: 0, candidates: candidates.length })
-
-    // Only checked once there's real work, so a no-op run (the common case
-    // on dashboard load) never uses up the caller's allowance.
-    if (rateLimitClient) {
-      const allowed = await checkRateLimit(rateLimitClient, FUNCTION_NAME, 15, 60)
-      if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
+    // New matches get an analysis; ones whose fund rows changed get theirs
+    // rewritten so the fund's card appears (or goes).
+    const fresh = result.relevantIds
+    const refreshed = fundRowsChanged.filter(id => !fresh.includes(id))
+    if (fresh.length || refreshed.length) {
+      EdgeRuntime.waitUntil(
+        Promise.all([
+          fresh.length ? generateImpacts(admin, fresh, firmId) : null,
+          refreshed.length ? generateImpacts(admin, refreshed, firmId, 8, { force: true }) : null,
+        ]),
+      )
     }
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 4096,
-        tool_choice: { type: 'tool', name: 'submit_verdicts' },
-        tools: [
-          {
-            name: 'submit_verdicts',
-            description: 'Submit a relevance verdict for every numbered geopolitical development.',
-            input_schema: {
-              type: 'object',
-              properties: {
-                verdicts: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      index: { type: 'integer' },
-                      relevant: { type: 'boolean' },
-                      reason: {
-                        type: 'string',
-                        description:
-                          'One or two sentences: the recorded location fact, whether the connection is direct or indirect, and the possible effect stated conditionally. Never imply the entity is sanctioned or prohibited from anything.',
-                      },
-                      scope: { type: 'string', enum: ['firm', 'company'] },
-                      entity_name: { type: 'string', description: 'Exact portfolio company name if scope is company, else empty string' },
-                    },
-                    required: ['index', 'relevant', 'reason', 'scope'],
-                  },
-                },
-              },
-              required: ['verdicts'],
-            },
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                // Changes only when the firm edits a location — cached
-                // separately from the per-batch development list.
-                type: 'text',
-                cache_control: { type: 'ephemeral' },
-                text: `Firm: ${firm.name}. Recorded location footprints:
-${footprints.map(describeFootprint).join('\n')}
-
-${INSTRUCTIONS}`,
-              },
-              { type: 'text', text: unevaluated.map((c, i) => candidateLine(c, i, footprints)).join('\n\n') },
-            ],
-          },
-        ],
-      }),
-    })
-
-    if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`)
-    const result = await res.json()
-    const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
-    // A company verdict naming no real company would otherwise fall through
-    // buildRelevanceRows to a firm-level row, putting a company's connection
-    // on the firm page. Drop it; the item is re-evaluated next run.
-    const companyNames = new Set(companies.map(c => c.name.toLowerCase()))
-    const verdicts: Verdict[] = (toolUse?.input?.verdicts ?? []).filter(
-      (v: Verdict) => v.scope === 'firm' || (v.scope === 'company' && !!v.entity_name && companyNames.has(v.entity_name.toLowerCase())),
-    )
-
-    await recordUsage(admin, {
-      functionName: FUNCTION_NAME,
-      firmId,
-      model: MODEL,
-      inputTokens: result.usage?.input_tokens,
-      cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
-      cacheReadInputTokens: result.usage?.cache_read_input_tokens,
-      outputTokens: result.usage?.output_tokens,
-    })
-
-    // Any development the model skipped still gets a firm-level marker, so
-    // it isn't re-sent (and re-billed) on every run.
-    const answered = new Set(verdicts.map(v => v.index))
-    const skipped: Verdict[] = unevaluated
-      .map((_, index) => index)
-      .filter(index => !answered.has(index))
-      .map(index => ({ index, relevant: false, reason: 'No verdict returned for this development.', scope: 'firm', entity_name: null }))
-
-    const rows = buildRelevanceRows([...verdicts, ...skipped], unevaluated, firmId, funds, companies)
-    await upsertRelevanceRows(admin, rows)
-
-    const newlyRelevantIds = [...new Set(verdicts.filter(v => v.relevant).map(v => unevaluated[v.index]?.id).filter((id): id is string => !!id))]
-    if (newlyRelevantIds.length > 0) EdgeRuntime.waitUntil(generateImpacts(admin, newlyRelevantIds, firmId))
-
-    return json({ evaluated: unevaluated.length, relevant: newlyRelevantIds.length, candidates: candidates.length })
+    return json({ evaluated: result.evaluated, relevant: fresh.length, candidates: result.candidates, fundRowsChanged: fundRowsChanged.length })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }
