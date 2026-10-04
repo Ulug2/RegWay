@@ -190,7 +190,7 @@ For each numbered regulation below, decide whether it creates a real compliance 
     // Prepare the detailed impact analysis for newly relevant regulations in
     // the background so it's ready before anyone opens them.
     const newlyRelevantIds = [...new Set(verdicts.filter(v => v.relevant).map(v => unevaluated[v.index]?.id).filter((id): id is string => !!id))]
-    if (newlyRelevantIds.length > 0) EdgeRuntime.waitUntil(generateImpacts(admin, newlyRelevantIds, firmId))
+    if (newlyRelevantIds.length > 0) EdgeRuntime.waitUntil(generateImpacts(newlyRelevantIds, firmId))
 
     return json({ evaluated: rows.length, relevant: relevantCount })
   } catch (err) {

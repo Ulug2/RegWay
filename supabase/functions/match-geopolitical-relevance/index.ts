@@ -171,8 +171,8 @@ Deno.serve(async req => {
     if (fresh.length || refreshed.length) {
       EdgeRuntime.waitUntil(
         Promise.all([
-          fresh.length ? generateImpacts(admin, fresh, firmId) : null,
-          refreshed.length ? generateImpacts(admin, refreshed, firmId, 8, { force: true }) : null,
+          fresh.length ? generateImpacts(fresh, firmId) : null,
+          refreshed.length ? generateImpacts(refreshed, firmId, 8, { force: true }) : null,
         ]),
       )
     }

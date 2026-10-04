@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
     await admin.from('portfolio_companies').update({ last_scanned_at: new Date().toISOString() }).eq('id', company.id)
 
     // Prepare the detailed impact analysis in the background.
-    if (insertedIds.length > 0) EdgeRuntime.waitUntil(generateImpacts(admin, insertedIds, company.firm_id))
+    if (insertedIds.length > 0) EdgeRuntime.waitUntil(generateImpacts(insertedIds, company.firm_id))
 
     return json({ found: items.length, stored: insertedIds.length })
   } catch (err) {

@@ -3,21 +3,41 @@
 // has it ready). Returns the analysis and stores it.
 //
 //   POST /functions/v1/regulation-impact   { "regulationId": "<uuid>", "force"?: true }
+//   Authorization: Bearer <user session access_token>
+//
+// Also the background path (`generateImpacts`): called with the service key
+// and a firmId, it accepts the job (202) and generates in the background, so
+// each analysis gets its own invocation and wall-clock budget.
+//
+//   POST /functions/v1/regulation-impact   { "regulationId", "firmId", "force"? }
+//   Authorization: Bearer <service key>
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { generateImpact } from '../_shared/impact.ts'
+
+declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
 Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
 
   try {
-    const { regulationId, force } = await req.json()
+    const { regulationId, force, firmId } = await req.json()
     if (!regulationId) return json({ error: 'regulationId is required' }, 400)
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) return json({ error: 'Missing Authorization header' }, 401)
+
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    if (authHeader.replace(/^Bearer\s+/i, '') === serviceKey) {
+      if (!firmId) return json({ error: 'firmId is required' }, 400)
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey)
+      EdgeRuntime.waitUntil(
+        generateImpact(admin, regulationId, firmId, { force: !!force }).catch(err => console.error('impact generation failed', regulationId, (err as Error).message)),
+      )
+      return json({ queued: true }, 202)
+    }
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } },
@@ -41,7 +61,7 @@ Deno.serve(async req => {
       .maybeSingle()
     if (!link) return json({ error: 'Regulation not found for this firm' }, 404)
 
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey)
 
     // Only a fresh generation is billable, so only that counts against the limit.
     const { data: existing } = await admin

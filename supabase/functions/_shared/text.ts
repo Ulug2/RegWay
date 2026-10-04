@@ -43,8 +43,9 @@ export async function fetchPlainText(urls: (string | undefined)[], opts: { minLe
         }
         if (!res.ok) continue
         const body = await res.text()
-        const isPlainText = url.endsWith('.txt') || (res.headers.get('content-type')?.includes('text/plain') ?? false)
-        const text = isPlainText ? body : stripHtml(body)
+        // Federal Register's ".txt" is the text in an HTML <pre> page, so the
+        // body decides, not the URL.
+        const text = body.trimStart().startsWith('<') ? stripHtml(body) : body
         if (text.length > minLength) return text
         break // got a response but it was too short — try the next URL, not a retry
       } catch {

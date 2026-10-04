@@ -63,12 +63,15 @@ Notes: `prompts/geopolitical-phase1-recheck-*.md`. Fund → company
 holdings (old item 1.1) followed: `prompts/fund-holdings-*.md`, then the
 geopolitical re-check: `prompts/geopolitical-rematch-*.md`.
 
-**Scheduled matching paused (2026-10-04, owner's call):** credit was
-restored, but the first `run-matching` run would clear every firm's backlog
-for ≈ $3–5 (over half of it test accounts). The cron job
-`run-matching-30min` is inactive; resume with
-`select cron.alter_job(jobid, active := true) from cron.job where jobname = 'run-matching-30min'`.
-Worth deciding first whether to limit it to firms with a recent sign-in.
+**Scheduled matching runs for H.I.G. only (2026-10-04, owner's call):**
+H.I.G. Capital is the primary test account; other firms are ignored.
+`run-matching` now covers only firms listed in `scheduled_matching_firms`
+(migration 0029, service-role only), and `run-matching-30min` is active
+again. Enrol or remove a firm with
+`insert into scheduled_matching_firms (firm_id) values ('<id>')` /
+`delete from scheduled_matching_firms where firm_id = '<id>'`. Expected
+spend: H.I.G.'s regulatory backlog (~160 items) clears over ~4 runs at
+≈ $0.08 each, then a run costs only when new documents arrive.
 
 **Earlier blocker (resolved):** the Anthropic account ran out of credit mid-pass
 ("credit balance is too low"). Every AI-calling function fails until it's
@@ -78,29 +81,28 @@ geopolitical re-check's AI step is the one piece shipped without a live run.
 ## Priority order
 
 ### Live AI tests still owed
-Not every AI path has been run live: the Anthropic account was out of
-credit for part of 2026-10-04, and after the top-up spend was kept
-deliberately low. Already verified live: geopolitical matching, fund-level
-derived matches and their analysis, the geopolitical re-check ($0.01), the
-copilot answering from matched developments ($0.014), and copilot save /
-resume with multi-turn memory ($0.011). Still owed, with
-estimates from measured per-call costs:
+Tests run on **H.I.G. Capital** only (the primary test account). Verified
+live so far: geopolitical matching, fund-level derived matches and their
+analysis, the copilot answering from matched developments ($0.014), copilot
+save / resume with multi-turn memory ($0.011), and on H.I.G. on 2026-10-04
+($0.73 in total): scheduled matching (80 items, 8 relevant, sensible
+verdicts, $0.15), background analyses (6, after fixing the cut-off below,
+$0.57), the geopolitical and the regulatory re-check (row replaced, $0.01
+each).
 
-| What | How to test | Est. cost |
+Still owed. These need the H.I.G. user signed in in the app (the functions
+take a user session; testing them by signing in as that user from a script
+was refused, rightly):
+
+| What | How to test (as the H.I.G. user) | Est. cost |
 |---|---|---|
-| Scheduled matching (`run-matching`) producing real verdicts | Throwaway firm, one round of the three matchers (+ a few analyses) | $0.20–0.60 |
-| Regulatory re-check replacing every entity's row | One re-check on a throwaway firm with a wrong company match | $0.01–0.07 |
-| Company scan storing a real `why_it_applies` | One scan of a throwaway company (+ its background analyses) | $0.20–0.70 |
-| Analysis of a not-yet-published document from GovInfo's early text | Open one scheduled document's detail page | $0.06–0.22 |
-| Copilot opened from a fund / company page (scoped matches) | 1–2 messages | $0.02–0.14 |
-| Copilot file upload (.txt/.md/.pdf) (item 11) | 1–2 messages with attachments | $0.05–0.15 |
-| Haiku vs Sonnet verdict accuracy (item 9.3) | Same ~40 items through both models, per matcher | ≈ $0.30 |
-| **Total for the targeted tests** | | **≈ $1–2.30** |
-
-Separate decision, not a test: resuming scheduled matching for real
-(`run-matching-30min` is paused). One-time backlog ≈ $3–5 for all 5 firms,
-≈ $1–1.50 for H.I.G. alone; then roughly one batch per firm per matcher per
-day. Cheaper with levers 9.1, 9.4 and 9.5.
+| Company scan storing a real `why_it_applies` | Edit a company's profile and save (triggers a re-scan), then read "Why it's here" on its new items | $0.20–0.70 |
+| Copilot opened from a fund / company page (scoped matches) | Open RegWay AI from GetixHealth's page, ask "what's relevant to this company right now?" | $0.02–0.14 |
+| Copilot file upload (.txt/.md/.pdf) (item 11) | Attach a short PDF and ask about it | $0.05–0.15 |
+| Analysis of a not-yet-published document | Only when a pre-publication item is matched to H.I.G. (none today: the 4 scheduled for 10-05 were judged not relevant) | $0.06–0.22 |
+| Fund rows derived from holdings, on H.I.G. | Record which H.I.G. fund holds each company (company cards); not set yet, so no fund-level derived matches exist | $0.06–0.40 (re-written analyses) |
+| Haiku vs Sonnet verdict accuracy (item 9.3) | Same ~40 items through both models, per matcher (script) | ≈ $0.30 |
+| **Total** | | **≈ $0.70–1.90** |
 
 ### 1. Geopolitical monitoring, Phase 2
 Phase 1, fund → company holdings, the geopolitical re-check and the
@@ -295,10 +297,10 @@ re-check **$0.01**. Levers, biggest first (2026-10-04 review):
 4. **Message Batches API (50% off)** for work nobody is waiting on:
    `run-matching` and any background analyses. Results arrive within
    minutes to hours, fine for a 30-minute schedule.
-5. **Only match firms that are in use.** `run-matching` runs every firm,
-   including dormant/test accounts (today over half of the backlog cost).
-   Limit it to firms with a sign-in in the last N days; dormant ones catch
-   up on their next visit.
+5. **Only match firms that are in use.** Partly done: `run-matching` runs
+   only firms enrolled in `scheduled_matching_firms` (today H.I.G.). For
+   real customers, enrol automatically on sign-in and drop firms with no
+   sign-in in N days; dormant ones catch up on their next visit.
 6. **Shorter analysis input.** Analyses read up to 60K characters of the
    document; long rules drive the $0.22 calls. A lower cap, or sending only
    the sections that mention the matched facts, cuts input tokens.
@@ -454,6 +456,22 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Scheduled matching for H.I.G.; background analyses no longer cut off (2026-10-04)
+Notes: `prompts/hig-scheduled-matching-investigate.md` and `-implement.md`.
+- `scheduled_matching_firms` (migration 0029): `run-matching` covers only
+  enrolled firms (H.I.G.); cron re-enabled.
+- First run: 80 items evaluated, 8 relevant (6 GetixHealth Medicare payment
+  rules, 2 private-fund-adviser enforcement cases), $0.15.
+- **Bug found:** 4 of the 6 background analyses never appeared. Every
+  analysis ran inside the matcher's own invocation, which the platform stops
+  at ~150 s; at 30–70 s each, only the first few finished. Now
+  `generateImpacts` hands each analysis to its own `regulation-impact`
+  invocation (service key + firmId → 202, generated in the background).
+  The 4 missing ones were written in parallel in ~60 s ($0.42).
+- **Bug found:** Federal Register's `.txt` full text is an HTML `<pre>`
+  page and was kept as-is because of the URL; text is now stripped
+  whenever the body is HTML.
 
 ### Copilot conversations: save, resume, memory (2026-10-04)
 Roadmap item 4. Notes: `prompts/chat-history-investigate.md` and

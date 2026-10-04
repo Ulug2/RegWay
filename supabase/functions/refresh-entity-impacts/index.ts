@@ -53,7 +53,7 @@ Deno.serve(async req => {
 
     if (regulationIds.length === 0) return json({ queued: 0 })
 
-    EdgeRuntime.waitUntil(generateImpacts(admin, regulationIds, firmId, MAX_REFRESHED, { force: true }))
+    EdgeRuntime.waitUntil(generateImpacts(regulationIds, firmId, MAX_REFRESHED, { force: true }))
 
     return json({ queued: Math.min(regulationIds.length, MAX_REFRESHED) })
   } catch (err) {

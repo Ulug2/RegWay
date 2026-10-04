@@ -61,9 +61,10 @@ All four keep `ANTHROPIC_API_KEY` server-side only. The frontend never talks to 
 ## Scheduled matching (`run-matching`)
 
 Every 30 minutes the Federal Register sync runs, and 10 minutes later
-`run-matching` runs each firm's three matchers (migration 0026). It spends
-AI money, so it only accepts the service key, which its cron job reads from
-Vault. Set it once per project (never in a migration):
+`run-matching` runs the three matchers for each firm enrolled in
+`scheduled_matching_firms` (migrations 0026, 0029; today only H.I.G.). It
+spends AI money, so it only accepts the service key, which its cron job
+reads from Vault. Set it once per project (never in a migration):
 
 ```sql
 select vault.create_secret('<service key>', 'service_role_key');
@@ -71,5 +72,6 @@ select vault.create_secret('<service key>', 'service_role_key');
 
 Each run that does work is recorded in `sync_runs` with source `matching`;
 a failing run shows on the dashboard as "Automatic matching". Run it by hand
-with `{ "force": true }` and the service key.
+with `{ "force": true }` and the service key. Enrol a firm with
+`insert into scheduled_matching_firms (firm_id) values ('<firm id>')`.
 

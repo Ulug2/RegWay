@@ -1,5 +1,5 @@
-// Scheduled matching for every firm (roadmap Priority order item 2): runs
-// each firm's regulatory, enforcement and geopolitical matchers so newly
+// Scheduled matching (roadmap Priority order item 2): runs each enrolled
+// firm's regulatory, enforcement and geopolitical matchers so newly
 // synced developments reach existing firms, not only firms that onboard
 // after them. Before this, matchers ran only at onboarding (and the
 // geopolitical one on dashboard load), so firm and fund pages froze.
@@ -12,11 +12,16 @@
 // matcher call evaluates at most one batch; a backlog (a new firm, a burst
 // of documents) clears over successive runs rather than one long one.
 //
+// Only firms listed in `scheduled_matching_firms` are matched (migration
+// 0029): each run costs AI money per firm, so test and dormant accounts are
+// left out. Enrolling a firm counts as work, so its backlog starts clearing
+// on the next run.
+//
 // Every run that does work is recorded in `sync_runs` (source `matching`)
 // with stats; a failing run (e.g. the AI provider refusing calls) shows in
 // the dashboard's failing-source banner.
 //
-// Service key only: this spends AI money across all firms, so the
+// Service key only: this spends AI money across firms, so the
 // publishable key that cron uses for the syncs is refused.
 //
 //   POST /functions/v1/run-matching   {}            (cron)
@@ -48,8 +53,8 @@ interface RunStats {
   errors: string[]
 }
 
-// Nothing to do when no development or firm arrived since the last recorded
-// run and that run cleared its backlog.
+// Nothing to do when no development arrived and no firm was enrolled since
+// the last recorded run, and that run cleared its backlog.
 async function hasWork(admin: SupabaseClient): Promise<boolean> {
   const { data: last } = await admin
     .from('sync_runs')
@@ -63,7 +68,7 @@ async function hasWork(admin: SupabaseClient): Promise<boolean> {
   const since = last.ran_at as string
   const [regs, firms] = await Promise.all([
     admin.from('regulations').select('id', { count: 'exact', head: true }).gt('created_at', since),
-    admin.from('firms').select('id', { count: 'exact', head: true }).gt('created_at', since),
+    admin.from('scheduled_matching_firms').select('firm_id', { count: 'exact', head: true }).gt('enabled_at', since),
   ])
   return (regs.count ?? 0) > 0 || (firms.count ?? 0) > 0
 }
@@ -81,10 +86,10 @@ async function callMatcher(name: string, firmId: string, key: string): Promise<{
 }
 
 async function runAll(admin: SupabaseClient, key: string): Promise<RunStats> {
-  const { data: firms, error } = await admin.from('firms').select('id')
+  const { data: firms, error } = await admin.from('scheduled_matching_firms').select('firm_id')
   if (error) throw error
 
-  const jobs = (firms ?? []).flatMap(f => MATCHERS.map(m => ({ firmId: f.id as string, matcher: m })))
+  const jobs = (firms ?? []).flatMap(f => MATCHERS.map(m => ({ firmId: f.firm_id as string, matcher: m })))
   const stats: RunStats = { firms: firms?.length ?? 0, calls: jobs.length, evaluated: 0, relevant: 0, backlog: false, errors: [] }
 
   let next = 0

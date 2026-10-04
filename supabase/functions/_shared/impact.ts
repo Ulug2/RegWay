@@ -272,29 +272,32 @@ ${entities.join('\n')}`,
   return 'created'
 }
 
-// Generates impacts for several regulations without blocking the caller:
-// a few at a time, capped, newest first, never throwing. Meant to be passed to
-// EdgeRuntime.waitUntil(). `opts.force` re-generates even where a
-// (now possibly stale) analysis already exists — used after a profile edit
-// so the explanation for already-matched regulations catches up to the
-// corrected facts instead of silently keeping the old text.
-export async function generateImpacts(
-  admin: SupabaseClient,
-  regulationIds: string[],
-  firmId: string,
-  max = 8,
-  opts: { force?: boolean } = {},
-): Promise<void> {
-  const queue = regulationIds.slice(0, max)
-  const worker = async () => {
-    while (queue.length) {
-      const id = queue.shift()!
+// Generates impacts for several regulations, capped, never throwing. Each
+// one is handed to its own `regulation-impact` invocation rather than run
+// here: an analysis takes 30–70 s and a function's background work is cut
+// off at the platform's wall-clock limit (~150 s), so several run inside the
+// caller died part-way (4 of 6 on the first scheduled matching run). This
+// returns once every invocation has accepted its job; meant to be passed to
+// EdgeRuntime.waitUntil(). `opts.force` re-generates even where a (now
+// possibly stale) analysis already exists — used after a profile edit so the
+// explanation for already-matched regulations catches up to the corrected
+// facts instead of silently keeping the old text.
+export async function generateImpacts(regulationIds: string[], firmId: string, max = 8, opts: { force?: boolean } = {}): Promise<void> {
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  await Promise.all(
+    regulationIds.slice(0, max).map(async regulationId => {
       try {
-        await generateImpact(admin, id, firmId, opts)
+        const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/regulation-impact`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${key}`, apikey: key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ regulationId, firmId, force: !!opts.force }),
+          signal: AbortSignal.timeout(20000),
+        })
+        if (!res.ok) console.error('impact queueing failed', regulationId, res.status, await res.text())
+        else await res.body?.cancel()
       } catch (err) {
-        console.error('impact generation failed', id, (err as Error).message)
+        console.error('impact queueing failed', regulationId, (err as Error).message)
       }
-    }
-  }
-  await Promise.all([worker(), worker(), worker()])
+    }),
+  )
 }
