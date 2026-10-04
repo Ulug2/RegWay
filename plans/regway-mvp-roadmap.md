@@ -90,6 +90,14 @@ in order of value:
 work. It should be scoped as its own investigate/implement pass.
 
 ### 2. Live regulation monitoring (near-real-time, US + global)
+**Phase 1a done (2026-10-04)** — see Completed, "Live monitoring, Phase
+1a". The audit found the real gap: matching ran only at onboarding, so
+firm/fund pages never received anything synced afterwards. Remaining
+Phase 1 (call it 1b): public-inspection ingestion (pre-publication items
+need their own status in the UI and matchers), a regulatory pre-filter
+(not needed at ≈4 items/day yet), and moving SEC/FINRA/advisories off
+daily. Original plan below for reference.
+
 Replaces the once-a-day model. Goal: when a regulation is published, check it
 against every firm/fund/portfolio company within minutes and update the
 dashboard, without the AI running constantly. "Live" = polling every 15–30
@@ -417,6 +425,31 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Live monitoring, Phase 1a (2026-10-04)
+Roadmap item 2. Notes: `prompts/live-monitoring-investigate.md` and
+`-implement.md`.
+- **The gap:** `match-relevance` and `match-enforcement-relevance` ran only
+  from onboarding. H.I.G. had 1 of 93 Federal Register items evaluated
+  since onboarding, Meridian 12 of 1,073: firm and fund pages were frozen.
+- **`run-matching`** (new) runs every firm's three matchers every 30 min,
+  10 min after the Federal Register sync (now every 30 min, was daily). It
+  skips when nothing arrived and no backlog remains, takes one batch per
+  matcher per run, records stats in `sync_runs` (an AI outage shows in the
+  banner as "Automatic matching"), and accepts only the service key, which
+  its cron job reads from Vault (`service_role_key`, set once; see
+  `supabase/README.md`).
+- The sync reuses countries already read from OFAC notices' full text
+  (20 → 0 downloads on a repeat run), so 30-min polling stays cheap.
+- Realtime on `regulation_relevance` (RLS holds: verified a firm never
+  receives another firm's rows); the open dashboard list refreshes on a
+  match. "New" badges for items matched since the previous visit (per user
+  and firm, per device).
+
+Verified live except the matching results themselves: the first real run
+reached all 15 matcher calls and every one was refused by Anthropic (out of
+credit). When credit is restored the next run starts clearing the backlog
+(≈ $1–2 once across the 5 firms).
 
 ### Entity-page category filter and search (2026-10-04)
 Spec §5. Notes: `prompts/entity-feed-filter-investigate.md` and

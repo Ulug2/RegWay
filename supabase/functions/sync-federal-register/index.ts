@@ -21,7 +21,7 @@
 // and the `countries` it names (see _shared/countries.ts), which the
 // geopolitical matcher pre-filters on.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { extractCountries } from '../_shared/countries.ts'
 import { federalRegisterTextUrl, federalRegisterTextUrls } from '../_shared/federalRegister.ts'
@@ -217,10 +217,42 @@ const FEEDS: Feed[] = [
 // President, Treasury), which Federal Register lists first.
 const TRACKED_SLUGS = new Set(FEEDS.flatMap(feed => feed.query.agencies))
 
-async function countriesOf(doc: FederalRegisterDocument, feed: Feed): Promise<string[]> {
-  if (!feed.countriesFromFullText) return extractCountries(docText(doc))
+interface Countries {
+  countries: string[]
+  // Whether the full text was actually read (not just title/abstract).
+  // Stored as raw.countries_from_full_text so later runs can reuse it.
+  fromFullText: boolean
+}
+
+// `known`: countries already read from this document's full text by an
+// earlier run. The sync runs every 30 minutes over a 7-day window, so
+// without this every OFAC notice would be re-downloaded ~48 times a day. A
+// document whose text couldn't be read last time (e.g. blocked) isn't in
+// `known` and is tried again.
+async function countriesOf(doc: FederalRegisterDocument, feed: Feed, known: Map<string, string[]>): Promise<Countries> {
+  if (!feed.countriesFromFullText) return { countries: extractCountries(docText(doc)), fromFullText: false }
+  const stored = known.get(doc.document_number)
+  if (stored) return { countries: stored, fromFullText: true }
   const body = await fetchPlainText(federalRegisterTextUrls(doc), { minLength: 200 })
-  return [...new Set([...extractCountries(`${docText(doc)} ${body}`), ...sanctionsProgramCountries(body)])]
+  const countries = [...new Set([...extractCountries(`${docText(doc)} ${body}`), ...sanctionsProgramCountries(body)])]
+  return { countries, fromFullText: !!body }
+}
+
+// Countries already read from full text, for the documents about to be
+// synced (see countriesOf).
+async function countriesReadBefore(admin: SupabaseClient, documentNumbers: string[]): Promise<Map<string, string[]>> {
+  const known = new Map<string, string[]>()
+  for (let i = 0; i < documentNumbers.length; i += 100) {
+    const { data, error } = await admin
+      .from('regulations')
+      .select('external_id, countries')
+      .eq('source', SOURCE)
+      .eq('raw->>countries_from_full_text', 'true')
+      .in('external_id', documentNumbers.slice(i, i + 100))
+    if (error) throw error
+    for (const r of data ?? []) known.set(r.external_id, r.countries ?? [])
+  }
+  return known
 }
 
 // Bounded parallelism for the per-document full-text fetches, so a long
@@ -290,15 +322,18 @@ Deno.serve(async (req) => {
 
     // Keyed by document number: one document can come back from more than
     // one feed, and a single upsert can't touch the same row twice.
+    const fullTextDocs = results.filter(r => r.feed.countriesFromFullText).flatMap(r => r.documents.map(d => d.document_number))
+    const known = await countriesReadBefore(admin, fullTextDocs)
+
     const rowsById = new Map<string, Record<string, unknown>>()
     for (const { feed, documents } of results) {
-      const countries = await mapLimited(documents, 4, doc => countriesOf(doc, feed))
+      const countries = await mapLimited(documents, 4, doc => countriesOf(doc, feed, known))
       documents.forEach((doc, i) => {
         const agencyName = primaryAgency(doc)?.name ?? null
         rowsById.set(doc.document_number, {
           source: 'federal_register' as const,
           category: categoryOf(doc, feed),
-          countries: countries[i],
+          countries: countries[i].countries,
           external_id: doc.document_number,
           title: doc.title,
           agency: agencyName,
@@ -307,7 +342,7 @@ Deno.serve(async (req) => {
           published_date: doc.publication_date,
           effective_date: doc.effective_on,
           source_url: doc.html_url,
-          raw: { ...doc, raw_text_url: federalRegisterTextUrl(doc) },
+          raw: { ...doc, raw_text_url: federalRegisterTextUrl(doc), countries_from_full_text: countries[i].fromFullText },
         })
       })
     }
@@ -323,7 +358,7 @@ Deno.serve(async (req) => {
     const feedSummary = results.map(r => `${r.feed.name} ${r.documents.length}`).join(', ')
     await recordSyncRun(admin, SOURCE, true, `${rows.length} synced, ${geopolitical} geopolitical (${feedSummary})`)
 
-    return json({ synced: rows.length, geopolitical, since, feeds: perFeed })
+    return json({ synced: rows.length, geopolitical, since, feeds: perFeed, fullTextReads: fullTextDocs.length - known.size })
   } catch (err) {
     await recordSyncRun(admin, SOURCE, false, (err as Error).message)
     return json({ error: (err as Error).message }, 500)

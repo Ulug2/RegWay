@@ -30,6 +30,7 @@ export async function updateFirm(
 
 interface RelevanceRow {
   relevance_reason: string | null
+  created_at: string
   regulations: Regulation | null
 }
 
@@ -41,7 +42,7 @@ async function fetchRelevantRegulations(filters: {
 }): Promise<MatchedRegulation[]> {
   let query = supabase
     .from('regulation_relevance')
-    .select('relevance_reason, regulations(*)')
+    .select('relevance_reason, created_at, regulations(*)')
     .eq('firm_id', filters.firmId)
     .is('dismissed_at', null)
 
@@ -60,7 +61,7 @@ async function fetchRelevantRegulations(filters: {
 
   return (data as unknown as RelevanceRow[])
     .filter(r => r.regulations && !r.relevance_reason?.startsWith('NOT_RELEVANT:'))
-    .map(r => ({ ...(r.regulations as Regulation), match_reason: r.relevance_reason }))
+    .map(r => ({ ...(r.regulations as Regulation), match_reason: r.relevance_reason, matched_at: r.created_at }))
     .sort((a, b) => (b.published_date ?? '').localeCompare(a.published_date ?? ''))
 }
 
@@ -193,6 +194,27 @@ export async function addNote(regulationId: string, firmId: string, body: string
 // that triggered it.
 function refreshEntityImpacts(scope: 'firm' | 'fund' | 'company', entityId?: string): void {
   callFunction('refresh-entity-impacts', { scope, entityId }).catch(() => {})
+}
+
+// Calls `onChange` (debounced) whenever this firm gains or changes a match:
+// the scheduled matcher writes rows while a dashboard may be open. Realtime
+// applies regulation_relevance's RLS, so only this firm's rows arrive.
+// Returns the unsubscribe function.
+export function subscribeToMatches(firmId: string, onChange: () => void): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const debounced = () => {
+    clearTimeout(timer)
+    timer = setTimeout(onChange, 1500)
+  }
+  const channel = supabase
+    .channel(`matches:${firmId}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'regulation_relevance', filter: `firm_id=eq.${firmId}` }, debounced)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'regulation_relevance', filter: `firm_id=eq.${firmId}` }, debounced)
+    .subscribe()
+  return () => {
+    clearTimeout(timer)
+    supabase.removeChannel(channel)
+  }
 }
 
 // Matches new geopolitical developments (sanctions, export controls, trade
@@ -444,6 +466,8 @@ const SOURCE_LABELS: Record<string, string> = {
   finra_enforcement: 'FINRA enforcement',
   sec_admin_proceedings: 'SEC administrative proceedings',
   state_travel_advisories: 'State Department travel advisories',
+  // run-matching: the scheduled AI matching of new developments to firms.
+  matching: 'Automatic matching',
 }
 
 // A source is "failing" when its most recent recorded sync run didn't

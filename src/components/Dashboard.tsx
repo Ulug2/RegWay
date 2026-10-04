@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCachedState } from '../lib/useCachedState'
 import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } from '../lib/scans'
 import { readCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchImpactStatuses, matchGeopoliticalDevelopments } from '../lib/data'
+import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchImpactStatuses, matchGeopoliticalDevelopments, subscribeToMatches } from '../lib/data'
 import type { MatchedRegulation, PortfolioCompany, Fund, Firm, AiContext } from '../lib/types'
 import { DEFAULT_FILTER, type FeedFilter } from '../lib/feedFilter'
+import { markVisit } from '../lib/lastVisit'
 import LogoMark from './LogoMark'
 import EntityFeed from './EntityFeed'
 import ProfileReminder from './ProfileReminder'
@@ -44,6 +45,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   // Category/topic/date/location filter for whichever entity list is open;
   // kept across entities and navigation, like the open tab.
   const [feedFilter, setFeedFilter] = useCachedState<FeedFilter>('ui:feedFilter', DEFAULT_FILTER)
+  // Matches newer than this are badged "New" (see lib/lastVisit).
+  const [newSince, setNewSince] = useState<string | null>(null)
   // regulation_id -> the AI-written status sentence, for the "Proposed"/"Final"
   // badge on list items (regulatory category only — see StatusBadge).
   const [impactStatuses, setImpactStatuses] = useCachedState<Record<string, string>>('regs:impactStatus', {})
@@ -58,6 +61,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       .then(async id => {
         if (!id) return
         setFirmId(id)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) setNewSince(markVisit(session.user.id, id))
         const [{ data: firmRow }, cos, fs] = await Promise.all([
           supabase.from('firms').select('*').eq('id', id).single(),
           fetchPortfolioCompanies(id),
@@ -99,6 +104,24 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     if (!firmId) return
     if (activeToggle === 'pe') fetchFirmRegulations(firmId).catch(() => null).then(r => r && setPeRegs(r))
   }, [firmId, activeToggle])
+
+  // The scheduled matcher (run-matching) writes new matches while the
+  // dashboard may be open: refresh whichever list is showing when this
+  // firm's matches change. A ref, so the subscription isn't torn down on
+  // every tab switch.
+  const openList = useRef({ activeToggle, selectedFund, selectedCompany })
+  openList.current = { activeToggle, selectedFund, selectedCompany }
+  useEffect(() => {
+    if (!firmId) return
+    return subscribeToMatches(firmId, () => {
+      const { activeToggle: tab, selectedFund: fundId, selectedCompany: companyId } = openList.current
+      if (tab === 'pe') fetchFirmRegulations(firmId).then(setPeRegs).catch(() => {})
+      if (tab === 'fund' && fundId) fetchFundRegulations(firmId, fundId).then(regs => setFundRegs(prev => ({ ...prev, [fundId]: regs }))).catch(() => {})
+      if (tab === 'portfolio' && companyId && !isScanning(companyId)) {
+        fetchCompanyRegulations(firmId, companyId).then(regs => setCompanyRegs(prev => ({ ...prev, [companyId]: regs }))).catch(() => {})
+      }
+    })
+  }, [firmId])
 
   // Opening a fund: fetch just that fund's relevant regulations.
   useEffect(() => {
@@ -164,6 +187,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   // Shared by the firm, fund and company lists (same layout on all three).
   const feedProps = {
     statuses: impactStatuses,
+    newSince,
     filter: feedFilter,
     onFilterChange: setFeedFilter,
     onOpen: (r: MatchedRegulation) => onNavigate('detail', r),

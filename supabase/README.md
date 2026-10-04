@@ -57,3 +57,19 @@ This pulls the last 7 days of federal rules into the `regulations` table. To kee
 - `regway-ai-chat` — the conversational copilot. Loads the caller's firm/fund/portfolio context, asks Claude (with web search) to answer grounded in real sources, and saves the exchange to `regway_ai_messages`.
 
 All four keep `ANTHROPIC_API_KEY` server-side only. The frontend never talks to Anthropic directly.
+
+## Scheduled matching (`run-matching`)
+
+Every 30 minutes the Federal Register sync runs, and 10 minutes later
+`run-matching` runs each firm's three matchers (migration 0026). It spends
+AI money, so it only accepts the service key, which its cron job reads from
+Vault. Set it once per project (never in a migration):
+
+```sql
+select vault.create_secret('<service key>', 'service_role_key');
+```
+
+Each run that does work is recorded in `sync_runs` with source `matching`;
+a failing run shows on the dashboard as "Automatic matching". Run it by hand
+with `{ "force": true }` and the service key.
+

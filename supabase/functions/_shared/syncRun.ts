@@ -5,9 +5,11 @@
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 
-export async function recordSyncRun(admin: SupabaseClient, source: string, ok: boolean, detail: string): Promise<void> {
+// `stats`: optional structured outcome a later run can read back (see
+// run-matching, which decides from its last run whether a backlog remains).
+export async function recordSyncRun(admin: SupabaseClient, source: string, ok: boolean, detail: string, stats?: unknown): Promise<void> {
   try {
-    await admin.from('sync_runs').insert({ source, ok, detail: detail.slice(0, 500) })
+    await admin.from('sync_runs').insert({ source, ok, detail: detail.slice(0, 500), stats: stats ?? null })
   } catch (err) {
     console.error('failed to record sync run', source, (err as Error).message)
   }

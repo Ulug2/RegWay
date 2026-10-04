@@ -83,6 +83,8 @@ export interface Regulation {
 // explanation appropriate to the selected entity).
 export interface MatchedRegulation extends Regulation {
   match_reason: string | null
+  // When it was matched to this entity (for the "New" badge).
+  matched_at: string | null
 }
 
 export interface RegulationNote {

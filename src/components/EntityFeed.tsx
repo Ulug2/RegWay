@@ -2,6 +2,7 @@ import Chip from './Chip'
 import CategoryBadge from './CategoryBadge'
 import StatusBadge from './StatusBadge'
 import type { MatchedRegulation } from '../lib/types'
+import { isNewSince } from '../lib/lastVisit'
 import {
   CATEGORIES,
   DATE_WINDOWS,
@@ -23,13 +24,22 @@ function formatDate(iso: string | null) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function FeedItem({ item, status, onOpen, onDismiss }: { item: MatchedRegulation; status?: string; onOpen: () => void; onDismiss: () => void }) {
+function FeedItem({ item, status, isNew, onOpen, onDismiss }: { item: MatchedRegulation; status?: string; isNew: boolean; onOpen: () => void; onDismiss: () => void }) {
   return (
     <div className="relative group">
       <button onClick={onOpen} className="glass-card-light glass-lift w-full text-left p-6 block">
         <div className="flex items-center gap-2 mb-3 pr-8">
           <CategoryBadge category={item.category} />
           <StatusBadge status={status} />
+          {isNew && (
+            <span
+              className="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
+              style={{ borderRadius: 9999, background: 'linear-gradient(135deg,#0284C7,#38BDF8)', color: 'white' }}
+              title="Matched since your last visit"
+            >
+              New
+            </span>
+          )}
         </div>
         <div className="text-sm font-semibold mb-2 pr-8" style={{ color: '#0F172A', lineHeight: 1.5 }}>
           {item.title}
@@ -131,13 +141,15 @@ interface EntityFeedProps {
   loadingMessage: string
   emptyMessage: string
   statuses: Record<string, string>
+  // Matches after this are badged "New"; null = no badges (first visit).
+  newSince: string | null
   filter: FeedFilter
   onFilterChange: (f: FeedFilter) => void
   onOpen: (item: MatchedRegulation) => void
   onDismiss: (id: string) => void
 }
 
-export default function EntityFeed({ items, loadingMessage, emptyMessage, statuses, filter, onFilterChange, onOpen, onDismiss }: EntityFeedProps) {
+export default function EntityFeed({ items, loadingMessage, emptyMessage, statuses, newSince, filter, onFilterChange, onOpen, onDismiss }: EntityFeedProps) {
   if (items === undefined) return <Message>{loadingMessage}</Message>
   if (items.length === 0) return <Message>{emptyMessage}</Message>
 
@@ -157,7 +169,14 @@ export default function EntityFeed({ items, loadingMessage, emptyMessage, status
       ) : (
         <div className="space-y-4">
           {shown.map(item => (
-            <FeedItem key={item.id} item={item} status={statuses[item.id]} onOpen={() => onOpen(item)} onDismiss={() => onDismiss(item.id)} />
+            <FeedItem
+              key={item.id}
+              item={item}
+              status={statuses[item.id]}
+              isNew={isNewSince(item.matched_at, newSince)}
+              onOpen={() => onOpen(item)}
+              onDismiss={() => onDismiss(item.id)}
+            />
           ))}
         </div>
       )}
