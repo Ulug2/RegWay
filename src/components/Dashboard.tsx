@@ -4,10 +4,10 @@ import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } fr
 import { readCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
 import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchImpactStatuses, matchGeopoliticalDevelopments } from '../lib/data'
-import type { Regulation, PortfolioCompany, Fund, Firm, AiContext } from '../lib/types'
+import type { MatchedRegulation, PortfolioCompany, Fund, Firm, AiContext } from '../lib/types'
+import { DEFAULT_FILTER, type FeedFilter } from '../lib/feedFilter'
 import LogoMark from './LogoMark'
-import CategoryBadge from './CategoryBadge'
-import StatusBadge from './StatusBadge'
+import EntityFeed from './EntityFeed'
 import ProfileReminder from './ProfileReminder'
 import { useProfileCompletion } from '../lib/useProfileCompletion'
 
@@ -15,46 +15,6 @@ type View = 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai'
 
 interface DashboardProps {
   onNavigate: (view: View, payload?: unknown) => void
-}
-
-function formatDate(iso: string | null) {
-  if (!iso) return ''
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function HeadlineItem({ regulation, status, onClick, onDismiss }: { regulation: Regulation; status?: string; onClick: () => void; onDismiss: () => void }) {
-  return (
-    <div className="relative group">
-      <button
-        onClick={onClick}
-        className="glass-card-light glass-lift w-full text-left p-6 block"
-      >
-        <div className="flex items-center gap-2 mb-3 pr-8">
-          <CategoryBadge category={regulation.category} />
-          <StatusBadge status={status} />
-        </div>
-        <div className="text-sm font-semibold mb-3 pr-8" style={{ color: '#0F172A', lineHeight: 1.5 }}>
-          {regulation.title}
-        </div>
-        <div className="flex items-center gap-2 text-xs" style={{ color: '#64748B' }}>
-          <span>{regulation.jurisdiction || regulation.agency || 'Unknown'}</span>
-          <span style={{ color: '#BAE6FD' }}>●</span>
-          <span>{formatDate(regulation.effective_date || regulation.published_date)}</span>
-        </div>
-      </button>
-      <button
-        onClick={onDismiss}
-        aria-label="Dismiss regulation"
-        title="Not relevant — dismiss (restore in Profile → Dismissed)"
-        className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-sky-50"
-        style={{ color: '#94a3b8', background: 'rgba(255,255,255,0.85)' }}
-      >
-        <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-          <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </button>
-    </div>
-  )
 }
 
 function EmptyState({ message }: { message: string }) {
@@ -78,17 +38,18 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [selectedFund, setSelectedFund] = useCachedState<string | null>('ui:selectedFund', null)
   const [aiQuery, setAiQuery] = useState('')
 
-  const [peRegs, setPeRegs] = useCachedState<Regulation[] | null>('regs:pe', null)
-  const [fundRegs, setFundRegs] = useCachedState<Record<string, Regulation[]>>('regs:fund', {})
-  const [companyRegs, setCompanyRegs] = useCachedState<Record<string, Regulation[]>>('regs:company', {})
+  const [peRegs, setPeRegs] = useCachedState<MatchedRegulation[] | null>('regs:pe', null)
+  const [fundRegs, setFundRegs] = useCachedState<Record<string, MatchedRegulation[]>>('regs:fund', {})
+  const [companyRegs, setCompanyRegs] = useCachedState<Record<string, MatchedRegulation[]>>('regs:company', {})
+  // Category/topic/date/location filter for whichever entity list is open;
+  // kept across entities and navigation, like the open tab.
+  const [feedFilter, setFeedFilter] = useCachedState<FeedFilter>('ui:feedFilter', DEFAULT_FILTER)
   // regulation_id -> the AI-written status sentence, for the "Proposed"/"Final"
   // badge on list items (regulatory category only — see StatusBadge).
   const [impactStatuses, setImpactStatuses] = useCachedState<Record<string, string>>('regs:impactStatus', {})
   const [, forceRender] = useState(0)
 
   const completion = useProfileCompletion()
-
-  const loadingTab = activeToggle === 'pe' ? peRegs === null : false
 
   // Refresh the firm and its companies. Cached values render immediately;
   // this just brings them up to date.
@@ -126,7 +87,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       onScanChange(() => {
         const cos = getCachedCompanies()
         if (cos) setCompanies(cos)
-        const regs = readCache<Record<string, Regulation[]>>('regs:company')
+        const regs = readCache<Record<string, MatchedRegulation[]>>('regs:company')
         if (regs) setCompanyRegs(regs)
         forceRender(n => n + 1)
       }),
@@ -192,12 +153,21 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     if (!firmId) return
     dismissRegulation(firmId, regulationId)
       .then(() => {
-        const without = (list: Regulation[] | null) => list && list.filter(r => r.id !== regulationId)
+        const without = (list: MatchedRegulation[] | null) => list && list.filter(r => r.id !== regulationId)
         setPeRegs(without)
         setFundRegs(prev => Object.fromEntries(Object.entries(prev).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)])))
         setCompanyRegs(prev => Object.fromEntries(Object.entries(prev).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)])))
       })
       .catch(() => {})
+  }
+
+  // Shared by the firm, fund and company lists (same layout on all three).
+  const feedProps = {
+    statuses: impactStatuses,
+    filter: feedFilter,
+    onFilterChange: setFeedFilter,
+    onOpen: (r: MatchedRegulation) => onNavigate('detail', r),
+    onDismiss: dismiss,
   }
 
   const toggles: { key: Toggle; label: string }[] = [
@@ -354,17 +324,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         {/* State-driven content */}
         <div style={{ marginTop: activeToggle ? 40 : 0, marginBottom: activeToggle ? 48 : 0 }}>
           {activeToggle === 'pe' && (
-            loadingTab ? (
-              <EmptyState message="Loading regulations relevant to your firm…" />
-            ) : (peRegs?.length ?? 0) === 0 ? (
-              <EmptyState message="No regulations have been confirmed relevant to your firm yet." />
-            ) : (
-              <div className="max-w-2xl mx-auto space-y-4">
-                {peRegs!.map(r => (
-                  <HeadlineItem key={r.id} regulation={r} status={impactStatuses[r.id]} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
-                ))}
-              </div>
-            )
+            <EntityFeed
+              items={peRegs ?? undefined}
+              loadingMessage="Loading developments matched to your firm…"
+              emptyMessage="No developments have been confirmed relevant to your firm yet."
+              {...feedProps}
+            />
           )}
 
           {activeToggle === 'fund' && (
@@ -399,19 +364,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               )}
 
               {selectedFund && (
-                <>
-                  {fundRegs[selectedFund] === undefined ? (
-                    <EmptyState message="Loading…" />
-                  ) : (fundRegs[selectedFund]?.length ?? 0) === 0 ? (
-                    <EmptyState message="No regulations have been confirmed relevant to this fund yet." />
-                  ) : (
-                    <div className="max-w-2xl mx-auto space-y-4">
-                      {fundRegs[selectedFund]!.map(r => (
-                        <HeadlineItem key={r.id} regulation={r} status={impactStatuses[r.id]} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
-                      ))}
-                    </div>
-                  )}
-                </>
+                <EntityFeed
+                  items={fundRegs[selectedFund]}
+                  loadingMessage="Loading…"
+                  emptyMessage="No developments have been confirmed relevant to this fund yet."
+                  {...feedProps}
+                />
               )}
             </div>
           )}
@@ -461,16 +419,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 <>
                   {isScanning(selectedCompany) ? (
                     <EmptyState message="RegWay AI is researching regulations for this company. This can take a minute the first time — results are saved." />
-                  ) : companyRegs[selectedCompany] === undefined ? (
-                    <EmptyState message="Loading…" />
-                  ) : (companyRegs[selectedCompany]?.length ?? 0) === 0 ? (
-                    <EmptyState message="No regulations found that affect this company right now." />
                   ) : (
-                    <div className="max-w-2xl mx-auto space-y-4">
-                      {companyRegs[selectedCompany]!.map(r => (
-                        <HeadlineItem key={r.id} regulation={r} status={impactStatuses[r.id]} onClick={() => onNavigate('detail', r)} onDismiss={() => dismiss(r.id)} />
-                      ))}
-                    </div>
+                    <EntityFeed
+                      items={companyRegs[selectedCompany]}
+                      loadingMessage="Loading…"
+                      emptyMessage="No developments found that affect this company right now."
+                      {...feedProps}
+                    />
                   )}
                 </>
               )}

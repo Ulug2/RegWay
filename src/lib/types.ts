@@ -78,6 +78,13 @@ export interface Regulation {
   source_url: string
 }
 
+// A regulation as listed on one entity's page, with that entity's own
+// explanation of why it was matched (spec §5: each appearance uses the
+// explanation appropriate to the selected entity).
+export interface MatchedRegulation extends Regulation {
+  match_reason: string | null
+}
+
 export interface RegulationNote {
   id: string
   regulation_id: string

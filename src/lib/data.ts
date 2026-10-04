@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
 import { toRow, type Answers } from './questionnaire'
-import type { Firm, Fund, FundHolding, ImpactContent, PortfolioCompany, Regulation, RegulationNote } from './types'
+import type { Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
   const { data, error } = await supabase.from('firm_members').select('firm_id').maybeSingle()
@@ -38,7 +38,7 @@ async function fetchRelevantRegulations(filters: {
   scope: 'firm' | 'fund' | 'company'
   companyId?: string
   fundId?: string
-}): Promise<Regulation[]> {
+}): Promise<MatchedRegulation[]> {
   let query = supabase
     .from('regulation_relevance')
     .select('relevance_reason, regulations(*)')
@@ -60,7 +60,7 @@ async function fetchRelevantRegulations(filters: {
 
   return (data as unknown as RelevanceRow[])
     .filter(r => r.regulations && !r.relevance_reason?.startsWith('NOT_RELEVANT:'))
-    .map(r => r.regulations as Regulation)
+    .map(r => ({ ...(r.regulations as Regulation), match_reason: r.relevance_reason }))
     .sort((a, b) => (b.published_date ?? '').localeCompare(a.published_date ?? ''))
 }
 

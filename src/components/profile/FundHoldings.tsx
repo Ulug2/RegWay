@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Chip } from '../questionnaire/QuestionField'
+import Chip from '../Chip'
 
 // Fund ↔ company holdings, shown on both sides of the relationship. Saved on
 // each toggle rather than with the questionnaire's "Save changes": it's a

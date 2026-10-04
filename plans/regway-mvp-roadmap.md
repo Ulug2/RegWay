@@ -71,13 +71,13 @@ geopolitical re-check's AI step is the one piece shipped without a live run.
 ## Priority order
 
 ### 1. Geopolitical monitoring, Phase 2
-Phase 1, fund → company holdings and the geopolitical re-check are done
-(see Completed). What's left, roughly in order of value:
-1. **Category filter** (item 6), now that three categories exist.
-2. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
+Phase 1, fund → company holdings, the geopolitical re-check and the
+entity-page category filter are done (see Completed). What's left, roughly
+in order of value:
+1. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
    Recent Actions, once a portfolio company with UK/EU-specific exposure
    makes them worth a connector.
-3. **One known residual false positive** in the H.I.G. test data: a
+2. **One known residual false positive** in the H.I.G. test data: a
    Section 301 "manufacturing sectors" investigation matched to 3Pillar
    Global (software) via India. The model's own reason says the sector fit
    isn't confirmed. Left in place as an honest example of the limit, not
@@ -219,14 +219,8 @@ routing → parallel execution → evaluation. Do not build past Phase 1
 without confirming scope — this is comparable in size to item 1
 (geopolitical monitoring).
 
-### 6. Category filter on entity pages
-"View all / regulatory / enforcement / geopolitical" plus basic search/filter
-by topic, date, and location — none of this exists; the History toggle in
-`HeadlineDetailView.tsx` (`Today's Status` / `Custom Range`) is UI-only
-today (not wired to any query) and isn't what the doc is asking for.
-Depends on item 1 (geopolitical) existing to have more than two categories
-to filter — enforcement is already live, so this could partially start now
-(regulatory/enforcement) and extend once geopolitical lands.
+### 6. Category filter on entity pages — done
+See Completed, "Entity-page category filter and search".
 
 ### 7. Fact provenance and "last confirmed" dates
 On every profile fact. Doc requires every matching fact to show its origin
@@ -423,6 +417,22 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Entity-page category filter and search (2026-10-04)
+Spec §5. Notes: `prompts/entity-feed-filter-investigate.md` and
+`-implement.md`.
+- Firm, fund and company lists are one `EntityFeed` component: category
+  chips (All / Regulatory / Enforcement / Geopolitical, with counts under
+  the other filters), topic search over title, description, issuer and
+  reason, a date window, and a location select built from the list being
+  viewed (geopolitical items by country; everything else by issuing
+  jurisdiction, U.S. federal collapsed into one option).
+- Each item now shows the spec's missing pieces: a short description and
+  "Why it's here", the selected entity's own reason (fund rows derived from
+  holdings read "Indirect: Fund holds X, which …"). The data layer used to
+  fetch that reason and drop it. Dates are labelled "Published".
+- Pure logic in `src/lib/feedFilter.ts`, checked against H.I.G.'s real
+  matches; UI checked in a browser with a throwaway firm (deleted).
 
 ### Re-check ("This match looks wrong?") for geopolitical items (2026-10-04)
 Notes: `prompts/geopolitical-rematch-investigate.md` and `-implement.md`.
