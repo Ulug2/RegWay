@@ -81,8 +81,9 @@ geopolitical re-check's AI step is the one piece shipped without a live run.
 Not every AI path has been run live: the Anthropic account was out of
 credit for part of 2026-10-04, and after the top-up spend was kept
 deliberately low. Already verified live: geopolitical matching, fund-level
-derived matches and their analysis, the geopolitical re-check ($0.01), and
-the copilot answering from matched developments ($0.014). Still owed, with
+derived matches and their analysis, the geopolitical re-check ($0.01), the
+copilot answering from matched developments ($0.014), and copilot save /
+resume with multi-turn memory ($0.011). Still owed, with
 estimates from measured per-call costs:
 
 | What | How to test | Est. cost |
@@ -92,10 +93,9 @@ estimates from measured per-call costs:
 | Company scan storing a real `why_it_applies` | One scan of a throwaway company (+ its background analyses) | $0.20–0.70 |
 | Analysis of a not-yet-published document from GovInfo's early text | Open one scheduled document's detail page | $0.06–0.22 |
 | Copilot opened from a fund / company page (scoped matches) | 1–2 messages | $0.02–0.14 |
-| Copilot save/resume (item 4) | 2–3 messages across two conversations | $0.05–0.20 |
 | Copilot file upload (.txt/.md/.pdf) (item 11) | 1–2 messages with attachments | $0.05–0.15 |
 | Haiku vs Sonnet verdict accuracy (item 9.3) | Same ~40 items through both models, per matcher | ≈ $0.30 |
-| **Total for the targeted tests** | | **≈ $1–2.50** |
+| **Total for the targeted tests** | | **≈ $1–2.30** |
 
 Separate decision, not a test: resuming scheduled matching for real
 (`run-matching-30min` is paused). One-time backlog ≈ $3–5 for all 5 firms,
@@ -183,23 +183,8 @@ Caveats
 ### 3. Copilot: ground answers in the firm's currently-relevant regulations — done
 See Completed, "Copilot grounded in matched developments".
 
-### 4. Copilot: save and resume chats
-From the same brief. Audited: `regway_ai_messages` (migration 0001,
-renamed from `harvey_messages` this session) has no conversation/thread
-concept — a flat per-firm message log. Confirmed nothing ever reads it
-back (`grep` across `src/` and `supabase/functions/` only shows the one
-`insert()` in `regway-ai-chat/index.ts` itself); `RegWayAICopilot.tsx`'s
-`messages` state resets to just the welcome message on every mount. Every
-chat is lost the moment the drawer closes — there's no way to resume a
-conversation or see past ones. Needs: a conversation-grouping migration
-(new `regway_ai_conversations` table, probably — a real title + a cheap
-list query beats a bare `conversation_id` column), `regway-ai-chat`
-accepting/creating a conversation id, new read-path functions in
-`data.ts` (nothing reads this table today), and UI in
-`RegWayAICopilot.tsx` for a conversation list, "new chat," and resuming
-with history loaded instead of always starting fresh. See the
-architecture brief's "Chat history" section for the full breakdown.
-Independent of the multi-role work below — ships on its own.
+### 4. Copilot: save and resume chats — done
+See Completed, "Copilot conversations: save, resume, memory".
 
 ### 5. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
@@ -469,6 +454,20 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Copilot conversations: save, resume, memory (2026-10-04)
+Roadmap item 4. Notes: `prompts/chat-history-investigate.md` and
+`-implement.md`. Found: the chat sent the model only the current message,
+so follow-ups had no memory even inside one open drawer, and saved messages
+were never read. Now each chat is a conversation (`regway_ai_conversations`,
+personal, RLS); the function loads its recent turns from the database and
+sends them (cached), keeps the conversation's original fund / company /
+regulation scope, and refuses another user's conversation id before any AI
+call. Drawer has "History" (recent 30, resume, delete) and "New chat".
+Verified live ($0.011): "teal" remembered across turns, second turn served
+from cache, cross-user access refused, resume renders in the browser.
+Open: `regway_ai_messages` is still firm-wide under RLS; tighten to the
+user when multi-user firms exist.
 
 ### Copilot grounded in matched developments (2026-10-04)
 Roadmap item 3. Notes: `prompts/copilot-grounding-investigate.md` and

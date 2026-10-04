@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
 import { toRow, type Answers } from './questionnaire'
-import type { Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, Regulation, RegulationNote } from './types'
+import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
   const { data, error } = await supabase.from('firm_members').select('firm_id').maybeSingle()
@@ -485,3 +485,51 @@ export async function fetchFailingSources(): Promise<string[]> {
   }
   return [...latestBySource.entries()].filter(([, ok]) => !ok).map(([source]) => SOURCE_LABELS[source] ?? source)
 }
+
+// ---------------------------------------------------------------------------
+// RegWay AI conversations (saved chats). RLS limits both tables to the
+// signed-in user's own conversations in their firm.
+// ---------------------------------------------------------------------------
+
+export interface ConversationSummary {
+  id: string
+  title: string
+  // The fund / company / regulation scope it was started from, if any.
+  context: AiContext | null
+  updated_at: string
+}
+
+export interface SavedMessage {
+  role: 'user' | 'assistant'
+  content: string
+  citations: { url?: string; title?: string }[] | null
+}
+
+const RECENT_CONVERSATIONS = 30
+
+export async function fetchConversations(): Promise<ConversationSummary[]> {
+  const { data, error } = await supabase
+    .from('regway_ai_conversations')
+    .select('id, title, context, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(RECENT_CONVERSATIONS)
+  if (error) throw error
+  return data ?? []
+}
+
+export async function fetchConversationMessages(conversationId: string): Promise<SavedMessage[]> {
+  const { data, error } = await supabase
+    .from('regway_ai_messages')
+    .select('role, content, citations')
+    .eq('conversation_id', conversationId)
+    .order('created_at')
+  if (error) throw error
+  return data ?? []
+}
+
+// Deletes the conversation and (by cascade) its messages.
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const { error } = await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
+  if (error) throw error
+}
+

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
-import { getFirmId, fetchFunds, fetchPortfolioCompanies } from '../lib/data'
+import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, type ConversationSummary } from '../lib/data'
+import ConversationHistory from './ConversationHistory'
 import { renderMarkdown } from '../lib/markdown'
 import type { Firm, Fund, PortfolioCompany, AiContext } from '../lib/types'
 
@@ -143,6 +144,13 @@ function CopyButton({ text }: { text: string }) {
 
 export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotProps) {
   const [messages, setMessages] = useState<Message[]>(() => [welcomeMessage(context)])
+  // Each chat is a saved conversation: the id is made here and the server
+  // creates the row on the first message. A resumed conversation keeps the
+  // scope it started with, whatever page the drawer was opened from.
+  const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
+  const [activeContext, setActiveContext] = useState<AiContext | null | undefined>(context)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [resumeError, setResumeError] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
@@ -332,7 +340,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
           : { name: file.name, mimeType: file.type || 'text/plain', content: await file.text() }
       }
 
-      const res = await streamFunction('regway-ai-chat', { message: text, attachment, context }, controller.signal)
+      const res = await streamFunction('regway-ai-chat', { message: text, attachment, context: activeContext, conversationId }, controller.signal)
       if (!res.body) throw new Error('No response stream')
 
       await consumeSse(res.body, evt => {
@@ -367,6 +375,34 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
       // new message) until the full answer is actually on screen.
       streamDone = true
       clearInterval(statusTimer)
+    }
+  }
+
+  const startNewChat = () => {
+    if (isTyping) return
+    setConversationId(crypto.randomUUID())
+    setActiveContext(context)
+    setMessages([welcomeMessage(context)])
+    setHistoryOpen(false)
+    setResumeError(null)
+  }
+
+  const resumeConversation = async (conversation: ConversationSummary) => {
+    if (isTyping) return
+    try {
+      const saved = await fetchConversationMessages(conversation.id)
+      setConversationId(conversation.id)
+      setActiveContext(conversation.context)
+      setMessages([
+        welcomeMessage(conversation.context),
+        ...saved.map(m => ({ role: m.role === 'assistant' ? ('ai' as const) : ('user' as const), content: m.content, citations: m.citations ?? undefined })),
+      ])
+      setHasStarted(true)
+      setHistoryOpen(false)
+      setResumeError(null)
+      forceScrollRef.current = true
+    } catch (err) {
+      setResumeError(err instanceof Error ? err.message : 'Could not open that conversation')
     }
   }
 
@@ -433,11 +469,27 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               <div className="font-semibold" style={{ color: '#0F172A', letterSpacing: '-0.01em' }}>RegWay AI Copilot</div>
               <div className="text-xs flex items-center gap-1.5" style={{ color: '#64748B' }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#38BDF8' }} />
-                {context ? `Focused on ${context.name}` : firm ? `Grounded in live web search for ${firm.name}` : 'Loading firm context…'}
+                {activeContext ? `Focused on ${activeContext.name}` : firm ? `Grounded in live web search for ${firm.name}` : 'Loading firm context…'}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setHistoryOpen(o => !o)}
+              disabled={isTyping}
+              className="px-4 py-2 text-xs font-medium rounded-full transition-all"
+              style={{ background: historyOpen ? 'rgba(2,132,199,0.12)' : 'rgba(255,255,255,0.70)', color: '#334155', border: '1px solid rgba(186,230,253,0.50)' }}
+            >
+              History
+            </button>
+            <button
+              onClick={startNewChat}
+              disabled={isTyping}
+              className="px-4 py-2 text-xs font-medium rounded-full transition-all"
+              style={{ background: 'rgba(255,255,255,0.70)', color: '#334155', border: '1px solid rgba(186,230,253,0.50)' }}
+            >
+              New chat
+            </button>
             <button
               className="px-4 py-2 text-xs font-medium rounded-full transition-all"
               style={{
@@ -465,6 +517,10 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
 
           {/* Conversation */}
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 relative">
+            {historyOpen && <ConversationHistory activeId={conversationId} onResume={resumeConversation} onClose={() => setHistoryOpen(false)} />}
+            {resumeError && (
+              <div className="px-6 pt-3 text-xs" style={{ color: '#B45309' }}>{resumeError}</div>
+            )}
             <div
               ref={scrollRef}
               onScroll={handleScroll}
