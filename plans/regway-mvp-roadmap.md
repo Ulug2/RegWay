@@ -65,12 +65,21 @@ Phase 1 is done (see Completed). What's left, roughly in order of value:
    relationship doesn't exist anywhere today, and spec §3 forbids guessing
    it, so the geopolitical matcher never scopes a verdict to a fund. This is
    also prerequisite data for fund-level regulatory/enforcement exposure.
-2. **SDN notices without countries.** 45 of 103 "Notice of OFAC Sanctions
-   Action" rows got no countries from their full text (designees without a
-   foreign address, or the `.txt` fetch failed; it couldn't be told apart from
-   the cloud container, where federalregister.gov is blocked). They're
-   treated as global items and the matcher rejects them correctly, but at a
-   cost of a few AI evaluations each time a new one arrives.
+2. **Federal Register full text can silently be a CAPTCHA page (do
+   first).** Found 2026-10-04 once the network allowed federalregister.gov:
+   both the HTML page and the `.txt` full-text URL (which matches the API's
+   own `raw_text_url`) can answer automated requests with a 302 to
+   `unblock.federalregister.gov`. `_shared/text.ts` follows redirects, so a
+   blocked fetch returns the CAPTCHA page as if it were the document. This
+   likely explains why 45 of 103 SDN notices got no countries, and it can
+   still feed a CAPTCHA page to an impact analysis when Supabase's IP is
+   rate-limited (the fixed A.L.A. analysis did read the real proclamation,
+   so it isn't blocked every time). Fix: treat a redirect to
+   `unblock.federalregister.gov` (or a CAPTCHA body) as a failed fetch, and
+   fall back to GovInfo's official copy
+   (`https://www.govinfo.gov/content/pkg/FR-<date>/html/<doc number>.htm`),
+   which needs `www.govinfo.gov` allowed to test from the cloud container.
+   Then re-run the backfill and re-check the 45 country-less notices.
 3. **`rematch-regulation` for geopolitical.** The "This match looks wrong?"
    drawer still refuses non-regulatory categories. Dismiss works.
 4. **Category filter** (item 6), now that three categories exist.
