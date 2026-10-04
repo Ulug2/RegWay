@@ -73,9 +73,12 @@ export interface Regulation {
   agency: string | null
   jurisdiction: string | null
   summary: string | null
+  // For a document on Federal Register public inspection (filed, not yet
+  // published), the scheduled publication date.
   published_date: string | null
   effective_date: string | null
   source_url: string
+  on_public_inspection?: boolean
 }
 
 // A regulation as listed on one entity's page, with that entity's own

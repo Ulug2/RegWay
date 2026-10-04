@@ -92,11 +92,13 @@ work. It should be scoped as its own investigate/implement pass.
 ### 2. Live regulation monitoring (near-real-time, US + global)
 **Phase 1a done (2026-10-04)** — see Completed, "Live monitoring, Phase
 1a". The audit found the real gap: matching ran only at onboarding, so
-firm/fund pages never received anything synced afterwards. Remaining
-Phase 1 (call it 1b): public-inspection ingestion (pre-publication items
-need their own status in the UI and matchers), a regulatory pre-filter
-(not needed at ≈4 items/day yet), and moving SEC/FINRA/advisories off
-daily. Original plan below for reference.
+firm/fund pages never received anything synced afterwards. **Public
+inspection done too** (see Completed, "Pre-publication documents"): the
+documents search already returns scheduled documents days early, so no
+separate feed was needed; they're now labelled as not yet published.
+Remaining: a regulatory pre-filter (not needed at ≈4 items/day yet) and
+moving SEC/FINRA/advisories off daily (Phase 2 territory). Original plan
+below for reference.
 
 Replaces the once-a-day model. Goal: when a regulation is published, check it
 against every firm/fund/portfolio company within minutes and update the
@@ -425,6 +427,18 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Pre-publication documents (public inspection) (2026-10-04)
+Notes: `prompts/public-inspection-investigate.md` (with its correction) and
+`-implement.md`. A separate public-inspection feed was built, run live and
+removed: the Federal Register documents search already returns documents
+scheduled for a future issue (106 dated ≥ 10-05 vs 107 on the list), and
+every tracked rule on the list had been stored two days early. The real
+problem was the label: those rows said "Published". Now
+`regulations.on_public_inspection` is set from the scheduled date (Eastern)
+and cleared by the 30-min re-sync; the app shows "Pre-publication" and
+"Publishes <date>"; the analysis waits for publication only when the text
+is genuinely unreadable (GovInfo often has the next issue a day early).
 
 ### Live monitoring, Phase 1a (2026-10-04)
 Roadmap item 2. Notes: `prompts/live-monitoring-investigate.md` and

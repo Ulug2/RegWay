@@ -42,6 +42,7 @@ interface RegulationTextSource {
   raw: Record<string, unknown> | null
   source_url: string
   summary: string | null
+  on_public_inspection: boolean
 }
 
 // Candidate URLs for a regulation's full text, best first.
@@ -50,13 +51,18 @@ const textUrls = (reg: RegulationTextSource): (string | undefined)[] =>
     ? federalRegisterTextUrls(reg.raw as unknown as FederalRegisterDocumentRef)
     : [reg.raw?.raw_text_url as string | undefined, reg.source_url]
 
-async function loadRegulationText(reg: RegulationTextSource) {
+// The text to analyse, or null when a document scheduled for a future
+// Federal Register issue has no readable text yet (GovInfo only carries it
+// once published). Its abstract alone would make a thin analysis that reads
+// as if written from the document, so it waits for publication instead.
+async function loadRegulationText(reg: RegulationTextSource): Promise<string | null> {
   // sync-sec-enforcement already extracts and stores the release's narrative
   // text directly — reuse it instead of re-fetching and re-stripping the
   // full site page, which would be noisier than what's already saved.
   const narrative = reg.raw?.narrative_text as string | undefined
   if (narrative) return narrative
   const text = await fetchPlainText(textUrls(reg))
+  if (!text && reg.on_public_inspection) return null
   return text || reg.summary || ''
 }
 
@@ -106,7 +112,7 @@ export async function generateImpact(
   regulationId: string,
   firmId: string,
   opts: { force?: boolean } = {},
-): Promise<'created' | 'exists'> {
+): Promise<'created' | 'exists' | 'awaiting_publication'> {
   if (!opts.force) {
     const { data: existing } = await admin
       .from('regulation_impacts')
@@ -118,7 +124,7 @@ export async function generateImpact(
   }
 
   const [{ data: reg }, { data: firm }, { data: funds }, { data: companies }, { data: links }, { data: holdings }] = await Promise.all([
-    admin.from('regulations').select('id, source, title, agency, jurisdiction, summary, published_date, effective_date, source_url, raw, category').eq('id', regulationId).single(),
+    admin.from('regulations').select('id, source, title, agency, jurisdiction, summary, published_date, effective_date, source_url, raw, category, on_public_inspection').eq('id', regulationId).single(),
     admin.from('firms').select('name, hq_location, jurisdictions, profile').eq('id', firmId).single(),
     admin.from('funds').select('id, name, structure, size, jurisdictions, profile').eq('firm_id', firmId),
     admin.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile').eq('firm_id', firmId),
@@ -150,6 +156,8 @@ export async function generateImpact(
   ]
 
   const fullText = await loadRegulationText(reg as RegulationTextSource)
+  // Nothing stored: opening the item after publication generates it then.
+  if (fullText === null) return 'awaiting_publication'
   const truncated = fullText.length > MAX_TEXT_CHARS
   const text = fullText.slice(0, MAX_TEXT_CHARS)
 

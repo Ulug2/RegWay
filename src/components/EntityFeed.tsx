@@ -1,6 +1,7 @@
 import Chip from './Chip'
 import CategoryBadge from './CategoryBadge'
 import StatusBadge from './StatusBadge'
+import PrePublicationBadge from './PrePublicationBadge'
 import type { MatchedRegulation } from '../lib/types'
 import { isNewSince } from '../lib/lastVisit'
 import {
@@ -31,6 +32,7 @@ function FeedItem({ item, status, isNew, onOpen, onDismiss }: { item: MatchedReg
         <div className="flex items-center gap-2 mb-3 pr-8">
           <CategoryBadge category={item.category} />
           <StatusBadge status={status} />
+          {item.on_public_inspection && <PrePublicationBadge />}
           {isNew && (
             <span
               className="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
@@ -49,7 +51,7 @@ function FeedItem({ item, status, isNew, onOpen, onDismiss }: { item: MatchedReg
           {item.published_date && (
             <>
               <span style={{ color: '#BAE6FD' }}>●</span>
-              <span>Published {formatDate(item.published_date)}</span>
+              <span>{item.on_public_inspection ? 'Publishes' : 'Published'} {formatDate(item.published_date)}</span>
             </>
           )}
         </div>

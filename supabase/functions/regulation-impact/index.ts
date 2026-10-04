@@ -66,9 +66,11 @@ Deno.serve(async req => {
       .select('content')
       .eq('regulation_id', regulationId)
       .eq('firm_id', membership.firm_id)
-      .single()
+      .maybeSingle()
 
-    return json({ status, content: impact?.content })
+    // `awaiting_publication`: a public-inspection document whose text can't
+    // be read yet; content is null and the panel says so.
+    return json({ status, content: impact?.content ?? null })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }

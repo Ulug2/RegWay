@@ -4,6 +4,7 @@ import { readCache, writeCache } from '../lib/cache'
 import type { Regulation, RegulationNote, AiContext } from '../lib/types'
 import LogoMark from './LogoMark'
 import CategoryBadge from './CategoryBadge'
+import PrePublicationBadge from './PrePublicationBadge'
 import ImpactPanel from './ImpactPanel'
 
 interface HeadlineDetailViewProps {
@@ -54,10 +55,13 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
   // Labelled by which date it actually is: most items (proclamations,
   // advisories, notices) have no effective date, and showing the
   // publication date as "Effective" would invent one (spec §6).
+  // A document on public inspection isn't published yet: its date is when
+  // it's scheduled to be.
+  const prePublication = !!headline?.on_public_inspection
   const dateLabel = headline?.effective_date
     ? `Effective ${formatDate(headline.effective_date)}`
     : headline?.published_date
-      ? `Published ${formatDate(headline.published_date)}`
+      ? `${prePublication ? 'Publishes' : 'Published'} ${formatDate(headline.published_date)}`
       : ''
 
   useEffect(() => {
@@ -161,6 +165,7 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
         <div className="glass-card" style={{ padding: 40, marginBottom: 32 }}>
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             {headline?.category && <CategoryBadge category={headline.category} />}
+            {prePublication && <PrePublicationBadge />}
             <span
               className="text-xs font-medium px-3 py-1"
               style={{ background: 'rgba(2,132,199,0.08)', color: '#0284C7', borderRadius: 9999 }}
@@ -455,7 +460,14 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
 
-            <ImpactPanel regulationId={regulationId} fallbackSummary={headline?.summary} focusEntityName={focusEntity} focusToken={focusToken} refreshToken={refreshToken} />
+            <ImpactPanel
+              regulationId={regulationId}
+              fallbackSummary={headline?.summary}
+              focusEntityName={focusEntity}
+              focusToken={focusToken}
+              refreshToken={refreshToken}
+              scheduledPublication={prePublication ? headline?.published_date : null}
+            />
           </div>
 
           {/* Sidebar */}
@@ -496,7 +508,7 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
                 {[
                   { label: 'Agency', value: headline?.agency },
                   { label: 'Jurisdiction', value: headline?.jurisdiction },
-                  { label: 'Published', value: formatDate(headline?.published_date) },
+                  { label: prePublication ? 'Scheduled publication' : 'Published', value: formatDate(headline?.published_date) },
                   { label: 'Effective', value: formatDate(headline?.effective_date) },
                   { label: 'Source', value: headline?.source },
                 ]

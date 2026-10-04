@@ -184,16 +184,19 @@ interface ImpactPanelProps {
   // Bump focusToken to re-trigger the same entity a second time.
   focusEntityName?: string | null
   focusToken?: number
+  // Scheduled publication date, for a document still on public inspection:
+  // its analysis waits until the full text is published.
+  scheduledPublication?: string | null
   // Bump after the backend force-regenerates the analysis (e.g. a rematch
   // or a profile-edit refresh) to pull the new content instead of the
   // cached one.
   refreshToken?: number
 }
 
-export default function ImpactPanel({ regulationId, fallbackSummary, focusEntityName, focusToken, refreshToken }: ImpactPanelProps) {
+export default function ImpactPanel({ regulationId, fallbackSummary, focusEntityName, focusToken, refreshToken, scheduledPublication }: ImpactPanelProps) {
   const [view, setView] = useState<PanelView>('summary')
   const [impact, setImpact] = useState<ImpactContent | null>(() => (regulationId ? getCachedImpact(regulationId) ?? null : null))
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>(impact ? 'ready' : 'loading')
+  const [state, setState] = useState<'loading' | 'ready' | 'error' | 'awaiting'>(impact ? 'ready' : 'loading')
   const [attempt, setAttempt] = useState(0)
   const [openEntity, setOpenEntity] = useState<string | null>(null)
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -206,6 +209,10 @@ export default function ImpactPanel({ regulationId, fallbackSummary, focusEntity
         // Normally already prepared in the background; generate on demand if not.
         const found = (await fetchImpact(regulationId)) ?? (await requestImpact(regulationId))
         if (!alive) return
+        if (!found) {
+          setState('awaiting')
+          return
+        }
         setImpact(found)
         setState('ready')
         setOpenEntity(prev => prev ?? found.impacts[0]?.entity_name ?? null)
@@ -250,6 +257,13 @@ export default function ImpactPanel({ regulationId, fallbackSummary, focusEntity
             <div className="flex items-center gap-2 text-xs" style={{ color: '#0284C7' }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#38BDF8' }} />
               Preparing a detailed analysis for your firm — this can take up to a minute the first time.
+            </div>
+          )}
+          {state === 'awaiting' && (
+            <div className="text-xs" style={{ color: '#64748B', lineHeight: 1.6 }}>
+              This document is on Federal Register public inspection
+              {scheduledPublication ? `, scheduled for publication on ${new Date(scheduledPublication + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}.
+              The detailed analysis will be written from its full text once it's published.
             </div>
           )}
           {state === 'error' && (

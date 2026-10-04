@@ -389,9 +389,11 @@ export async function fetchImpactStatuses(firmId: string, regulationIds: string[
 
 // Asks the backend to generate the analysis now (it's normally prepared in the
 // background as soon as a regulation is matched, so this is the fallback).
-export async function requestImpact(regulationId: string): Promise<ImpactContent> {
-  const { content } = await callFunction<{ content: ImpactContent }>('regulation-impact', { regulationId })
-  writeCache(`impact:${regulationId}`, content)
+// Null when the analysis can't be written yet: a document on public
+// inspection whose text isn't readable until publication.
+export async function requestImpact(regulationId: string): Promise<ImpactContent | null> {
+  const { content } = await callFunction<{ content: ImpactContent | null }>('regulation-impact', { regulationId })
+  if (content) writeCache(`impact:${regulationId}`, content)
   return content
 }
 

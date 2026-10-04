@@ -302,6 +302,35 @@ async function fetchAllPages(since: string, query: FederalRegisterQuery): Promis
   return { documents, pages: page - 1 }
 }
 
+function documentRow(doc: FederalRegisterDocument, feed: Feed, countries: Countries, today: string) {
+  const agencyName = primaryAgency(doc)?.name ?? null
+  return {
+    source: SOURCE,
+    category: categoryOf(doc, feed),
+    countries: countries.countries,
+    external_id: doc.document_number,
+    title: doc.title,
+    agency: agencyName,
+    jurisdiction: agencyName ? `${agencyName} · Federal` : 'Federal Register',
+    summary: doc.abstract,
+    published_date: doc.publication_date,
+    effective_date: doc.effective_on,
+    source_url: doc.html_url,
+    on_public_inspection: doc.publication_date > today,
+    raw: { ...doc, raw_text_url: federalRegisterTextUrl(doc), countries_from_full_text: countries.fromFullText },
+  }
+}
+
+// The documents search also returns documents scheduled for a future issue
+// (filed and on public inspection, typically 1-3 days ahead), so they're
+// ingested early by the same feeds; a separate public-inspection feed was
+// checked and adds no lead time (2026-10-04: every tracked rule on the
+// public-inspection list was already here). Flag them so the app says
+// "Publishes <date>", not "Published", until their issue date. Federal
+// Register issues are dated in Eastern time; the 30-minute sync re-upserts
+// each document after its date, which clears the flag.
+const todayEastern = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
@@ -320,31 +349,16 @@ Deno.serve(async (req) => {
       }),
     )
 
-    // Keyed by document number: one document can come back from more than
-    // one feed, and a single upsert can't touch the same row twice.
     const fullTextDocs = results.filter(r => r.feed.countriesFromFullText).flatMap(r => r.documents.map(d => d.document_number))
     const known = await countriesReadBefore(admin, fullTextDocs)
 
+    const today = todayEastern()
+    // Keyed by document number: one document can come back from more than
+    // one feed, and a single upsert can't touch the same row twice.
     const rowsById = new Map<string, Record<string, unknown>>()
     for (const { feed, documents } of results) {
       const countries = await mapLimited(documents, 4, doc => countriesOf(doc, feed, known))
-      documents.forEach((doc, i) => {
-        const agencyName = primaryAgency(doc)?.name ?? null
-        rowsById.set(doc.document_number, {
-          source: 'federal_register' as const,
-          category: categoryOf(doc, feed),
-          countries: countries[i].countries,
-          external_id: doc.document_number,
-          title: doc.title,
-          agency: agencyName,
-          jurisdiction: agencyName ? `${agencyName} · Federal` : 'Federal Register',
-          summary: doc.abstract,
-          published_date: doc.publication_date,
-          effective_date: doc.effective_on,
-          source_url: doc.html_url,
-          raw: { ...doc, raw_text_url: federalRegisterTextUrl(doc), countries_from_full_text: countries[i].fromFullText },
-        })
-      })
+      documents.forEach((doc, i) => rowsById.set(doc.document_number, documentRow(doc, feed, countries[i], today)))
     }
     const rows = [...rowsById.values()]
 
@@ -356,9 +370,17 @@ Deno.serve(async (req) => {
     const perFeed = Object.fromEntries(results.map(r => [r.feed.name, { documents: r.documents.length, pages: r.pages }]))
     const geopolitical = rows.filter(r => r.category === 'geopolitical').length
     const feedSummary = results.map(r => `${r.feed.name} ${r.documents.length}`).join(', ')
-    await recordSyncRun(admin, SOURCE, true, `${rows.length} synced, ${geopolitical} geopolitical (${feedSummary})`)
+    const scheduled = rows.filter(r => r.on_public_inspection).length
+    await recordSyncRun(admin, SOURCE, true, `${rows.length} synced, ${geopolitical} geopolitical (${feedSummary}); ${scheduled} not yet published`)
 
-    return json({ synced: rows.length, geopolitical, since, feeds: perFeed, fullTextReads: fullTextDocs.length - known.size })
+    return json({
+      synced: rows.length,
+      geopolitical,
+      since,
+      feeds: perFeed,
+      notYetPublished: scheduled,
+      fullTextReads: fullTextDocs.length - known.size,
+    })
   } catch (err) {
     await recordSyncRun(admin, SOURCE, false, (err as Error).message)
     return json({ error: (err as Error).message }, 500)
