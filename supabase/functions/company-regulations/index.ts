@@ -27,6 +27,7 @@ interface RegulationItem {
   published_date: string | null
   effective_date: string | null
   summary: string
+  why_it_applies?: string
   source_url: string
 }
 
@@ -112,7 +113,7 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: 'user',
-          content: `Search for regulatory changes published or proposed in the last 90 days that would create compliance obligations for a company in the "${sectorDescriptor}" sector headquartered in ${locationDescriptor}. Include federal, state/local, and (if applicable) foreign regulators. For each distinct item found, report: the exact rule or document title, the issuing regulator/agency, the jurisdiction, the publication or effective date, a one-sentence plain-language summary, and the official source URL. Only include items you found real sources for — do not invent items.${factsText}`,
+          content: `Search for regulatory changes published or proposed in the last 90 days that would create compliance obligations for a company in the "${sectorDescriptor}" sector headquartered in ${locationDescriptor}. Include federal, state/local, and (if applicable) foreign regulators. For each distinct item found, report: the exact rule or document title, the issuing regulator/agency, the jurisdiction, the publication or effective date, a one-sentence plain-language summary, which of the company's known facts (sector, location, activity) it applies to, and the official source URL. Only include items you found real sources for — do not invent items.${factsText}`,
         },
       ],
     })
@@ -156,6 +157,11 @@ Deno.serve(async (req) => {
                     published_date: { type: 'string', description: 'YYYY-MM-DD or empty string if unknown' },
                     effective_date: { type: 'string', description: 'YYYY-MM-DD or empty string if unknown' },
                     summary: { type: 'string', description: 'One plain-language sentence' },
+                    why_it_applies: {
+                      type: 'string',
+                      description:
+                        "One sentence: which known fact about the company (its sector, location, or a stated activity) this item reaches, as the findings support it. Don't assert facts about the company that weren't given.",
+                    },
                     source_url: { type: 'string' },
                   },
                   required: ['title', 'agency', 'jurisdiction', 'summary', 'source_url'],
@@ -218,7 +224,9 @@ Deno.serve(async (req) => {
           regulation_id: reg.id,
           firm_id: company.firm_id,
           portfolio_company_id: company.id,
-          relevance_reason: `AI web-search scan for ${company.name} (${sectorDescriptor}, ${locationDescriptor})`,
+          // The model's reason when it gave one; the scan descriptor otherwise
+          // (scans before 2026-10-04 stored only this).
+          relevance_reason: item.why_it_applies?.trim() || `AI web-search scan for ${company.name} (${sectorDescriptor}, ${locationDescriptor})`,
         },
         { onConflict: 'regulation_id,firm_id,portfolio_company_id,fund_id' },
       )

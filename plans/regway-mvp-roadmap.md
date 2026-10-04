@@ -63,7 +63,14 @@ Notes: `prompts/geopolitical-phase1-recheck-*.md`. Fund → company
 holdings (old item 1.1) followed: `prompts/fund-holdings-*.md`, then the
 geopolitical re-check: `prompts/geopolitical-rematch-*.md`.
 
-**Blocker (2026-10-04):** the Anthropic account ran out of credit mid-pass
+**Scheduled matching paused (2026-10-04, owner's call):** credit was
+restored, but the first `run-matching` run would clear every firm's backlog
+for ≈ $3–5 (over half of it test accounts). The cron job
+`run-matching-30min` is inactive; resume with
+`select cron.alter_job(jobid, active := true) from cron.job where jobname = 'run-matching-30min'`.
+Worth deciding first whether to limit it to firms with a recent sign-in.
+
+**Earlier blocker (resolved):** the Anthropic account ran out of credit mid-pass
 ("credit balance is too low"). Every AI-calling function fails until it's
 topped up: matchers, impact analyses, RegWay AI chat, company scans. The
 geopolitical re-check's AI step is the one piece shipped without a live run.
@@ -148,22 +155,8 @@ Caveats
   below (event-driven removes the need for per-firm schedules); the
   timezone still matters for when the Morning Brief email is sent.
 
-### 3. Copilot: ground answers in the firm's currently-relevant regulations
-From the 2026-10-02 RegWay AI architecture brief (full plan:
-`plans/regway-ai-multi-agent-architecture.md`). Audited:
-`regway-ai-chat/index.ts` never queries `regulation_relevance` — the only
-regulation-specific context it ever gets is the single item named in
-`AiContext.regulation` when opened from one regulation's detail page.
-Ask the copilot generically "what's relevant to us right now" and it has
-nothing to ground that in except a fresh, disconnected web search,
-instead of the list RegWay has already matched via `match-relevance`/
-`company-regulations`. Fix: have the chat's context-fetch step query the
-same shape `src/lib/data.ts`'s `fetchRelevantRegulations()` already
-queries for the dashboard (`regulation_relevance` joined to
-`regulations(*)`, non-dismissed, excluding `NOT_RELEVANT:` rows), scoped
-to the firm, or narrowed to one fund/company when `AiContext` already
-narrows it. Small, high-value, no dependencies — ships independently of
-the rest of the architecture brief (see item 5).
+### 3. Copilot: ground answers in the firm's currently-relevant regulations — done
+See Completed, "Copilot grounded in matched developments".
 
 ### 4. Copilot: save and resume chats
 From the same brief. Audited: `regway_ai_messages` (migration 0001,
@@ -427,6 +420,17 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Copilot grounded in matched developments (2026-10-04)
+Roadmap item 3. Notes: `prompts/copilot-grounding-investigate.md` and
+`-implement.md`. `regway-ai-chat` now puts the firm's live matches (scoped
+to the fund / company / regulation it was opened from, read with the
+user's RLS-scoped client) into its cached system prompt, each with the
+entity's own reason, and answers "what's relevant" from them first. New
+`_shared/matchedDevelopments.ts` is reusable by item 5's Context Analyst.
+Found: company scans stored a placeholder instead of a reason for every
+match (68 live rows); scans now return a real `why_it_applies`, older rows
+update on rescan. Verified with one live message ($0.014).
 
 ### Pre-publication documents (public inspection) (2026-10-04)
 Notes: `prompts/public-inspection-investigate.md` (with its correction) and

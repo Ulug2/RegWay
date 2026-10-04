@@ -21,6 +21,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { loadMatchedDevelopments, type MatchedDevelopments, type MatchScope } from '../_shared/matchedDevelopments.ts'
 import { mergeUsage, recordUsage, type UsageTotals } from '../_shared/usage.ts'
 
 const MODEL = 'claude-sonnet-4-5'
@@ -66,6 +67,20 @@ function contextInstruction(context?: AiContext): string {
   return `\n\nThe user opened this chat directly from the ${label} "${context.name}". Treat the conversation as being about this specific ${label} unless the user clearly asks about something else — don't make them restate what they're asking about.`
 }
 
+// The firm's matched developments, and how to use them. Placed in the
+// system prompt (cached), since the list changes far less often than
+// messages are sent.
+function matchedInstruction(matched: MatchedDevelopments, scope: MatchScope): string {
+  const where = scope.type === 'firm' ? 'this firm, its funds and its portfolio companies' : scope.type === 'regulation' ? 'the firm\'s entities for this regulation' : `this ${scope.type}`
+  if (matched.count === 0) {
+    return `RegWay has not matched any developments to ${where} so far (from its tracked sources: the Federal Register, SEC and FINRA enforcement, State Department advisories, and company web scans). That isn't proof nothing applies; say so if asked, and use web search.`
+  }
+  return `Developments RegWay has already matched to ${where}${matched.shown < matched.count ? ` (newest ${matched.shown} of ${matched.count})` : ''}, with each entity's stated reason:
+${matched.text}
+
+When asked what is relevant, new, or affecting an entity, answer from this list first and say these are what RegWay has matched (with the reason given). Use web search for details, status updates, or anything not listed. An item's absence from this list isn't proof it doesn't apply: matching covers RegWay's tracked sources only.`
+}
+
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
@@ -101,9 +116,13 @@ Deno.serve(async (req) => {
 
     const firm = (membership as unknown as { firms: { name: string; hq_location: string; jurisdictions: string[] } }).firms
 
-    const [{ data: funds }, { data: companies }] = await Promise.all([
+    // What RegWay has already matched, narrowed to whatever the chat was
+    // opened from (a fund, a company, one regulation), else firm-wide.
+    const scope: MatchScope = context ? { type: context.type, id: context.id } : { type: 'firm' }
+    const [{ data: funds }, { data: companies }, matched] = await Promise.all([
       supabase.from('funds').select('name, size, structure, jurisdictions').eq('firm_id', membership.firm_id),
       supabase.from('portfolio_companies').select('name, sectors, regions').eq('firm_id', membership.firm_id),
+      loadMatchedDevelopments(supabase, membership.firm_id, firm?.name ?? 'the firm', scope),
     ])
 
     const fundSummary =
@@ -121,6 +140,8 @@ Deno.serve(async (req) => {
 
 Active funds: ${fundSummary}.
 Portfolio companies: ${companySummary}.
+
+${matchedInstruction(matched, scope)}
 
 Use web search to ground every regulatory claim in a real, current source. Always cite the primary source (agency or publisher name, document title, URL, and date). If you are not confident a rule applies to this firm, say so plainly instead of guessing. Never assign an unprompted urgency label such as "critical" or "low impact" — describe obligations and deadlines factually and let the user judge priority themselves.${contextInstruction(context)}${ambiguityInstruction}`
 
