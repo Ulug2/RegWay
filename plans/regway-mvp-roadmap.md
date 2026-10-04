@@ -85,10 +85,10 @@ Tests run on **H.I.G. Capital** only (the primary test account). Verified
 live so far: geopolitical matching, fund-level derived matches and their
 analysis, the copilot answering from matched developments ($0.014), copilot
 save / resume with multi-turn memory ($0.011), and on H.I.G. on 2026-10-04
-($0.73 in total): scheduled matching (80 items, 8 relevant, sensible
-verdicts, $0.15), background analyses (6, after fixing the cut-off below,
-$0.57), the geopolitical and the regulatory re-check (row replaced, $0.01
-each).
+($0.94 in total): scheduled matching (80 items, 8 relevant, sensible
+verdicts, $0.15), analyses for the 8 new matches (after fixing the cut-off
+below) plus the 2 re-written by re-checks (10 × avg $0.077 = $0.77), and
+the geopolitical and the regulatory re-check (rows replaced, $0.017).
 
 Still owed. These need the H.I.G. user signed in in the app (the functions
 take a user session; testing them by signing in as that user from a script

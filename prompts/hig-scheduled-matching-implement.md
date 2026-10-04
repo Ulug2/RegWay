@@ -38,4 +38,6 @@ Follows `hig-scheduled-matching-investigate.md`.
   copilot upload, pre-publication analysis (none matched today). Listed in
   the roadmap as a click-through.
 
-Total spent this pass: ≈ $0.74.
+Total spent this pass (`usage_events`): $0.94 — matchers $0.15, 10
+analyses $0.77 (8 new matches + 2 re-written after the re-checks),
+re-checks $0.017.
