@@ -77,6 +77,31 @@ geopolitical re-check's AI step is the one piece shipped without a live run.
 
 ## Priority order
 
+### Live AI tests still owed
+Not every AI path has been run live: the Anthropic account was out of
+credit for part of 2026-10-04, and after the top-up spend was kept
+deliberately low. Already verified live: geopolitical matching, fund-level
+derived matches and their analysis, the geopolitical re-check ($0.01), and
+the copilot answering from matched developments ($0.014). Still owed, with
+estimates from measured per-call costs:
+
+| What | How to test | Est. cost |
+|---|---|---|
+| Scheduled matching (`run-matching`) producing real verdicts | Throwaway firm, one round of the three matchers (+ a few analyses) | $0.20–0.60 |
+| Regulatory re-check replacing every entity's row | One re-check on a throwaway firm with a wrong company match | $0.01–0.07 |
+| Company scan storing a real `why_it_applies` | One scan of a throwaway company (+ its background analyses) | $0.20–0.70 |
+| Analysis of a not-yet-published document from GovInfo's early text | Open one scheduled document's detail page | $0.06–0.22 |
+| Copilot opened from a fund / company page (scoped matches) | 1–2 messages | $0.02–0.14 |
+| Copilot save/resume (item 4) | 2–3 messages across two conversations | $0.05–0.20 |
+| Copilot file upload (.txt/.md/.pdf) (item 11) | 1–2 messages with attachments | $0.05–0.15 |
+| Haiku vs Sonnet verdict accuracy (item 9.3) | Same ~40 items through both models, per matcher | ≈ $0.30 |
+| **Total for the targeted tests** | | **≈ $1–2.50** |
+
+Separate decision, not a test: resuming scheduled matching for real
+(`run-matching-30min` is paused). One-time backlog ≈ $3–5 for all 5 firms,
+≈ $1–1.50 for H.I.G. alone; then roughly one batch per firm per matcher per
+day. Cheaper with levers 9.1, 9.4 and 9.5.
+
 ### 1. Geopolitical monitoring, Phase 2
 Phase 1, fund → company holdings, the geopolitical re-check and the
 entity-page category filter are done (see Completed). What's left, roughly
@@ -256,22 +281,46 @@ since it only matters once multiple sources cover the same event (i.e.
 mainly after geopolitical monitoring adds more source diversity).
 
 ### 9. Cost optimization (not yet built)
-From the 2026-10-01 cost investigation (prompt caching and usage logging
-from this list are done — see Completed).
-1. **Right-size `max_tokens` per function** rather than a flat generous
-   number — `regway-ai-chat` doesn't need to allow 4096 on every call if
-   most real answers finish well under that; the model stops on its own
-   once done; a high ceiling only matters for the rare long answer. Lower
-   relative to what's actually used in practice, using the now-available
-   usage-logging data — not a blind guess.
-2. **Consider Haiku for `match-relevance`/`match-enforcement-relevance`** —
-   batch relevance classification (a strict yes/no-plus-one-sentence-reason
-   judgment per item) is a more mechanical task than `regway-ai-chat`'s
-   open-ended reasoning or `_shared/impact.ts`'s detailed analysis writing.
-   A cheaper model here is a real lever, but needs a real side-by-side
-   accuracy check against the current Sonnet verdicts before switching —
-   not assumed safe without evidence, the same way every other change in
-   this codebase gets verified against real data before shipping.
+Prompt caching and usage logging are done (see Completed). Measured from
+`usage_events` (Sonnet 4.5 list prices, $3/$15 per M tokens, $0.01 per web
+search), per call: company scan **$0.20** (web-search step $0.17 +
+extraction $0.02), impact analysis **$0.06** avg (up to $0.22 on long
+documents), matcher batch of 40 **$0.05**, chat message **$0.06–0.07**,
+re-check **$0.01**. Levers, biggest first (2026-10-04 review):
+1. **Stop pre-writing impact analyses nobody opens.** The matchers and
+   company scans generate up to 8 analyses in the background for every new
+   match; most are never opened. The on-demand path already exists (the
+   detail page writes one when missing), so dropping the background step
+   moves that cost to "only when read". Trade-off: the first open waits
+   ~30–60 s.
+2. **Company scans are the biggest recurring cost.** $0.20 per company,
+   re-run weekly (and after profile edits) on dashboard load, plus the
+   background analyses above. Options: scan less often (e.g. every 14–30
+   days), cap web searches per scan (`max_uses` 5 → 3), or scan once per
+   sector × location and share results across companies (results are
+   public regulations).
+3. **Move to a cheaper model, with an accuracy check first.** Claude Haiku
+   4.5 is $1/$5 (3× cheaper than Sonnet 4.5) and fits the matchers' strict
+   yes/no verdicts. Claude Sonnet 5.5 is $2/$10 (a third cheaper than
+   Sonnet 4.5) and newer, but it rejects forced `tool_choice`, which every
+   structured call here uses, so the switch means moving those calls to
+   `tool_choice: auto` + `strict: true` (or structured outputs). Either way,
+   compare verdicts side by side on real items before switching (≈ $0.30,
+   see "Live AI tests still owed").
+4. **Message Batches API (50% off)** for work nobody is waiting on:
+   `run-matching` and any background analyses. Results arrive within
+   minutes to hours, fine for a 30-minute schedule.
+5. **Only match firms that are in use.** `run-matching` runs every firm,
+   including dormant/test accounts (today over half of the backlog cost).
+   Limit it to firms with a sign-in in the last N days; dormant ones catch
+   up on their next visit.
+6. **Shorter analysis input.** Analyses read up to 60K characters of the
+   document; long rules drive the $0.22 calls. A lower cap, or sending only
+   the sections that mention the matched facts, cuts input tokens.
+
+Dropped: "right-size `max_tokens`" (from the 2026-10-01 list). Output is
+billed per token generated, not per token allowed, so a lower ceiling saves
+nothing and risks cutting answers off.
 
 ### 10. Re-match discovery after settings edits
 The match-correction loop (see Completed) covers *re-checking and
