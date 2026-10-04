@@ -29,7 +29,8 @@ export async function resolveFirmContext(req: Request, admin: SupabaseClient): P
   const token = authHeader.replace(/^Bearer\s+/i, '')
 
   if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
-    const body = await req.json().catch(() => ({}))
+    // A clone, so the caller can still read its own fields from the body.
+    const body = await req.clone().json().catch(() => ({}))
     if (!body.firmId) return json({ error: 'firmId is required' }, 400)
     return { firmId: body.firmId, rateLimitClient: null }
   }
@@ -176,4 +177,32 @@ export async function upsertRelevanceRows(admin: SupabaseClient, rows: Relevance
     onConflict: 'regulation_id,firm_id,portfolio_company_id,fund_id',
   })
   if (error) throw error
+}
+
+// Replaces this firm's verdicts on one regulation with a fresh set (a
+// user-requested re-check): rows the new set doesn't produce are deleted,
+// so a match the re-check no longer supports disappears from that entity's
+// page instead of lingering beside a new firm-level "not relevant" marker.
+// User dismissals and holdings-derived fund rows (_shared/holdings.ts
+// recomputes those) are left alone.
+export async function replaceRegulationVerdicts(admin: SupabaseClient, firmId: string, regulationId: string, rows: RelevanceRow[]): Promise<void> {
+  const fresh = dedupeRows(rows)
+  const keyOf = (r: { fund_id: string | null; portfolio_company_id: string | null }) => `${r.fund_id ?? ''}|${r.portfolio_company_id ?? ''}`
+  const keep = new Set(fresh.map(keyOf))
+
+  const { data: existing, error } = await admin
+    .from('regulation_relevance')
+    .select('id, fund_id, portfolio_company_id')
+    .eq('firm_id', firmId)
+    .eq('regulation_id', regulationId)
+    .eq('via_holdings', false)
+    .is('dismissed_at', null)
+  if (error) throw error
+
+  const stale = (existing ?? []).filter(r => !keep.has(keyOf(r))).map(r => r.id)
+  if (stale.length) {
+    const { error: deleteError } = await admin.from('regulation_relevance').delete().in('id', stale)
+    if (deleteError) throw deleteError
+  }
+  await upsertRelevanceRows(admin, fresh)
 }

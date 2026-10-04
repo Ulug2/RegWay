@@ -60,20 +60,24 @@ tracked in git, so cloud sessions can read them).
 CAPTCHA fix (old item 1.2) is done, the feeds were checked against their
 live shape and fixed, and every function was redeployed with the CLI.
 Notes: `prompts/geopolitical-phase1-recheck-*.md`. Fund → company
-holdings (old item 1.1) followed: `prompts/fund-holdings-*.md`.
+holdings (old item 1.1) followed: `prompts/fund-holdings-*.md`, then the
+geopolitical re-check: `prompts/geopolitical-rematch-*.md`.
+
+**Blocker (2026-10-04):** the Anthropic account ran out of credit mid-pass
+("credit balance is too low"). Every AI-calling function fails until it's
+topped up: matchers, impact analyses, RegWay AI chat, company scans. The
+geopolitical re-check's AI step is the one piece shipped without a live run.
 
 ## Priority order
 
 ### 1. Geopolitical monitoring, Phase 2
-Phase 1 and fund → company holdings are done (see Completed). What's
-left, roughly in order of value:
-1. **`rematch-regulation` for geopolitical.** The "This match looks wrong?"
-   drawer still refuses non-regulatory categories. Dismiss works.
-2. **Category filter** (item 6), now that three categories exist.
-3. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
+Phase 1, fund → company holdings and the geopolitical re-check are done
+(see Completed). What's left, roughly in order of value:
+1. **Category filter** (item 6), now that three categories exist.
+2. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
    Recent Actions, once a portfolio company with UK/EU-specific exposure
    makes them worth a connector.
-4. **One known residual false positive** in the H.I.G. test data: a
+3. **One known residual false positive** in the H.I.G. test data: a
    Section 301 "manufacturing sectors" investigation matched to 3Pillar
    Global (software) via India. The model's own reason says the sector fit
    isn't confirmed. Left in place as an honest example of the limit, not
@@ -419,6 +423,31 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Re-check ("This match looks wrong?") for geopolitical items (2026-10-04)
+Notes: `prompts/geopolitical-rematch-investigate.md` and `-implement.md`.
+- The geopolitical verdict step moved into `_shared/geopoliticalJudge.ts`,
+  shared by the matcher and `rematch-regulation`, so a disputed item is
+  re-judged by exactly the rules that matched it, plus the user's note.
+- **Bug fixed (both categories):** a re-check kept only the model's first
+  verdict and upserted it, never replacing the firm's other rows on that
+  regulation. A wrong company match therefore stayed live beside the new
+  firm-level "not relevant". New `replaceRegulationVerdicts` replaces the
+  set (dismissals and holdings-derived fund rows untouched); fund rows are
+  re-derived afterwards. Latent in production (no contradictory rows
+  existed; both real re-checks had been firm-level).
+- **Bug fixed:** `resolveFirmContext` consumed the request body on the
+  service-role path, so `rematch-regulation` and `refresh-entity-impacts`
+  lost their own fields when called with the service key.
+- The drawer now appears on geopolitical items and lists per-entity
+  verdicts when a re-check names more than one entity. Enforcement is still
+  refused.
+
+Verified: the write path (replace, dismissal kept, fund row removed and
+re-derived) against the live DB with a throwaway firm, deleted afterwards.
+**Not verified live:** the AI step itself, because the Anthropic account
+ran out of credit during this pass (see Context). Re-run steps are in the
+implement notes.
 
 ### Fund → company holdings (2026-10-04)
 Spec §3/§9/§13's indirect path ("the fund holds Lumen, which has a supplier

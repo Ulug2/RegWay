@@ -374,16 +374,19 @@ export async function requestImpact(regulationId: string): Promise<ImpactContent
 }
 
 export interface RematchResult {
+  // Relevant to at least one entity after the re-check.
   relevant: boolean
   reason: string
+  // One per entity the re-check judged, relevant ones first.
+  verdicts?: { entity: string; relevant: boolean; reason: string }[]
 }
 
 // "Flag an incorrect match": re-evaluates one regulation against the firm's
 // current profile data on demand, optionally weighing a user's stated
 // correction. Updates the relevance row in place (upsert on the same
 // conflict key) and, if still relevant, force-regenerates the impact
-// analysis so the explanation visibly reflects the re-check. Regulatory
-// category only — see rematch-regulation.
+// analysis so the explanation visibly reflects the re-check. Regulatory and
+// geopolitical items — see rematch-regulation.
 export async function rematchRegulation(regulationId: string, note?: string): Promise<RematchResult> {
   return callFunction<RematchResult>('rematch-regulation', { regulationId, note })
 }

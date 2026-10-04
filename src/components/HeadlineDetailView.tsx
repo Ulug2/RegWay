@@ -269,7 +269,7 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
               {flagged ? 'Flagged for Review' : 'Flag for Review'}
             </button>
 
-            {regulationId && headline?.category === 'regulatory' && (
+            {regulationId && (headline?.category === 'regulatory' || headline?.category === 'geopolitical') && (
               <button
                 onClick={() => setDisputeOpen(o => !o)}
                 className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"
@@ -353,7 +353,19 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
                   <div className="text-sm font-semibold" style={{ color: disputeResult.relevant ? '#0284C7' : '#B45309' }}>
                     {disputeResult.relevant ? 'Re-checked — still considered relevant.' : 'Re-checked — no longer considered relevant.'}
                   </div>
-                  <p className="text-sm" style={{ color: '#334155', lineHeight: 1.6 }}>{disputeResult.reason}</p>
+                  {disputeResult.verdicts && disputeResult.verdicts.length > 1 ? (
+                    <ul className="space-y-2">
+                      {disputeResult.verdicts.map((v, i) => (
+                        <li key={`${v.entity}-${i}`} className="text-sm" style={{ color: '#334155', lineHeight: 1.6 }}>
+                          <span className="font-semibold">{v.entity}</span>
+                          <span style={{ color: v.relevant ? '#0284C7' : '#B45309' }}>{v.relevant ? ' · relevant' : ' · not relevant'}</span>
+                          {' — '}{v.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm" style={{ color: '#334155', lineHeight: 1.6 }}>{disputeResult.reason}</p>
+                  )}
                   {!disputeResult.relevant && (
                     <p className="text-xs" style={{ color: '#94a3b8' }}>This will stop appearing on your dashboard the next time it loads.</p>
                   )}
