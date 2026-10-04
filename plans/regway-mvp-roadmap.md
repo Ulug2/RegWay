@@ -49,26 +49,42 @@ they're cheap, high-value, and don't depend on the larger rebuild.
 Priority order was renumbered to fit these in (items 1–2 unchanged, new
 3–5 inserted, everything that was 3–10 shifted to 6–13).
 
+**2026-10-04:** Phase 1 of geopolitical monitoring shipped and was verified
+against live data (see "Geopolitical monitoring, Phase 1" under Completed).
+Item 1 below is now its Phase 2 remainder. Audit and implementation notes:
+`prompts/geopolitical-monitoring-investigate.md` and `-implement.md` (now
+tracked in git, so cloud sessions can read them).
+
 ## Priority order
 
-### 1. Geopolitical monitoring, including sanctions
-From `docs/Regway_AI_Features_and_User_Journey.docx` (read 2026-09-29, the
-agreed feature spec from product). Entirely new: no sanctions list (e.g.
-OFAC SDN), tariff, or geopolitical-event source exists today. Needs its own
-connector(s), its own category, and supplier-location profile data (now
-available — see `company.supplier_locations` under Completed) since the
-doc's example exposure path is firm → fund → company → supplier. Named as
-the highest-uncertainty item to scope first, since "supported connection"
-sourcing for geopolitical events is the least defined of the three
-categories (regulatory / enforcement / geopolitical).
+### 1. Geopolitical monitoring, Phase 2
+Phase 1 is done (see Completed). What's left, roughly in order of value:
+1. **Fund → company holdings.** Spec §9/§13's indirect path ("the fund
+   holds Lumen, which has a supplier in Region C") needs a
+   `fund_holdings (fund_id, portfolio_company_id)` table plus UI. The
+   relationship doesn't exist anywhere today, and spec §3 forbids guessing
+   it, so the geopolitical matcher never scopes a verdict to a fund. This is
+   also prerequisite data for fund-level regulatory/enforcement exposure.
+2. **SDN notices without countries.** 45 of 103 "Notice of OFAC Sanctions
+   Action" rows got no countries from their full text (designees without a
+   foreign address, or the `.txt` fetch failed; it couldn't be told apart from
+   the cloud container, where federalregister.gov is blocked). They're
+   treated as global items and the matcher rejects them correctly, but at a
+   cost of a few AI evaluations each time a new one arrives.
+3. **`rematch-regulation` for geopolitical.** The "This match looks wrong?"
+   drawer still refuses non-regulatory categories. Dismiss works.
+4. **Category filter** (item 6), now that three categories exist.
+5. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
+   Recent Actions, once a portfolio company with UK/EU-specific exposure
+   makes them worth a connector.
+6. **One known residual false positive** in the H.I.G. test data: a
+   Section 301 "manufacturing sectors" investigation matched to 3Pillar
+   Global (software) via India. The model's own reason says the sector fit
+   isn't confirmed. Left in place as an honest example of the limit, not
+   fixed by more prompt tuning.
 
-This and "Live regulation monitoring"
-(below) are the two largest remaining net-new pieces of work in this whole
-roadmap — each is its own data-source integration plus its own matching
-logic, comparable in size to the original Federal Register pipeline. They
-should be scoped and prioritized as their own investigate/implement
-pass each, rather than folded into a single pass or assumed strictly
-sequential.
+"Live regulation monitoring" (below) is the other large net-new piece of
+work. It should be scoped as its own investigate/implement pass.
 
 ### 2. Live regulation monitoring (near-real-time, US + global)
 Replaces the once-a-day model. Goal: when a regulation is published, check it
@@ -404,6 +420,81 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Geopolitical monitoring, Phase 1 (2026-10-04)
+Spec §8. Audit first (`prompts/geopolitical-monitoring-investigate.md`):
+OFAC and BIS documents were already being synced but labelled
+`regulatory`, and none had ever been evaluated for any firm (crowded out of
+`match-relevance`'s newest-200 window by EPA/HHS volume). Built:
+- **Sources, all official.** `sync-federal-register` now runs a declarative
+  `FEEDS` list (adding a source is one entry): the existing rules, OFAC
+  NOTICE (SDN designations), USTR trade actions (title-filtered), and
+  presidential documents filtered to sanctions/tariff topics. OFAC, BIS
+  and USTR documents are categorized `geopolitical`. New
+  `sync-travel-advisories` ingests State Department level 3-4 advisories
+  (one row per country page and level, so a level change is a new
+  development), scheduled daily at 12:00 UTC (migration 0023).
+- **`regulations.countries`** (GIN-indexed), filled by a deterministic
+  gazetteer (`_shared/countries.ts`: 200 countries plus demonyms, so
+  "Iranian Transactions…" → Iran; longest-alias-first so "Papua New
+  Guinea" doesn't also count as Guinea). For SDN notices, whose abstracts are
+  boilerplate, countries come from the full text.
+- **`match-geopolitical-relevance`**: pre-filter, then AI. Each entity's
+  footprint (`_shared/footprint.ts`: HQ, facilities, operations, suppliers,
+  each kept as its own connection kind, plus what the company does) gives
+  the countries it touches. Only developments naming one of those, or
+  global measures when there's foreign exposure, reach the model, along
+  with the exact overlapping profile facts already computed. The prompt
+  forbids "is sanctioned/prohibited" language and keeps similar names as
+  unconfirmed identities. It says direct vs. indirect, and treats a
+  designee's address as not a connection. It runs on dashboard load (a
+  no-op with no AI call when nothing is new), at onboarding, and with
+  `reevaluate` after a company location edit or a new company.
+- **Impact analysis** prompts moved into `_shared/impactPrompts.ts`, one
+  spec per category (regulatory and enforcement text moved verbatim,
+  checked mechanically), plus a geopolitical one.
+- **Frontend**: the country list is every country (it was 19, with no
+  China, Russia, Vietnam…, so supplier locations couldn't name them); the
+  tag input got type-to-filter search; travel-advisory source label.
+
+Real bugs found and fixed along the way:
+- Federal Register's HTML page returns a CAPTCHA to automated requests. 2 of
+  the 3 existing Federal Register impact analyses had been written from the
+  CAPTCHA page, not the rule. The sync now stores each document's `.txt`
+  URL as `raw.raw_text_url`, which `impact.ts` already preferred.
+- Detail page header labelled the publication date "Effective" whenever an
+  item had no effective date.
+- `upsertRelevanceRows` failed outright if a model returned two verdicts for
+  the same row. It now dedupes, preferring a relevant verdict; this affects
+  every matcher.
+- Federal Register mislabelled USTR documents with their parent office;
+  every feed's agencies now count as tracked in `primaryAgency`.
+
+Verified live on project `cfspwaqtidfliupmlfwz`: backfill since 2025-12-20
+synced 1,337 Federal Register documents, 252 of them geopolitical (157 OFAC,
+59 presidential, 24 USTR, 12 BIS), plus 53 level 3-4 travel advisories.
+For H.I.G. Capital, 121 of 305 geopolitical items passed the free
+pre-filter. All 121 were evaluated in 4 batches (about $0.06 each); 2
+matched. The first rule set produced speculative matches (SDN designees
+"located in Italy" → A.L.A.; an aluminum tariff → A.L.A. "if it exports
+these materials"), fixed by the designee rule and by giving the model each
+company's activity. The final pass rejected every SDN notice and the
+aluminum, semiconductor and ICT items with sector-aware reasons. It kept the
+Section 232 aircraft-parts proclamation → A.L.A. (aerospace logistics,
+Italy), whose regenerated analysis now reads the real proclamation ("does
+not impose tariffs at this time", 180-day negotiation window). Browser check
+as the test user: the item renders with the Geopolitical badge on A.L.A.'s
+page and opens to the analysis; country search filters 200 options.
+
+Deployed to production in this pass: `sync-federal-register`,
+`sync-travel-advisories`, `match-geopolitical-relevance`, `match-relevance`
+(now regulatory-only), `regulation-impact`, `refresh-entity-impacts`.
+**Not redeployed** (they still run the previous `_shared` code, which is
+behaviorally the same for their categories): `match-enforcement-relevance`,
+`rematch-regulation`, `company-regulations`, `sync-sec-enforcement`,
+`sync-finra-enforcement`, `sync-sec-admin-proceedings`. Redeploy them with the
+CLI to pick up the shared `upsertRelevanceRows` dedupe and RSS entity
+decoding.
 
 ### Product-realignment doc baseline (verified in code, no work needed)
 From `docs/Regway_AI_Features_and_User_Journey.docx` — gap-checked against

@@ -3,7 +3,7 @@ import { useCachedState } from '../lib/useCachedState'
 import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } from '../lib/scans'
 import { readCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchImpactStatuses } from '../lib/data'
+import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchImpactStatuses, matchGeopoliticalDevelopments } from '../lib/data'
 import type { Regulation, PortfolioCompany, Fund, Firm, AiContext } from '../lib/types'
 import LogoMark from './LogoMark'
 import CategoryBadge from './CategoryBadge'
@@ -108,6 +108,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         // Research every company that needs it now, in the background, so
         // results are already there when a company is opened.
         prewarmCompanies(id, cos)
+        // Geopolitical items arrive daily from the syncs; match whatever is
+        // new against the firm's locations. A no-op (no AI call) when nothing
+        // new touches a country the firm is connected to. Company lists pick
+        // new matches up when opened; the firm list is refreshed here.
+        matchGeopoliticalDevelopments()
+          .then(found => (found > 0 ? fetchFirmRegulations(id).then(setPeRegs) : undefined))
+          .catch(() => {})
       })
       .catch(() => {})
   }, [])

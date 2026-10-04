@@ -195,6 +195,25 @@ function refreshEntityImpacts(scope: 'firm' | 'fund' | 'company', entityId?: str
   callFunction('refresh-entity-impacts', { scope, entityId }).catch(() => {})
 }
 
+// Matches new geopolitical developments (sanctions, export controls, trade
+// actions, travel advisories) against the firm's recorded locations. Cheap
+// to call often: the function returns without any AI call when nothing new
+// touches a country the firm is connected to. `reevaluate` after a location
+// edit re-checks items rejected under the old footprint (e.g. a newly added
+// supplier country). Resolves to how many new matches were found.
+export async function matchGeopoliticalDevelopments(opts: { reevaluate?: boolean } = {}): Promise<number> {
+  const result = await callFunction<{ relevant?: number }>('match-geopolitical-relevance', opts)
+  return result.relevant ?? 0
+}
+
+// Company profile answers that feed the geopolitical footprint (HQ is
+// compared via the derived `hq_location` column instead).
+const LOCATION_FIELDS = ['supplier_locations', 'facility_locations', 'operating_locations', 'foreign_countries'] as const
+
+// Unset, '' and [] all mean "nothing recorded", so switching between them
+// isn't a location change worth a re-evaluation (which costs an AI call).
+const recorded = (v: unknown) => (v == null || v === '' || (Array.isArray(v) && v.length === 0) ? null : v)
+
 export async function saveFirmAnswers(firmId: string, answers: Answers): Promise<void> {
   const row = toRow('firm', answers)
   const { error } = await supabase.from('firms').update(row).eq('id', firmId)
@@ -222,6 +241,8 @@ export async function removeFund(fundId: string): Promise<void> {
 export async function addPortfolioCompany(firmId: string, answers: Answers): Promise<void> {
   const { error } = await supabase.from('portfolio_companies').insert({ ...toRow('company', answers), firm_id: firmId })
   if (error) throw error
+  // A new company can bring new countries into the firm's footprint.
+  matchGeopoliticalDevelopments({ reevaluate: true }).catch(() => {})
 }
 
 // Cached company-regulations results were computed from the company's old
@@ -257,6 +278,13 @@ export async function saveCompanyAnswers(firmId: string, previous: PortfolioComp
   // impact analysis, so its existing matches' explanations would otherwise
   // go stale silently.
   refreshEntityImpacts('company', previous.id)
+
+  // Spec §3: a changed location or supplier fact must cause geopolitical
+  // matches to be reconsidered, not just future ones.
+  const locationChanged =
+    !same(previous.hq_location, row.hq_location) ||
+    LOCATION_FIELDS.some(f => !same(recorded(previous.profile?.[f]), recorded(answers[f])))
+  if (locationChanged) matchGeopoliticalDevelopments({ reevaluate: true }).catch(() => {})
 }
 
 export async function removePortfolioCompany(companyId: string): Promise<void> {
@@ -391,6 +419,7 @@ const SOURCE_LABELS: Record<string, string> = {
   sec_enforcement: 'SEC litigation releases',
   finra_enforcement: 'FINRA enforcement',
   sec_admin_proceedings: 'SEC administrative proceedings',
+  state_travel_advisories: 'State Department travel advisories',
 }
 
 // A source is "failing" when its most recent recorded sync run didn't

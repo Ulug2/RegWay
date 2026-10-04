@@ -44,10 +44,14 @@ Deno.serve(async (req) => {
 
     // Regulations not yet evaluated for this firm (no relevance row of any
     // kind — including the "not relevant" marker rows, see below).
+    // Regulatory category only: the Federal Register also carries sanctions,
+    // export-control and trade documents, which match-geopolitical-relevance
+    // evaluates by location instead.
     const { data: candidates } = await admin
       .from('regulations')
       .select('id, title, agency, jurisdiction, summary')
       .eq('source', 'federal_register')
+      .eq('category', 'regulatory')
       .order('published_date', { ascending: false })
       .limit(200)
 

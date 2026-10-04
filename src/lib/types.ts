@@ -51,8 +51,18 @@ export interface AiContext {
 
 export interface Regulation {
   id: string
-  source: 'federal_register' | 'sec_edgar' | 'ai_search' | 'manual' | 'sec_enforcement'
+  source:
+    | 'federal_register'
+    | 'sec_edgar'
+    | 'ai_search'
+    | 'manual'
+    | 'sec_enforcement'
+    | 'sec_admin_proceedings'
+    | 'finra_enforcement'
+    | 'state_travel_advisories'
   category: 'regulatory' | 'enforcement' | 'geopolitical'
+  // Countries the development concerns (empty = global/unspecified).
+  countries: string[]
   title: string
   agency: string | null
   jurisdiction: string | null

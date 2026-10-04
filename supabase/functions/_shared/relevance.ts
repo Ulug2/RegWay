@@ -75,6 +75,7 @@ export interface FundRow {
 export interface CompanyRow {
   id: string
   name: string
+  hq_location: string | null
   sectors: string[] | null
   regions: string[] | null
   offerings: string | null
@@ -91,7 +92,7 @@ export async function loadFirmEntities(admin: SupabaseClient, firmId: string): P
   const [{ data: firm }, { data: funds }, { data: companies }] = await Promise.all([
     admin.from('firms').select('name, hq_location, jurisdictions, profile').eq('id', firmId).single(),
     admin.from('funds').select('id, name, structure, jurisdictions, profile').eq('firm_id', firmId),
-    admin.from('portfolio_companies').select('id, name, sectors, regions, offerings, profile').eq('firm_id', firmId),
+    admin.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile').eq('firm_id', firmId),
   ])
   return { firm: firm ?? null, funds: funds ?? [], companies: companies ?? [] }
 }
@@ -154,9 +155,24 @@ export function buildRelevanceRows(
     .filter((r): r is RelevanceRow => r !== null)
 }
 
+// A model can return two verdicts that land on the same row (e.g. two
+// firm-scope verdicts for one item), and Postgres rejects an upsert that
+// touches a row twice. Keep one per row, preferring a relevant verdict.
+function dedupeRows(rows: RelevanceRow[]): RelevanceRow[] {
+  const byKey = new Map<string, RelevanceRow>()
+  for (const row of rows) {
+    const key = `${row.regulation_id}|${row.fund_id ?? ''}|${row.portfolio_company_id ?? ''}`
+    const existing = byKey.get(key)
+    if (!existing || (existing.relevance_reason.startsWith('NOT_RELEVANT') && !row.relevance_reason.startsWith('NOT_RELEVANT'))) {
+      byKey.set(key, row)
+    }
+  }
+  return [...byKey.values()]
+}
+
 export async function upsertRelevanceRows(admin: SupabaseClient, rows: RelevanceRow[]): Promise<void> {
   if (rows.length === 0) return
-  const { error } = await admin.from('regulation_relevance').upsert(rows, {
+  const { error } = await admin.from('regulation_relevance').upsert(dedupeRows(rows), {
     onConflict: 'regulation_id,firm_id,portfolio_company_id,fund_id',
   })
   if (error) throw error

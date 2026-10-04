@@ -51,7 +51,14 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
   const regulationId = headline?.id
   const title = headline?.title || 'Untitled regulation'
   const jurisdiction = headline?.jurisdiction || headline?.agency || 'Unknown jurisdiction'
-  const publishedLabel = formatDate(headline?.effective_date) || formatDate(headline?.published_date)
+  // Labelled by which date it actually is: most items (proclamations,
+  // advisories, notices) have no effective date, and showing the
+  // publication date as "Effective" would invent one (spec §6).
+  const dateLabel = headline?.effective_date
+    ? `Effective ${formatDate(headline.effective_date)}`
+    : headline?.published_date
+      ? `Published ${formatDate(headline.published_date)}`
+      : ''
 
   useEffect(() => {
     if (!regulationId) return
@@ -160,7 +167,7 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
             >
               {jurisdiction}
             </span>
-            {publishedLabel && <span className="text-xs" style={{ color: '#64748B' }}>Effective {publishedLabel}</span>}
+            {dateLabel && <span className="text-xs" style={{ color: '#64748B' }}>{dateLabel}</span>}
           </div>
           <h1
             className="text-2xl font-semibold mb-3"

@@ -8,17 +8,24 @@
 //
 // Optional query param `?since=YYYY-MM-DD` overrides the default 7-day lookback.
 //
-// Runs two separate queries and merges the results:
-// 1. RULE/PRORULE across the tracked agency list below.
-// 2. SEC NOTICE-type documents, filtered client-side to just FINRA rule
-//    filings (see FINRA_TITLE_MARKER below for why). NOTICE type is
-//    otherwise deliberately excluded — blanket inclusion runs ~6,000
-//    documents/9mo across these agencies, mostly administrative noise, a
-//    volume/cost mismatch against match-relevance's per-user rate limit.
+// Runs every query in FEEDS below and merges the results. Each feed is one
+// Federal Register query plus an optional client-side filter. Adding a
+// source is one new entry there, not a new code path. NOTICE type is
+// deliberately excluded except where a feed filters it down: blanket
+// inclusion runs ~6,000 documents/9mo across these agencies, mostly
+// administrative noise, a volume/cost mismatch against the matchers' per-user
+// rate limits.
+//
+// Every row gets a `category` (see categoryOf: sanctions, export-control and
+// trade-action documents are `geopolitical`, everything else `regulatory`)
+// and the `countries` it names (see _shared/countries.ts), which the
+// geopolitical matcher pre-filters on.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { extractCountries } from '../_shared/countries.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
+import { fetchPlainText } from '../_shared/text.ts'
 
 const SOURCE = 'federal_register'
 
@@ -100,8 +107,6 @@ interface FederalRegisterDocument {
   type: string
 }
 
-const TRACKED_SLUGS = new Set(AGENCY_SLUGS)
-
 // A document's `agencies` array often lists the parent department first even
 // when a specific bureau we track (e.g. Comptroller of the Currency, FinCEN)
 // is what actually matched our query — Federal Register's own convention,
@@ -132,9 +137,114 @@ function primaryAgency(doc: FederalRegisterDocument) {
 // the actual subject.
 const FINRA_TITLE_MARKER = 'Financial Industry Regulatory Authority'
 
+// Sanctions (OFAC), export controls (BIS) and trade actions (USTR) are
+// geopolitical developments per the spec's own definition (§8: "sanctions
+// announcements, tariffs, trade restrictions"), not ordinary rulemaking —
+// they're matched on where an entity operates and sources from, not on its
+// sector or fund structure, so they go through match-geopolitical-relevance.
+const GEOPOLITICAL_AGENCY_SLUGS = new Set([
+  'foreign-assets-control-office',
+  'industry-and-security-bureau',
+  'trade-representative-office-of-united-states',
+])
+
+// Presidential documents are mostly ceremonial (heritage months, days of
+// observance). The ones that matter here create or extend a sanctions
+// program (IEEPA national emergencies, blocking orders) or change trade
+// terms (Section 232/301 tariff proclamations).
+const GEOPOLITICAL_TOPIC_PATTERN =
+  /\b(sanctions?|sanctioned|tariffs?|duties|imports?|exports?|embargo(es)?|national emergency|blocking property|International Emergency Economic Powers|Section 232|Section 301|trade)\b/i
+
+// USTR's NOTICE stream also carries advisory-committee nominations and
+// hearing logistics; keep only actual trade actions.
+const TRADE_ACTION_PATTERN = /\b(tariffs?|duties|Section 301|Section 232|imports?|exports?|trade (action|agreement|preference)s?|exclusions?)\b/i
+
 interface FederalRegisterQuery {
   agencies: string[]
   types: string[]
+}
+
+type Category = 'regulatory' | 'geopolitical'
+
+interface Feed {
+  name: string
+  query: FederalRegisterQuery
+  // Client-side filter for feeds whose server-side query is broader than
+  // what we want (the API has no precise topic filter).
+  keep?: (doc: FederalRegisterDocument) => boolean
+  // Forces a category for the whole feed; otherwise categoryOf decides.
+  category?: Category
+  // Read countries from the document's full text, not just title/abstract,
+  // for feeds whose abstract is boilerplate (see ofacNotices).
+  countriesFromFullText?: boolean
+}
+
+const docText = (doc: FederalRegisterDocument) => `${doc.title} ${doc.abstract ?? ''}`
+
+const FEEDS: Feed[] = [
+  { name: 'rules', query: { agencies: AGENCY_SLUGS, types: ['RULE', 'PRORULE'] } },
+  {
+    name: 'finraNotices',
+    query: { agencies: ['securities-and-exchange-commission'], types: ['NOTICE'] },
+    keep: doc => doc.title.includes(FINRA_TITLE_MARKER),
+  },
+  // OFAC publishes each round of SDN designations as a "Notice of OFAC
+  // Sanctions Actions": the official record of who was sanctioned and under
+  // which program. Every one carries the same boilerplate abstract; the
+  // designees' nationalities and addresses are only in the body, so the
+  // countries come from the full text (~5 notices a week).
+  { name: 'ofacNotices', query: { agencies: ['foreign-assets-control-office'], types: ['NOTICE'] }, countriesFromFullText: true },
+  {
+    name: 'tradeActions',
+    query: { agencies: ['trade-representative-office-of-united-states'], types: ['RULE', 'PRORULE', 'NOTICE'] },
+    keep: doc => TRADE_ACTION_PATTERN.test(docText(doc)),
+  },
+  {
+    name: 'presidentialDocuments',
+    query: { agencies: [], types: ['PRESDOCU'] },
+    keep: doc => GEOPOLITICAL_TOPIC_PATTERN.test(docText(doc)),
+    category: 'geopolitical',
+  },
+]
+
+// Every agency any feed queries, so primaryAgency labels a USTR or OFAC
+// notice by that office rather than its parent (Executive Office of the
+// President, Treasury), which Federal Register lists first.
+const TRACKED_SLUGS = new Set(FEEDS.flatMap(feed => feed.query.agencies))
+
+// Federal Register serves every document's body as plain text at a stable
+// path derived from its publication date and number. Stored on each row as
+// `raw.raw_text_url`, which _shared/impact.ts reads before falling back to
+// the HTML page, and the HTML page answers automated requests with a CAPTCHA
+// (verified: 2 of 3 existing Federal Register impact analyses were written
+// from the CAPTCHA page rather than the rule).
+const fullTextUrl = (doc: FederalRegisterDocument) =>
+  `https://www.federalregister.gov/documents/full_text/text/${doc.publication_date.replaceAll('-', '/')}/${doc.document_number}.txt`
+
+async function countriesOf(doc: FederalRegisterDocument, feed: Feed): Promise<string[]> {
+  if (!feed.countriesFromFullText) return extractCountries(docText(doc))
+  const body = await fetchPlainText([fullTextUrl(doc), doc.html_url], { minLength: 200 })
+  return extractCountries(`${docText(doc)} ${body}`)
+}
+
+// Bounded parallelism for the per-document full-text fetches, so a long
+// backfill doesn't open a hundred connections to federalregister.gov at once.
+async function mapLimited<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length)
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++
+      out[i] = await fn(items[i])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return out
+}
+
+function categoryOf(doc: FederalRegisterDocument, feed: Feed): Category {
+  if (feed.category) return feed.category
+  return doc.agencies?.some(a => GEOPOLITICAL_AGENCY_SLUGS.has(a.slug)) ? 'geopolitical' : 'regulatory'
 }
 
 async function fetchAllPages(since: string, query: FederalRegisterQuery): Promise<{ documents: FederalRegisterDocument[]; pages: number }> {
@@ -175,45 +285,49 @@ Deno.serve(async (req) => {
       new URL(req.url).searchParams.get('since') ??
       new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-    const [rulesResult, noticesResult] = await Promise.all([
-      fetchAllPages(since, { agencies: AGENCY_SLUGS, types: ['RULE', 'PRORULE'] }),
-      fetchAllPages(since, { agencies: ['securities-and-exchange-commission'], types: ['NOTICE'] }),
-    ])
+    const results = await Promise.all(
+      FEEDS.map(async feed => {
+        const { documents, pages } = await fetchAllPages(since, feed.query)
+        return { feed, pages, documents: feed.keep ? documents.filter(feed.keep) : documents }
+      }),
+    )
 
-    const finraNotices = noticesResult.documents.filter(doc => doc.title.includes(FINRA_TITLE_MARKER))
-    const documents = [...rulesResult.documents, ...finraNotices]
-
-    const rows = documents.map(doc => {
-      const agencyName = primaryAgency(doc)?.name ?? null
-      return {
-        source: 'federal_register' as const,
-        external_id: doc.document_number,
-        title: doc.title,
-        agency: agencyName,
-        jurisdiction: agencyName ? `${agencyName} · Federal` : 'Federal Register',
-        summary: doc.abstract,
-        published_date: doc.publication_date,
-        effective_date: doc.effective_on,
-        source_url: doc.html_url,
-        raw: doc,
-      }
-    })
+    // Keyed by document number: one document can come back from more than
+    // one feed, and a single upsert can't touch the same row twice.
+    const rowsById = new Map<string, Record<string, unknown>>()
+    for (const { feed, documents } of results) {
+      const countries = await mapLimited(documents, 4, doc => countriesOf(doc, feed))
+      documents.forEach((doc, i) => {
+        const agencyName = primaryAgency(doc)?.name ?? null
+        rowsById.set(doc.document_number, {
+          source: 'federal_register' as const,
+          category: categoryOf(doc, feed),
+          countries: countries[i],
+          external_id: doc.document_number,
+          title: doc.title,
+          agency: agencyName,
+          jurisdiction: agencyName ? `${agencyName} · Federal` : 'Federal Register',
+          summary: doc.abstract,
+          published_date: doc.publication_date,
+          effective_date: doc.effective_on,
+          source_url: doc.html_url,
+          raw: { ...doc, raw_text_url: fullTextUrl(doc) },
+        })
+      })
+    }
+    const rows = [...rowsById.values()]
 
     if (rows.length > 0) {
       const { error } = await admin.from('regulations').upsert(rows, { onConflict: 'source,external_id' })
       if (error) throw error
     }
 
-    await recordSyncRun(admin, SOURCE, true, `${rows.length} synced (${finraNotices.length} FINRA notices)`)
+    const perFeed = Object.fromEntries(results.map(r => [r.feed.name, { documents: r.documents.length, pages: r.pages }]))
+    const geopolitical = rows.filter(r => r.category === 'geopolitical').length
+    const feedSummary = results.map(r => `${r.feed.name} ${r.documents.length}`).join(', ')
+    await recordSyncRun(admin, SOURCE, true, `${rows.length} synced, ${geopolitical} geopolitical (${feedSummary})`)
 
-    return json({
-      synced: rows.length,
-      since,
-      rulesPages: rulesResult.pages,
-      noticesPages: noticesResult.pages,
-      finraNotices: finraNotices.length,
-      agencies: AGENCY_SLUGS,
-    })
+    return json({ synced: rows.length, geopolitical, since, feeds: perFeed })
   } catch (err) {
     await recordSyncRun(admin, SOURCE, false, (err as Error).message)
     return json({ error: (err as Error).message }, 500)

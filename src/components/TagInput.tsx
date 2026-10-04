@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+const SEARCH_THRESHOLD = 12
+
 export default function TagInput({ tags, onAdd, onRemove, placeholder, options }: {
   tags: string[]
   onAdd: (tag: string) => void
@@ -8,7 +10,22 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
   options: string[]
 }) {
   const [open, setOpen] = useState(false)
-  const available = options.filter(o => !tags.includes(o))
+  const [query, setQuery] = useState('')
+  const remaining = options.filter(o => !tags.includes(o))
+  // Long lists (every country, every U.S. state) are unusable as a bare
+  // dropdown, so they get a type-to-filter box; short ones stay a plain list.
+  const searchable = options.length > SEARCH_THRESHOLD
+  const needle = query.trim().toLowerCase()
+  const available = needle ? remaining.filter(o => o.toLowerCase().includes(needle)) : remaining
+
+  const close = () => {
+    setOpen(false)
+    setQuery('')
+  }
+  const pick = (opt: string) => {
+    onAdd(opt)
+    close()
+  }
 
   return (
     <div className="relative">
@@ -46,7 +63,7 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
           <span className="text-sm" style={{ color: '#94a3b8', padding: '4px 6px' }}>{placeholder}</span>
         )}
       </div>
-      {open && available.length > 0 && (
+      {open && remaining.length > 0 && (
         <div
           className="absolute top-full left-0 right-0 mt-1 z-50 py-2"
           style={{
@@ -57,20 +74,44 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
             boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
           }}
         >
-          {available.map(opt => (
-            <button
-              key={opt}
-              className="w-full text-left px-4 py-2 text-sm hover:bg-sky-50 transition-colors"
-              style={{ color: '#334155' }}
-              onClick={() => { onAdd(opt); setOpen(false) }}
-            >
-              {opt}
-            </button>
-          ))}
+          {searchable && (
+            <div className="px-3 pb-2">
+              <input
+                autoFocus
+                className="glass-input-rect w-full text-sm"
+                placeholder="Type to search…"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && available[0]) {
+                    e.preventDefault()
+                    pick(available[0])
+                  } else if (e.key === 'Escape') {
+                    close()
+                  }
+                }}
+              />
+            </div>
+          )}
+          <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+            {available.map(opt => (
+              <button
+                key={opt}
+                className="w-full text-left px-4 py-2 text-sm hover:bg-sky-50 transition-colors"
+                style={{ color: '#334155' }}
+                onClick={() => pick(opt)}
+              >
+                {opt}
+              </button>
+            ))}
+            {available.length === 0 && (
+              <div className="px-4 py-2 text-sm" style={{ color: '#94a3b8' }}>No matches</div>
+            )}
+          </div>
           <button
             className="w-full text-left px-4 py-2 text-xs border-t"
             style={{ color: '#94a3b8', borderColor: 'rgba(186,230,253,0.30)' }}
-            onClick={() => setOpen(false)}
+            onClick={close}
           >
             Close
           </button>

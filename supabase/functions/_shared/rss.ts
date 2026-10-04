@@ -14,6 +14,17 @@ export interface FeedItem {
   description: string
 }
 
+const NAMED_ENTITIES: Record<string, string> = { nbsp: ' ', quot: '"', apos: "'", lt: '<', gt: '>' }
+
+// Decodes the HTML entities feeds use in titles/descriptions (&#8220;,
+// &#x2019;, &quot;, ...). `&amp;` goes last so "&amp;#8220;" isn't decoded twice.
+const decodeEntities = (s: string) =>
+  s
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&(nbsp|quot|apos|lt|gt);/g, (_, name) => NAMED_ENTITIES[name])
+    .replace(/&amp;/g, '&')
+
 export function parseRssItems(xml: string): FeedItem[] {
   const items: FeedItem[] = []
   for (const block of xml.split('<item>').slice(1)) {
@@ -24,16 +35,12 @@ export function parseRssItems(xml: string): FeedItem[] {
     if (!rawTitle || !link || !pubDate) continue
     // Some feeds (e.g. FINRA's newsreleases) wrap the title in an <a> tag and
     // HTML-entity-encode ampersands in it.
-    const title = rawTitle
-      .replace(/<[^>]+>/g, '')
-      .replace(/&amp;/g, '&')
-      .replace(/&nbsp;/g, ' ')
-      .trim()
+    // Decoded before tags are stripped: some feeds escape their HTML
+    // (&lt;p&gt;), which only becomes a strippable tag once decoded.
+    const title = decodeEntities(rawTitle).replace(/<[^>]+>/g, '').trim()
     const rawDescription = field('description') ?? ''
-    const description = rawDescription
+    const description = decodeEntities(rawDescription)
       .replace(/<[^>]+>/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&nbsp;/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
     items.push({ title, link, pubDate, creator: field('dc:creator') ?? '', description })

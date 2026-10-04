@@ -111,6 +111,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       // will simply show more items once this finishes in the background.
       callFunction('match-relevance').catch(() => {})
       callFunction('match-enforcement-relevance').catch(() => {})
+      callFunction('match-geopolitical-relevance').catch(() => {})
 
       onComplete()
     } catch (err) {

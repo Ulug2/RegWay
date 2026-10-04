@@ -7,6 +7,7 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { fetchPlainText } from './text.ts'
 import { recordUsage } from './usage.ts'
+import { impactPromptFor } from './impactPrompts.ts'
 
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 const MODEL = 'claude-sonnet-4-5'
@@ -124,7 +125,7 @@ export async function generateImpact(
       .filter(c => linkedCompanies.has(c.id))
       .map(
         c =>
-          `COMPANY — ${c.name}: ${facts(c as Record<string, unknown>, ['hq_location', 'sectors', 'regions', 'offerings', 'customers', 'consumer_facing', 'sensitive_data', 'regulated', 'license_types', 'gov_contracts', 'trade', 'outside_us', 'foreign_countries', 'ownership'])}`,
+          `COMPANY — ${c.name}: ${facts(c as Record<string, unknown>, ['hq_location', 'sectors', 'regions', 'operating_locations', 'supplier_locations', 'offerings', 'customers', 'consumer_facing', 'sensitive_data', 'regulated', 'license_types', 'gov_contracts', 'trade', 'outside_us', 'foreign_countries', 'ownership'])}`,
       ),
   ]
 
@@ -132,65 +133,31 @@ export async function generateImpact(
   const truncated = fullText.length > MAX_TEXT_CHARS
   const text = fullText.slice(0, MAX_TEXT_CHARS)
 
-  // An enforcement item (an SEC litigation release, SEC administrative
-  // proceeding, or FINRA disciplinary action) is a case against a named third
-  // party, not a rule — reusing the rule-shaped prompt as-is would produce a
-  // nonsensical "key provisions"/"proposed vs. final" framing, and worse,
-  // risks writing prose that reads as if it's describing this firm's own
-  // conduct. Same output schema (so the UI needs no change), different system
-  // prompt and a few field descriptions. Deliberately source-agnostic: a
-  // litigation release is contested allegations, an SEC administrative order
-  // or FINRA action is often a settled consent order (findings the
-  // respondent neither admits nor denies) — the model is told to state
-  // whichever posture the source document itself describes, not assume one.
-  const isEnforcement = reg.category === 'enforcement'
-
-  const system = isEnforcement
-    ? 'You are a regulatory analyst writing for the general partners and compliance staff of a private equity firm, summarizing an SEC or FINRA enforcement action (a litigation release, administrative proceeding, or disciplinary action) as background awareness for one or more of the firm\'s entities. This concerns named respondents/defendants who are NOT this firm, any of its funds, or any of its portfolio companies. State the matter\'s procedural posture exactly as the source describes it — contested allegations if litigation is pending, or a settled/consent order\'s findings if the source says the respondent neither admitted nor denied them — and never characterize it as more settled or more proven than the source states. Never state or imply that the firm, a fund, or a portfolio company did anything wrong, is under investigation, or is a party to this action. The only legitimate connection to describe is a genuine, factual overlap between the conduct described and that entity\'s own described activity (the same instrument, customer type, or practice) — never a bare shared-industry label. Write in precise, neutral, plain prose. Do NOT give legal advice or rate severity, urgency, or risk. Base every statement on the source text or entity facts provided; never invent facts. Where a fact needed to judge the overlap is missing, say so in open_questions instead of assuming.'
-    : 'You are a regulatory analyst writing for the general partners and compliance staff of a private equity firm. Write in a precise, professional, strictly neutral register, in plain prose a senior professional can act on. Explain what the regulation says and how it applies to the specific entities described. Do NOT give legal advice, recommend actions, or rate or label anything by severity, urgency, risk or priority. Do not use alarmist or promotional language. Base every statement on the regulation text provided or the entity facts provided; never invent provisions, dates, thresholds or facts about an entity. Where an entity fact that would decide applicability is missing, say so in open_questions instead of assuming.'
+  // Category-specific wording (regulatory / enforcement / geopolitical) —
+  // same output schema for all, so the UI needs no branching. See
+  // impactPrompts.ts for why each category is framed the way it is.
+  const prompt = impactPromptFor(reg.category)
 
   const result = await callClaude({
     max_tokens: 6000,
     tool_choice: { type: 'tool', name: 'submit_impact_analysis' },
     // Identical for every firm analyzing this same category of item — its
     // own cache breakpoint, separate from the per-regulation text below.
-    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+    system: [{ type: 'text', text: prompt.system, cache_control: { type: 'ephemeral' } }],
     tools: [
       {
         name: 'submit_impact_analysis',
-        description: isEnforcement ? 'Submit the structured summary of the enforcement action.' : 'Submit the structured analysis of the regulation.',
+        description: prompt.toolDescription,
         input_schema: {
           type: 'object',
           properties: {
-            overview: {
-              type: 'string',
-              description: isEnforcement
-                ? 'Two to four paragraphs: who the action names, what they are alleged or found to have done, and the case\'s current procedural posture. Separate paragraphs with a blank line.'
-                : 'Two to four paragraphs: what the regulation is, the problem it addresses, what it changes, and its procedural posture. Separate paragraphs with a blank line.',
-            },
-            scope: {
-              type: 'string',
-              description: isEnforcement
-                ? 'What conduct, instruments, and parties the action covers, in one or two paragraphs.'
-                : 'Who and what is covered, including thresholds and exemptions, in one or two paragraphs.',
-            },
-            status: {
-              type: 'string',
-              description: isEnforcement
-                ? 'Procedural posture exactly as the source states it: litigation pending, settled/consent order, default judgment, bar/suspension imposed, etc., with the relevant forum and date.'
-                : 'Proposed, final, interim, notice, etc., with comment deadlines or effectiveness where stated.',
-            },
-            key_provisions: {
-              ...listOfStrings,
-              description: isEnforcement
-                ? '4-8 specific factual points from the source (the conduct alleged or found), each one or two sentences, framed with the same certainty the source itself uses (allegation vs. finding).'
-                : '4-8 specific operative provisions, each one or two sentences.',
-            },
+            overview: { type: 'string', description: prompt.overview },
+            scope: { type: 'string', description: prompt.scope },
+            status: { type: 'string', description: prompt.status },
+            key_provisions: { ...listOfStrings, description: prompt.keyProvisions },
             key_dates: {
               type: 'array',
-              description: isEnforcement
-                ? 'Dates stated in the release (filing date, alleged conduct period, court deadlines).'
-                : 'Dates and deadlines stated in the text (publication, effective, compliance, comment).',
+              description: prompt.keyDates,
               items: {
                 type: 'object',
                 properties: { label: { type: 'string' }, date: { type: 'string' }, note: { type: 'string' } },
@@ -199,32 +166,15 @@ export async function generateImpact(
             },
             impacts: {
               type: 'array',
-              description: isEnforcement
-                ? 'One entry for the firm and one for each fund/company whose own described activity genuinely overlaps with the conduct alleged. Omit entities with no real overlap.'
-                : 'One entry for the firm and one for each fund/company listed that the regulation actually touches. Omit entities it does not touch.',
+              description: prompt.impacts,
               items: {
                 type: 'object',
                 properties: {
                   entity_type: { type: 'string', enum: ['firm', 'fund', 'company'] },
                   entity_name: { type: 'string' },
-                  headline: {
-                    type: 'string',
-                    description: isEnforcement
-                      ? 'One neutral sentence naming the specific factual overlap with this entity\'s own activity — never implying the entity is involved in the case.'
-                      : 'One neutral sentence: how the regulation relates to this entity.',
-                  },
-                  how_it_applies: {
-                    type: 'string',
-                    description: isEnforcement
-                      ? 'One or two paragraphs: what the case alleges, and the specific, concrete similarity to this entity\'s own described activity. Explicitly note this entity is not a party to the action.'
-                      : 'One or two paragraphs connecting specific provisions to specific facts about this entity.',
-                  },
-                  obligations: {
-                    ...listOfStrings,
-                    description: isEnforcement
-                      ? 'Leave empty — an enforcement action against a third party creates no obligation for this entity.'
-                      : 'Concrete requirements that would apply, each tied to a provision. Empty if none.',
-                  },
+                  headline: { type: 'string', description: prompt.headline },
+                  how_it_applies: { type: 'string', description: prompt.howItApplies },
+                  obligations: { ...listOfStrings, description: prompt.obligations },
                   timeline: { type: 'string', description: 'Relevant dates for this entity, or an empty string.' },
                   operational_areas: { ...listOfStrings, description: 'Functions or workflows touched (e.g. investor reporting, marketing, custody, data handling).' },
                   open_questions: { ...listOfStrings, description: 'Facts not provided that would determine whether the overlap is meaningful.' },
@@ -232,18 +182,13 @@ export async function generateImpact(
                 required: ['entity_type', 'entity_name', 'headline', 'how_it_applies', 'obligations', 'timeline', 'operational_areas', 'open_questions'],
               },
             },
-            considerations: {
-              ...listOfStrings,
-              description: isEnforcement
-                ? 'Neutral notes on how this entity\'s situation differs from the case, or open questions about whether the overlap is meaningful. Not recommendations.'
-                : 'Neutral points a reader may wish to confirm with counsel (interpretive ambiguities, pending rulemakings, cross-references). Not recommendations.',
-            },
+            considerations: { ...listOfStrings, description: prompt.considerations },
             limitations: { type: 'string', description: 'One or two sentences on what this analysis rests on (e.g. text truncated, profile information missing).' },
           },
           required: ['overview', 'scope', 'status', 'key_provisions', 'key_dates', 'impacts', 'considerations', 'limitations'],
         },
-        // Static per isEnforcement branch — cached so a run of several
-        // firms/regulations in the same branch doesn't re-bill it each time.
+        // Static per category — cached so a run of several firms/regulations
+        // in the same category doesn't re-bill it each time.
         cache_control: { type: 'ephemeral' },
       },
     ],
@@ -259,7 +204,7 @@ export async function generateImpact(
             // reuse isn't defeated by the one part that actually varies.
             type: 'text',
             cache_control: { type: 'ephemeral' },
-            text: `${isEnforcement ? 'ENFORCEMENT ACTION (SEC or FINRA — state procedural posture exactly as the source describes it)' : 'REGULATION'}
+            text: `${prompt.documentLabel}
 Title: ${reg.title}
 Agency: ${reg.agency ?? 'n/a'} · Jurisdiction: ${reg.jurisdiction ?? 'n/a'}
 Published: ${reg.published_date ?? 'n/a'} · Effective: ${reg.effective_date ?? 'n/a'}
