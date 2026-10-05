@@ -6,14 +6,22 @@
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 
-// Anthropic list pricing, Claude Sonnet 4.5, per million tokens (USD) /
-// per search (USD). A single source of truth for the cost ESTIMATE stored
-// alongside each row — real enough to spot trends and spikes, not a
-// billing reconciliation (Anthropic's own invoice is authoritative).
-const PRICE_PER_MILLION_INPUT = 3.0
-const PRICE_PER_MILLION_CACHE_WRITE = 3.75
-const PRICE_PER_MILLION_CACHE_READ = 0.3
-const PRICE_PER_MILLION_OUTPUT = 15.0
+// Anthropic list pricing per million tokens (USD), by model, and per web
+// search. A single source of truth for the cost ESTIMATE stored alongside
+// each row — real enough to spot trends and spikes, not a billing
+// reconciliation (Anthropic's own invoice is authoritative). A model not
+// listed is priced as Sonnet 4.5, the app's default.
+interface Prices {
+  input: number
+  cacheWrite: number
+  cacheRead: number
+  output: number
+}
+const SONNET_4_5: Prices = { input: 3.0, cacheWrite: 3.75, cacheRead: 0.3, output: 15.0 }
+const PRICES: Record<string, Prices> = {
+  'claude-sonnet-4-5': SONNET_4_5,
+  'claude-haiku-4-5': { input: 1.0, cacheWrite: 1.25, cacheRead: 0.1, output: 5.0 },
+}
 const PRICE_PER_WEB_SEARCH = 0.01
 
 export interface UsageTotals {
@@ -24,12 +32,13 @@ export interface UsageTotals {
   webSearchRequests?: number
 }
 
-function estimateCostUsd(u: UsageTotals): number {
+export function estimateCostUsd(model: string, u: UsageTotals): number {
+  const p = PRICES[model] ?? SONNET_4_5
   return (
-    ((u.inputTokens ?? 0) / 1_000_000) * PRICE_PER_MILLION_INPUT +
-    ((u.cacheCreationInputTokens ?? 0) / 1_000_000) * PRICE_PER_MILLION_CACHE_WRITE +
-    ((u.cacheReadInputTokens ?? 0) / 1_000_000) * PRICE_PER_MILLION_CACHE_READ +
-    ((u.outputTokens ?? 0) / 1_000_000) * PRICE_PER_MILLION_OUTPUT +
+    ((u.inputTokens ?? 0) / 1_000_000) * p.input +
+    ((u.cacheCreationInputTokens ?? 0) / 1_000_000) * p.cacheWrite +
+    ((u.cacheReadInputTokens ?? 0) / 1_000_000) * p.cacheRead +
+    ((u.outputTokens ?? 0) / 1_000_000) * p.output +
     (u.webSearchRequests ?? 0) * PRICE_PER_WEB_SEARCH
   )
 }
@@ -64,7 +73,7 @@ export async function recordUsage(
       cache_read_input_tokens: params.cacheReadInputTokens ?? 0,
       output_tokens: params.outputTokens ?? 0,
       web_search_requests: params.webSearchRequests ?? 0,
-      estimated_cost_usd: estimateCostUsd(params),
+      estimated_cost_usd: estimateCostUsd(params.model, params),
       ok: params.ok ?? true,
     })
   } catch (err) {

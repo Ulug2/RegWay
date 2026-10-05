@@ -76,9 +76,11 @@ export async function judgeGeopolitical(
     candidates: Candidate[]
     functionName: string
     correction?: string | null
+    // Overridable to compare a cheaper model on this exact prompt (item 6.3).
+    model?: string
   },
 ): Promise<Verdict[]> {
-  const { firmId, companies, footprints, candidates, functionName } = opts
+  const { firmId, companies, footprints, candidates, functionName, model = MODEL } = opts
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -87,7 +89,7 @@ export async function judgeGeopolitical(
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: MODEL,
+      model,
       max_tokens: 4096,
       tool_choice: { type: 'tool', name: 'submit_verdicts' },
       tools: [
@@ -156,7 +158,7 @@ ${INSTRUCTIONS}`,
   await recordUsage(admin, {
     functionName,
     firmId,
-    model: MODEL,
+    model,
     inputTokens: result.usage?.input_tokens,
     cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
     cacheReadInputTokens: result.usage?.cache_read_input_tokens,

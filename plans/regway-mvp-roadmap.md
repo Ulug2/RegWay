@@ -134,8 +134,7 @@ was refused, rightly):
 | Company scan storing a real `why_it_applies` | Change a company's HQ, sectors or regions and save (other fields don't re-scan), then read "Why it's here" on its new items | $0.20–0.70 |
 | Analysis of a not-yet-published document | Only when a pre-publication item is matched to H.I.G. (none today: the 4 scheduled for 10-05 were judged not relevant) | $0.06–0.22 |
 | Fund rows derived from holdings, on H.I.G. | Record which H.I.G. fund holds each company (company cards); not set yet, so no fund-level derived matches exist | $0.06–0.40 (re-written analyses) |
-| Haiku vs Sonnet verdict accuracy (item 6.3) | Same ~40 items through both models, per matcher (script) | ≈ $0.30 |
-| **Total** | | **≈ $0.60–1.60** |
+| **Total** | | **≈ $0.30–1.30** |
 
 ### 1. RegWay AI overhaul — remaining verification — done
 Both checks settled 2026-10-05:
@@ -195,14 +194,35 @@ re-check **$0.01**. Levers, biggest first (2026-10-04 review):
    days), cap web searches per scan (`max_uses` 5 → 3), or scan once per
    sector × location and share results across companies (results are
    public regulations).
-3. **Move to a cheaper model, with an accuracy check first.** Claude Haiku
-   4.5 is $1/$5 (3× cheaper than Sonnet 4.5) and fits the matchers' strict
-   yes/no verdicts. Claude Sonnet 5.5 is $2/$10 (a third cheaper than
-   Sonnet 4.5) and newer, but it rejects forced `tool_choice`, which every
-   structured call here uses, so the switch means moving those calls to
-   `tool_choice: auto` + `strict: true` (or structured outputs). Either way,
-   compare verdicts side by side on real items before switching (≈ $0.30,
-   see "Live AI tests still owed").
+3. **Move to a cheaper model — accuracy checked 2026-10-05, not switched.**
+   Claude Haiku 4.5 is $1/$5 (3× cheaper than Sonnet 4.5). Same production
+   prompts (`_shared/regulatoryJudge.ts`, `_shared/geopoliticalJudge.ts`,
+   both now take a `model` option), 40 already-judged H.I.G. items per
+   matcher (every item production marked relevant, plus the newest
+   rejections), run once each ($0.27 in total):
+
+   | Pair (agreement out of 40) | Regulatory | Geopolitical |
+   |---|---|---|
+   | Haiku vs fresh Sonnet | 38 | 39 |
+   | Fresh Sonnet vs a second fresh Sonnet run | 38 | — |
+   | Fresh Sonnet vs the verdicts stored in production | 27 | 39 |
+
+   - Haiku disagrees with Sonnet as often as Sonnet disagrees with
+     itself. Its 2 extra regulatory "yes" verdicts were weak (a Florida air
+     plan "applies to H.I.G.'s operations in Florida"; a Medicaid rule
+     GetixHealth "may" bill for), and it missed the aircraft-import
+     proclamation for A.L.A. that Sonnet keeps. Cost per batch of 40:
+     ≈ $0.027 vs ≈ $0.075.
+   - **Bigger finding:** 13 of the 14 regulatory items stored as relevant
+     for H.I.G. were rejected on a fresh Sonnet run with the same prompt,
+     mostly Medicare payment-rule corrections and an RFI matched to
+     GetixHealth (the "not relevant to my portfolio company" items the
+     owner raised in chat). Run-to-run noise explains ~2 of 40, so most of
+     the gap comes from the batch the item was judged in, or a profile
+     edit since; not resolved. Ideas: `temperature: 0` on verdict calls,
+     and re-checking stored matches that a fresh run rejects.
+   - Sonnet 5.5 ($2/$10) would need the forced `tool_choice` moved to
+     `auto` + `strict: true` first; not tested.
 4. **Message Batches API (50% off)** for work nobody is waiting on:
    `run-matching` and any background analyses. Results arrive within
    minutes to hours, fine for a 30-minute schedule.
