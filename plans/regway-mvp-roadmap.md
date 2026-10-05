@@ -128,6 +128,14 @@ below) plus the 2 re-written by re-checks (10 × avg $0.077 = $0.77), and
 the geopolitical and the regulatory re-check (rows replaced, $0.017).
 On 2026-10-05 the owner ran, as the H.I.G. user: the copilot opened from
 GetixHealth's page (answered from its matched rules) and a PDF upload.
+Later that day, signed in as the H.I.G. user with the owner's credentials:
+focus switching mid-chat (firm → GetixHealth → firm; each answer followed
+the switch and the stored scope updated; $0.05, test conversation deleted)
+and a GetixHealth company scan ($0.22 + analyses, ≈ $0.49): real
+`why_it_applies` reasons stored, but they called the company "iX Health"
+(the prompts never named it, so the model guessed from the website) and
+some hedged with "may". Fixed: both scan prompts name the company and rule
+out assumption-based items; the 6 stored reasons were corrected.
 
 Still owed. These need the H.I.G. user signed in in the app (the functions
 take a user session; testing them by signing in as that user from a script
@@ -138,8 +146,7 @@ was refused, rightly):
 | Company scan storing a real `why_it_applies` | Change a company's HQ, sectors or regions and save (other fields don't re-scan), then read "Why it's here" on its new items | $0.20–0.70 |
 | Analysis of a not-yet-published document | Only when a pre-publication item is matched to H.I.G. (none today: the 4 scheduled for 10-05 were judged not relevant) | $0.06–0.22 |
 | Fund rows derived from holdings, on H.I.G. | Record which H.I.G. fund holds each company (company cards); not set yet, so no fund-level derived matches exist | $0.06–0.40 (re-written analyses) |
-| Switching the chat's focus mid-conversation | In a chat with a few messages, pick GetixHealth in Session context, ask a follow-up, then pick the whole firm | $0.05–0.15 |
-| **Total** | | **≈ $0.35–1.45** |
+| **Total** | | **≈ $0.10–0.60** |
 
 ### 1. RegWay AI overhaul — remaining verification — done
 Both checks settled 2026-10-05:

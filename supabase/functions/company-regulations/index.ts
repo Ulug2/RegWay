@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: 'user',
-          content: `Search for regulatory changes published or proposed in the last 90 days that would create compliance obligations for a company in the "${sectorDescriptor}" sector headquartered in ${locationDescriptor}. Include federal, state/local, and (if applicable) foreign regulators. For each distinct item found, report: the exact rule or document title, the issuing regulator/agency, the jurisdiction, the publication or effective date, a one-sentence plain-language summary, which of the company's known facts (sector, location, activity) it applies to, and the official source URL. Only include items you found real sources for — do not invent items.${factsText}`,
+          content: `Search for regulatory changes published or proposed in the last 90 days that would create compliance obligations for ${company.name}, a company in the "${sectorDescriptor}" sector headquartered in ${locationDescriptor}. Include federal, state/local, and (if applicable) foreign regulators. For each distinct item found, report: the exact rule or document title, the issuing regulator/agency, the jurisdiction, the publication or effective date, a one-sentence plain-language summary, which of the company's known facts (sector, location, activity) it applies to, and the official source URL. Only include items you found real sources for — do not invent items.${factsText}`,
         },
       ],
     })
@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
                     why_it_applies: {
                       type: 'string',
                       description:
-                        "One sentence: which known fact about the company (its sector, location, or a stated activity) this item reaches, as the findings support it. Don't assert facts about the company that weren't given.",
+                        "One sentence naming the company exactly as given: which known fact about it (its sector, location, or a stated activity) this item reaches, as the findings support it. Don't assert facts about the company that weren't given, and don't hedge with \"may\" or \"could\": if the link depends on an assumption, leave the item out.",
                     },
                     source_url: { type: 'string' },
                   },
@@ -175,7 +175,9 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: 'user',
-          content: `Convert these regulatory findings into the structured tool call. Only include items that have a real source_url from the findings below — never fabricate one.\n\n${searchText}`,
+          // The name is given here too: without it the model guessed one from
+          // the website ("iX Health" for getixhealth.com).
+          content: `Convert these regulatory findings for ${company.name} into the structured tool call. Refer to the company only as "${company.name}". Only include items that have a real source_url from the findings below — never fabricate one, and leave out items whose connection to ${company.name} rests on an assumption about what it does.\n\n${searchText}`,
         },
       ],
     })

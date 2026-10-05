@@ -87,6 +87,14 @@ describe('company-regulations', () => {
     expect(promptText(extract)).toContain('Found: CMS outpatient payment rule')
   })
 
+  it('names the company in both steps, so a reason never calls it something else', async () => {
+    const { model } = await scan({}, [])
+    const [search, extract] = model
+    // Without the name the model guessed one from the website ("iX Health").
+    expect(promptText(search)).toContain('compliance obligations for GetixHealth, a company in')
+    expect(promptText(extract)).toContain('Refer to the company only as "GetixHealth"')
+  })
+
   it("stores each finding and links it to the company with the model's own reason", async () => {
     const { res, db } = await scan({}, [found(1), found(2)])
     expect(await res.json()).toEqual({ found: 2, stored: 2 })
