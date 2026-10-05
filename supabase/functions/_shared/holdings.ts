@@ -40,8 +40,9 @@ const key = (regulationId: string, fundId: string) => `${regulationId}|${fundId}
 // describes the company's link, so it's restated rather than repeated.
 function holdingPath(fund: string, company: string, companyReason: string): string {
   const label = /^(direct|indirect)\s*:\s*/i.exec(companyReason)
-  const kind = label ? `${label[1].toLowerCase()} ` : ''
-  return `${fund} holds ${company}, which has a ${kind}connection: ${companyReason.slice(label?.[0].length ?? 0)}`
+  const kind = label?.[1].toLowerCase()
+  const connection = kind === 'indirect' ? 'an indirect connection' : kind ? `a ${kind} connection` : 'a connection'
+  return `${fund} holds ${company}, which has ${connection}: ${companyReason.slice(label?.[0].length ?? 0)}`
 }
 
 // Brings this firm's derived fund rows for one category in line with its

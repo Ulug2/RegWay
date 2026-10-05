@@ -36,9 +36,10 @@ export const DATE_WINDOWS: { key: DateWindow; label: string; days: number | null
 export const US_FEDERAL = 'United States (federal)'
 export const GLOBAL = 'Global / no specific country'
 
-// "Securities and Exchange Commission · Federal", "Federal",
-// "Federal (United States)": the three ways sources write U.S. federal.
-const isUsFederal = (jurisdiction: string) => /(^|·\s*)federal\b/i.test(jurisdiction.trim())
+// The ways sources write U.S. federal: "Securities and Exchange Commission ·
+// Federal", "Federal", "Federal (United States)" (the syncs), and "United
+// States", "United States (Federal)" (company scans, which word it freely).
+const isUsFederal = (jurisdiction: string) => /(^|·\s*)federal\b|^united states\b/i.test(jurisdiction.trim())
 
 // Where a development applies, for the location filter. Geopolitical items
 // carry the countries they concern; everything else is placed by the

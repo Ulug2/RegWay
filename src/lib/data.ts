@@ -426,11 +426,12 @@ export async function dismissRegulation(firmId: string, regulationId: string): P
     .eq('regulation_id', regulationId)
   if (error) throw error
   const without = (list: Regulation[] | null) => list && list.filter(r => r.id !== regulationId)
+  // The fund and company caches hold one list per fund / company.
+  const withoutInEach = (lists: Record<string, Regulation[]>) =>
+    Object.fromEntries(Object.entries(lists).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)]))
   patchCache<Regulation[] | null>('regs:pe', without)
-  patchCache<Regulation[] | null>('regs:fund', without)
-  patchCache<Record<string, Regulation[]>>('regs:company', prev =>
-    Object.fromEntries(Object.entries(prev).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)])),
-  )
+  patchCache<Record<string, Regulation[]>>('regs:fund', withoutInEach)
+  patchCache<Record<string, Regulation[]>>('regs:company', withoutInEach)
 }
 
 export async function restoreRegulation(firmId: string, regulationId: string): Promise<void> {

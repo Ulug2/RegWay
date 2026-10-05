@@ -68,6 +68,21 @@ Follow **`supabase/README.md`** for the full backend setup: creating the
 Supabase project, applying the schema, setting the Anthropic API key as a
 function secret, and deploying the Edge Functions.
 
+## Tests
+
+```bash
+pnpm test                 # unit tests (Vitest): src/lib and supabase/functions
+pnpm test:e2e             # browser tests (Playwright); first time: pnpm exec playwright install chromium
+pnpm typecheck            # frontend types
+pnpm typecheck:functions  # edge function types (Deno)
+pnpm test:all             # all of the above
+```
+
+Neither suite touches the real Supabase project or makes an AI call. Unit
+tests run the edge functions' code against a fake database client and a
+stubbed `fetch` (`tests/unit/helpers`). Browser tests start their own dev
+server on port 8444 pointed at a mock Supabase (`tests/e2e/mockBackend.ts`).
+
 ## Current status
 
 **Working:** authentication, onboarding (persists real firm/fund/portfolio
