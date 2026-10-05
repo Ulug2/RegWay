@@ -555,6 +555,14 @@ specific country — don't build ahead of an actual problem.
 
 ## Completed
 
+### Chat messages saved in order (2026-10-05)
+A question and its answer were saved in one insert, so both got the same
+`created_at` and a resumed chat (and the history sent to the model) could
+put the answer first: half of H.I.G.'s saved pairs read answer-first. Each
+row now carries its own time (question when asked, answer when finished);
+the 32 tied rows already saved were moved apart by 1 ms (answer after
+question). Test added in `tests/unit/regwayAiChat.test.ts`.
+
 ### Roadmap items 2–5 (2026-10-04)
 - **Item 2, AI input.** The input on the dashboard is sticky: under a long
   list it stays at the bottom of the window, and at the end of the page it

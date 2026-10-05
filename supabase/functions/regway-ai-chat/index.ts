@@ -205,6 +205,9 @@ Deno.serve(async (req) => {
   try {
     const body = (await req.json()) as { message?: string; attachment?: Attachment; context?: AiContext; conversationId?: string }
     const { message, attachment, conversationId } = body
+    // When the question was asked: saved with it, so it sorts before its
+    // answer (a single insert would give both rows the same created_at).
+    const askedAt = new Date()
     let context = body.context
     if (!message) return json({ error: 'message is required' }, 400)
     const tooBig = sizeProblem(message, attachment)
@@ -325,10 +328,11 @@ Use web search to ground every regulatory claim in a real, current source. Alway
     const persist = async () => {
       if (persisted) return
       persisted = true
+      const answeredAt = new Date(Math.max(Date.now(), askedAt.getTime() + 1))
       await Promise.all([
         supabase.from('regway_ai_messages').insert([
-          { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'user', content: message },
-          { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'assistant', content: fullText, citations },
+          { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'user', content: message, created_at: askedAt.toISOString() },
+          { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'assistant', content: fullText, citations, created_at: answeredAt.toISOString() },
         ]),
         conversationId
           ? supabase.from('regway_ai_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId)

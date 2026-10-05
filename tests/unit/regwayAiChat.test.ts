@@ -203,10 +203,14 @@ describe('regway-ai-chat', () => {
     expect(res.headers.get('Content-Type')).toBe('text/event-stream')
     expect(text).toBe(REPLY)
 
-    expect(db.ran('regway_ai_messages', 'insert')[0].payload).toEqual([
-      { firm_id: FIRM, user_id: 'user-1', conversation_id: null, role: 'user', content: 'What applies?' },
-      { firm_id: FIRM, user_id: 'user-1', conversation_id: null, role: 'assistant', content: 'Two rules apply.', citations: [{ url: 'https://www.cms.gov/rule', title: 'CMS rule' }] },
+    const [asked, answered] = db.ran('regway_ai_messages', 'insert')[0].payload as { created_at: string }[]
+    expect([asked, answered]).toEqual([
+      { firm_id: FIRM, user_id: 'user-1', conversation_id: null, role: 'user', content: 'What applies?', created_at: expect.any(String) },
+      { firm_id: FIRM, user_id: 'user-1', conversation_id: null, role: 'assistant', content: 'Two rules apply.', citations: [{ url: 'https://www.cms.gov/rule', title: 'CMS rule' }], created_at: expect.any(String) },
     ])
+    // Saved in one insert, so without its own timestamps the answer could
+    // sort before its question when the conversation is read back.
+    expect(Date.parse(answered.created_at)).toBeGreaterThan(Date.parse(asked.created_at))
     expect(db.ran('usage_events', 'insert')[0].payload).toMatchObject({ function_name: 'regway-ai-chat', input_tokens: 300, cache_creation_input_tokens: 2000, output_tokens: 42, web_search_requests: 2 })
   })
 
