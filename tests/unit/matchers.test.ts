@@ -50,6 +50,11 @@ describe.each(['match-relevance', 'match-enforcement-relevance'])('%s', name => 
     expect(res.status).toBe(200)
   })
 
+  it('asks for verdicts at temperature 0, so an item gets the same answer every run', async () => {
+    const { model } = await run(name, { candidates: three }, [])
+    expect(model[0].body.temperature).toBe(0)
+  })
+
   it('makes no AI call, and uses none of the rate limit, when nothing is new', async () => {
     const { model, db, res } = await run(name, { candidates: three, evaluated: ['reg-a', 'reg-b', 'reg-c'] }, [], asUser(name))
     expect(await res.json()).toEqual({ evaluated: 0, relevant: 0 })

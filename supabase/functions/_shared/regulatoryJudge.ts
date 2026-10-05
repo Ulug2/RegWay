@@ -18,11 +18,19 @@ export interface RegulatoryCandidate {
   summary: string | null
 }
 
+const correctionText = (correction: string | null | undefined) =>
+  correction === undefined
+    ? ''
+    : correction
+      ? `\n\nA user has flagged the previous verdict for this regulation as possibly incorrect and provided this correction: "${correction}". Weigh it against the firm/fund/company facts above — if it changes your assessment, say so in your reason; if the stated correction doesn't actually change whether this regulation applies, explain why not.`
+      : '\n\nA user has flagged the previous verdict for this regulation as possibly incorrect, with no further detail. Re-assess carefully against the firm/fund/company facts above.'
+
 export async function judgeRegulations(
   admin: SupabaseClient,
-  opts: { firmId: string; entities: FirmEntities & { firm: NonNullable<FirmEntities['firm']> }; candidates: RegulatoryCandidate[]; functionName: string; model?: string },
+  opts: { firmId: string; entities: FirmEntities & { firm: NonNullable<FirmEntities['firm']> }; candidates: RegulatoryCandidate[]; functionName: string; model?: string; correction?: string | null },
 ): Promise<Verdict[]> {
   const { firmId, candidates, functionName, model = REGULATORY_MODEL } = opts
+  // undefined: a normal match. null: a user re-check with no note.
   const { firm, funds, companies } = opts.entities
 
   // Questionnaire answers (stored in `profile`) sharpen the match: adviser
@@ -60,6 +68,9 @@ export async function judgeRegulations(
     body: JSON.stringify({
       model,
       max_tokens: 4096,
+      // Verdicts, not prose: the same item should get the same answer on
+      // every run (at the default temperature borderline items flipped).
+      temperature: 0,
       tool_choice: { type: 'tool', name: 'submit_verdicts' },
       tools: [
         {
@@ -112,7 +123,7 @@ ${companyList}
 
 For each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like "may have," "could be exposed to," or "might apply," mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just "this firm is generally in a regulated industry."`,
             },
-            { type: 'text', text: regList },
+            { type: 'text', text: regList + correctionText(opts.correction) },
           ],
         },
       ],

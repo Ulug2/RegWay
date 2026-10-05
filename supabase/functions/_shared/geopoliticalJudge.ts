@@ -91,6 +91,9 @@ export async function judgeGeopolitical(
     body: JSON.stringify({
       model,
       max_tokens: 4096,
+      // Verdicts, not prose: the same item should get the same answer on
+      // every run (at the default temperature borderline items flipped).
+      temperature: 0,
       tool_choice: { type: 'tool', name: 'submit_verdicts' },
       tools: [
         {

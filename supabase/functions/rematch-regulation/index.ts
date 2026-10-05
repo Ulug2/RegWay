@@ -6,7 +6,8 @@
 // folded into the prompt so a correction can actually change the verdict.
 //
 // Each category is re-judged by its own matcher's rules:
-// - regulatory: the jurisdiction/sector/structure prompt below;
+// - regulatory: _shared/regulatoryJudge.ts, the exact prompt
+//   match-relevance uses, with the user's note appended;
 // - geopolitical: _shared/geopoliticalJudge.ts, the exact prompt
 //   match-geopolitical-relevance uses, after which fund rows are re-derived
 //   from holdings (_shared/holdings.ts).
@@ -21,7 +22,7 @@
 //   { "regulationId": "<uuid>", "note"?: "what's wrong with this match" }
 //   Authorization: Bearer <user session access_token>   — matches the caller's own firm
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { generateImpact } from '../_shared/impact.ts'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { companyFootprint, firmFootprint } from '../_shared/footprint.ts'
@@ -30,126 +31,17 @@ import { syncHoldingsRollup } from '../_shared/holdings.ts'
 import {
   resolveFirmContext,
   loadFirmEntities,
-  describe,
   checkRateLimit,
   buildRelevanceRows,
   replaceRegulationVerdicts,
-  type FirmEntities,
-  type Verdict,
 } from '../_shared/relevance.ts'
-import { recordUsage } from '../_shared/usage.ts'
+import { judgeRegulations } from '../_shared/regulatoryJudge.ts'
 
-const MODEL = 'claude-sonnet-4-5'
 const FUNCTION_NAME = 'rematch-regulation'
 
 interface RegulationRow extends Candidate {
   category: string
   jurisdiction: string | null
-}
-
-async function judgeRegulatory(
-  admin: SupabaseClient,
-  firmId: string,
-  { firm, funds, companies }: FirmEntities & { firm: NonNullable<FirmEntities['firm']> },
-  reg: RegulationRow,
-  note: string,
-): Promise<Verdict[]> {
-  const firmProfile = describe(firm.profile, [
-    ['firm_type', 'firm type'],
-    ['adviser_registration', 'adviser registration'],
-    ['strategies', 'strategies'],
-    ['industries', 'industries'],
-    ['geographies', 'geographies'],
-  ])
-  const fundDetail = (profile: Record<string, unknown> | null) =>
-    describe(profile, [
-      ['status', 'status'],
-      ['strategy', 'strategy'],
-      ['ownership', 'ownership'],
-      ['priority_areas', 'priority areas'],
-      ['proposed_regs', 'proposed-rule preference'],
-    ])
-  const fundList = (funds ?? []).map(f => `- ${f.name} (${f.structure ?? 'structure n/a'}, jurisdictions: ${(f.jurisdictions ?? []).join('/')}${fundDetail(f.profile) ? '; ' + fundDetail(f.profile) : ''})`).join('\n') || 'none on file'
-  const companyList = (companies ?? []).map(c => `- ${c.name} (sectors: ${(c.sectors ?? []).join('/')}, regions: ${(c.regions ?? []).join('/')}${c.offerings ? `; does: ${c.offerings}` : ''})`).join('\n') || 'none on file'
-
-  const correction = note
-    ? `\n\nA user has flagged the previous verdict for this regulation as possibly incorrect and provided this correction: "${note}". Weigh it against the firm/fund/company facts above — if it changes your assessment, say so in your reason; if the stated correction doesn't actually change whether this regulation applies, explain why not.`
-    : '\n\nA user has flagged the previous verdict for this regulation as possibly incorrect, with no further detail. Re-assess carefully against the firm/fund/company facts above.'
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 1024,
-      tool_choice: { type: 'tool', name: 'submit_verdicts' },
-      tools: [
-        {
-          name: 'submit_verdicts',
-          description: 'Submit a relevance verdict for the regulation.',
-          input_schema: {
-            type: 'object',
-            properties: {
-              verdicts: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    index: { type: 'integer' },
-                    relevant: { type: 'boolean' },
-                    reason: { type: 'string', description: 'One or two sentences: why this does or does not affect the firm, addressing the flagged concern directly' },
-                    scope: { type: 'string', enum: ['firm', 'fund', 'company'] },
-                    entity_name: { type: 'string', description: 'Exact fund or company name if scope is fund/company, else empty string' },
-                  },
-                  required: ['index', 'relevant', 'reason', 'scope'],
-                },
-              },
-            },
-            required: ['verdicts'],
-          },
-        },
-      ],
-      messages: [
-        {
-          role: 'user',
-          content: `Firm: ${firm.name}, headquartered in ${firm.hq_location ?? 'unknown'}, operating in: ${(firm.jurisdictions ?? []).join(', ') || 'unspecified'}.${firmProfile ? `
-Firm profile — ${firmProfile}.` : ''}
-
-Funds:
-${fundList}
-
-Portfolio companies:
-${companyList}
-
-Decide whether this regulation creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches.${correction}
-
-0. [${reg.agency ?? reg.jurisdiction}] ${reg.title} — ${reg.summary ?? 'no summary'}`,
-        },
-      ],
-    }),
-  })
-
-  if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`)
-  const result = await res.json()
-  const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
-  const verdicts: Verdict[] = toolUse?.input?.verdicts ?? []
-
-  await recordUsage(admin, {
-    functionName: FUNCTION_NAME,
-    firmId,
-    model: MODEL,
-    inputTokens: result.usage?.input_tokens,
-    cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
-    cacheReadInputTokens: result.usage?.cache_read_input_tokens,
-    outputTokens: result.usage?.output_tokens,
-  })
-
-  // No verdict at all still records the re-check, as "not relevant".
-  return verdicts.length ? verdicts : [{ index: 0, relevant: false, reason: 'No verdict returned for this regulation.', scope: 'firm', entity_name: null }]
 }
 
 Deno.serve(async req => {
@@ -192,7 +84,10 @@ Deno.serve(async req => {
             functionName: FUNCTION_NAME,
             correction: note || null,
           })
-        : await judgeRegulatory(admin, firmId, { firm, funds, companies }, reg, note)
+        : await judgeRegulations(admin, { firmId, entities: { firm, funds, companies }, candidates: [reg], functionName: FUNCTION_NAME, correction: note || null }).then(v =>
+            // No verdict at all still records the re-check, as "not relevant".
+            v.length ? v : [{ index: 0, relevant: false, reason: 'No verdict returned for this regulation.', scope: 'firm' as const, entity_name: null }],
+          )
 
     await replaceRegulationVerdicts(admin, firmId, regulationId, buildRelevanceRows(verdicts, [reg], firmId, funds, companies))
     if (reg.category === 'geopolitical') await syncHoldingsRollup(admin, firmId, 'geopolitical', { funds, companies })

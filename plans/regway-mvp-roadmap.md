@@ -73,6 +73,10 @@ again. Enrol or remove a firm with
 spend: H.I.G.'s regulatory backlog (~160 items) clears over ~4 runs at
 ≈ $0.08 each, then a run costs only when new documents arrive.
 
+**Blocker (2026-10-05): the Anthropic credit ran out again** during the
+H.I.G. re-checks. Every AI call fails until it's topped up; scheduled
+matching will show as failing on the dashboard banner meanwhile.
+
 **Earlier blocker (resolved):** the Anthropic account ran out of credit mid-pass
 ("credit balance is too low"). Every AI-calling function fails until it's
 topped up: matchers, impact analyses, RegWay AI chat, company scans. The
@@ -220,8 +224,24 @@ re-check **$0.01**. Levers, biggest first (2026-10-04 review):
      GetixHealth (the "not relevant to my portfolio company" items the
      owner raised in chat). Run-to-run noise explains ~2 of 40, so most of
      the gap comes from the batch the item was judged in, or a profile
-     edit since; not resolved. Ideas: `temperature: 0` on verdict calls,
-     and re-checking stored matches that a fresh run rejects.
+     edit since.
+   - **Follow-up done (2026-10-05):** every verdict call (both matchers'
+     judges, the enforcement matcher, the re-check) runs at
+     `temperature: 0`. The regulatory re-check used its own, looser prompt
+     (no rules against speculative links or purely administrative notices
+     such as technical corrections), so a re-check kept matches the matcher
+     rejects; it now uses the matcher's prompt (`judgeRegulations`) with
+     the user's note appended. Tests cover both.
+   - **H.I.G.'s 14 stored matches:** re-checked once *before* the prompts
+     were unified: 3 removed (crypto, Rule 14a-8, Florida air plan), 11
+     kept, $1.21 (each kept item rewrites its analysis, ≈ $0.10, which the
+     $0.14 estimate left out). The second pass on the unified prompt failed
+     on every call: **the Anthropic credit ran out**, nothing was written.
+     To finish after a top-up: re-check the 11 (≈ $0.10 + ≈ $0.10 per item
+     kept); backup of the original 14 rows was taken locally.
+   - **Switch to Haiku: not done.** Re-test at temperature 0 first
+     (≈ $0.10), then switch the regulatory and geopolitical matchers only;
+     enforcement was not tested.
    - Sonnet 5.5 ($2/$10) would need the forced `tool_choice` moved to
      `auto` + `strict: true` first; not tested.
 4. **Message Batches API (50% off)** for work nobody is waiting on:

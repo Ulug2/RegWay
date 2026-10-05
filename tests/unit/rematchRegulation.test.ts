@@ -82,6 +82,16 @@ describe('rematch-regulation', () => {
     expect(text).toContain('0. [CMS] Medicare payment update')
   })
 
+  it('judges a regulatory item by the same rules as the matcher, at temperature 0', async () => {
+    const { verdictCalls } = await recheck({}, noLonger)
+    const text = promptText(verdictCalls[0])
+    // The matcher's strictness rules, which the old re-check prompt lacked:
+    // a technical correction kept matching on a re-check that the matcher rejects.
+    expect(text).toContain('Speculative or hypothetical connections are not sufficient grounds for relevance')
+    expect(text).toContain('purely administrative or procedural')
+    expect(verdictCalls[0].body.temperature).toBe(0)
+  })
+
   it('re-checks without a note too', async () => {
     const { verdictCalls } = await recheck({}, noLonger)
     expect(promptText(verdictCalls[0])).toContain('with no further detail')
