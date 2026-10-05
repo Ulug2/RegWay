@@ -78,7 +78,40 @@ spend: H.I.G.'s regulatory backlog (~160 items) clears over ~4 runs at
 topped up: matchers, impact analyses, RegWay AI chat, company scans. The
 geopolitical re-check's AI step is the one piece shipped without a live run.
 
+**2026-10-04 (evening, local session):** the branch was reviewed and an
+automated test suite added (see Completed, "Automated tests"); four bugs it
+found were fixed. Seven items were requested by the owner (password flows,
+fund / company pages, the AI input's placement, scope switching in chat,
+the chat sidebar, full profile context for the copilot, landing-page
+animation) and the Priority order was re-sorted **easiest first** at the
+owner's request, with a table mapping the old numbers to the new ones.
+
 ## Priority order
+
+**Re-sorted 2026-10-04 (owner's call): easiest to implement first.** The
+order below is by effort, not by value, so the largest item (the multi-role
+architecture) is last even though it targets the product's biggest weakness.
+Each item has a rough size: **S** = hours, **M** = a day or two, **L** =
+several days, **XL** = a multi-phase build.
+
+Completed entries, code comments, migrations and the notes under `prompts/`
+refer to items by their numbers from before this re-sort:
+
+| Old number | Now |
+|---|---|
+| 1 Geopolitical monitoring, Phase 2 | 13 |
+| 2 Live regulation monitoring | 12 |
+| 3 Copilot grounding | done (Completed) |
+| 4 Copilot save and resume | done (Completed) |
+| 5 Multi-role architecture | 17 |
+| 6 Category filter on entity pages | done (Completed) |
+| 7 Fact provenance | 16 |
+| 8 Duplicate-coverage grouping | 15 |
+| 9 Cost optimization | 6 |
+| 10 Re-match discovery after settings edits | 11 |
+| 11 RegWay AI overhaul, remaining verification | 1 |
+| 12 Portfolio-company non-US coverage | "Watch only", after item 17 |
+| 13 Source registry grounding | 14 |
 
 ### Live AI tests still owed
 Tests run on **H.I.G. Capital** only (the primary test account). Verified
@@ -98,32 +131,220 @@ was refused, rightly):
 |---|---|---|
 | Company scan storing a real `why_it_applies` | Edit a company's profile and save (triggers a re-scan), then read "Why it's here" on its new items | $0.20–0.70 |
 | Copilot opened from a fund / company page (scoped matches) | Open RegWay AI from GetixHealth's page, ask "what's relevant to this company right now?" | $0.02–0.14 |
-| Copilot file upload (.txt/.md/.pdf) (item 11) | Attach a short PDF and ask about it | $0.05–0.15 |
+| Copilot file upload (.txt/.md/.pdf) (item 1) | Attach a short PDF and ask about it | $0.05–0.15 |
 | Analysis of a not-yet-published document | Only when a pre-publication item is matched to H.I.G. (none today: the 4 scheduled for 10-05 were judged not relevant) | $0.06–0.22 |
 | Fund rows derived from holdings, on H.I.G. | Record which H.I.G. fund holds each company (company cards); not set yet, so no fund-level derived matches exist | $0.06–0.40 (re-written analyses) |
-| Haiku vs Sonnet verdict accuracy (item 9.3) | Same ~40 items through both models, per matcher (script) | ≈ $0.30 |
+| Haiku vs Sonnet verdict accuracy (item 6.3) | Same ~40 items through both models, per matcher (script) | ≈ $0.30 |
 | **Total** | | **≈ $0.70–1.90** |
 
-### 1. Geopolitical monitoring, Phase 2
-Phase 1, fund → company holdings, the geopolitical re-check and the
-entity-page category filter are done (see Completed). What's left, roughly
-in order of value:
-1. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
-   Recent Actions, once a portfolio company with UK/EU-specific exposure
-   makes them worth a connector.
-2. **One known residual false positive** in the H.I.G. test data: a
-   Section 301 "manufacturing sectors" investigation matched to 3Pillar
-   Global (software) via India. The model's own reason says the sector fit
-   isn't confirmed. Left in place as an honest example of the limit, not
-   fixed by more prompt tuning. Same class seen on the holdings test firm
-   (2026-10-04): a drone-export rule matched to an aerospace-logistics
-   company "if it manufactures UAVs … not recorded". A structural fix is
-   the Skeptic pass (item 5), not another prompt rule.
+### 1. RegWay AI overhaul — remaining verification (S)
+No code: two checks by hand.
+The build itself is done (see Completed). Two things flagged but not yet
+confirmed:
+- The file-upload path (`.txt`/`.md` inlined, `.pdf` as a native document
+  block) hasn't been exercised with a real user-provided file.
+- Whether the drawer expanding to a full-page view on first message (with
+  the suggestion chips disappearing) is the right call — flagged earlier as
+  a judgment call on an ambiguous request, still unconfirmed either way.
 
-"Live regulation monitoring" (below) is the other large net-new piece of
-work. It should be scoped as its own investigate/implement pass.
+### 2. Move the RegWay AI input so it's always in reach (S)
+Requested 2026-10-04. The input sits under the three big buttons and below
+whichever list is open (`Dashboard.tsx`, "RegWay AI Input Bar"), so on a PE
+Firm page with many developments it ends up far down the page. Find it a
+place that doesn't depend on list length. Options to choose between when
+building: a bar fixed to the bottom of the viewport, a floating button that
+opens the drawer, or the input placed above the list, directly under the
+three buttons. It must keep opening already scoped to the open fund or
+company, and the same control should be reused on the new fund / company
+pages (item 9).
 
-### 2. Live regulation monitoring (near-real-time, US + global)
+### 3. Small fixes found by the 2026-10-04 test pass (S)
+Found while writing the test suite (see Completed, "Automated tests") and
+left alone because none was a quick, safe one-liner:
+1. **No server-side size limit on a chat message or attachment.** The
+   drawer accepts files up to 15 MB and `regway-ai-chat` passes whatever it
+   receives to the model, so one message can cost many times the $0.06
+   average. Only the 30-per-hour rate limit bounds it. Cap message length
+   and attachment size in the function.
+2. **An open dashboard doesn't see removals.** `subscribeToMatches`
+   listens for inserts and updates only, so a match removed by a re-check
+   or a holding change stays on screen until reload.
+3. **Refused messages leave empty chats in History.** The conversation row
+   is created before the rate-limit check and the AI call.
+4. **Sync functions accept the publishable key**, so anyone can trigger a
+   long Federal Register backfill with `?since=`. No AI cost, only load.
+   Bound `since`, or require the service key as `run-matching` does.
+5. **Cosmetic:** the chat avatar still shows "H" (from the Harvey name);
+   the dashboard greeting is always "Good morning"; the dashboard footer
+   links go nowhere.
+6. **Test coverage still missing:** `match-relevance`,
+   `match-enforcement-relevance`, `company-regulations`,
+   `rematch-regulation` and `refresh-entity-impacts` have no handler tests
+   (the other functions do).
+
+Resolves by itself: 20 H.I.G. company-scan matches still show the
+placeholder "AI web-search scan for …" as their reason until each company's
+next weekly rescan (from 2026-10-09) or a profile edit.
+
+### 4. Password flows: reset link, current password, requirements (S–M)
+Requested 2026-10-04. Three parts:
+1. **Reset link bug.** Clicking the link in Supabase's reset email shows
+   the reset-password page for a second, then the dashboard, before a new
+   password can be entered. Likely cause, read from the code and not yet
+   reproduced: in `App.tsx` the `PASSWORD_RECOVERY` event sets the view to
+   `reset-password`, but `init()` is still awaiting `getFirmId()` and then
+   sets the view to `dashboard` (the recovery link also creates a session).
+   The recovery view has to win over the normal signed-in routing.
+2. **Changing the password in Settings must ask for the current one.**
+   `ProfileScreen.tsx` calls `supabase.auth.updateUser({ password })` with
+   only the new password. Either verify the current password first, or turn
+   on Supabase's secure password change setting; decide when building.
+3. **Password requirements at sign-up, reset and change**, matching what
+   Supabase Auth enforces. Today the only rule is "At least 6 characters"
+   (`AuthScreen.tsx`). Set minimum length and required character types in
+   Supabase Auth settings, turn on leaked-password protection (the Supabase
+   security advisor flags it as off; check whether the project's plan
+   includes it), show the rules next to the field, and show Supabase's
+   weak-password error in plain words when it refuses one.
+
+Also closes the Future note "Exercise account flows live" for password
+change. Add browser tests for all three (the mock backend already handles
+sign-in).
+
+### 5. Copilot: read the full firm, fund and company profiles when nothing is selected (S–M)
+Requested 2026-10-04. With no fund or company selected, the copilot should
+still know everything recorded about the firm, its funds and its portfolio
+companies. Today `regway-ai-chat`'s system prompt carries only fund name,
+size, structure and jurisdictions, and company name, sectors and regions,
+plus the matched developments; the questionnaire answers in `profile`
+(strategies, adviser registration, operating and supplier locations,
+offerings, licences, holdings and so on) never reach it. Reuse the `facts()`
+formatter in `_shared/impact.ts`, include which fund holds which company,
+and keep it inside the cached system prompt. Watch the cost: a larger
+cached prefix raises the first message of a session slightly. Extend
+`tests/unit/regwayAiChat.test.ts`.
+
+### 6. Cost optimization (S–M per lever)
+Each lever is independent; lever 1 is a few lines.
+Prompt caching and usage logging are done (see Completed). Measured from
+`usage_events` (Sonnet 4.5 list prices, $3/$15 per M tokens, $0.01 per web
+search), per call: company scan **$0.20** (web-search step $0.17 +
+extraction $0.02), impact analysis **$0.06** avg (up to $0.22 on long
+documents), matcher batch of 40 **$0.05**, chat message **$0.06–0.07**,
+re-check **$0.01**. Levers, biggest first (2026-10-04 review):
+1. **Stop pre-writing impact analyses nobody opens.** The matchers and
+   company scans generate up to 8 analyses in the background for every new
+   match; most are never opened. The on-demand path already exists (the
+   detail page writes one when missing), so dropping the background step
+   moves that cost to "only when read". Trade-off: the first open waits
+   ~30–60 s.
+2. **Company scans are the biggest recurring cost.** $0.20 per company,
+   re-run weekly (and after profile edits) on dashboard load, plus the
+   background analyses above. Options: scan less often (e.g. every 14–30
+   days), cap web searches per scan (`max_uses` 5 → 3), or scan once per
+   sector × location and share results across companies (results are
+   public regulations).
+3. **Move to a cheaper model, with an accuracy check first.** Claude Haiku
+   4.5 is $1/$5 (3× cheaper than Sonnet 4.5) and fits the matchers' strict
+   yes/no verdicts. Claude Sonnet 5.5 is $2/$10 (a third cheaper than
+   Sonnet 4.5) and newer, but it rejects forced `tool_choice`, which every
+   structured call here uses, so the switch means moving those calls to
+   `tool_choice: auto` + `strict: true` (or structured outputs). Either way,
+   compare verdicts side by side on real items before switching (≈ $0.30,
+   see "Live AI tests still owed").
+4. **Message Batches API (50% off)** for work nobody is waiting on:
+   `run-matching` and any background analyses. Results arrive within
+   minutes to hours, fine for a 30-minute schedule.
+5. **Only match firms that are in use.** Partly done: `run-matching` runs
+   only firms enrolled in `scheduled_matching_firms` (today H.I.G.). For
+   real customers, enrol automatically on sign-in and drop firms with no
+   sign-in in N days; dormant ones catch up on their next visit.
+6. **Shorter analysis input.** Analyses read up to 60K characters of the
+   document; long rules drive the $0.22 calls. A lower cap, or sending only
+   the sections that mention the matched facts, cuts input tokens.
+
+Dropped: "right-size `max_tokens`" (from the 2026-10-01 list). Output is
+billed per token generated, not per token allowed, so a lower ceiling saves
+nothing and risks cutting answers off.
+
+### 7. Copilot: change the AI's scope from inside the chat (M)
+Requested 2026-10-04. The right-hand panel of the chat lists the active
+firm, funds and portfolio companies as plain text. Make them selectable so
+the user can switch what the AI is focused on (firm-wide, one fund, one
+company) without leaving the chat. Two things to settle when building:
+- A saved conversation currently keeps the scope it was started from
+  ("its stored scope wins" in `regway-ai-chat`). Switching scope mid-chat
+  means updating `regway_ai_conversations.context`, and the model has to be
+  told the focus changed.
+- The header's "Focused on …" line and the matched-developments block must
+  follow the selection.
+
+Same component as item 8; build them together.
+
+### 8. Copilot: chat sidebar, closable session context, attached files (M)
+Requested 2026-10-04.
+- Replace the **History** button with a sidebar toggle. The sidebar lists
+  past chats and has the "New chat" button (today both sit in the header;
+  `ConversationHistory.tsx` already has the list, resume and delete).
+- The right-hand **session context** panel can be closed and reopened.
+- A file the user attaches appears in the session context (today it shows
+  only as a chip above the input until sent, and nothing after).
+
+Update `tests/e2e/copilot.spec.ts`, which clicks the History button.
+
+### 9. Fund and portfolio-company pages (M)
+Requested 2026-10-04. Clicking a fund or a portfolio company opens its own
+page listing all of its developments, instead of expanding the list inside
+the dashboard. **PE Firm stays as it is**, in the dashboard.
+- The app has no router; views are a state in `App.tsx`. Add a view for the
+  entity page and reuse `EntityFeed` (filters, "New" badges, dismiss).
+- RegWay AI is available on the new page (the control from item 2) and
+  opens with everything about that fund or company: its profile, what it
+  holds or who holds it, and its matched developments with their reasons.
+  The matched-developments part exists (`_shared/matchedDevelopments.ts`,
+  scoped by fund / company); the profile part is item 5.
+- Keep which entity is open across opening a development and coming back
+  (today `ui:selectedFund` / `ui:selectedCompany` in the cache do this).
+- Update `tests/e2e/dashboard.spec.ts`, which expects the in-dashboard
+  lists.
+
+### 10. Landing page: sign-in / sign-up in place, scroll animations (M–L)
+Requested 2026-10-04. "Highly sophisticated, smooth animation."
+- **Sign-in / sign-up inside the landing page.** Clicking "Get Started
+  Free" or "Sign In" no longer switches to a separate screen. The form
+  slides out from behind the hero text ("Regulatory intelligence that
+  actually knows your firm. …"), and that text slides left to make room for
+  it. Today `AuthScreen` is its own view in `App.tsx`.
+- **Sections appear as the user scrolls**, sliding in from the sides.
+- No animation library is installed. Decide between CSS transitions with
+  `IntersectionObserver` and a library; whichever is used, respect
+  `prefers-reduced-motion`, keep the form usable by keyboard, and check the
+  layout on a phone, where there is no room to slide text aside.
+- `tests/e2e/auth.spec.ts` covers sign-in and will need its selectors
+  updated.
+
+### 11. Re-match discovery after settings edits (M)
+The match-correction loop (see Completed) covers *re-checking and
+refreshing the explanation* for regulations already matched to an entity.
+It deliberately does not cover the other half: *discovering new matches*
+after a firm/fund profile edit. Today `match-relevance` only evaluates
+regulations with no existing relevance row for a firm (including
+"not relevant" marker rows), so editing a firm's jurisdictions or adding a
+fund doesn't cause previously-rejected regulations to be re-considered —
+the firm/fund dashboard tabs can go stale until the next full match run.
+(Portfolio-company edits are handled differently and already work: changing
+HQ, sectors or regions clears that company's cached scan so it re-runs via
+a fresh on-demand web search on next click — see `saveCompanyAnswers`.)
+Building this safely for firm/fund needs more thought than it first
+appears: naively clearing a firm's relevance rows and re-running
+`match-relevance` would re-evaluate the *entire* historical regulations
+backlog against the firm (potentially thousands of items), not just what
+the edit actually affects — a real cost/scale risk, which is why this
+wasn't done opportunistically alongside the match-correction loop. Likely
+superseded by "Live regulation monitoring" (item 12) once that exists, since
+an event-driven pipeline removes the need for a special re-discovery path.
+
+### 12. Live regulation monitoring (near-real-time, US + global) (M–L)
 **Phase 1a done (2026-10-04)** — see Completed, "Live monitoring, Phase
 1a". The audit found the real gap: matching ran only at onboarding, so
 firm/fund pages never received anything synced afterwards. **Public
@@ -182,13 +403,84 @@ Caveats
   below (event-driven removes the need for per-firm schedules); the
   timezone still matters for when the Morning Brief email is sent.
 
-### 3. Copilot: ground answers in the firm's currently-relevant regulations — done
-See Completed, "Copilot grounded in matched developments".
+### 13. Geopolitical monitoring, Phase 2 (M–L)
+Phase 1, fund → company holdings, the geopolitical re-check and the
+entity-page category filter are done (see Completed). What's left, roughly
+in order of value:
+1. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
+   Recent Actions, once a portfolio company with UK/EU-specific exposure
+   makes them worth a connector.
+2. **One known residual false positive** in the H.I.G. test data: a
+   Section 301 "manufacturing sectors" investigation matched to 3Pillar
+   Global (software) via India. The model's own reason says the sector fit
+   isn't confirmed. Left in place as an honest example of the limit, not
+   fixed by more prompt tuning. Same class seen on the holdings test firm
+   (2026-10-04): a drone-export rule matched to an aerospace-logistics
+   company "if it manufactures UAVs … not recorded". A structural fix is
+   the Skeptic pass (item 17), not another prompt rule.
 
-### 4. Copilot: save and resume chats — done
-See Completed, "Copilot conversations: save, resume, memory".
+"Live regulation monitoring" (item 12) is the other large net-new piece of
+work. It should be scoped as its own investigate/implement pass.
 
-### 5. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic)
+### 14. Ground AI matching/search in the regulatory source registry doc (M–L)
+From `docs/Regway_US_Regulatory_Source_Master_Registry_Comprehensive_V2.docx`
+— the healthcare/trade agencies (item above, Completed) were the quick,
+mechanical part. The doc's real scope is far bigger: 52 sections, federal
+through tribal/county/professional-licensing-board level. Its own §50
+"coverage algorithm" and §50's scope note both say this can't be
+statically enumerated (no fixed API per county/board) and should be
+*dynamically resolved* per entity — which is exactly what
+`company-regulations`'s live Claude web search already does today, just
+without this doc's structure to ground it. Two concrete, bounded pieces:
+1. **DDTC/ITAR coverage**: §17/§18 name DDTC (defense trade controls) as
+   a source directly relevant to A.L.A. and any future defense/aerospace
+   portfolio company, but DDTC has no Federal Register agency slug of its
+   own — it publishes under the generic `state-department`, which would
+   pull in unrelated State Department rulemaking. Same shape of problem
+   FINRA's coverage already solved (fetch the parent's documents, filter
+   client-side on a reliable title pattern) — needs the equivalent title
+   marker investigated for DDTC/ITAR notices before building.
+2. **Feed the doc's taxonomy into the live-search prompts** — rather than
+   building static integrations for state/local/licensing-board sources
+   (the doc itself advises against that), ground `company-regulations`'s
+   and `match-relevance`'s prompts in the doc's structured activity →
+   source mapping so the AI's web search reasons against an authoritative
+   list instead of whatever it happens to surface. Cheaper than new sync
+   infrastructure and fits the architecture that already exists. Lower
+   priority than item 13 (geopolitical/sanctions) since it's a quality
+   improvement to an existing working path, not new coverage from zero.
+
+### 15. Duplicate-coverage grouping (L)
+The doc wants multiple articles about the same underlying event merged into
+one feed entry. Today's dedup is exact-document-only (`upsert` on `source,
+external_id`); grouping near-duplicate coverage across sources is a new,
+fuzzier matching step — lowest priority of the product-realignment items,
+since it only matters once multiple sources cover the same event (i.e.
+mainly after geopolitical monitoring adds more source diversity).
+
+### 16. Fact provenance and "last confirmed" dates (L)
+On every profile fact. Doc requires every matching fact to show its origin
+(user-entered vs. document) and a last-confirmed date, and for missing facts
+to render as visibly unknown rather than assumed-absent. Audited: today
+`profile` jsonb is a **bare key→value map** — `toRow()` writes
+`profile[q.id] = value` directly, `fromRow()` does `Object.assign(answers,
+profile)` directly, and `Answers = Record<string, unknown>`
+(`questionnaire.ts`). No column, key, or field anywhere is named
+`source`/`origin`/`confirmed_at`/`provenance` (checked all migrations and
+`types.ts`). The only existing per-answer state is a `missing` boolean
+(`QuestionField.tsx`, a "Needed" badge shown only when `required`) — a
+non-required empty field renders with no marker at all, indistinguishable
+from "confirmed N/A." `_shared/impact.ts`'s `facts()` helper flattens
+everything to plain `key: value` strings for the AI prompt, so even if
+provenance existed on the row it isn't threaded through to the analysis
+today. Needs: each `profile` value becomes `{ value, source, confirmed_at }`
+instead of a bare value (touches `toRow`/`fromRow`, every profile display
+component, and `facts()`), plus a real "unknown" UI state distinct from
+"empty and not required." (`profile_updated_at`, a whole-entity timestamp,
+already exists — see Completed — but that's a coarser signal than per-fact
+provenance.)
+
+### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
 rather than inlined here because the brief is long (architecture, 7
 roles, routing, parallelism, structured outputs, security, failure
@@ -223,123 +515,18 @@ company loaders (the Context Analyst's foundation), `_shared/usage.ts`'s
 `function_name` per role), and this session's `rematch-regulation` (a
 single-shot re-verification call the Skeptic naturally layers onto).
 
-Sequenced after items 3–4 above (both are prerequisites/ship-independently
-pieces of the same brief) and ahead of items 6–12 below: this is a major
-investment directly improving the product's most-scrutinized weakness
-(speculative relevance matching), not a UI nice-to-have. Priority within
-the brief's own 10 phases: architecture definition → regulation-context
-grounding (item 3) → chat history (item 4) → Researcher extraction →
-Context Analyst → Impact Analyst → **Skeptic + Citation Checker** → dynamic
-routing → parallel execution → evaluation. Do not build past Phase 1
-without confirming scope — this is comparable in size to item 1
-(geopolitical monitoring).
+The two prerequisites from the same brief are done (copilot grounding and
+chat save/resume, see Completed). Last in this list only because the list
+is now sorted easiest first and this is the largest item: it remains the
+structural answer to the product's most-scrutinized weakness (speculative
+relevance matching). Order within the brief's own phases: architecture
+definition → Researcher extraction → Context Analyst → Impact Analyst →
+**Skeptic + Citation Checker** → dynamic routing → parallel execution →
+evaluation. Do not build past Phase 1 without confirming scope: this is
+comparable in size to geopolitical monitoring.
 
-### 6. Category filter on entity pages — done
-See Completed, "Entity-page category filter and search".
-
-### 7. Fact provenance and "last confirmed" dates
-On every profile fact. Doc requires every matching fact to show its origin
-(user-entered vs. document) and a last-confirmed date, and for missing facts
-to render as visibly unknown rather than assumed-absent. Audited: today
-`profile` jsonb is a **bare key→value map** — `toRow()` writes
-`profile[q.id] = value` directly, `fromRow()` does `Object.assign(answers,
-profile)` directly, and `Answers = Record<string, unknown>`
-(`questionnaire.ts`). No column, key, or field anywhere is named
-`source`/`origin`/`confirmed_at`/`provenance` (checked all migrations and
-`types.ts`). The only existing per-answer state is a `missing` boolean
-(`QuestionField.tsx`, a "Needed" badge shown only when `required`) — a
-non-required empty field renders with no marker at all, indistinguishable
-from "confirmed N/A." `_shared/impact.ts`'s `facts()` helper flattens
-everything to plain `key: value` strings for the AI prompt, so even if
-provenance existed on the row it isn't threaded through to the analysis
-today. Needs: each `profile` value becomes `{ value, source, confirmed_at }`
-instead of a bare value (touches `toRow`/`fromRow`, every profile display
-component, and `facts()`), plus a real "unknown" UI state distinct from
-"empty and not required." (`profile_updated_at`, a whole-entity timestamp,
-already exists — see Completed — but that's a coarser signal than per-fact
-provenance.)
-
-### 8. Duplicate-coverage grouping
-The doc wants multiple articles about the same underlying event merged into
-one feed entry. Today's dedup is exact-document-only (`upsert` on `source,
-external_id`); grouping near-duplicate coverage across sources is a new,
-fuzzier matching step — lowest priority of the product-realignment items,
-since it only matters once multiple sources cover the same event (i.e.
-mainly after geopolitical monitoring adds more source diversity).
-
-### 9. Cost optimization (not yet built)
-Prompt caching and usage logging are done (see Completed). Measured from
-`usage_events` (Sonnet 4.5 list prices, $3/$15 per M tokens, $0.01 per web
-search), per call: company scan **$0.20** (web-search step $0.17 +
-extraction $0.02), impact analysis **$0.06** avg (up to $0.22 on long
-documents), matcher batch of 40 **$0.05**, chat message **$0.06–0.07**,
-re-check **$0.01**. Levers, biggest first (2026-10-04 review):
-1. **Stop pre-writing impact analyses nobody opens.** The matchers and
-   company scans generate up to 8 analyses in the background for every new
-   match; most are never opened. The on-demand path already exists (the
-   detail page writes one when missing), so dropping the background step
-   moves that cost to "only when read". Trade-off: the first open waits
-   ~30–60 s.
-2. **Company scans are the biggest recurring cost.** $0.20 per company,
-   re-run weekly (and after profile edits) on dashboard load, plus the
-   background analyses above. Options: scan less often (e.g. every 14–30
-   days), cap web searches per scan (`max_uses` 5 → 3), or scan once per
-   sector × location and share results across companies (results are
-   public regulations).
-3. **Move to a cheaper model, with an accuracy check first.** Claude Haiku
-   4.5 is $1/$5 (3× cheaper than Sonnet 4.5) and fits the matchers' strict
-   yes/no verdicts. Claude Sonnet 5.5 is $2/$10 (a third cheaper than
-   Sonnet 4.5) and newer, but it rejects forced `tool_choice`, which every
-   structured call here uses, so the switch means moving those calls to
-   `tool_choice: auto` + `strict: true` (or structured outputs). Either way,
-   compare verdicts side by side on real items before switching (≈ $0.30,
-   see "Live AI tests still owed").
-4. **Message Batches API (50% off)** for work nobody is waiting on:
-   `run-matching` and any background analyses. Results arrive within
-   minutes to hours, fine for a 30-minute schedule.
-5. **Only match firms that are in use.** Partly done: `run-matching` runs
-   only firms enrolled in `scheduled_matching_firms` (today H.I.G.). For
-   real customers, enrol automatically on sign-in and drop firms with no
-   sign-in in N days; dormant ones catch up on their next visit.
-6. **Shorter analysis input.** Analyses read up to 60K characters of the
-   document; long rules drive the $0.22 calls. A lower cap, or sending only
-   the sections that mention the matched facts, cuts input tokens.
-
-Dropped: "right-size `max_tokens`" (from the 2026-10-01 list). Output is
-billed per token generated, not per token allowed, so a lower ceiling saves
-nothing and risks cutting answers off.
-
-### 10. Re-match discovery after settings edits
-The match-correction loop (see Completed) covers *re-checking and
-refreshing the explanation* for regulations already matched to an entity.
-It deliberately does not cover the other half: *discovering new matches*
-after a firm/fund profile edit. Today `match-relevance` only evaluates
-regulations with no existing relevance row for a firm (including
-"not relevant" marker rows), so editing a firm's jurisdictions or adding a
-fund doesn't cause previously-rejected regulations to be re-considered —
-the firm/fund dashboard tabs can go stale until the next full match run.
-(Portfolio-company edits are handled differently and already work: changing
-HQ, sectors or regions clears that company's cached scan so it re-runs via
-a fresh on-demand web search on next click — see `saveCompanyAnswers`.)
-Building this safely for firm/fund needs more thought than it first
-appears: naively clearing a firm's relevance rows and re-running
-`match-relevance` would re-evaluate the *entire* historical regulations
-backlog against the firm (potentially thousands of items), not just what
-the edit actually affects — a real cost/scale risk, which is why this
-wasn't done opportunistically alongside the match-correction loop. Likely
-superseded by "Live regulation monitoring" (item 2) once that exists, since
-an event-driven pipeline removes the need for a special re-discovery path.
-
-### 11. RegWay AI overhaul — remaining verification
-The build itself is done (see Completed). Two things flagged but not yet
-confirmed:
-- The file-upload path (`.txt`/`.md` inlined, `.pdf` as a native document
-  block) hasn't been exercised with a real user-provided file.
-- Whether the drawer expanding to a full-page view on first message (with
-  the suggestion chips disappearing) is the right call — flagged earlier as
-  a judgment call on an ambiguous request, still unconfirmed either way.
-
-### 12. Portfolio-company non-US coverage (low priority — mostly already works)
+### Watch only: portfolio-company non-US coverage
+No work planned (was item 12).
 `company-regulations` already builds its search query from a portfolio
 company's real HQ location/region and explicitly asks for foreign
 regulators when applicable — this works today via live Claude web search,
@@ -347,55 +534,14 @@ not a fixed feed. Not guaranteed complete (web search quality varies by
 jurisdiction). Revisit only if real usage surfaces specific gaps for a
 specific country — don't build ahead of an actual problem.
 
-### 13. Ground AI matching/search in the regulatory source registry doc
-From `docs/Regway_US_Regulatory_Source_Master_Registry_Comprehensive_V2.docx`
-— the healthcare/trade agencies (item above, Completed) were the quick,
-mechanical part. The doc's real scope is far bigger: 52 sections, federal
-through tribal/county/professional-licensing-board level. Its own §50
-"coverage algorithm" and §50's scope note both say this can't be
-statically enumerated (no fixed API per county/board) and should be
-*dynamically resolved* per entity — which is exactly what
-`company-regulations`'s live Claude web search already does today, just
-without this doc's structure to ground it. Two concrete, bounded pieces:
-1. **DDTC/ITAR coverage**: §17/§18 name DDTC (defense trade controls) as
-   a source directly relevant to A.L.A. and any future defense/aerospace
-   portfolio company, but DDTC has no Federal Register agency slug of its
-   own — it publishes under the generic `state-department`, which would
-   pull in unrelated State Department rulemaking. Same shape of problem
-   FINRA's coverage already solved (fetch the parent's documents, filter
-   client-side on a reliable title pattern) — needs the equivalent title
-   marker investigated for DDTC/ITAR notices before building.
-2. **Feed the doc's taxonomy into the live-search prompts** — rather than
-   building static integrations for state/local/licensing-board sources
-   (the doc itself advises against that), ground `company-regulations`'s
-   and `match-relevance`'s prompts in the doc's structured activity →
-   source mapping so the AI's web search reasons against an authoritative
-   list instead of whatever it happens to surface. Cheaper than new sync
-   infrastructure and fits the architecture that already exists. Lower
-   priority than item 1 (geopolitical/sanctions) since it's a quality
-   improvement to an existing working path, not new coverage from zero.
-
 ### Buffer — stretch, only if time remains
 - Clean up the two duplicate "NovaPay" test rows in the DB (harmless,
   RLS-isolated, just tidiness — lowest priority item in the whole list).
 
 ### Future (no timeline yet)
-- **No automated test suite exists** (finding, 2026-10-02): checked
-  `package.json` (no test script, no test runner installed — React 19,
-  Vite 8, TypeScript, no Vitest/Jest/Playwright/Cypress/Testing Library),
-  searched for `*.test.*`/`*.spec.*` files, a `.github/workflows` CI
-  pipeline, and `Deno.test` in the edge functions — all empty. Every
-  verification in this project to date has been manual: `tsc --noEmit`,
-  live browser checks via the browser tool, and direct DB queries (see
-  "Verification approach" at the bottom of this doc), plus a few one-off
-  standalone scripts for specific things (e.g. the markdown renderer's
-  XSS check). That's been adequate for a fast-moving solo build, but it
-  means nothing guards against regressions except re-testing by hand.
-  Not building a suite unprompted — this is a real gap worth a deliberate
-  decision (what to cover first: the matching/relevance logic and the
-  markdown renderer are the highest-value unit-test candidates since
-  they're pure-ish functions with real edge cases; e2e is a bigger lift
-  given everything is gated behind auth + a seeded firm).
+- **Continuous integration**: the test suite (see Completed, "Automated
+  tests") runs only when someone runs it. A GitHub Actions workflow running
+  `pnpm test:all` on every push would make it a real guard.
 - **Per-firm scheduled relevance checks, timezone-aware**: today
   `match-relevance` only ever runs once at onboarding or when manually
   triggered — there's no recurring "check what's newly relevant to my firm"
@@ -409,7 +555,7 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   run it per-tenant. Depends on deciding whether firing an actual per-firm
   cron job per signup is the right mechanism at scale vs. a single scheduled
   sweep that checks all firms and respects each one's preferred hour.
-  Superseded by "Live regulation monitoring" (item 2) if that ships first.
+  Superseded by "Live regulation monitoring" (item 12) if that ships first.
 - **Tune rate limits based on real usage**: the 15/hour (`match-relevance`,
   `company-regulations`, `match-enforcement-relevance`, `rematch-regulation`
   at 20/hour) and 30/hour (`regway-ai-chat`) limits added are reasonable
@@ -456,6 +602,45 @@ without this doc's structure to ground it. Two concrete, bounded pieces:
   Federal Register exists per state.
 
 ## Completed
+
+### Automated tests; four bugs found and fixed (2026-10-04)
+Commit `69ce235`. Before this there was no test of any kind.
+- **Unit tests (Vitest, 169):** `pnpm test`. Pure logic in `src/lib` (feed
+  filter, "New" badge, markdown renderer) and in the edge functions'
+  shared modules (countries, sanctions programs, footprints, holdings
+  roll-up, relevance rows, usage), plus handler-level tests of
+  `sync-federal-register`, `sync-travel-advisories`, `run-matching`,
+  `regulation-impact` and `regway-ai-chat` against a fake database client
+  and a stubbed `fetch` (`tests/unit/helpers`).
+- **Browser tests (Playwright, 39):** `pnpm test:e2e`. The real app against
+  a mock Supabase (`tests/e2e/mockBackend.ts`): sign-in, firm / fund /
+  company pages, filters, dismiss, the detail page and re-check, fund
+  holdings, chat and saved conversations. The dev server is started with a
+  fake Supabase URL, so no run can reach the real project or spend AI
+  credit; an unexpected edge-function call fails the test.
+- `pnpm typecheck:functions` type-checks the edge functions with the `deno`
+  npm package, so no separate Deno install is needed.
+- **Fixed:** a quote in a URL in a chat reply ended the link's `href`, so a
+  link could carry its own event handler (confirmed in the browser, then
+  closed by escaping quotes in `markdown.ts`); dismissing an item after
+  opening a fund page saved the dismissal but left the item on screen
+  (`dismissRegulation` treated the per-fund cache as one list); the
+  location filter listed "United States" and "United States (Federal)"
+  beside "United States (federal)"; fund reasons read "a indirect
+  connection".
+- **Checked in production, read-only:** all 14 functions deployed, all six
+  cron jobs succeeding, H.I.G.'s matching backlog cleared (last run with
+  work 21:40 UTC, clean skips since), no duplicate relevance rows, and every
+  Federal Register match for H.I.G. has its analysis.
+- **Not covered, and what was left alone:** see Priority order item 3.
+
+**Credit estimate for one firm in daily use** (H.I.G.-sized: 2 funds, 3
+companies; from four days of `usage_events`, Sonnet 4.5 list prices, so a
+rough range): scheduled matching ≈ $1 a month; analyses for new matches
+$1–2; weekly company scans $3–10; chat $0.06 a message on average, so ≈ $12
+a month at 10 messages a working day; everything else $2–5. About $10 a
+month light, $25 typical, $60 heavy. Onboarding a new firm costs about
+$5–6 once.
 
 ### Scheduled matching for H.I.G.; background analyses no longer cut off (2026-10-04)
 Notes: `prompts/hig-scheduled-matching-investigate.md` and `-implement.md`.
