@@ -26,14 +26,14 @@ test.describe('signing in', () => {
     await page.getByPlaceholder('you@firm.com').fill('dana@harbor.test')
     await page.locator('input[type="password"]').fill('correct-password')
     await page.locator('form').getByRole('button', { name: /sign in/i }).click()
-    await expect(page.getByRole('heading', { name: 'Good morning, Dana.' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Dana\.$/ })).toBeVisible()
     await expect(page.getByText("Here's what's moving across Harbor Capital today.")).toBeVisible()
   })
 
   test('a returning user goes straight to the dashboard', async ({ page }) => {
     await signIn(page)
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Good morning, Dana.' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Dana\.$/ })).toBeVisible()
   })
 
   test('a signed-in user with no firm yet is sent to onboarding, not the dashboard', async ({ page, backend }) => {
@@ -41,6 +41,6 @@ test.describe('signing in', () => {
     await signIn(page)
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'Tell us about your firm' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: /Good morning/ })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening)/ })).toHaveCount(0)
   })
 })

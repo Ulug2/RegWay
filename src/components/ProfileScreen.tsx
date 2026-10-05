@@ -36,15 +36,16 @@ export default function ProfileScreen({ onBack, initialTab = 'account', focusId 
   const [nameSaved, setNameSaved] = useState(false)
 
   const [email, setEmail] = useState(() => readCache<string>('account:email') ?? '')
+  // The address the account signs in with now; `email` is the editable field.
+  const [accountEmail, setAccountEmail] = useState(() => readCache<string>('account:email') ?? '')
   const [emailLoading, setEmailLoading] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [emailCheckInbox, setEmailCheckInbox] = useState(false)
 
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [passwordSaved, setPasswordSaved] = useState(false)
+  const [resetLinkSent, setResetLinkSent] = useState(false)
 
   useEffect(() => {
     getFirmId().then(async id => {
@@ -56,6 +57,7 @@ export default function ProfileScreen({ onBack, initialTab = 'account', focusId 
 
     supabase.auth.getUser().then(({ data }) => {
       const current = data.user?.email ?? ''
+      setAccountEmail(current)
       setEmail(current)
       writeCache('account:email', current)
     })
@@ -91,26 +93,47 @@ export default function ProfileScreen({ onBack, initialTab = 'account', focusId 
     }
   }
 
-  const savePassword = async () => {
+  // A password is never changed from this screen. Both routes email
+  // Supabase's reset link: it opens the new-password page, and saving there
+  // signs the user out to sign in again. That makes control of the inbox
+  // part of every change.
+  const sendResetLink = async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(accountEmail, { redirectTo: window.location.origin })
+    if (error) throw error
+    setResetLinkSent(true)
+    setCurrentPassword('')
+  }
+
+  // "Update Password": the current password first, so an unattended open
+  // session can't start a change.
+  const updatePassword = async () => {
     setPasswordError(null)
-    setPasswordSaved(false)
-    if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters')
-      return
-    }
-    if (password !== confirmPassword) {
-      setPasswordError('Passwords do not match')
+    setResetLinkSent(false)
+    if (!currentPassword) {
+      setPasswordError('Enter your current password')
       return
     }
     setPasswordLoading(true)
     try {
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) throw error
-      setPasswordSaved(true)
-      setPassword('')
-      setConfirmPassword('')
+      const { error } = await supabase.auth.signInWithPassword({ email: accountEmail, password: currentPassword })
+      if (error) throw new Error(error.code === 'invalid_credentials' ? 'Your current password is incorrect' : error.message)
+      await sendResetLink()
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Failed to update password')
+      setPasswordError(err instanceof Error ? err.message : 'Failed to send the link')
+    } finally {
+      setPasswordLoading(false)
+    }
+  }
+
+  // "Forgot password?": the same as on the sign-in screen.
+  const forgotPassword = async () => {
+    setPasswordError(null)
+    setResetLinkSent(false)
+    setPasswordLoading(true)
+    try {
+      await sendResetLink()
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : 'Failed to send the reset link')
     } finally {
       setPasswordLoading(false)
     }
@@ -223,24 +246,31 @@ export default function ProfileScreen({ onBack, initialTab = 'account', focusId 
           {/* Password */}
           <div className="glass-card" style={{ padding: 28 }}>
             <h2 className="text-base font-semibold mb-1" style={{ color: '#0F172A' }}>Password</h2>
-            <p className="text-xs mb-4" style={{ color: '#94a3b8' }}>Applies immediately — no confirmation email.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <p className="text-xs mb-4" style={{ color: '#94a3b8' }}>
+              Enter your current password and we'll email you a link to set a new one. After you set it, you'll sign in again.
+            </p>
+            <div className="mb-4 md:max-w-sm">
               <PasswordInput
-                value={password}
-                onChange={v => { setPassword(v); setPasswordSaved(false) }}
-                placeholder="New password"
-              />
-              <PasswordInput
-                value={confirmPassword}
-                onChange={v => { setConfirmPassword(v); setPasswordSaved(false) }}
-                placeholder="Confirm new password"
+                value={currentPassword}
+                onChange={v => { setCurrentPassword(v); setPasswordError(null) }}
+                placeholder="Current password"
+                autoComplete="current-password"
               />
             </div>
-            <button className="btn-primary" onClick={savePassword} disabled={passwordLoading}>
-              {passwordLoading ? 'Updating…' : 'Update Password'}
-            </button>
+            <div className="flex items-center gap-4 flex-wrap">
+              <button className="btn-primary" onClick={updatePassword} disabled={passwordLoading}>
+                {passwordLoading ? 'Please wait…' : 'Update Password'}
+              </button>
+              <button type="button" className="text-xs font-medium" style={{ color: '#0284C7' }} onClick={forgotPassword} disabled={passwordLoading || !accountEmail}>
+                Forgot password?
+              </button>
+            </div>
+            {resetLinkSent && (
+              <div role="status" className="text-sm mt-4 p-3 rounded-lg" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155', lineHeight: 1.6 }}>
+                We sent a link to <strong>{accountEmail}</strong>. Open it to set your new password; you'll then be asked to sign in again.
+              </div>
+            )}
             {passwordError && <div className="text-xs mt-3" style={{ color: '#334155' }}>{passwordError}</div>}
-            {passwordSaved && <div className="text-xs mt-3" style={{ color: '#0284C7' }}>Password updated.</div>}
           </div>
 
           {/* Sign out */}

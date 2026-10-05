@@ -114,8 +114,9 @@ body {
   z-index: 1;
 }
 
+/* No `position` here: every header using this is `sticky top-0`, and a
+   position set in this class would override that utility. */
 .glass-nav {
-  position: relative;
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);

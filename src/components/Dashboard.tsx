@@ -28,6 +28,11 @@ function EmptyState({ message }: { message: string }) {
 
 type Toggle = 'pe' | 'fund' | 'portfolio'
 
+function greeting(now = new Date()) {
+  const hour = now.getHours()
+  return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+}
+
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const [firmId, setFirmId] = useCachedState<string | null>('firmId', null)
   const [firm, setFirm] = useCachedState<Firm | null>('firm', null)
@@ -294,7 +299,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         {/* Greeting */}
         <div className="text-center" style={{ marginBottom: 48 }}>
           <h1 className="text-2xl font-semibold mb-2" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>
-            Good morning, {firstName}.
+            {greeting()}, {firstName}.
           </h1>
           <p className="text-sm" style={{ color: '#64748B' }}>
             {firm ? `Here's what's moving across ${firm.name} today.` : "Here's what's moving across your firm today."}
@@ -457,12 +462,17 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           )}
         </div>
 
-        {/* RegWay AI Input Bar — already scoped to whatever fund/company is open */}
-        <div className="max-w-2xl mx-auto" style={{ marginTop: activeToggle ? 0 : 48 }}>
+        {/* RegWay AI Input Bar — already scoped to whatever fund/company is open.
+            Sticky: under a long list it stays at the bottom of the window
+            instead of below the last item, and settles into its own place
+            (under the buttons, above the footer) when the page is short. */}
+        <div className="max-w-2xl mx-auto sticky z-30" style={{ bottom: 24, marginTop: activeToggle ? 0 : 48 }}>
           <div className="relative">
             <input
               className="glass-input w-full py-5 px-7 pr-28 text-sm"
-              style={{ fontSize: 14, color: '#0F172A' }}
+              // More opaque than the default glass, with a shadow: list
+              // items scroll underneath it.
+              style={{ fontSize: 14, color: '#0F172A', background: 'rgba(255,255,255,0.94)', boxShadow: '0 10px 30px rgba(15,23,42,0.14)' }}
               placeholder={
                 selectedAiContext()
                   ? `Ask RegWay AI about ${selectedAiContext()!.name}...`

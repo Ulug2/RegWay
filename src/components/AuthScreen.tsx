@@ -2,14 +2,18 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import LogoMark from './LogoMark'
 import PasswordInput from './PasswordInput'
+import PasswordRequirements from './PasswordRequirements'
+import { passwordErrorMessage, passwordProblem } from '../lib/password'
 
 interface AuthScreenProps {
   onAuthenticated: () => void
   initialMode?: 'sign-in' | 'sign-up'
   onBack?: () => void
+  // Why the user is seeing this screen, when the app sent them here.
+  notice?: string | null
 }
 
-export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', onBack }: AuthScreenProps) {
+export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', onBack, notice }: AuthScreenProps) {
   const [mode, setMode] = useState<'sign-in' | 'sign-up' | 'forgot'>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,6 +25,13 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    // Only a new password is held to the rules: an existing account may
+    // have one set before they applied.
+    const problem = mode === 'sign-up' ? passwordProblem(password) : null
+    if (problem) {
+      setError(problem)
+      return
+    }
     setLoading(true)
     try {
       if (mode === 'forgot') {
@@ -47,7 +58,7 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
       }
       onAuthenticated()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(passwordErrorMessage(err, 'Something went wrong'))
     } finally {
       setLoading(false)
     }
@@ -115,6 +126,12 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
                   : 'Sign in to your firm workspace.'}
             </p>
 
+            {notice && mode === 'sign-in' && (
+              <div role="status" className="text-xs p-3 rounded-lg mb-4" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155', lineHeight: 1.6 }}>
+                {notice}
+              </div>
+            )}
+
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Email</label>
@@ -144,11 +161,12 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
                   </div>
                   <PasswordInput
                     required
-                    minLength={6}
                     value={password}
                     onChange={setPassword}
-                    placeholder="At least 6 characters"
+                    placeholder={mode === 'sign-up' ? 'Create a password' : 'Your password'}
+                    autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
                   />
+                  {mode === 'sign-up' && <PasswordRequirements password={password} />}
                 </div>
               )}
 

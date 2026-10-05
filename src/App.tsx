@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { getFirmId, getCachedFirmId } from './lib/data'
 import { bindCacheToUser, clearCache } from './lib/cache'
@@ -23,6 +23,17 @@ export default function App() {
   const [detailPayload, setDetailPayload] = useState<unknown>(null)
   const [showAI, setShowAI] = useState(false)
   const [aiContext, setAiContext] = useState<AiContext | null>(null)
+  // A password-recovery link signs the user in *and* asks for a new
+  // password. While that's pending, the ordinary signed-in routing must not
+  // take over the screen (it used to: the reset form flashed, then the
+  // dashboard replaced it). Read from the URL up front because the auth
+  // client strips the link's parameters as soon as it has parsed them.
+  // Shown on the sign-in form after the app signs the user out on purpose
+  // (a new password was just set from a reset link). A ref as well as state: the auth listener below is created once
+  // and needs the current value to route to sign-in instead of the landing page.
+  const [authNotice, setAuthNotice] = useState<string | null>(null)
+  const authNoticeRef = useRef<string | null>(null)
+  const recovering = useRef(/[#&?]type=recovery\b/.test(window.location.hash + window.location.search))
 
   useEffect(() => {
     let mounted = true
@@ -36,11 +47,15 @@ export default function App() {
         return
       }
       bindCacheToUser(session.user.id)
+      if (recovering.current) {
+        if (mounted) setView('reset-password')
+        return
+      }
       // A known firm means we can show the dashboard straight away and
       // confirm in the background, instead of a "Loading…" screen every visit.
       if (getCachedFirmId() && mounted) setView('dashboard')
       const firmId = await getFirmId().catch(() => getCachedFirmId())
-      if (mounted) setView(firmId ? 'dashboard' : 'onboarding')
+      if (mounted && !recovering.current) setView(firmId ? 'dashboard' : 'onboarding')
     }
     init()
 
@@ -48,12 +63,14 @@ export default function App() {
       // Fires when the client parses a password-recovery link's token from
       // the URL — takes priority over the normal signed-in routing below.
       if (event === 'PASSWORD_RECOVERY') {
+        recovering.current = true
         if (mounted) setView('reset-password')
         return
       }
       if (!session) {
         clearCache()
-        setView('landing')
+        if (authNoticeRef.current) setAuthMode('sign-in')
+        setView(authNoticeRef.current ? 'auth' : 'landing')
       }
     })
 
@@ -62,6 +79,19 @@ export default function App() {
       subscription.subscription.unsubscribe()
     }
   }, [])
+
+  // Signs the user out everywhere and lands them on sign-in with `notice`.
+  const signOutWithNotice = async (notice: string) => {
+    authNoticeRef.current = notice
+    setAuthNotice(notice)
+    recovering.current = false
+    await supabase.auth.signOut()
+  }
+
+  const clearAuthNotice = () => {
+    authNoticeRef.current = null
+    setAuthNotice(null)
+  }
 
   const goToAuth = (mode: 'sign-in' | 'sign-up') => {
     setAuthMode(mode)
@@ -84,6 +114,7 @@ export default function App() {
   }
 
   const handleAuthenticated = async () => {
+    clearAuthNotice()
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -94,7 +125,7 @@ export default function App() {
 
   return (
     <div
-      className="relative min-h-screen overflow-x-hidden"
+      className="relative min-h-screen overflow-x-clip"
       style={{ background: '#FDFBF7', fontFamily: 'Inter, system-ui, sans-serif' }}
     >
       {/* Ambient radial sphere 1 — sky blue */}
@@ -162,12 +193,13 @@ export default function App() {
           <AuthScreen
             onAuthenticated={handleAuthenticated}
             initialMode={authMode}
-            onBack={() => setView('landing')}
+            notice={authNotice}
+            onBack={() => { clearAuthNotice(); setView('landing') }}
           />
         )}
 
         {view === 'reset-password' && (
-          <ResetPasswordScreen onDone={handleAuthenticated} />
+          <ResetPasswordScreen onDone={() => signOutWithNotice('Password updated. Sign in with your new password.')} />
         )}
 
         {view === 'onboarding' && (

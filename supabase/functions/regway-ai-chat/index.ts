@@ -23,10 +23,63 @@
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { COMPANY_FACTS, FIRM_FACTS, FUND_FACTS, facts } from '../_shared/entityFacts.ts'
 import { loadMatchedDevelopments, type MatchedDevelopments, type MatchScope } from '../_shared/matchedDevelopments.ts'
 import { mergeUsage, recordUsage, type UsageTotals } from '../_shared/usage.ts'
 
 const MODEL = 'claude-sonnet-4-5'
+
+// Size limits, enforced here because the browser's own checks can be
+// bypassed and input is billed per token: without them one request could
+// cost many times the usual few cents. The drawer applies the same limits
+// (RegWayAICopilot.tsx) so a user is told before sending.
+const MAX_MESSAGE_CHARS = 10_000
+const MAX_ATTACHMENT_TEXT_CHARS = 160_000 // a .txt/.md of about 150 KB
+const MAX_PDF_BASE64_CHARS = 7_000_000 // a PDF of about 5 MB
+
+function sizeProblem(message: string, attachment?: Attachment): string | null {
+  if (message.length > MAX_MESSAGE_CHARS) return `Message is too long (limit ${MAX_MESSAGE_CHARS.toLocaleString('en-US')} characters).`
+  if ((attachment?.content?.length ?? 0) > MAX_ATTACHMENT_TEXT_CHARS) return 'Attached text file is too large (limit 150 KB).'
+  if ((attachment?.base64Data?.length ?? 0) > MAX_PDF_BASE64_CHARS) return 'Attached PDF is too large (limit 5 MB).'
+  return null
+}
+
+// One line per entity is capped so a single very long free-text answer
+// can't crowd out the rest of the prompt.
+const ENTITY_LINE_CHARS = 1200
+
+interface EntityRow extends Record<string, unknown> {
+  id: string
+  name: string
+}
+
+// Everything recorded about the firm, its funds and its portfolio
+// companies (the questionnaire answers, not just names), and which fund
+// holds which company, so a question can be answered from the profile even
+// when the chat wasn't opened from a particular fund or company.
+function profileContext(firm: Record<string, unknown> | null, funds: EntityRow[], companies: EntityRow[], holdings: { fund_id: string; portfolio_company_id: string }[]): string {
+  const line = (label: string, text: string) => `- ${label}: ${text || 'nothing else recorded'}`.slice(0, ENTITY_LINE_CHARS)
+  const names = (rows: EntityRow[], ids: string[]) => rows.filter(r => ids.includes(r.id)).map(r => r.name)
+
+  const fundLines = funds.map(f => {
+    const holds = names(companies, holdings.filter(h => h.fund_id === f.id).map(h => h.portfolio_company_id))
+    return line(f.name, facts({ ...f, holds }, FUND_FACTS))
+  })
+  const companyLines = companies.map(c => {
+    const heldBy = names(funds, holdings.filter(h => h.portfolio_company_id === c.id).map(h => h.fund_id))
+    return line(c.name, [facts(c, COMPANY_FACTS), heldBy.length ? `held by: ${heldBy.join(', ')}` : ''].filter(Boolean).join('; '))
+  })
+
+  return `Firm profile: ${facts(firm, FIRM_FACTS) || 'nothing recorded'}.
+
+Funds:
+${fundLines.join('\n') || 'none on file'}
+
+Portfolio companies:
+${companyLines.join('\n') || 'none on file'}
+
+These are the facts the firm has recorded. A fact that isn't listed is not recorded, which is different from "no": say so rather than assuming. Which fund holds which company is listed only where the firm recorded it.`
+}
 
 interface Attachment {
   name: string
@@ -105,12 +158,12 @@ async function openConversation(
   userId: string,
   firstMessage: string,
   context: AiContext | undefined,
-): Promise<{ context: AiContext | null } | null> {
+): Promise<{ context: AiContext | null; created: boolean } | null> {
   const { data: existing } = await supabase.from('regway_ai_conversations').select('context').eq('id', id).maybeSingle()
-  if (existing) return { context: (existing.context as AiContext | null) ?? null }
+  if (existing) return { context: (existing.context as AiContext | null) ?? null, created: false }
   const title = firstMessage.replace(/\s+/g, ' ').trim().slice(0, TITLE_CHARS) || 'New conversation'
   const { error } = await supabase.from('regway_ai_conversations').insert({ id, firm_id: firmId, user_id: userId, title, context: context ?? null })
-  return error ? null : { context: context ?? null }
+  return error ? null : { context: context ?? null, created: true }
 }
 
 async function loadHistory(supabase: SupabaseClient, conversationId: string): Promise<HistoryTurn[]> {
@@ -154,6 +207,8 @@ Deno.serve(async (req) => {
     const { message, attachment, conversationId } = body
     let context = body.context
     if (!message) return json({ error: 'message is required' }, 400)
+    const tooBig = sizeProblem(message, attachment)
+    if (tooBig) return json({ error: tooBig }, 413)
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) return json({ error: 'Missing Authorization header' }, 401)
@@ -174,38 +229,44 @@ Deno.serve(async (req) => {
 
     const { data: membership } = await supabase
       .from('firm_members')
-      .select('firm_id, firms(name, hq_location, jurisdictions)')
+      .select('firm_id, firms(name, hq_location, jurisdictions, profile)')
       .eq('user_id', user.id)
       .single()
 
     if (!membership) return json({ error: 'No firm associated with this user' }, 404)
 
-    const firm = (membership as unknown as { firms: { name: string; hq_location: string; jurisdictions: string[] } }).firms
+    const firm = (membership as unknown as { firms: { name: string; hq_location: string; jurisdictions: string[]; profile: Record<string, unknown> | null } }).firms
+
+    // Before anything is created or spent: a refused message must not
+    // leave an empty conversation behind in the user's history.
+    const { data: allowed } = await supabase.rpc('check_rate_limit', {
+      p_function_name: 'regway-ai-chat',
+      p_limit: 30,
+      p_window_minutes: 60,
+    })
+    if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
 
     // Saved conversation: its stored scope wins over the page it was
     // reopened from, and its earlier turns give the model the thread.
     let history: HistoryTurn[] = []
+    let startedConversation = false
     if (conversationId) {
       const conversation = await openConversation(supabase, conversationId, membership.firm_id, user.id, message, context)
       if (!conversation) return json({ error: 'Conversation not found' }, 404)
       context = conversation.context ?? undefined
+      startedConversation = conversation.created
       history = await loadHistory(supabase, conversationId)
     }
 
     // What RegWay has already matched, narrowed to whatever the chat was
     // opened from (a fund, a company, one regulation), else firm-wide.
     const scope: MatchScope = context ? { type: context.type, id: context.id } : { type: 'firm' }
-    const [{ data: funds }, { data: companies }, matched] = await Promise.all([
-      supabase.from('funds').select('name, size, structure, jurisdictions').eq('firm_id', membership.firm_id),
-      supabase.from('portfolio_companies').select('name, sectors, regions').eq('firm_id', membership.firm_id),
+    const [{ data: funds }, { data: companies }, { data: holdings }, matched] = await Promise.all([
+      supabase.from('funds').select('id, name, size, structure, jurisdictions, profile').eq('firm_id', membership.firm_id).order('name'),
+      supabase.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile').eq('firm_id', membership.firm_id).order('name'),
+      supabase.from('fund_holdings').select('fund_id, portfolio_company_id').eq('firm_id', membership.firm_id),
       loadMatchedDevelopments(supabase, membership.firm_id, firm?.name ?? 'the firm', scope),
     ])
-
-    const fundSummary =
-      (funds ?? []).map(f => `${f.name} (${f.size ?? 'size n/a'}, ${f.structure ?? 'structure n/a'}, ${(f.jurisdictions ?? []).join('/')})`).join('; ') ||
-      'none on file'
-    const companySummary =
-      (companies ?? []).map(c => `${c.name} (${(c.sectors ?? []).join('/')}, ${(c.regions ?? []).join('/')})`).join('; ') || 'none on file'
 
     const ambiguityInstruction =
       !context && ((funds?.length ?? 0) > 1 || (companies?.length ?? 0) > 1)
@@ -214,19 +275,11 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `You are RegWay AI, an AI regulatory intelligence copilot for private equity general partners. You are advising ${firm?.name ?? 'the firm'}, headquartered in ${firm?.hq_location ?? 'an unspecified location'}, operating in: ${(firm?.jurisdictions ?? []).join(', ') || 'unspecified jurisdictions'}.
 
-Active funds: ${fundSummary}.
-Portfolio companies: ${companySummary}.
+${profileContext(firm, (funds ?? []) as EntityRow[], (companies ?? []) as EntityRow[], holdings ?? [])}
 
 ${matchedInstruction(matched, scope)}
 
 Use web search to ground every regulatory claim in a real, current source. Always cite the primary source (agency or publisher name, document title, URL, and date). If you are not confident a rule applies to this firm, say so plainly instead of guessing. Never assign an unprompted urgency label such as "critical" or "low impact" — describe obligations and deadlines factually and let the user judge priority themselves.${contextInstruction(context)}${ambiguityInstruction}`
-
-    const { data: allowed } = await supabase.rpc('check_rate_limit', {
-      p_function_name: 'regway-ai-chat',
-      p_limit: 30,
-      p_window_minutes: 60,
-    })
-    if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
 
     // Text attachments (.txt/.md) are inlined into the message; a .pdf is
     // sent as a native Anthropic `document` content block — no separate
@@ -256,6 +309,9 @@ Use web search to ground every regulatory claim in a real, current source. Alway
     })
 
     if (!anthropicRes.ok || !anthropicRes.body) {
+      // Nothing was answered, so a conversation this message would have
+      // started shouldn't appear in the user's history.
+      if (startedConversation) await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
       throw new Error(`Anthropic API error: ${anthropicRes.status} ${await anthropicRes.text()}`)
     }
 

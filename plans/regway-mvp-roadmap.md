@@ -147,82 +147,34 @@ confirmed:
   the suggestion chips disappearing) is the right call — flagged earlier as
   a judgment call on an ambiguous request, still unconfirmed either way.
 
-### 2. Move the RegWay AI input so it's always in reach (S)
-Requested 2026-10-04. The input sits under the three big buttons and below
-whichever list is open (`Dashboard.tsx`, "RegWay AI Input Bar"), so on a PE
-Firm page with many developments it ends up far down the page. Find it a
-place that doesn't depend on list length. Options to choose between when
-building: a bar fixed to the bottom of the viewport, a floating button that
-opens the drawer, or the input placed above the list, directly under the
-three buttons. It must keep opening already scoped to the open fund or
-company, and the same control should be reused on the new fund / company
-pages (item 9).
+### 2. Move the RegWay AI input so it's always in reach — done
+See Completed, "Roadmap items 2–5".
 
-### 3. Small fixes found by the 2026-10-04 test pass (S)
-Found while writing the test suite (see Completed, "Automated tests") and
-left alone because none was a quick, safe one-liner:
-1. **No server-side size limit on a chat message or attachment.** The
-   drawer accepts files up to 15 MB and `regway-ai-chat` passes whatever it
-   receives to the model, so one message can cost many times the $0.06
-   average. Only the 30-per-hour rate limit bounds it. Cap message length
-   and attachment size in the function.
-2. **An open dashboard doesn't see removals.** `subscribeToMatches`
-   listens for inserts and updates only, so a match removed by a re-check
-   or a holding change stays on screen until reload.
-3. **Refused messages leave empty chats in History.** The conversation row
-   is created before the rate-limit check and the AI call.
-4. **Sync functions accept the publishable key**, so anyone can trigger a
-   long Federal Register backfill with `?since=`. No AI cost, only load.
-   Bound `since`, or require the service key as `run-matching` does.
-5. **Cosmetic:** the chat avatar still shows "H" (from the Harvey name);
-   the dashboard greeting is always "Good morning"; the dashboard footer
-   links go nowhere.
-6. **Test coverage still missing:** `match-relevance`,
-   `match-enforcement-relevance`, `company-regulations`,
-   `rematch-regulation` and `refresh-entity-impacts` have no handler tests
-   (the other functions do).
+### 3. Small fixes found by the 2026-10-04 test pass — done except the footer
+See Completed, "Roadmap items 2–5". Still open:
+- **Dashboard footer links go nowhere** ("About Us", "Sources", "Legal
+  Disclaimers", "Privacy Policy"). They need real pages or text to point
+  to, which is content to write, not a code fix.
 
-Resolves by itself: 20 H.I.G. company-scan matches still show the
-placeholder "AI web-search scan for …" as their reason until each company's
-next weekly rescan (from 2026-10-09) or a profile edit.
+Dropped: live removal of matches on an open dashboard. Supabase Realtime
+can't filter delete events by firm, so every open dashboard would refetch
+whenever any firm's match was deleted; and the list already refreshes when
+the user comes back to it from a re-check or a holdings edit.
 
-### 4. Password flows: reset link, current password, requirements (S–M)
-Requested 2026-10-04. Three parts:
-1. **Reset link bug.** Clicking the link in Supabase's reset email shows
-   the reset-password page for a second, then the dashboard, before a new
-   password can be entered. Likely cause, read from the code and not yet
-   reproduced: in `App.tsx` the `PASSWORD_RECOVERY` event sets the view to
-   `reset-password`, but `init()` is still awaiting `getFirmId()` and then
-   sets the view to `dashboard` (the recovery link also creates a session).
-   The recovery view has to win over the normal signed-in routing.
-2. **Changing the password in Settings must ask for the current one.**
-   `ProfileScreen.tsx` calls `supabase.auth.updateUser({ password })` with
-   only the new password. Either verify the current password first, or turn
-   on Supabase's secure password change setting; decide when building.
-3. **Password requirements at sign-up, reset and change**, matching what
-   Supabase Auth enforces. Today the only rule is "At least 6 characters"
-   (`AuthScreen.tsx`). Set minimum length and required character types in
-   Supabase Auth settings, turn on leaked-password protection (the Supabase
-   security advisor flags it as off; check whether the project's plan
-   includes it), show the rules next to the field, and show Supabase's
-   weak-password error in plain words when it refuses one.
+Noticed while testing, not changed: `match-relevance` and
+`match-enforcement-relevance` store nothing for an item the model skips in
+its reply, so that item is sent (and billed) again on the next run. The
+geopolitical matcher records a "no verdict" marker instead. Small cost at
+today's volume.
 
-Also closes the Future note "Exercise account flows live" for password
-change. Add browser tests for all three (the mock backend already handles
-sign-in).
+### 4. Password flows: reset link, current password, requirements — done
+See Completed, "Roadmap items 2–5". **Leaked-password protection is not on:**
+it isn't available on Supabase's free plan (owner checked, 2026-10-04). The
+app already explains that refusal in plain words, so turning it on after a
+plan upgrade needs no code change.
 
-### 5. Copilot: read the full firm, fund and company profiles when nothing is selected (S–M)
-Requested 2026-10-04. With no fund or company selected, the copilot should
-still know everything recorded about the firm, its funds and its portfolio
-companies. Today `regway-ai-chat`'s system prompt carries only fund name,
-size, structure and jurisdictions, and company name, sectors and regions,
-plus the matched developments; the questionnaire answers in `profile`
-(strategies, adviser registration, operating and supplier locations,
-offerings, licences, holdings and so on) never reach it. Reuse the `facts()`
-formatter in `_shared/impact.ts`, include which fund holds which company,
-and keep it inside the cached system prompt. Watch the cost: a larger
-cached prefix raises the first message of a session slightly. Extend
-`tests/unit/regwayAiChat.test.ts`.
+### 5. Copilot: read the full firm, fund and company profiles when nothing is selected — done
+See Completed, "Roadmap items 2–5".
 
 ### 6. Cost optimization (S–M per lever)
 Each lever is independent; lever 1 is a few lines.
@@ -602,6 +554,49 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Roadmap items 2–5 (2026-10-04)
+- **Item 2, AI input.** The input on the dashboard is sticky: under a long
+  list it stays at the bottom of the window, and at the end of the page it
+  rests above the footer. Page headers were meant to stay at the top while
+  scrolling and never did (`.glass-nav` set `position: relative`, which
+  overrode the `sticky` class on all four screens); they do now.
+- **Item 4, passwords.**
+  - *Reset link.* Reproduced in a browser test: the form appeared, then
+    `init()` in `App.tsx` finished its firm lookup and switched to the
+    dashboard. The recovery state now wins until a new password is saved.
+  - *After a reset* the user is signed out everywhere and lands on sign-in
+    with "Password updated. Sign in with your new password."
+  - *Changing the password from Profile* never happens on that screen
+    (owner's call, 2026-10-04). "Update Password" asks for the current
+    password, then emails Supabase's reset link; "Forgot password?" emails
+    the same link without it, exactly as on the sign-in screen. The link
+    opens the new-password page, and saving there signs the user out to
+    sign in again. A typed-in-Settings change confirmed by a link was
+    considered and not built: Supabase has no such flow, so it would need a
+    table holding the pending (hashed) password, an edge function and a
+    reworded email template.
+  - *Requirements* (`src/lib/password.ts`): at least 8 characters, a
+    lowercase and an uppercase letter, a number and a symbol, shown under
+    the field and ticked off while typing, on sign-up and on the new-password page.
+    Signing in to an existing account isn't held to them. The same rules
+    were set in Supabase Auth by the owner.
+- **Item 5, copilot context.** `regway-ai-chat`'s system prompt now carries
+  every recorded answer for the firm, each fund and each company, and which
+  fund holds which company, with the instruction that an unlisted fact is
+  "not recorded", not "no". The formatter is shared with the impact
+  analysis (`_shared/entityFacts.ts`). One entity's line is capped at 1,200
+  characters.
+- **Item 3, small fixes.** Chat messages are limited to 10,000 characters,
+  text attachments to 150 KB and PDFs to 5 MB (was 15 MB), in the function
+  and in the drawer. The rate limit is checked before a conversation is
+  created, and a first message that gets no answer removes the conversation
+  it started. `sync-federal-register?since=` refuses dates more than 400
+  days back. The greeting follows the time of day; the chat avatar says "R".
+- **Tests.** Handler tests now cover every edge function
+  (`match-relevance`, `match-enforcement-relevance`, `company-regulations`,
+  `rematch-regulation`, `refresh-entity-impacts` were the missing five).
+  241 unit tests and 60 browser tests.
 
 ### Automated tests; four bugs found and fixed (2026-10-04)
 Commit `69ce235`. Before this there was no test of any kind.

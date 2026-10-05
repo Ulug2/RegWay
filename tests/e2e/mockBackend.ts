@@ -11,8 +11,11 @@ export const USER = { id: 'user-1', email: 'dana@harbor.test', aud: 'authenticat
 export const FIRM_ID = 'firm-1'
 const STORAGE_KEY = 'sb-localhost-auth-token'
 
+const b64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
+export const ACCESS_TOKEN = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: USER.id, exp: 4102444800, iat: 1700000000, role: 'authenticated' })}.signature`
+
 const session = () => ({
-  access_token: `header.${Buffer.from(JSON.stringify({ sub: USER.id, exp: 4102444800 })).toString('base64url')}.signature`,
+  access_token: ACCESS_TOKEN,
   refresh_token: 'refresh-token',
   token_type: 'bearer',
   expires_in: 3600,
@@ -126,6 +129,9 @@ export class MockBackend {
   tables = seed()
   calls: Call[] = []
   password = 'correct-password'
+  // Set to make Supabase refuse a new password, as its Auth settings would:
+  // e.g. ['pwned'] for one found in a breach.
+  weakPasswordReasons: string[] | null = null
   functions: Record<string, FunctionHandler> = {
     'match-geopolitical-relevance': () => ({ json: { evaluated: 0, relevant: 0, candidates: 0, fundRowsChanged: 0 } }),
     'refresh-entity-impacts': () => ({ json: {} }),
@@ -166,12 +172,20 @@ export class MockBackend {
   }
 
   private auth(method: string, path: string, query: URLSearchParams, body: any): FunctionReply {
+    if (path === 'auth/v1/user' && method === 'PUT') {
+      if (body?.password && this.weakPasswordReasons) {
+        return { status: 422, json: { code: 422, error_code: 'weak_password', msg: 'Password is too weak', weak_password: { reasons: this.weakPasswordReasons } } }
+      }
+      if (body?.password) this.password = body.password
+      return { json: USER }
+    }
     if (path === 'auth/v1/user') return { json: USER }
     if (path === 'auth/v1/token' && query.get('grant_type') === 'password') {
       return body?.password === this.password ? { json: session() } : { status: 400, json: { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' } }
     }
     if (path === 'auth/v1/token') return { json: session() }
     if (path === 'auth/v1/logout') return { status: 204 }
+    if (path === 'auth/v1/recover') return { json: {} }
     throw new Error(`mockBackend: unhandled auth call ${method} ${path}`)
   }
 
@@ -221,6 +235,9 @@ export function aiReply(text: string, citations: { url: string; title: string }[
   ]
   return events.map(e => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`).join('')
 }
+
+// The link in a password-reset email, as Supabase redirects it back to the app.
+export const RECOVERY_LINK = `/#access_token=${ACCESS_TOKEN}&expires_in=3600&refresh_token=recovery-refresh&token_type=bearer&type=recovery`
 
 export async function signIn(page: Page) {
   await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(session())] as const)

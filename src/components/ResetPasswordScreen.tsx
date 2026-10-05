@@ -2,8 +2,13 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import LogoMark from './LogoMark'
 import PasswordInput from './PasswordInput'
+import PasswordRequirements from './PasswordRequirements'
+import { passwordErrorMessage, passwordProblem } from '../lib/password'
 
 interface ResetPasswordScreenProps {
+  // Called once the new password is saved. The app then signs the user out
+  // (ending any other session still using the old password) and asks them
+  // to sign in with the new one.
   onDone: () => void
 }
 
@@ -19,12 +24,9 @@ export default function ResetPasswordScreen({ onDone }: ResetPasswordScreenProps
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
-      return
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
+    const problem = passwordProblem(password, confirmPassword)
+    if (problem) {
+      setError(problem)
       return
     }
     setLoading(true)
@@ -33,7 +35,7 @@ export default function ResetPasswordScreen({ onDone }: ResetPasswordScreenProps
       if (updateError) throw updateError
       onDone()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update password')
+      setError(passwordErrorMessage(err, 'Failed to update password'))
     } finally {
       setLoading(false)
     }
@@ -53,11 +55,12 @@ export default function ResetPasswordScreen({ onDone }: ResetPasswordScreenProps
         <form onSubmit={submit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>New password</label>
-            <PasswordInput required minLength={6} value={password} onChange={setPassword} placeholder="At least 6 characters" />
+            <PasswordInput required value={password} onChange={setPassword} placeholder="Create a password" autoComplete="new-password" />
+            <PasswordRequirements password={password} />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Confirm password</label>
-            <PasswordInput required minLength={6} value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" />
+            <PasswordInput required value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" autoComplete="new-password" />
           </div>
 
           {error && (

@@ -16,11 +16,13 @@ interface State {
   matches?: unknown[]
   funds?: unknown[]
   companies?: unknown[]
+  holdings?: unknown[]
+  firmProfile?: Record<string, unknown>
 }
 
 function database(state: State): Resolver {
   return (q: Query) => {
-    if (q.table === 'firm_members') return { data: state.member === false ? null : { firm_id: FIRM, firms: { name: 'H.I.G. Capital', hq_location: 'Miami, Florida', jurisdictions: ['United States'] } } }
+    if (q.table === 'firm_members') return { data: state.member === false ? null : { firm_id: FIRM, firms: { name: 'H.I.G. Capital', hq_location: 'Miami, Florida', jurisdictions: ['United States'], profile: state.firmProfile ?? {} } } }
     if (q.table === 'check_rate_limit') return { data: state.allowed ?? true }
     if (q.table === 'regway_ai_conversations') {
       if (q.op === 'select') return { data: state.conversation ?? null }
@@ -28,8 +30,9 @@ function database(state: State): Resolver {
     }
     // The function reads newest first.
     if (q.table === 'regway_ai_messages' && q.op === 'select') return { data: [...(state.history ?? [])].reverse() }
-    if (q.table === 'funds') return { data: state.funds ?? [{ name: 'Fund I', size: '$1B', structure: 'Delaware LP', jurisdictions: ['United States'] }] }
-    if (q.table === 'portfolio_companies') return { data: state.companies ?? [{ name: 'GetixHealth', sectors: ['Healthcare'], regions: ['United States'] }] }
+    if (q.table === 'funds') return { data: state.funds ?? [{ id: 'fund-1', name: 'Fund I', size: '$1B', structure: 'Delaware LP', jurisdictions: ['United States'], profile: {} }] }
+    if (q.table === 'portfolio_companies') return { data: state.companies ?? [{ id: 'co-1', name: 'GetixHealth', hq_location: 'Houston, Texas', sectors: ['Healthcare'], regions: ['United States'], offerings: null, profile: {} }] }
+    if (q.table === 'fund_holdings') return { data: state.holdings ?? [] }
     if (q.table === 'regulation_relevance') return { data: state.matches ?? [] }
   }
 }
@@ -87,10 +90,69 @@ describe('regway-ai-chat', () => {
     expect((await chat({ member: false }, { message: 'hi' })).res.status).toBe(404)
   })
 
-  it('stops at the rate limit before calling the model', async () => {
-    const { res, calls } = await chat({ allowed: false }, { message: 'hi' })
+  it('stops at the rate limit before calling the model or starting a conversation', async () => {
+    const { res, calls, db } = await chat({ allowed: false }, { message: 'hi', conversationId: CONVERSATION })
     expect(res.status).toBe(429)
     expect(calls).toEqual([])
+    expect(db.ran('regway_ai_conversations')).toEqual([])
+  })
+
+  it.each([
+    ['a very long message', { message: 'x'.repeat(10_001) }, /Message is too long/],
+    ['an oversized text attachment', { message: 'Summarise', attachment: { name: 'big.txt', mimeType: 'text/plain', content: 'x'.repeat(160_001) } }, /text file is too large/],
+    ['an oversized PDF', { message: 'Summarise', attachment: { name: 'big.pdf', mimeType: 'application/pdf', base64Data: 'x'.repeat(7_000_001) } }, /PDF is too large/],
+  ])('refuses %s before reading or spending anything', async (_, body, error) => {
+    const { res, text, calls, db } = await chat({}, body)
+    expect(res.status).toBe(413)
+    expect(JSON.parse(text).error).toMatch(error)
+    expect(calls).toEqual([])
+    expect(db.queries).toEqual([])
+  })
+
+  it('accepts a message and attachment at the limits', async () => {
+    const { res } = await chat({}, { message: 'x'.repeat(10_000), attachment: { name: 'ok.txt', mimeType: 'text/plain', content: 'x'.repeat(160_000) } })
+    expect(res.status).toBe(200)
+  })
+
+  it('gives the model everything recorded about the firm, its funds and its companies', async () => {
+    const { system } = await chat(
+      {
+        firmProfile: { firm_type: 'Private equity', adviser_registration: 'SEC-registered investment adviser', strategies: ['Buyout', 'Growth'] },
+        funds: [
+          { id: 'fund-1', name: 'Fund I', size: '$1B', structure: 'Delaware LP', jurisdictions: ['United States'], profile: { strategy: 'Buyout', status: 'Investing' } },
+          { id: 'fund-2', name: 'Fund II', size: null, structure: 'Cayman LP', jurisdictions: [], profile: {} },
+        ],
+        companies: [
+          { id: 'co-1', name: 'GetixHealth', hq_location: 'Houston, Texas', sectors: ['Healthcare'], regions: ['United States'], offerings: 'Revenue cycle management', profile: { sensitive_data: 'yes', license_types: ['Collection agency'] } },
+          { id: 'co-2', name: 'Aero Logistics', hq_location: null, sectors: ['Aerospace'], regions: [], offerings: null, profile: { hq: { city: 'Naples', state: '', country: 'Italy' }, supplier_locations: ['Vietnam'] } },
+        ],
+        holdings: [{ fund_id: 'fund-1', portfolio_company_id: 'co-1' }],
+      },
+      { message: 'What licences does GetixHealth hold?' },
+    )
+    expect(system).toContain('Firm profile: hq_location: Miami, Florida; jurisdictions: United States; firm_type: Private equity; adviser_registration: SEC-registered investment adviser; strategies: Buyout, Growth.')
+    expect(system).toContain('- Fund I: structure: Delaware LP; size: $1B; jurisdictions: United States; status: Investing; strategy: Buyout; holds: GetixHealth')
+    expect(system).toContain('- Fund II: structure: Cayman LP')
+    expect(system).not.toMatch(/- Fund II:.*holds/)
+    expect(system).toContain('- GetixHealth: hq_location: Houston, Texas; sectors: Healthcare; regions: United States; offerings: Revenue cycle management; sensitive_data: yes; license_types: Collection agency; held by: Fund I')
+    expect(system).toContain('- Aero Logistics: sectors: Aerospace; supplier_locations: Vietnam')
+    expect(system).not.toMatch(/- Aero Logistics:.*held by/)
+    // Missing is not "no".
+    expect(system).toContain('A fact that isn\'t listed is not recorded, which is different from "no"')
+  })
+
+  it("reads profiles through the user's own access, limited to their firm", async () => {
+    const { db } = await chat({}, { message: 'hi' })
+    for (const table of ['funds', 'portfolio_companies', 'fund_holdings']) {
+      expect(hasFilter(db.ran(table)[0], 'eq', 'firm_id', FIRM)).toBe(true)
+    }
+  })
+
+  it('caps one entity\'s line so a very long answer cannot crowd out the rest', async () => {
+    const { system } = await chat({ companies: [{ id: 'co-1', name: 'Wordy', hq_location: null, sectors: [], regions: [], offerings: 'y'.repeat(5000), profile: {} }, { id: 'co-2', name: 'Next', hq_location: 'Ohio', sectors: [], regions: [], offerings: null, profile: {} }] }, { message: 'hi' })
+    const wordy = system.split('\n').find(l => l.startsWith('- Wordy'))!
+    expect(wordy.length).toBe(1200)
+    expect(system).toContain('- Next: hq_location: Ohio')
   })
 
   it("answers from the firm's matched developments, newest first, with each entity's reason", async () => {
@@ -221,9 +283,23 @@ describe('regway-ai-chat', () => {
     expect(pdf.request.messages[0].content[0]).toEqual({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'JVBERi0=' } })
   })
 
+  const outage = { anthropic: () => new Response('{"error":{"message":"Your credit balance is too low"}}', { status: 400 }) }
+
   it('reports an API failure as an error and saves nothing', async () => {
-    const { res, db } = await chat({}, { message: 'hi' }, { anthropic: () => new Response('{"error":{"message":"Your credit balance is too low"}}', { status: 400 }) })
+    const { res, db } = await chat({}, { message: 'hi' }, outage)
     expect(res.status).toBe(500)
     expect(db.ran('regway_ai_messages', 'insert')).toEqual([])
+  })
+
+  it('removes a conversation that an unanswered first message would have started', async () => {
+    const { db } = await chat({}, { message: 'hi', conversationId: CONVERSATION }, outage)
+    expect(db.ran('regway_ai_conversations', 'insert')).toHaveLength(1)
+    const [removed] = db.ran('regway_ai_conversations', 'delete')
+    expect(hasFilter(removed, 'eq', 'id', CONVERSATION)).toBe(true)
+  })
+
+  it('keeps an existing conversation when a later message fails', async () => {
+    const { db } = await chat({ conversation: { context: null } }, { message: 'again', conversationId: CONVERSATION }, outage)
+    expect(db.ran('regway_ai_conversations', 'delete')).toEqual([])
   })
 })

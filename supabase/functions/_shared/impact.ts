@@ -5,6 +5,7 @@
 // the regulation.
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { COMPANY_FACTS, FIRM_FACTS, FUND_FACTS, facts } from './entityFacts.ts'
 import { federalRegisterTextUrls, type FederalRegisterDocumentRef } from './federalRegister.ts'
 import { fetchPlainText } from './text.ts'
 import { recordUsage } from './usage.ts'
@@ -66,31 +67,6 @@ async function loadRegulationText(reg: RegulationTextSource): Promise<string | n
   return text || reg.summary || ''
 }
 
-// {country, state, city} objects (the questionnaire's LocationValue shape,
-// stored raw in `profile` for fields with no legacy string-column mirror)
-// get formatted like an address instead of dumped as JSON.
-const isLocationValue = (v: unknown): v is { city?: string; state?: string; country?: string } =>
-  !!v && typeof v === 'object' && !Array.isArray(v) && ('city' in v || 'state' in v || 'country' in v)
-
-const facts = (row: Record<string, unknown> | null | undefined, keys: string[]) => {
-  if (!row) return ''
-  const profile = (row.profile ?? {}) as Record<string, unknown>
-  const parts = keys
-    .map(k => [k, row[k] ?? profile[k]] as const)
-    .filter(([, v]) => v != null && v !== '' && !(Array.isArray(v) && v.length === 0))
-    .map(([k, v]) => {
-      const formatted = isLocationValue(v)
-        ? [v.city, v.state, v.country].map(x => x?.trim()).filter(Boolean).join(', ')
-        : Array.isArray(v)
-          ? v.join(', ')
-          : typeof v === 'object'
-            ? JSON.stringify(v)
-            : v
-      return `${k}: ${formatted}`
-    })
-  return parts.join('; ')
-}
-
 async function callClaude(body: Record<string, unknown>) {
   const res = await fetch(ANTHROPIC_API, {
     method: 'POST',
@@ -138,20 +114,20 @@ export async function generateImpact(
   const reasons = (links ?? []).map(l => l.relevance_reason).filter((r): r is string => !!r && !r.startsWith('NOT_RELEVANT'))
 
   const entities = [
-    `FIRM — ${firm.name}: ${facts(firm as Record<string, unknown>, ['hq_location', 'legal_domicile', 'jurisdictions', 'firm_type', 'adviser_registration', 'strategies', 'industries', 'geographies'])}`,
+    `FIRM — ${firm.name}: ${facts(firm as Record<string, unknown>, FIRM_FACTS)}`,
     ...(funds ?? [])
       .filter(f => linkedFunds.has(f.id))
       .map(f => {
         // The companies a fund holds (fund_holdings), so an indirect match
         // can be written as a path: fund → company → location.
         const holds = (holdings ?? []).filter(h => h.fund_id === f.id).map(h => companies?.find(c => c.id === h.portfolio_company_id)?.name).filter(Boolean)
-        return `FUND — ${f.name}: ${facts({ ...f, holds } as Record<string, unknown>, ['structure', 'size', 'jurisdictions', 'status', 'strategy', 'ownership', 'industries', 'geographies', 'holds'])}`
+        return `FUND — ${f.name}: ${facts({ ...f, holds } as Record<string, unknown>, FUND_FACTS)}`
       }),
     ...(companies ?? [])
       .filter(c => linkedCompanies.has(c.id))
       .map(
         c =>
-          `COMPANY — ${c.name}: ${facts(c as Record<string, unknown>, ['hq_location', 'sectors', 'regions', 'operating_locations', 'supplier_locations', 'offerings', 'customers', 'consumer_facing', 'sensitive_data', 'regulated', 'license_types', 'gov_contracts', 'trade', 'outside_us', 'foreign_countries', 'ownership'])}`,
+          `COMPANY — ${c.name}: ${facts(c as Record<string, unknown>, COMPANY_FACTS)}`,
       ),
   ]
 

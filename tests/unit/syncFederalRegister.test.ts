@@ -147,6 +147,19 @@ describe('sync-federal-register', () => {
     expect(backfill[0].url.searchParams.get('conditions[publication_date][gte]')).toBe('2026-01-01')
   })
 
+  it.each([
+    ['a date more than 400 days back', '2020-01-01'],
+    ['something that is not a date', 'yesterday'],
+    ['an impossible date', '2026-13-45'],
+  ])('refuses %s without calling the Federal Register', async (_, since) => {
+    const { calls, db } = federalRegister()
+    const { handler } = await loadHandler('sync-federal-register')
+    const res = await handler(new Request(`http://supabase.test/functions/v1/sync-federal-register?since=${since}`, { method: 'POST' }))
+    expect(res.status).toBe(400)
+    expect(calls).toEqual([])
+    expect(db.queries).toEqual([])
+  })
+
   it('records a successful run with per-feed counts', async () => {
     const { db } = await sync()
     expect(db.ran('sync_runs', 'insert')[0].payload).toMatchObject({

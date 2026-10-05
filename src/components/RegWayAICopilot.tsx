@@ -34,7 +34,10 @@ function welcomeMessage(context?: AiContext | null): Message {
   return { role: 'ai', content: "Ask me anything about your firm's regulatory exposure — I'll search live sources and cite what I find." }
 }
 
-const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
+// The same limits regway-ai-chat enforces: input is billed by size, so a
+// very large file would make one message unusually expensive.
+const MAX_PDF_BYTES = 5 * 1024 * 1024
+const MAX_TEXT_BYTES = 150 * 1024
 
 // How tall the chat input is allowed to auto-grow before it scrolls
 // internally instead of pushing the rest of the drawer around.
@@ -268,8 +271,9 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
       setAttachError('Only .txt, .md, or .pdf files are supported')
       return
     }
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      setAttachError('File must be under 15MB')
+    const isPdf = /\.pdf$/i.test(file.name)
+    if (file.size > (isPdf ? MAX_PDF_BYTES : MAX_TEXT_BYTES)) {
+      setAttachError(isPdf ? 'PDF must be under 5 MB' : 'Text file must be under 150 KB')
       return
     }
     setAttachError(null)
@@ -463,7 +467,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               className="w-10 h-10 flex items-center justify-center text-base font-bold text-white"
               style={{ background: 'linear-gradient(135deg,#0F172A,#334155)', borderRadius: 12 }}
             >
-              H
+              R
             </div>
             <div>
               <div className="font-semibold" style={{ color: '#0F172A', letterSpacing: '-0.01em' }}>RegWay AI Copilot</div>

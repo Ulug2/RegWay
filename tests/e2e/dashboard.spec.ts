@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { FIRM_ID, REGS, USER, expect, signIn, test } from './mockBackend'
+import { FIRM_ID, REGS, USER, expect, signIn, test, type MockBackend } from './mockBackend'
 
 const titles = (page: Page) => page.locator('.glass-card-light .font-semibold.mb-2')
 
@@ -166,4 +166,52 @@ test.describe('fund and company pages', () => {
     const scans = backend.called('POST', 'functions/v1/company-regulations')
     expect(scans.map(c => c.body)).toEqual([{ companyId: 'co-getix' }])
   })
+})
+
+test.describe('dashboard chrome', () => {
+  // 40 more firm-level matches, so the list runs far past one screen.
+  const longList = (backend: MockBackend) => {
+    const template = backend.tables.regulation_relevance[0]
+    for (let i = 0; i < 40; i++) {
+      backend.tables.regulation_relevance.push({ ...template, id: `rel-extra-${i}`, regulation_id: `reg-extra-${i}`, regulations: { ...template.regulations, id: `reg-extra-${i}`, title: `Additional rule ${i}`, on_public_inspection: false } })
+    }
+  }
+  const aiInput = (page: Page) => page.getByPlaceholder(/Ask RegWay AI about/).first()
+
+  test('the RegWay AI input stays in view under a long list, wherever the page is scrolled', async ({ page, backend }) => {
+    longList(backend)
+    await openFirmList(page)
+    await expect(page.getByText('Additional rule 39')).toBeAttached()
+    expect(await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight * 3)).toBe(true)
+
+    await expect(aiInput(page)).toBeInViewport()
+    await page.mouse.wheel(0, 2500)
+    await expect(aiInput(page)).toBeInViewport()
+    // The page header stays put as well.
+    await expect(page.getByRole('button', { name: 'Settings' })).toBeInViewport()
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    await expect(aiInput(page)).toBeInViewport()
+    // At the very end it rests above the footer rather than covering it.
+    const input = await aiInput(page).boundingBox()
+    const footer = await page.locator('footer').boundingBox()
+    expect(input!.y + input!.height).toBeLessThanOrEqual(footer!.y)
+  })
+
+  test('the input still opens the chat from the middle of a long list', async ({ page, backend }) => {
+    longList(backend)
+    await openFirmList(page)
+    await page.mouse.wheel(0, 2500)
+    await aiInput(page).click()
+    await expect(page.getByText('RegWay AI Copilot')).toBeVisible()
+  })
+
+  for (const [time, words] of [['08:30', 'Good morning'], ['14:00', 'Good afternoon'], ['20:15', 'Good evening']] as const) {
+    test(`greets by time of day: ${words.toLowerCase()} at ${time}`, async ({ page }) => {
+      await page.clock.setFixedTime(new Date(`2026-10-05T${time}:00`))
+      await signIn(page)
+      await page.goto('/')
+      await expect(page.getByRole('heading', { name: `${words}, Dana.` })).toBeVisible()
+    })
+  }
 })

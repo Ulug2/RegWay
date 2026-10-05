@@ -6,9 +6,11 @@ interface PasswordInputProps {
   placeholder?: string
   required?: boolean
   minLength?: number
+  autoComplete?: 'current-password' | 'new-password'
+  ariaLabel?: string
 }
 
-export default function PasswordInput({ value, onChange, placeholder, required, minLength }: PasswordInputProps) {
+export default function PasswordInput({ value, onChange, placeholder, required, minLength, autoComplete, ariaLabel }: PasswordInputProps) {
   const [visible, setVisible] = useState(false)
 
   return (
@@ -17,6 +19,8 @@ export default function PasswordInput({ value, onChange, placeholder, required, 
         type={visible ? 'text' : 'password'}
         required={required}
         minLength={minLength}
+        autoComplete={autoComplete}
+        aria-label={ariaLabel}
         className="glass-input-rect"
         style={{ paddingRight: 44 }}
         value={value}

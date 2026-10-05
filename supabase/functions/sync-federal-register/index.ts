@@ -331,16 +331,33 @@ function documentRow(doc: FederalRegisterDocument, feed: Feed, countries: Countr
 // each document after its date, which clears the flag.
 const todayEastern = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 
+const DEFAULT_LOOKBACK_DAYS = 7
+// The furthest back `?since=` may reach. This endpoint accepts the
+// publishable key (cron uses it), so anyone can call it: an unbounded date
+// would let a stranger start a years-long backfill.
+const MAX_LOOKBACK_DAYS = 400
+
+const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
+// The start date to sync from, or an error message for a bad `?since=`.
+function sinceDate(param: string | null): { since: string } | { error: string } {
+  if (param === null) return { since: daysAgo(DEFAULT_LOOKBACK_DAYS) }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(param) || Number.isNaN(Date.parse(param))) return { error: 'since must be a date, YYYY-MM-DD' }
+  if (param < daysAgo(MAX_LOOKBACK_DAYS)) return { error: `since can be at most ${MAX_LOOKBACK_DAYS} days back` }
+  return { since: param }
+}
+
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
+  const requested = sinceDate(new URL(req.url).searchParams.get('since'))
+  if ('error' in requested) return json({ error: requested.error }, 400)
+  const { since } = requested
+
   try {
-    const since =
-      new URL(req.url).searchParams.get('since') ??
-      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
     const results = await Promise.all(
       FEEDS.map(async feed => {
