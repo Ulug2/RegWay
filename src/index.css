@@ -315,3 +315,97 @@ select.glass-input-rect {
   background-color: rgba(255, 255, 255, 0.70);
   padding-right: 32px;
 }
+
+/* ── Landing page motion ───────────────────────────────────────────────
+   Sign-in in place: the hero copy narrows to the left and the form slides
+   out from behind it (side by side from lg; stacked below on smaller
+   screens). Sections reveal as they scroll into view (Reveal.tsx). */
+
+.hero-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.hero-copy {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 900px;
+  text-align: center;
+  transition: max-width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hero-auth {
+  width: 100%;
+  max-width: 400px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), max-height 0.7s ease, margin 0.7s ease;
+}
+.hero-row.is-open .hero-auth {
+  max-height: 1200px;
+  overflow: visible;
+  opacity: 1;
+  transform: none;
+  margin-top: 40px;
+}
+@media (min-width: 1024px) {
+  .hero-row {
+    flex-direction: row;
+    justify-content: center;
+  }
+  .hero-row.is-open .hero-copy {
+    max-width: 540px;
+  }
+  .hero-auth {
+    width: 0;
+    max-width: none;
+    max-height: none;
+    flex-shrink: 0;
+    transform: translateX(-80px) scale(0.97);
+    transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease 0.1s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), margin 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .hero-row.is-open .hero-auth {
+    width: 400px;
+    margin-top: 0;
+    margin-left: 72px;
+  }
+  /* Laid out at full width while the column opens, so it slides rather than squeezes. */
+  .hero-auth > * {
+    width: 400px;
+  }
+}
+
+.reveal {
+  opacity: 0;
+  transition: opacity 0.8s ease, transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-from-left {
+  transform: translateX(-56px);
+}
+.reveal-from-right {
+  transform: translateX(56px);
+}
+.reveal-from-up {
+  transform: translateY(32px);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-copy,
+  .hero-auth,
+  .reveal {
+    transition: none !important;
+  }
+  .hero-auth,
+  .reveal {
+    transform: none !important;
+  }
+  .reveal {
+    opacity: 1;
+  }
+}

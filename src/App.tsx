@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { getFirmId, getCachedFirmId } from './lib/data'
 import { bindCacheToUser, clearCache } from './lib/cache'
-import AuthScreen from './components/AuthScreen'
 import LandingPage from './components/LandingPage'
 import ProfileScreen, { type ProfileTab } from './components/ProfileScreen'
 import OnboardingModal from './components/OnboardingModal'
@@ -193,16 +192,14 @@ export default function App() {
           </div>
         )}
 
-        {view === 'landing' && (
-          <LandingPage onGetStarted={() => goToAuth('sign-up')} onSignIn={() => goToAuth('sign-in')} />
-        )}
-
-        {view === 'auth' && (
-          <AuthScreen
-            onAuthenticated={handleAuthenticated}
-            initialMode={authMode}
+        {/* The landing page hosts sign-in / sign-up: 'auth' is the same page with the form open. */}
+        {(view === 'landing' || view === 'auth') && (
+          <LandingPage
+            authMode={view === 'auth' ? authMode : null}
             notice={authNotice}
-            onBack={() => { clearAuthNotice(); setView('landing') }}
+            onOpenAuth={goToAuth}
+            onCloseAuth={() => { clearAuthNotice(); setView('landing') }}
+            onAuthenticated={handleAuthenticated}
           />
         )}
 

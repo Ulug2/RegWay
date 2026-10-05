@@ -279,20 +279,8 @@ chat sidebar".
 ### 9. Fund and portfolio-company pages — done
 See Completed, "Fund and company pages; day-by-day lists".
 
-### 10. Landing page: sign-in / sign-up in place, scroll animations (M–L)
-Requested 2026-10-04. "Highly sophisticated, smooth animation."
-- **Sign-in / sign-up inside the landing page.** Clicking "Get Started
-  Free" or "Sign In" no longer switches to a separate screen. The form
-  slides out from behind the hero text ("Regulatory intelligence that
-  actually knows your firm. …"), and that text slides left to make room for
-  it. Today `AuthScreen` is its own view in `App.tsx`.
-- **Sections appear as the user scrolls**, sliding in from the sides.
-- No animation library is installed. Decide between CSS transitions with
-  `IntersectionObserver` and a library; whichever is used, respect
-  `prefers-reduced-motion`, keep the form usable by keyboard, and check the
-  layout on a phone, where there is no room to slide text aside.
-- `tests/e2e/auth.spec.ts` covers sign-in and will need its selectors
-  updated.
+### 10. Landing page: sign-in / sign-up in place, scroll animations — done
+See Completed, "Landing page: sign-in in place, scroll reveals".
 
 ### 11. Re-match discovery after settings edits (M)
 The match-correction loop (see Completed) covers *re-checking and
@@ -573,6 +561,29 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Landing page: sign-in in place, scroll reveals (2026-10-05)
+Roadmap item 10. Notes: `prompts/landing-page-motion.md`.
+- **Sign-in / sign-up in place:** the form (`AuthPanel.tsx`, formerly the
+  full-screen `AuthScreen`) slides out from behind the hero while the hero
+  text narrows to the left (side by side from 1024 px; below the text on
+  smaller screens, scrolled into view). × or Escape closes it; the email
+  field is focused on open; the header's and the hero's buttons switch
+  between sign-in and sign-up. The app's `auth` view is now the landing page
+  with the form open (password-changed notice included).
+- **Scroll reveals** (`Reveal.tsx`, IntersectionObserver, CSS only, no
+  library): feature cards from left / below / right, the new "How it
+  works" steps from alternating sides, the sources list, a closing call to
+  action that opens sign-up at the top. Copy updated to what the product
+  does now (30-minute Federal Register sync, enforcement, sanctions /
+  export controls / trade, advisories, day-by-day pages).
+- `prefers-reduced-motion`: no movement; everything is simply shown.
+- Phone: header keeps one line (its Get Started hides; the hero's is right
+  below); no horizontal scroll.
+- Tests: 6 browser tests (`landing.spec.ts`): form beside the hero and
+  focused, switching and closing, phone layout, reveal on scroll, reduced
+  motion, closing call to action. Existing sign-in and password tests
+  unchanged and passing (76 browser tests).
 
 ### Fund and company pages; day-by-day lists (2026-10-05)
 Roadmap item 9, plus the owner's request the same day: "whenever we click on

@@ -1,19 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import LogoMark from './LogoMark'
 import PasswordInput from './PasswordInput'
 import PasswordRequirements from './PasswordRequirements'
 import { passwordErrorMessage, passwordProblem } from '../lib/password'
 
-interface AuthScreenProps {
+// Sign in, create an account, or ask for a reset link. Shown inside the
+// landing page (it slides out beside the hero), not as its own screen.
+
+interface AuthPanelProps {
   onAuthenticated: () => void
   initialMode?: 'sign-in' | 'sign-up'
-  onBack?: () => void
-  // Why the user is seeing this screen, when the app sent them here.
+  onClose: () => void
+  // Why the user is seeing this form, when the app sent them here.
   notice?: string | null
 }
 
-export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', onBack, notice }: AuthScreenProps) {
+export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', onClose, notice }: AuthPanelProps) {
   const [mode, setMode] = useState<'sign-in' | 'sign-up' | 'forgot'>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,6 +23,13 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
   const [error, setError] = useState<string | null>(null)
   const [checkEmail, setCheckEmail] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+
+  // Escape closes the form, as the × does.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,25 +80,17 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="glass-modal w-full max-w-sm" style={{ padding: 32 }}>
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1.5 text-xs font-medium mb-6"
-            style={{ color: '#64748B' }}
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Back
-          </button>
-        )}
-        <div className="flex items-center gap-2 mb-8">
-          <LogoMark size={36} />
-          <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
-        </div>
-
+    <div className="glass-modal w-full relative" style={{ padding: 32 }} role="region" aria-label={mode === 'sign-up' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : 'Sign in'}>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
+          style={{ color: '#94a3b8' }}
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
         {checkEmail ? (
           <div className="text-center py-4">
             <h2 className="text-lg font-semibold mb-2" style={{ color: '#0F172A' }}>Check your email</h2>
@@ -138,6 +139,7 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
                 <input
                   type="email"
                   required
+                  autoFocus
                   className="glass-input-rect"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -196,7 +198,6 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'sign-up', o
             )}
           </>
         )}
-      </div>
     </div>
   )
 }
