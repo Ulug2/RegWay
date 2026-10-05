@@ -276,21 +276,8 @@ nothing and risks cutting answers off.
 Built together, 2026-10-05; see Completed, "Copilot: focus switching and
 chat sidebar".
 
-### 9. Fund and portfolio-company pages (M)
-Requested 2026-10-04. Clicking a fund or a portfolio company opens its own
-page listing all of its developments, instead of expanding the list inside
-the dashboard. **PE Firm stays as it is**, in the dashboard.
-- The app has no router; views are a state in `App.tsx`. Add a view for the
-  entity page and reuse `EntityFeed` (filters, "New" badges, dismiss).
-- RegWay AI is available on the new page (the control from item 2) and
-  opens with everything about that fund or company: its profile, what it
-  holds or who holds it, and its matched developments with their reasons.
-  The matched-developments part exists (`_shared/matchedDevelopments.ts`,
-  scoped by fund / company); the profile part is item 5.
-- Keep which entity is open across opening a development and coming back
-  (today `ui:selectedFund` / `ui:selectedCompany` in the cache do this).
-- Update `tests/e2e/dashboard.spec.ts`, which expects the in-dashboard
-  lists.
+### 9. Fund and portfolio-company pages — done
+See Completed, "Fund and company pages; day-by-day lists".
 
 ### 10. Landing page: sign-in / sign-up in place, scroll animations (M–L)
 Requested 2026-10-04. "Highly sophisticated, smooth animation."
@@ -586,6 +573,36 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Fund and company pages; day-by-day lists (2026-10-05)
+Roadmap item 9, plus the owner's request the same day: "whenever we click on
+something, it should be showing stuff that AI found today", with a control
+to go back a day at a time to the first day the user used the app. Notes:
+`prompts/entity-pages-days.md`.
+- **Day by day** (`lib/feedDays.ts`, `EntityFeed`): every list (PE Firm on
+  the dashboard, each fund and company page) opens on what RegWay found
+  today, meaning matched today (`regulation_relevance.created_at`) in the
+  viewer's time zone, not the publication date. "‹ Today · October 5,
+  2026 ›" steps back to the firm's sign-up day (`firms.created_at`, or an
+  earlier finding); an empty day says so and links to the most recent day
+  with findings; "All days" shows everything (search across days). The day
+  is kept while a development is open and resets to today when the page is
+  opened again. The publish-date filter now reads "Any publish date" /
+  "Published past 30 days" so it isn't confused with the day.
+- **Fund and company pages** (`EntityPage.tsx`, view `entity` in
+  `App.tsx`): clicking a fund or company card opens its own page: name,
+  type, structure / sectors and HQ, "Holds: …" / "Held by: …" from
+  `fund_holdings`, "Edit profile", the day-by-day list, and the RegWay AI
+  bar scoped to it. Company pages start or join a scan when one is due.
+  Back from a development or from Edit profile returns to the page. PE
+  Firm stays on the dashboard.
+- AI input bar extracted to `AiAskBar.tsx` (read-only: it opens the
+  drawer; typed text used to be silently dropped).
+- Caveat: a re-check that moves a match to a different entity re-creates
+  its row, so it counts as found on the re-check day.
+- Tests: 6 unit (`feedDays.test.ts`), browser tests for the pages, the
+  stepper, empty days, the first-day limit, keeping / resetting the day,
+  and back-navigation (70 browser tests in all).
 
 ### Copilot: focus switching and chat sidebar (2026-10-05)
 Roadmap items 7 and 8. Notes: `prompts/chat-scope-sidebar.md`.

@@ -27,10 +27,10 @@ export const CATEGORIES: { key: CategoryFilter; label: string }[] = [
 ]
 
 export const DATE_WINDOWS: { key: DateWindow; label: string; days: number | null }[] = [
-  { key: 'any', label: 'Any date', days: null },
-  { key: '30d', label: 'Past 30 days', days: 30 },
-  { key: '90d', label: 'Past 90 days', days: 90 },
-  { key: '12m', label: 'Past 12 months', days: 365 },
+  { key: 'any', label: 'Any publish date', days: null },
+  { key: '30d', label: 'Published past 30 days', days: 30 },
+  { key: '90d', label: 'Published past 90 days', days: 90 },
+  { key: '12m', label: 'Published past 12 months', days: 365 },
 ]
 
 export const US_FEDERAL = 'United States (federal)'

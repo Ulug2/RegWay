@@ -8,12 +8,13 @@ import ProfileScreen, { type ProfileTab } from './components/ProfileScreen'
 import OnboardingModal from './components/OnboardingModal'
 import ResetPasswordScreen from './components/ResetPasswordScreen'
 import Dashboard from './components/Dashboard'
+import EntityPage, { type EntityRef } from './components/EntityPage'
 import RegWayAICopilot from './components/RegWayAICopilot'
 import HeadlineDetailView from './components/HeadlineDetailView'
 import type { Regulation, AiContext } from './lib/types'
 import LogoMark from './components/LogoMark'
 
-type View = 'loading' | 'landing' | 'auth' | 'reset-password' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai'
+type View = 'loading' | 'landing' | 'auth' | 'reset-password' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai' | 'entity'
 
 export default function App() {
   const [view, setView] = useState<View>('loading')
@@ -21,6 +22,11 @@ export default function App() {
   const [profileFocus, setProfileFocus] = useState<string | null>(null)
   const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-up')
   const [detailPayload, setDetailPayload] = useState<unknown>(null)
+  // The fund or company page open (or last open), and where the detail and
+  // profile views go back to: the page they were opened from.
+  const [entity, setEntity] = useState<EntityRef | null>(null)
+  const [returnTo, setReturnTo] = useState<'dashboard' | 'entity'>('dashboard')
+  const goBack = () => setView(returnTo === 'entity' && entity ? 'entity' : 'dashboard')
   const [showAI, setShowAI] = useState(false)
   const [aiContext, setAiContext] = useState<AiContext | null>(null)
   // A password-recovery link signs the user in *and* asks for a new
@@ -109,7 +115,9 @@ export default function App() {
       setProfileTab(p?.tab ?? 'account')
       setProfileFocus(p?.focusId ?? null)
     }
+    else if (newView === 'entity') setEntity(payload as EntityRef)
     else if (payload) setDetailPayload(payload)
+    if (newView === 'detail' || newView === 'profile') setReturnTo(view === 'entity' ? 'entity' : 'dashboard')
     setView(newView)
   }
 
@@ -227,16 +235,21 @@ export default function App() {
           <Dashboard onNavigate={navigate} />
         )}
 
+        {view === 'entity' && entity && (
+          <EntityPage key={`${entity.type}:${entity.id}`} entity={entity} onNavigate={navigate} />
+        )}
+
         {view === 'detail' && (
           <HeadlineDetailView
-            onBack={() => setView('dashboard')}
+            onBack={goBack}
+            backLabel={returnTo === 'entity' && entity ? 'Back' : 'Back to Dashboard'}
             headline={detailPayload as Partial<Regulation> | undefined}
             onAskAI={ctx => navigate('ai', ctx)}
           />
         )}
 
         {view === 'profile' && (
-          <ProfileScreen onBack={() => setView('dashboard')} initialTab={profileTab} focusId={profileFocus} />
+          <ProfileScreen onBack={goBack} initialTab={profileTab} focusId={profileFocus} />
         )}
       </div>
 

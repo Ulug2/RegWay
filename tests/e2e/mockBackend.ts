@@ -48,6 +48,21 @@ export const REGS = {
   medicare: regulation('reg-medicare', { title: 'Medicare Program; Hospital Outpatient Payment Update', agency: 'Centers for Medicare & Medicaid Services', jurisdiction: 'Centers for Medicare & Medicaid Services · Federal', summary: 'Updates payment rates.', published_date: daysAgo(5) }),
 }
 
+// Matched early today (local time), so pages, which open on today's
+// findings, list them. Tests about other days set their own.
+export const todayAt = (hours: number, minutes = 0) => {
+  const d = new Date()
+  d.setHours(hours, minutes, 0, 0)
+  return d.toISOString()
+}
+
+export const daysAgoAt = (days: number, hours = 12) => {
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  d.setHours(hours, 0, 0, 0)
+  return d.toISOString()
+}
+
 const relevance = (id: string, reg: Row, over: Row): Row => ({
   id,
   firm_id: FIRM_ID,
@@ -57,7 +72,7 @@ const relevance = (id: string, reg: Row, over: Row): Row => ({
   relevance_reason: 'Relevant.',
   via_holdings: false,
   dismissed_at: null,
-  created_at: '2026-09-20T00:00:00+00:00',
+  created_at: todayAt(0, 0),
   regulations: reg,
   funds: null,
   portfolio_companies: null,
@@ -69,7 +84,7 @@ const recently = () => new Date(Date.now() - 3_600_000).toISOString()
 function seed(): Record<string, Row[]> {
   return {
     firm_members: [{ user_id: USER.id, firm_id: FIRM_ID }],
-    firms: [{ id: FIRM_ID, name: 'Harbor Capital', hq_location: 'Miami, Florida', lead_gp_name: 'Dana Reyes', jurisdictions: ['United States'], website: null, profile: {}, profile_updated_at: null }],
+    firms: [{ id: FIRM_ID, name: 'Harbor Capital', hq_location: 'Miami, Florida', lead_gp_name: 'Dana Reyes', jurisdictions: ['United States'], website: null, profile: {}, profile_updated_at: null, created_at: daysAgoAt(20) }],
     funds: [
       { id: 'fund-1', firm_id: FIRM_ID, name: 'Harbor Fund I', size: '$1B', structure: 'Delaware LP', jurisdictions: ['United States'], profile: {}, profile_updated_at: null },
       { id: 'fund-2', firm_id: FIRM_ID, name: 'Harbor Fund II', size: '$2B', structure: 'Cayman LP', jurisdictions: ['Cayman Islands'], profile: {}, profile_updated_at: null },

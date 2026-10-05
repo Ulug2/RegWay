@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCachedState } from '../lib/useCachedState'
-import { isScanning, needsScan, onScanChange, prewarmCompanies, scanCompany } from '../lib/scans'
-import { readCache } from '../lib/cache'
+import { isScanning, needsScan, onScanChange, prewarmCompanies } from '../lib/scans'
+import { patchCache, writeCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { fetchFirmRegulations, fetchFundRegulations, fetchCompanyRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchImpactStatuses, matchGeopoliticalDevelopments, subscribeToMatches } from '../lib/data'
-import type { MatchedRegulation, PortfolioCompany, Fund, Firm, AiContext } from '../lib/types'
+import { fetchFirmRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchImpactStatuses, matchGeopoliticalDevelopments, subscribeToMatches } from '../lib/data'
+import type { MatchedRegulation, PortfolioCompany, Fund, Firm } from '../lib/types'
 import { DEFAULT_FILTER, type FeedFilter } from '../lib/feedFilter'
+import type { DaySelection } from '../lib/feedDays'
 import { markVisit } from '../lib/lastVisit'
 import LogoMark from './LogoMark'
 import EntityFeed from './EntityFeed'
+import AiAskBar from './AiAskBar'
+import { dayKey, type EntityRef } from './EntityPage'
 import ProfileReminder from './ProfileReminder'
 import { useProfileCompletion } from '../lib/useProfileCompletion'
 
-type View = 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai'
+type View = 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai' | 'entity'
 
 interface DashboardProps {
   onNavigate: (view: View, payload?: unknown) => void
@@ -38,15 +41,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [firm, setFirm] = useCachedState<Firm | null>('firm', null)
   const [companies, setCompanies] = useCachedState<PortfolioCompany[]>('companies', [])
   const [funds, setFunds] = useCachedState<Fund[]>('funds', [])
-  // Which tab/company/fund is open survives navigating to a headline and back.
+  // Which tab is open survives navigating to a headline or an entity page and back.
   const [activeToggle, setActiveToggle] = useCachedState<Toggle | null>('ui:activeToggle', null)
-  const [selectedCompany, setSelectedCompany] = useCachedState<string | null>('ui:selectedCompany', null)
-  const [selectedFund, setSelectedFund] = useCachedState<string | null>('ui:selectedFund', null)
-  const [aiQuery, setAiQuery] = useState('')
 
   const [peRegs, setPeRegs] = useCachedState<MatchedRegulation[] | null>('regs:pe', null)
-  const [fundRegs, setFundRegs] = useCachedState<Record<string, MatchedRegulation[]>>('regs:fund', {})
-  const [companyRegs, setCompanyRegs] = useCachedState<Record<string, MatchedRegulation[]>>('regs:company', {})
+  // The day the PE Firm list shows (null = today); funds and companies
+  // have their own pages (EntityPage).
+  const [peDay, setPeDay] = useCachedState<DaySelection>(dayKey({ type: 'firm' }), null)
   // Category/topic/date/location filter for whichever entity list is open;
   // kept across entities and navigation, like the open tab.
   const [feedFilter, setFeedFilter] = useCachedState<FeedFilter>('ui:feedFilter', DEFAULT_FILTER)
@@ -97,8 +98,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       onScanChange(() => {
         const cos = getCachedCompanies()
         if (cos) setCompanies(cos)
-        const regs = readCache<Record<string, MatchedRegulation[]>>('regs:company')
-        if (regs) setCompanyRegs(regs)
         forceRender(n => n + 1)
       }),
     [],
@@ -111,47 +110,28 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   }, [firmId, activeToggle])
 
   // The scheduled matcher (run-matching) writes new matches while the
-  // dashboard may be open: refresh whichever list is showing when this
-  // firm's matches change. A ref, so the subscription isn't torn down on
-  // every tab switch.
-  const openList = useRef({ activeToggle, selectedFund, selectedCompany })
-  openList.current = { activeToggle, selectedFund, selectedCompany }
+  // dashboard may be open: refresh the PE Firm list when it's showing. A
+  // ref, so the subscription isn't torn down on every tab switch.
+  const openTab = useRef(activeToggle)
+  openTab.current = activeToggle
   useEffect(() => {
     if (!firmId) return
     return subscribeToMatches(firmId, () => {
-      const { activeToggle: tab, selectedFund: fundId, selectedCompany: companyId } = openList.current
-      if (tab === 'pe') fetchFirmRegulations(firmId).then(setPeRegs).catch(() => {})
-      if (tab === 'fund' && fundId) fetchFundRegulations(firmId, fundId).then(regs => setFundRegs(prev => ({ ...prev, [fundId]: regs }))).catch(() => {})
-      if (tab === 'portfolio' && companyId && !isScanning(companyId)) {
-        fetchCompanyRegulations(firmId, companyId).then(regs => setCompanyRegs(prev => ({ ...prev, [companyId]: regs }))).catch(() => {})
-      }
+      if (openTab.current === 'pe') fetchFirmRegulations(firmId).then(setPeRegs).catch(() => {})
     })
   }, [firmId])
-
-  // Opening a fund: fetch just that fund's relevant regulations.
-  useEffect(() => {
-    if (!firmId || activeToggle !== 'fund' || !selectedFund) return
-    const id = selectedFund
-    fetchFundRegulations(firmId, id)
-      .then(regs => setFundRegs(prev => ({ ...prev, [id]: regs })))
-      .catch(() => {})
-  }, [firmId, activeToggle, selectedFund])
 
   // Fetch the proposed/final status for whichever regulatory items are
   // currently visible, so the list badge doesn't require opening the item.
   useEffect(() => {
     if (!firmId) return
-    const visible =
-      activeToggle === 'pe' ? peRegs ?? [] :
-      activeToggle === 'fund' && selectedFund ? fundRegs[selectedFund] ?? [] :
-      activeToggle === 'portfolio' && selectedCompany ? companyRegs[selectedCompany] ?? [] :
-      []
+    const visible = activeToggle === 'pe' ? peRegs ?? [] : []
     const ids = visible.filter(r => r.category === 'regulatory').map(r => r.id)
     if (ids.length === 0) return
     fetchImpactStatuses(firmId, ids)
       .then(statuses => setImpactStatuses(prev => ({ ...prev, ...statuses })))
       .catch(() => {})
-  }, [firmId, activeToggle, peRegs, fundRegs, selectedFund, companyRegs, selectedCompany])
+  }, [firmId, activeToggle, peRegs])
 
   // Platform-wide, not per-firm — so a quiet dashboard reads as a stated
   // data-source limitation rather than silently implying nothing is relevant.
@@ -160,31 +140,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     fetchFailingSources().then(setFailingSources).catch(() => {})
   }, [])
 
-  // Opening a company: results are normally already stored (pre-warmed), so
-  // just refresh them. If it still needs a scan (e.g. added a moment ago),
-  // start or join one — the result arrives through the scan listener above.
-  useEffect(() => {
-    if (!firmId || activeToggle !== 'portfolio' || !selectedCompany) return
-    const id = selectedCompany
-    const company = companies.find(c => c.id === id)
-    if (company && needsScan(company) && !isScanning(id)) {
-      scanCompany(firmId, id).catch(() => {})
-      return
-    }
-    if (isScanning(id)) return
-    fetchCompanyRegulations(firmId, id)
-      .then(regs => setCompanyRegs(prev => ({ ...prev, [id]: regs })))
-      .catch(() => {})
-  }, [firmId, activeToggle, selectedCompany])
-
   const dismiss = (regulationId: string) => {
     if (!firmId) return
     dismissRegulation(firmId, regulationId)
       .then(() => {
         const without = (list: MatchedRegulation[] | null) => list && list.filter(r => r.id !== regulationId)
         setPeRegs(without)
-        setFundRegs(prev => Object.fromEntries(Object.entries(prev).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)])))
-        setCompanyRegs(prev => Object.fromEntries(Object.entries(prev).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)])))
+        // The same item can be listed on a fund's or a company's page too.
+        const drop = (prev: Record<string, MatchedRegulation[]> = {}) => Object.fromEntries(Object.entries(prev).map(([id, list]) => [id, list.filter(r => r.id !== regulationId)]))
+        patchCache('regs:fund', drop)
+        patchCache('regs:company', drop)
       })
       .catch(() => {})
   }
@@ -195,6 +160,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     newSince,
     filter: feedFilter,
     onFilterChange: setFeedFilter,
+    firmCreatedAt: firm?.created_at,
     onOpen: (r: MatchedRegulation) => onNavigate('detail', r),
     onDismiss: dismiss,
   }
@@ -206,32 +172,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   ]
 
   const selectToggle = (key: Toggle) => {
+    // Opening the PE Firm list starts on today.
+    if (key === 'pe' && activeToggle !== 'pe') setPeDay(null)
     setActiveToggle(activeToggle === key ? null : key)
-    setSelectedCompany(null)
-    setSelectedFund(null)
   }
 
-  const selectCompany = (companyId: string) => {
-    setSelectedCompany(selectedCompany === companyId ? null : companyId)
-  }
-
-  const selectFund = (fundId: string) => {
-    setSelectedFund(selectedFund === fundId ? null : fundId)
-  }
-
-  // Whatever fund/company is currently open on the dashboard — the AI bar
-  // opens already scoped to it instead of requiring a separate "Ask AI
-  // about this" click.
-  const selectedAiContext = (): AiContext | undefined => {
-    if (activeToggle === 'fund' && selectedFund) {
-      const f = funds.find(x => x.id === selectedFund)
-      if (f) return { type: 'fund', id: f.id, name: f.name }
-    }
-    if (activeToggle === 'portfolio' && selectedCompany) {
-      const c = companies.find(x => x.id === selectedCompany)
-      if (c) return { type: 'company', id: c.id, name: c.name }
-    }
-    return undefined
+  // A fund or company opens its own page, on today's findings.
+  const openEntity = (ref: EntityRef) => {
+    writeCache(dayKey(ref), null)
+    onNavigate('entity', ref)
   }
 
   const firstName = firm?.lead_gp_name?.split(' ')[0] || 'there'
@@ -357,6 +306,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               items={peRegs ?? undefined}
               loadingMessage="Loading developments matched to your firm…"
               emptyMessage="No developments have been confirmed relevant to your firm yet."
+              day={peDay}
+              onDayChange={setPeDay}
               {...feedProps}
             />
           )}
@@ -368,15 +319,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               ) : (
                 <div className="flex gap-4 overflow-x-auto scrollable justify-center flex-wrap pb-2">
                   {funds.map(f => {
-                    const selected = selectedFund === f.id
                     return (
                       <button
                         key={f.id}
-                        onClick={() => selectFund(f.id)}
+                        onClick={() => openEntity({ type: 'fund', id: f.id })}
                         className="glass-card-light glass-lift flex-shrink-0 w-44 text-left p-5"
-                        style={{
-                          boxShadow: selected ? 'inset 0 0 0 2px rgba(56,189,248,0.55)' : undefined,
-                        }}
                       >
                         <div
                           className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4"
@@ -392,14 +339,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 </div>
               )}
 
-              {selectedFund && (
-                <EntityFeed
-                  items={fundRegs[selectedFund]}
-                  loadingMessage="Loading…"
-                  emptyMessage="No developments have been confirmed relevant to this fund yet."
-                  {...feedProps}
-                />
-              )}
             </div>
           )}
 
@@ -410,15 +349,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               ) : (
                 <div className="flex gap-4 overflow-x-auto scrollable justify-center flex-wrap pb-2">
                   {companies.map(co => {
-                    const selected = selectedCompany === co.id
                     return (
                       <button
                         key={co.id}
-                        onClick={() => selectCompany(co.id)}
+                        onClick={() => openEntity({ type: 'company', id: co.id })}
                         className="glass-card-light glass-lift flex-shrink-0 w-44 text-left p-5"
-                        style={{
-                          boxShadow: selected ? 'inset 0 0 0 2px rgba(56,189,248,0.55)' : undefined,
-                        }}
                       >
                         <div
                           className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4 overflow-hidden"
@@ -444,68 +379,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 </div>
               )}
 
-              {selectedCompany && (
-                <>
-                  {isScanning(selectedCompany) ? (
-                    <EmptyState message="RegWay AI is researching regulations for this company. This can take a minute the first time — results are saved." />
-                  ) : (
-                    <EntityFeed
-                      items={companyRegs[selectedCompany]}
-                      loadingMessage="Loading…"
-                      emptyMessage="No developments found that affect this company right now."
-                      {...feedProps}
-                    />
-                  )}
-                </>
-              )}
             </div>
           )}
         </div>
 
-        {/* RegWay AI Input Bar — already scoped to whatever fund/company is open.
-            Sticky: under a long list it stays at the bottom of the window
-            instead of below the last item, and settles into its own place
-            (under the buttons, above the footer) when the page is short. */}
-        <div className="max-w-2xl mx-auto sticky z-30" style={{ bottom: 24, marginTop: activeToggle ? 0 : 48 }}>
-          <div className="relative">
-            <input
-              className="glass-input w-full py-5 px-7 pr-28 text-sm"
-              // More opaque than the default glass, with a shadow: list
-              // items scroll underneath it.
-              style={{ fontSize: 14, color: '#0F172A', background: 'rgba(255,255,255,0.94)', boxShadow: '0 10px 30px rgba(15,23,42,0.14)' }}
-              placeholder={
-                selectedAiContext()
-                  ? `Ask RegWay AI about ${selectedAiContext()!.name}...`
-                  : "Ask RegWay AI about today's regulatory impact across your funds and portfolio..."
-              }
-              value={aiQuery}
-              onChange={e => setAiQuery(e.target.value)}
-              onFocus={() => onNavigate('ai', selectedAiContext())}
-              onKeyDown={e => e.key === 'Enter' && onNavigate('ai', selectedAiContext())}
-            />
-            {/* Attachment — opens the AI drawer, where files can actually be attached */}
-            <button
-              onClick={() => onNavigate('ai', selectedAiContext())}
-              className="absolute right-14 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
-              style={{ color: '#94a3b8' }}
-              title="Attach a file"
-            >
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                <path d="M11.5 5L6.2 10.3a2 2 0 002.8 2.8l5.3-5.3a3.5 3.5 0 00-5-5L3.5 8.6a5 5 0 007 7L15 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-            </button>
-            {/* Send */}
-            <button
-              onClick={() => onNavigate('ai', selectedAiContext())}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-white"
-              style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 9999, boxShadow: '0 4px 12px rgba(2,132,199,0.30)' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M14 8L2 2l3 6-3 6 12-6z" fill="white"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+        {/* RegWay AI, firm-wide (funds and companies have their own, on their pages). */}
+        <AiAskBar
+          placeholder="Ask RegWay AI about today's regulatory impact across your funds and portfolio..."
+          onOpen={() => onNavigate('ai')}
+          style={{ marginTop: activeToggle ? 0 : 48 }}
+        />
       </main>
 
       {/* Footer */}

@@ -7,6 +7,8 @@ export interface Firm {
   website: string | null
   profile: Record<string, unknown>
   profile_updated_at: string | null
+  // When the firm signed up: the first day its pages can step back to.
+  created_at?: string
 }
 
 export interface Fund {

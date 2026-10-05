@@ -1,7 +1,21 @@
 import type { Page } from '@playwright/test'
-import { FIRM_ID, REGS, USER, expect, signIn, test, type MockBackend } from './mockBackend'
+import { FIRM_ID, REGS, USER, daysAgoAt, expect, signIn, test, todayAt, type MockBackend } from './mockBackend'
 
 const titles = (page: Page) => page.locator('.glass-card-light .font-semibold.mb-2')
+
+async function openFundPage(page: Page, card: string) {
+  await signIn(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Fund Structure' }).click()
+  await page.getByRole('button', { name: card }).click()
+}
+
+async function openCompanyPage(page: Page, card: string) {
+  await signIn(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Portfolio Companies' }).click()
+  await page.getByRole('button', { name: card }).click()
+}
 
 async function openFirmList(page: Page) {
   await signIn(page)
@@ -48,20 +62,20 @@ test.describe('firm page', () => {
     await expect(page.getByRole('button', { name: 'Enforcement 0' })).toBeVisible()
 
     await page.getByLabel('Search developments').fill('')
-    await page.getByLabel('Published').selectOption({ label: 'Past 30 days' })
+    await page.getByLabel('Published').selectOption({ label: 'Published past 30 days' })
     await expect(titles(page)).toHaveText([REGS.formPf.title, REGS.adviserCase.title])
 
-    await page.getByLabel('Published').selectOption({ label: 'Any date' })
+    await page.getByLabel('Published').selectOption({ label: 'Any publish date' })
     await page.getByLabel('Location').selectOption({ label: 'Italy' })
     await expect(titles(page)).toHaveText([REGS.tariff.title])
 
     await page.getByLabel('Search developments').fill('nothing matches this')
-    await expect(page.getByText('Nothing on this page matches these filters.')).toBeVisible()
+    await expect(page.getByText('Nothing here matches these filters.')).toBeVisible()
   })
 
   test('badges only what was matched since the previous visit', async ({ page, backend }) => {
-    const lastVisit = '2026-10-01T09:00:00.000Z'
-    backend.tables.regulation_relevance.find(r => r.id === 'rel-2')!.created_at = '2026-10-02T10:00:00.123456+00:00'
+    const lastVisit = todayAt(0, 2)
+    backend.tables.regulation_relevance.find(r => r.id === 'rel-2')!.created_at = todayAt(0, 10).replace('Z', '123+00:00')
     await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [`regway:lastVisit:v1:${USER.id}:${FIRM_ID}`, lastVisit] as const)
     await openFirmList(page)
 
@@ -88,12 +102,10 @@ test.describe('firm page', () => {
   })
 
   test('dismissing still works after a fund page has been opened', async ({ page }) => {
-    await signIn(page)
-    await page.goto('/')
-    await page.getByRole('button', { name: 'Fund Structure' }).click()
-    await page.getByRole('button', { name: 'HF Harbor Fund I Delaware LP' }).click()
+    await openFundPage(page, 'HF Harbor Fund I Delaware LP')
     await expect(page.getByText(REGS.tariff.title)).toBeVisible()
 
+    await page.getByRole('button', { name: 'Dashboard' }).click()
     await page.getByRole('button', { name: 'PE Firm' }).click()
     const card = page.locator('.group', { hasText: REGS.adviserCase.title })
     await card.hover()
@@ -119,11 +131,14 @@ test.describe('firm page', () => {
 })
 
 test.describe('fund and company pages', () => {
-  test('a fund shows what reaches it through a company it holds', async ({ page, backend }) => {
-    await signIn(page)
-    await page.goto('/')
-    await page.getByRole('button', { name: 'Fund Structure' }).click()
-    await page.getByRole('button', { name: 'HF Harbor Fund I Delaware LP' }).click()
+  test('a fund opens its own page: who it is, what it holds, and what reaches it through a company it holds', async ({ page, backend }) => {
+    backend.tables.fund_holdings.push({ firm_id: FIRM_ID, fund_id: 'fund-1', portfolio_company_id: 'co-aero' })
+    await openFundPage(page, 'HF Harbor Fund I Delaware LP')
+
+    await expect(page.getByRole('heading', { name: 'Harbor Fund I' })).toBeVisible()
+    await expect(page.getByText('Delaware LP · $1B · United States')).toBeVisible()
+    await expect(page.getByText('Holds: Aero Logistics')).toBeVisible()
+    await expect(page.getByPlaceholder('Ask RegWay AI about Harbor Fund I...')).toBeVisible()
 
     await expect(titles(page)).toHaveText([REGS.tariff.title])
     await expect(page.getByText('Indirect: Harbor Fund I holds Aero Logistics, which has a direct connection')).toBeVisible()
@@ -132,19 +147,16 @@ test.describe('fund and company pages', () => {
   })
 
   test('a fund with no matches says so', async ({ page }) => {
-    await signIn(page)
-    await page.goto('/')
-    await page.getByRole('button', { name: 'Fund Structure' }).click()
-    await page.getByRole('button', { name: 'HF Harbor Fund II Cayman LP' }).click()
+    await openFundPage(page, 'HF Harbor Fund II Cayman LP')
+    await expect(page.getByText('Portfolio companies held: not recorded')).toBeVisible()
     await expect(page.getByText('No developments have been confirmed relevant to this fund yet.')).toBeVisible()
   })
 
   test("a company shows its own matches with its own reason, without re-scanning a recently scanned company", async ({ page, backend }) => {
-    await signIn(page)
-    await page.goto('/')
-    await page.getByRole('button', { name: 'Portfolio Companies' }).click()
-    await page.getByRole('button', { name: 'G GetixHealth Healthcare' }).click()
+    await openCompanyPage(page, 'G GetixHealth Healthcare')
 
+    await expect(page.getByRole('heading', { name: 'GetixHealth' })).toBeVisible()
+    await expect(page.getByText('Held by: not recorded')).toBeVisible()
     await expect(titles(page)).toHaveText([REGS.medicare.title])
     await expect(page.getByText("Why it's here: GetixHealth bills Medicare for hospital clients.")).toBeVisible()
     expect(backend.called('POST', 'functions/v1/company-regulations')).toEqual([])
@@ -157,14 +169,82 @@ test.describe('fund and company pages', () => {
       backend.tables.portfolio_companies.find(c => c.id === companyId)!.last_scanned_at = new Date().toISOString()
       return { json: { found: 1 } }
     }
-    await signIn(page)
-    await page.goto('/')
-    await page.getByRole('button', { name: 'Portfolio Companies' }).click()
-    await page.getByRole('button', { name: 'G GetixHealth Healthcare' }).click()
+    await openCompanyPage(page, 'G GetixHealth Healthcare')
 
     await expect(titles(page)).toHaveText([REGS.medicare.title])
     const scans = backend.called('POST', 'functions/v1/company-regulations')
     expect(scans.map(c => c.body)).toEqual([{ companyId: 'co-getix' }])
+  })
+})
+
+test('opening a development from a company page and going back returns to that page', async ({ page }) => {
+  await openCompanyPage(page, 'G GetixHealth Healthcare')
+  await page.getByText(REGS.medicare.title).click()
+  await page.getByRole('button', { name: /Back/ }).first().click()
+  await expect(page.getByRole('heading', { name: 'GetixHealth' })).toBeVisible()
+  await page.getByRole('button', { name: 'Dashboard' }).click()
+  await expect(page.getByRole('button', { name: 'Portfolio Companies' })).toBeVisible()
+})
+
+test.describe('day by day', () => {
+  // Today: Form PF. Yesterday: the adviser case. Five days ago: the tariff.
+  const spreadOverDays = (backend: MockBackend) => {
+    backend.tables.regulation_relevance.find(r => r.id === 'rel-2')!.created_at = daysAgoAt(1)
+    backend.tables.regulation_relevance.find(r => r.id === 'rel-3')!.created_at = daysAgoAt(5)
+  }
+
+  test("opens on what was found today, and steps back one day at a time", async ({ page, backend }) => {
+    spreadOverDays(backend)
+    await openFirmList(page)
+    await expect(page.getByText(/^Today · /)).toBeVisible()
+    await expect(page.getByText('1 found by RegWay')).toBeVisible()
+    await expect(titles(page)).toHaveText([REGS.formPf.title])
+    await expect(page.getByRole('button', { name: 'Next day' })).toBeDisabled()
+
+    await page.getByRole('button', { name: 'Previous day' }).click()
+    await expect(page.getByText(/^Yesterday · /)).toBeVisible()
+    await expect(titles(page)).toHaveText([REGS.adviserCase.title])
+
+    await page.getByRole('button', { name: 'Previous day' }).click()
+    await expect(page.getByText('Nothing new was found for')).toBeVisible()
+    await page.getByRole('button', { name: /^See .* \(1\)$/ }).click()
+    await expect(titles(page)).toHaveText([REGS.tariff.title])
+
+    await page.getByRole('button', { name: 'All days' }).click()
+    await expect(titles(page)).toHaveCount(3)
+    await page.getByRole('button', { name: 'Back to today' }).click()
+    await expect(titles(page)).toHaveText([REGS.formPf.title])
+  })
+
+  test('an empty today points at the most recent day with findings', async ({ page, backend }) => {
+    for (const r of backend.tables.regulation_relevance) r.created_at = daysAgoAt(2)
+    await signIn(page)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await expect(page.getByText('Nothing new was found for today.')).toBeVisible()
+    await page.getByRole('button', { name: /^See .* \(3\)$/ }).click()
+    await expect(titles(page)).toHaveCount(3)
+  })
+
+  test("goes back no further than the firm's first day", async ({ page, backend }) => {
+    backend.tables.firms[0].created_at = daysAgoAt(1)
+    await openFirmList(page)
+    await page.getByRole('button', { name: 'Previous day' }).click()
+    await expect(page.getByText(/^Yesterday · /)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Previous day' })).toBeDisabled()
+  })
+
+  test("keeps the day while a development is open, and a page opened again starts on today", async ({ page, backend }) => {
+    spreadOverDays(backend)
+    await openFirmList(page)
+    await page.getByRole('button', { name: 'Previous day' }).click()
+    await page.getByText(REGS.adviserCase.title).click()
+    await page.getByRole('button', { name: /Back/ }).first().click()
+    await expect(page.getByText(/^Yesterday · /)).toBeVisible()
+
+    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await expect(page.getByText(/^Today · /)).toBeVisible()
   })
 })
 

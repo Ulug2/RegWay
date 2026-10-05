@@ -9,6 +9,8 @@ import ImpactPanel from './ImpactPanel'
 
 interface HeadlineDetailViewProps {
   onBack: () => void
+  // Where Back goes, as the button says it.
+  backLabel?: string
   headline?: Partial<Regulation>
   onAskAI: (context: AiContext) => void
 }
@@ -29,7 +31,7 @@ function sourceDomain(url?: string) {
   }
 }
 
-export default function HeadlineDetailView({ onBack, headline, onAskAI }: HeadlineDetailViewProps) {
+export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashboard', headline, onAskAI }: HeadlineDetailViewProps) {
   const [flagged, setFlaggedState] = useState(() => readCache<boolean>(`flag:${headline?.id}`) ?? false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [confirmDismiss, setConfirmDismiss] = useState(false)
@@ -150,7 +152,7 @@ export default function HeadlineDetailView({ onBack, headline, onAskAI }: Headli
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Back to Dashboard
+            {backLabel}
           </button>
           <div className="flex items-center gap-2">
             <LogoMark size={24} />
