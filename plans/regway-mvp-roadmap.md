@@ -138,7 +138,8 @@ was refused, rightly):
 | Company scan storing a real `why_it_applies` | Change a company's HQ, sectors or regions and save (other fields don't re-scan), then read "Why it's here" on its new items | $0.20–0.70 |
 | Analysis of a not-yet-published document | Only when a pre-publication item is matched to H.I.G. (none today: the 4 scheduled for 10-05 were judged not relevant) | $0.06–0.22 |
 | Fund rows derived from holdings, on H.I.G. | Record which H.I.G. fund holds each company (company cards); not set yet, so no fund-level derived matches exist | $0.06–0.40 (re-written analyses) |
-| **Total** | | **≈ $0.30–1.30** |
+| Switching the chat's focus mid-conversation | In a chat with a few messages, pick GetixHealth in Session context, ask a follow-up, then pick the whole firm | $0.05–0.15 |
+| **Total** | | **≈ $0.35–1.45** |
 
 ### 1. RegWay AI overhaul — remaining verification — done
 Both checks settled 2026-10-05:
@@ -263,30 +264,10 @@ Dropped: "right-size `max_tokens`" (from the 2026-10-01 list). Output is
 billed per token generated, not per token allowed, so a lower ceiling saves
 nothing and risks cutting answers off.
 
-### 7. Copilot: change the AI's scope from inside the chat (M)
-Requested 2026-10-04. The right-hand panel of the chat lists the active
-firm, funds and portfolio companies as plain text. Make them selectable so
-the user can switch what the AI is focused on (firm-wide, one fund, one
-company) without leaving the chat. Two things to settle when building:
-- A saved conversation currently keeps the scope it was started from
-  ("its stored scope wins" in `regway-ai-chat`). Switching scope mid-chat
-  means updating `regway_ai_conversations.context`, and the model has to be
-  told the focus changed.
-- The header's "Focused on …" line and the matched-developments block must
-  follow the selection.
-
-Same component as item 8; build them together.
-
-### 8. Copilot: chat sidebar, closable session context, attached files (M)
-Requested 2026-10-04.
-- Replace the **History** button with a sidebar toggle. The sidebar lists
-  past chats and has the "New chat" button (today both sit in the header;
-  `ConversationHistory.tsx` already has the list, resume and delete).
-- The right-hand **session context** panel can be closed and reopened.
-- A file the user attaches appears in the session context (today it shows
-  only as a chip above the input until sent, and nothing after).
-
-Update `tests/e2e/copilot.spec.ts`, which clicks the History button.
+### 7. Copilot: change the AI's scope from inside the chat — done
+### 8. Copilot: chat sidebar, closable session context, attached files — done
+Built together, 2026-10-05; see Completed, "Copilot: focus switching and
+chat sidebar".
 
 ### 9. Fund and portfolio-company pages (M)
 Requested 2026-10-04. Clicking a fund or a portfolio company opens its own
@@ -598,6 +579,29 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Copilot: focus switching and chat sidebar (2026-10-05)
+Roadmap items 7 and 8. Notes: `prompts/chat-scope-sidebar.md`.
+- **Session context** (right panel, `SessionContext.tsx`): the firm, each
+  fund and each company are selectable; the selection is what RegWay AI is
+  focused on. Before the first message it sets the scope the chat starts
+  with; after it, the next message carries `refocus` and the drawer says
+  "Focus switched to …". Closable, reopened from the header. Lists the
+  files attached in this chat (they're read with their message, not
+  stored).
+- **`regway-ai-chat` `refocus`**: looks the fund / company up through the
+  user's own client (so only their firm's, and the stored name), saves it
+  as the conversation's scope (firm-wide clears it), narrows the matched
+  developments to it, and prefixes that turn with a one-line note so the
+  model sets earlier turns aside. Unknown id: 404 before any AI call.
+- **Chats sidebar** (left, `ConversationHistory.tsx`): replaces the History
+  button and holds "New chat"; refreshes after each exchange so a new
+  conversation appears once answered. Overlays the chat on narrow screens.
+- AI message avatar "H" (from the Harvey name) now "R".
+- Tests: 3 unit (refocus saved / firm-wide / refused), 4 browser (new chat
+  listed, focus before first message, mid-chat switch sent once, panel
+  close/reopen and files). Not run live with AI: needs the H.I.G. user
+  signed in (see "Live AI tests still owed").
 
 ### Chat messages saved in order (2026-10-05)
 A question and its answer were saved in one insert, so both got the same

@@ -3,6 +3,7 @@ import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
 import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, type ConversationSummary } from '../lib/data'
 import ConversationHistory from './ConversationHistory'
+import SessionContext, { type Focus } from './SessionContext'
 import { renderMarkdown } from '../lib/markdown'
 import type { Firm, Fund, PortfolioCompany, AiContext } from '../lib/types'
 
@@ -152,7 +153,15 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
   // scope it started with, whatever page the drawer was opened from.
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
   const [activeContext, setActiveContext] = useState<AiContext | null | undefined>(context)
-  const [historyOpen, setHistoryOpen] = useState(false)
+  const [chatsOpen, setChatsOpen] = useState(false)
+  const [contextOpen, setContextOpen] = useState(true)
+  // Set when the user switches focus in a chat that already has messages:
+  // sent with the next message so the server updates the conversation's
+  // scope and tells the model. Cleared once a message carrying it is sent.
+  const [pendingRefocus, setPendingRefocus] = useState<Focus | null>(null)
+  // Bumped after each exchange so the chats list picks up a new or
+  // re-titled conversation.
+  const [savedVersion, setSavedVersion] = useState(0)
   const [resumeError, setResumeError] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -344,8 +353,9 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
           : { name: file.name, mimeType: file.type || 'text/plain', content: await file.text() }
       }
 
-      const res = await streamFunction('regway-ai-chat', { message: text, attachment, context: activeContext, conversationId }, controller.signal)
+      const res = await streamFunction('regway-ai-chat', { message: text, attachment, context: activeContext, conversationId, refocus: pendingRefocus ?? undefined }, controller.signal)
       if (!res.body) throw new Error('No response stream')
+      setPendingRefocus(null)
 
       await consumeSse(res.body, evt => {
         // Surfaced honestly rather than just silently cutting off — the
@@ -379,6 +389,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
       // new message) until the full answer is actually on screen.
       streamDone = true
       clearInterval(statusTimer)
+      setSavedVersion(v => v + 1)
     }
   }
 
@@ -386,8 +397,8 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
     if (isTyping) return
     setConversationId(crypto.randomUUID())
     setActiveContext(context)
+    setPendingRefocus(null)
     setMessages([welcomeMessage(context)])
-    setHistoryOpen(false)
     setResumeError(null)
   }
 
@@ -402,13 +413,27 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
         ...saved.map(m => ({ role: m.role === 'assistant' ? ('ai' as const) : ('user' as const), content: m.content, citations: m.citations ?? undefined })),
       ])
       setHasStarted(true)
-      setHistoryOpen(false)
+      setPendingRefocus(null)
       setResumeError(null)
       forceScrollRef.current = true
     } catch (err) {
       setResumeError(err instanceof Error ? err.message : 'Could not open that conversation')
     }
   }
+
+  // Switch what the AI is focused on. Before the first message this only
+  // changes the scope the conversation will start with; after it, the next
+  // message carries the switch.
+  const changeFocus = (focus: Focus) => {
+    if (isTyping) return
+    const next: AiContext | undefined = focus.type === 'firm' ? undefined : focus
+    const started = messages.some(m => m.role === 'user')
+    setActiveContext(next)
+    if (started) setPendingRefocus(focus.type === 'firm' ? { type: 'firm' } : focus)
+    else setMessages([welcomeMessage(next)])
+  }
+
+  const attachedFiles = [...messages.flatMap(m => (m.attachmentName ? [m.attachmentName] : [])), ...(pendingFile ? [`${pendingFile.name} (not sent yet)`] : [])]
 
   const stopGenerating = () => {
     abortRef.current?.abort()
@@ -463,6 +488,19 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
           style={{ borderBottom: '1px solid rgba(186,230,253,0.30)' }}
         >
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setChatsOpen(o => !o)}
+              aria-label={chatsOpen ? 'Hide chats' : 'Show chats'}
+              aria-pressed={chatsOpen}
+              title="Chats"
+              className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors hover:bg-slate-100"
+              style={{ color: '#334155', background: chatsOpen ? 'rgba(2,132,199,0.12)' : undefined }}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M7 3v12" stroke="currentColor" strokeWidth="1.4" />
+              </svg>
+            </button>
             <div
               className="w-10 h-10 flex items-center justify-center text-base font-bold text-white"
               style={{ background: 'linear-gradient(135deg,#0F172A,#334155)', borderRadius: 12 }}
@@ -478,22 +516,15 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setHistoryOpen(o => !o)}
-              disabled={isTyping}
-              className="px-4 py-2 text-xs font-medium rounded-full transition-all"
-              style={{ background: historyOpen ? 'rgba(2,132,199,0.12)' : 'rgba(255,255,255,0.70)', color: '#334155', border: '1px solid rgba(186,230,253,0.50)' }}
-            >
-              History
-            </button>
-            <button
-              onClick={startNewChat}
-              disabled={isTyping}
-              className="px-4 py-2 text-xs font-medium rounded-full transition-all"
-              style={{ background: 'rgba(255,255,255,0.70)', color: '#334155', border: '1px solid rgba(186,230,253,0.50)' }}
-            >
-              New chat
-            </button>
+            {!contextOpen && (
+              <button
+                onClick={() => setContextOpen(true)}
+                className="hidden xl:inline-flex px-4 py-2 text-xs font-medium rounded-full transition-all"
+                style={{ background: 'rgba(255,255,255,0.70)', color: '#334155', border: '1px solid rgba(186,230,253,0.50)' }}
+              >
+                Session context
+              </button>
+            )}
             <button
               className="px-4 py-2 text-xs font-medium rounded-full transition-all"
               style={{
@@ -516,12 +547,21 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
           </div>
         </div>
 
-        {/* Content area: conversation + sidebar */}
-        <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Content area: chats sidebar + conversation + session context */}
+        <div className="flex-1 flex overflow-hidden min-h-0 relative">
+          {chatsOpen && (
+            <ConversationHistory
+              activeId={conversationId}
+              refreshKey={savedVersion}
+              disabled={isTyping}
+              onResume={resumeConversation}
+              onNewChat={startNewChat}
+              onClose={() => setChatsOpen(false)}
+            />
+          )}
 
           {/* Conversation */}
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 relative">
-            {historyOpen && <ConversationHistory activeId={conversationId} onResume={resumeConversation} onClose={() => setHistoryOpen(false)} />}
             {resumeError && (
               <div className="px-6 pt-3 text-xs" style={{ color: '#B45309' }}>{resumeError}</div>
             )}
@@ -539,7 +579,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                       className="w-7 h-7 flex items-center justify-center text-xs font-bold text-white mr-3 mt-1 flex-shrink-0"
                       style={{ background: 'linear-gradient(135deg,#0F172A,#334155)', borderRadius: 8 }}
                     >
-                      H
+                      R
                     </div>
                   )}
                   <div className="max-w-[72%] space-y-2 group">
@@ -665,6 +705,11 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
 
             {/* Input */}
             <div className="px-6 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(186,230,253,0.25)' }}>
+              {pendingRefocus && (
+                <div className="mb-2 text-xs" style={{ color: '#0284C7' }}>
+                  Focus switched to {activeContext ? activeContext.name : 'the whole firm'}. Your next message will be answered about it.
+                </div>
+              )}
               {pendingFile && (
                 <div className="flex items-center gap-2 mb-2 text-xs" style={{ color: '#0284C7' }}>
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -726,59 +771,18 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
             </div>
           </div>
 
-          {/* Context sidebar */}
-          <div
-            className="w-72 hidden xl:flex flex-col flex-shrink-0 overflow-y-auto scrollable"
-            style={{ borderLeft: '1px solid rgba(186,230,253,0.30)', padding: '20px 20px' }}
-          >
-            <div className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#64748B' }}>
-              Session Context
-            </div>
-            <div className="space-y-3">
-              <div
-                className="p-3 rounded-xl"
-                style={{ background: 'rgba(255,255,255,0.70)', border: '1px solid rgba(186,230,253,0.35)' }}
-              >
-                <div className="text-xs font-medium mb-1" style={{ color: '#334155' }}>Active Firm</div>
-                <div className="text-sm font-semibold" style={{ color: '#0F172A' }}>{firm?.name || 'Loading…'}</div>
-                <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>
-                  {firm?.hq_location || 'Unknown location'} · {(firm?.jurisdictions ?? []).length} jurisdictions
-                </div>
-              </div>
-              <div
-                className="p-3 rounded-xl"
-                style={{ background: 'rgba(255,255,255,0.70)', border: '1px solid rgba(186,230,253,0.35)' }}
-              >
-                <div className="text-xs font-medium mb-2" style={{ color: '#334155' }}>Active Funds</div>
-                {funds.length === 0 ? (
-                  <div className="text-xs" style={{ color: '#94a3b8' }}>None on file</div>
-                ) : (
-                  funds.map(f => (
-                    <div key={f.id} className="flex items-center gap-2 mb-1">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#0284C7' }} />
-                      <span className="text-xs" style={{ color: '#334155' }}>{f.name}{f.size ? ` · ${f.size}` : ''}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-              <div
-                className="p-3 rounded-xl"
-                style={{ background: 'rgba(255,255,255,0.70)', border: '1px solid rgba(186,230,253,0.35)' }}
-              >
-                <div className="text-xs font-medium mb-2" style={{ color: '#334155' }}>Portfolio Companies</div>
-                {companies.length === 0 ? (
-                  <div className="text-xs" style={{ color: '#94a3b8' }}>None on file</div>
-                ) : (
-                  companies.map(c => (
-                    <div key={c.id} className="flex items-center gap-2 mb-1.5">
-                      <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: '#BAE6FD' }} />
-                      <span className="text-xs" style={{ color: '#334155' }}>{c.name}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          {contextOpen && (
+            <SessionContext
+              firm={firm}
+              funds={funds}
+              companies={companies}
+              focus={activeContext}
+              files={attachedFiles}
+              disabled={isTyping}
+              onFocus={changeFocus}
+              onClose={() => setContextOpen(false)}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -44,6 +44,7 @@ test.describe('RegWay AI chat', () => {
     await ask(page, 'Second question')
     await expect(page.getByText('Answer to: Second question')).toBeVisible()
 
+    await page.getByRole('button', { name: 'Show chats' }).click()
     await page.getByRole('button', { name: 'New chat' }).click()
     await expect(page.getByText('Answer to: First question')).toHaveCount(0)
     await ask(page, 'Third question')
@@ -114,10 +115,10 @@ test.describe('saved conversations', () => {
   test('lists past conversations, most recent first, and says what each is about', async ({ page, backend }) => {
     saved(backend)
     await openCopilot(page)
-    await page.getByRole('button', { name: 'History' }).click()
+    await page.getByRole('button', { name: 'Show chats' }).click()
 
     await expect(page.getByText('Past conversations')).toBeVisible()
-    await expect(page.locator('.truncate')).toHaveText(['Medicare rule for GetixHealth', 'Form PF deadlines'])
+    await expect(page.getByRole('complementary', { name: 'Chats' }).locator('.text-sm')).toHaveText(['Medicare rule for GetixHealth', 'Form PF deadlines'])
     await expect(page.getByText('· about GetixHealth')).toBeVisible()
   })
 
@@ -125,7 +126,7 @@ test.describe('saved conversations', () => {
     saved(backend)
     backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('From January 1.') })
     await openCopilot(page)
-    await page.getByRole('button', { name: 'History' }).click()
+    await page.getByRole('button', { name: 'Show chats' }).click()
     await page.getByRole('button', { name: /Medicare rule for GetixHealth/ }).click()
 
     await expect(page.getByText('What does the Medicare rule change?')).toBeVisible()
@@ -143,7 +144,7 @@ test.describe('saved conversations', () => {
   test('deleting a conversation removes it', async ({ page, backend }) => {
     saved(backend)
     await openCopilot(page)
-    await page.getByRole('button', { name: 'History' }).click()
+    await page.getByRole('button', { name: 'Show chats' }).click()
     const row = page.locator('.group', { hasText: 'Form PF deadlines' })
     await row.hover()
     await row.getByRole('button', { name: 'Delete conversation' }).click()
@@ -155,7 +156,80 @@ test.describe('saved conversations', () => {
 
   test('says so when there are none', async ({ page }) => {
     await openCopilot(page)
-    await page.getByRole('button', { name: 'History' }).click()
+    await page.getByRole('button', { name: 'Show chats' }).click()
     await expect(page.getByText('No saved conversations yet.')).toBeVisible()
   })
 })
+
+test.describe('chat sidebar and session context', () => {
+  const context = (page: Page) => page.getByRole('complementary', { name: 'Session context' })
+
+  test('a new conversation appears in the chats list once its first message is answered', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = ({ conversationId }) => {
+      backend.tables.regway_ai_conversations.push({ id: conversationId, firm_id: FIRM_ID, user_id: USER.id, title: 'Brand new question', context: null, updated_at: new Date().toISOString() })
+      return { sse: aiReply('An answer.') }
+    }
+    await openCopilot(page)
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    await expect(page.getByText('No saved conversations yet.')).toBeVisible()
+    await ask(page, 'Brand new question')
+    await expect(page.getByText('An answer.')).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'Chats' }).getByText('Brand new question')).toBeVisible()
+  })
+
+  test('picking a company before the first message starts the chat focused on it', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('About GetixHealth.') })
+    await openCopilot(page)
+    await context(page).getByRole('button', { name: 'GetixHealth' }).click()
+    await expect(page.getByText('Focused on GetixHealth')).toBeVisible()
+    await expect(page.getByText("Ask me anything about GetixHealth's regulatory exposure")).toBeVisible()
+
+    await ask(page, 'What applies?')
+    await expect(page.getByText('About GetixHealth.')).toBeVisible()
+    const [call] = chatCalls(backend)
+    expect(call.context).toMatchObject({ type: 'company', id: 'co-getix', name: 'GetixHealth' })
+    expect(call.refocus).toBeUndefined()
+  })
+
+  test('switching focus mid-chat sends the switch once, with the next message', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = ({ message }) => ({ sse: aiReply(`Answer to: ${message}`) })
+    await openCopilot(page)
+    await ask(page, 'Firm question')
+    await expect(page.getByText('Answer to: Firm question')).toBeVisible()
+
+    await context(page).getByRole('button', { name: /Harbor Fund II/ }).click()
+    await expect(page.getByText('Focused on Harbor Fund II')).toBeVisible()
+    await expect(page.getByText('Focus switched to Harbor Fund II')).toBeVisible()
+    await ask(page, 'Fund question')
+    await expect(page.getByText('Answer to: Fund question')).toBeVisible()
+    await expect(page.getByText('Focus switched to Harbor Fund II')).toHaveCount(0)
+
+    await context(page).getByRole('button', { name: /Harbor Capital \(whole firm\)/ }).click()
+    await ask(page, 'Back to the firm')
+    await expect(page.getByText('Answer to: Back to the firm')).toBeVisible()
+
+    const [first, second, third] = chatCalls(backend)
+    expect(first.refocus).toBeUndefined()
+    expect(second.refocus).toEqual({ type: 'fund', id: 'fund-2', name: 'Harbor Fund II' })
+    expect(second.conversationId).toBe(first.conversationId)
+    expect(third.refocus).toEqual({ type: 'firm' })
+  })
+
+  test('the session context panel closes and reopens, and lists attached files', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('Read it.') })
+    await openCopilot(page)
+    await expect(context(page).getByText('None attached')).toBeVisible()
+
+    await page.locator('input[type="file"]').setInputFiles({ name: 'memo.txt', mimeType: 'text/plain', buffer: Buffer.from('A short memo.') })
+    await expect(context(page).getByText('memo.txt (not sent yet)')).toBeVisible()
+    await ask(page, 'Summarise')
+    await expect(page.getByText('Read it.')).toBeVisible()
+    await expect(context(page).getByText('memo.txt', { exact: true })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Close session context' }).click()
+    await expect(context(page)).toHaveCount(0)
+    await page.getByRole('button', { name: 'Session context' }).click()
+    await expect(context(page)).toBeVisible()
+  })
+})
+

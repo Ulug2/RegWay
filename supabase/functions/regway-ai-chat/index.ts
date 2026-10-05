@@ -18,7 +18,11 @@
 // within the 5-minute cache window get that portion of input billed at a
 // fraction of normal price instead of re-sent-and-rebilled from scratch.
 //
-//   POST /functions/v1/regway-ai-chat   { "message": "...", "conversationId"?: "<uuid>", "context"?: AiContext, "attachment"?: { "name": string, "mimeType": string, "content": string (text) | "base64Data": string (pdf) } }
+// `refocus` switches what the conversation is about from inside the chat
+// (the whole firm, one fund, one company): the conversation's stored scope
+// is updated and the model is told on that turn.
+//
+//   POST /functions/v1/regway-ai-chat   { "message": "...", "conversationId"?: "<uuid>", "context"?: AiContext, "refocus"?: Refocus, "attachment"?: { "name": string, "mimeType": string, "content": string (text) | "base64Data": string (pdf) } }
 //   Authorization: Bearer <user session access_token>
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
@@ -119,7 +123,7 @@ function contextInstruction(context?: AiContext): string {
     return `\n\nThe user opened this chat directly from the regulation "${context.name}"${details ? ` (${details})` : ''}.${summary} Treat the conversation as being about this regulation unless the user clearly asks about something else — don't make them restate what they're asking about.`
   }
   const label = context.type === 'fund' ? 'fund' : 'portfolio company'
-  return `\n\nThe user opened this chat directly from the ${label} "${context.name}". Treat the conversation as being about this specific ${label} unless the user clearly asks about something else — don't make them restate what they're asking about.`
+  return `\n\nThis conversation is focused on the ${label} "${context.name}" (the user opened the chat from it, or switched to it). Treat the conversation as being about this specific ${label} unless the user clearly asks about something else — don't make them restate what they're asking about.`
 }
 
 // The firm's matched developments, and how to use them. Placed in the
@@ -147,6 +151,22 @@ interface HistoryTurn {
   role: 'user' | 'assistant'
   content: string
 }
+
+type Refocus = { type: 'firm' } | { type: 'fund' | 'company'; id: string }
+
+// The scope a refocus names, read through the caller's own client so it can
+// only be one of their firm's funds or companies (the stored name, not the
+// client's). Undefined = the whole firm; null = not found.
+async function resolveRefocus(supabase: SupabaseClient, firmId: string, refocus: Refocus): Promise<AiContext | undefined | null> {
+  if (refocus.type === 'firm') return undefined
+  if (refocus.type !== 'fund' && refocus.type !== 'company') return null
+  const table = refocus.type === 'fund' ? 'funds' : 'portfolio_companies'
+  const { data } = await supabase.from(table).select('id, name').eq('id', refocus.id).eq('firm_id', firmId).maybeSingle()
+  return data ? { type: refocus.type, id: data.id as string, name: data.name as string } : null
+}
+
+const refocusNote = (context: AiContext | undefined) =>
+  `[The user has switched this conversation's focus to ${context ? `the ${context.type === 'fund' ? 'fund' : 'portfolio company'} "${context.name}"` : 'the whole firm'}. Earlier turns may be about something else; answer about the new focus from here on.]\n\n`
 
 // This user's conversation, created on its first message. Null when the id
 // is someone else's: RLS hides it from the read, and the insert can't take
@@ -203,7 +223,7 @@ Deno.serve(async (req) => {
   if (preflight) return preflight
 
   try {
-    const body = (await req.json()) as { message?: string; attachment?: Attachment; context?: AiContext; conversationId?: string }
+    const body = (await req.json()) as { message?: string; attachment?: Attachment; context?: AiContext; conversationId?: string; refocus?: Refocus }
     const { message, attachment, conversationId } = body
     // When the question was asked: saved with it, so it sorts before its
     // answer (a single insert would give both rows the same created_at).
@@ -261,6 +281,19 @@ Deno.serve(async (req) => {
       history = await loadHistory(supabase, conversationId)
     }
 
+    let focusNote = ''
+    if (body.refocus) {
+      const next = await resolveRefocus(supabase, membership.firm_id, body.refocus)
+      if (next === null) {
+        if (startedConversation) await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
+        return json({ error: 'That fund or company was not found' }, 404)
+      }
+      context = next
+      if (conversationId) await supabase.from('regway_ai_conversations').update({ context: next ?? null }).eq('id', conversationId)
+      // Only worth saying once there's an earlier thread to set aside.
+      if (history.length) focusNote = refocusNote(next)
+    }
+
     // What RegWay has already matched, narrowed to whatever the chat was
     // opened from (a fund, a company, one regulation), else firm-wide.
     const scope: MatchScope = context ? { type: context.type, id: context.id } : { type: 'firm' }
@@ -291,7 +324,7 @@ Use web search to ground every regulatory claim in a real, current source. Alway
     if (attachment?.base64Data) {
       userContent.push({ type: 'document', source: { type: 'base64', media_type: attachment.mimeType || 'application/pdf', data: attachment.base64Data } })
     }
-    const textWithAttachment = attachment?.content ? `${message}\n\n--- Attached file: ${attachment.name} ---\n${attachment.content}` : message
+    const textWithAttachment = focusNote + (attachment?.content ? `${message}\n\n--- Attached file: ${attachment.name} ---\n${attachment.content}` : message)
     userContent.push({ type: 'text', text: textWithAttachment })
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {

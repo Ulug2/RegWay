@@ -18,6 +18,8 @@ interface State {
   companies?: unknown[]
   holdings?: unknown[]
   firmProfile?: Record<string, unknown>
+  // What a refocus lookup finds among the caller's own funds / companies.
+  refocusTarget?: { id: string; name: string } | null
 }
 
 function database(state: State): Resolver {
@@ -30,6 +32,7 @@ function database(state: State): Resolver {
     }
     // The function reads newest first.
     if (q.table === 'regway_ai_messages' && q.op === 'select') return { data: [...(state.history ?? [])].reverse() }
+    if ((q.table === 'funds' || q.table === 'portfolio_companies') && q.columns === 'id, name') return { data: state.refocusTarget ?? null }
     if (q.table === 'funds') return { data: state.funds ?? [{ id: 'fund-1', name: 'Fund I', size: '$1B', structure: 'Delaware LP', jurisdictions: ['United States'], profile: {} }] }
     if (q.table === 'portfolio_companies') return { data: state.companies ?? [{ id: 'co-1', name: 'GetixHealth', hq_location: 'Houston, Texas', sectors: ['Healthcare'], regions: ['United States'], offerings: null, profile: {} }] }
     if (q.table === 'fund_holdings') return { data: state.holdings ?? [] }
@@ -185,7 +188,7 @@ describe('regway-ai-chat', () => {
     expect(hasFilter(query, 'eq', 'portfolio_company_id', 'co-1')).toBe(true)
     expect(hasFilter(query, 'is', 'dismissed_at', null)).toBe(true)
     expect(hasFilter(query, 'not', 'relevance_reason', 'like', 'NOT_RELEVANT:%')).toBe(true)
-    expect(forCompany.system).toContain('opened this chat directly from the portfolio company "GetixHealth"')
+    expect(forCompany.system).toContain('This conversation is focused on the portfolio company "GetixHealth"')
 
     const forFund = await chat({}, { message: 'x', context: { type: 'fund', id: 'fund-1', name: 'Fund I' } })
     expect(hasFilter(forFund.db.ran('regulation_relevance')[0], 'eq', 'fund_id', 'fund-1')).toBe(true)
@@ -266,7 +269,7 @@ describe('regway-ai-chat', () => {
     const saved = { type: 'fund', id: 'fund-1', name: 'Fund I' }
     const { db, system } = await chat({ conversation: { context: saved } }, { message: 'And now?', conversationId: CONVERSATION, context: { type: 'company', id: 'co-9', name: 'Other' } })
     expect(hasFilter(db.ran('regulation_relevance')[0], 'eq', 'fund_id', 'fund-1')).toBe(true)
-    expect(system).toContain('from the fund "Fund I"')
+    expect(system).toContain('focused on the fund "Fund I"')
     expect(system).not.toContain('Other')
   })
 
@@ -307,3 +310,41 @@ describe('regway-ai-chat', () => {
     expect(db.ran('regway_ai_conversations', 'delete')).toEqual([])
   })
 })
+
+describe('switching the focus mid-conversation', () => {
+  const earlier = [
+    { role: 'user' as const, content: 'What applies to the firm?' },
+    { role: 'assistant' as const, content: 'Form PF.' },
+  ]
+
+  it('saves the new focus on the conversation, scopes the prompt to it and tells the model on that turn', async () => {
+    const { db, request, system } = await chat(
+      { conversation: { context: null }, history: earlier, refocusTarget: { id: 'co-1', name: 'GetixHealth' } },
+      { message: 'And for this company?', conversationId: CONVERSATION, refocus: { type: 'company', id: 'co-1' } },
+    )
+    const update = db.ran('regway_ai_conversations', 'update').find(u => (u.payload as { context?: unknown }).context !== undefined)
+    expect(update!.payload).toEqual({ context: { type: 'company', id: 'co-1', name: 'GetixHealth' } })
+    expect(system).toContain('This conversation is focused on the portfolio company "GetixHealth"')
+    expect(hasFilter(db.ran('regulation_relevance', 'select')[0], 'eq', 'portfolio_company_id', 'co-1')).toBe(true)
+    const turn = request.messages[request.messages.length - 1].content.find((b: { type: string }) => b.type === 'text').text
+    expect(turn).toMatch(/^\[The user has switched this conversation's focus to the portfolio company "GetixHealth"/)
+    expect(turn).toContain('And for this company?')
+  })
+
+  it('back to the whole firm clears the stored focus', async () => {
+    const { db, system } = await chat(
+      { conversation: { context: { type: 'company', id: 'co-1', name: 'GetixHealth' } }, history: earlier },
+      { message: 'Now the whole firm', conversationId: CONVERSATION, refocus: { type: 'firm' } },
+    )
+    const update = db.ran('regway_ai_conversations', 'update').find(u => (u.payload as { context?: unknown }).context !== undefined)
+    expect(update!.payload).toEqual({ context: null })
+    expect(system).not.toContain('This conversation is focused on')
+  })
+
+  it("refuses a fund or company that isn't the caller's, before any AI call", async () => {
+    const { res, calls } = await chat({ conversation: { context: null }, refocusTarget: null }, { message: 'x', conversationId: CONVERSATION, refocus: { type: 'fund', id: 'someone-elses' } })
+    expect(res.status).toBe(404)
+    expect(calls).toEqual([])
+  })
+})
+
