@@ -39,3 +39,16 @@ the ≈ $0.30 Haiku accuracy test.)
 - 13 of 14 stored regulatory matches did not reproduce on a fresh Sonnet
   run, against ~2/40 run-to-run noise. Not resolved: batch context or a
   profile edit since. Not switched; decisions left to the owner.
+
+## Follow-up after the credit top-up (2026-10-05)
+
+> I topped it up
+
+- Temperature 0 on every verdict call; the regulatory re-check now uses the
+  matcher's prompt (it had lacked the rules against speculative links and
+  administrative notices).
+- H.I.G.'s 14 stored matches re-checked: 7 removed in total, 7 kept
+  ($1.21 + $0.84; most of it the analyses rewritten for kept items).
+- Same 40 items at temperature 0 ($0.19): regulatory Haiku = Sonnet on
+  40/40; geopolitical 36/40, Haiku over-linking OFAC person designations
+  by country. Switched the regulatory judge only.

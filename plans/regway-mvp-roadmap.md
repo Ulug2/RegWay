@@ -232,18 +232,22 @@ re-check **$0.01**. Levers, biggest first (2026-10-04 review):
      such as technical corrections), so a re-check kept matches the matcher
      rejects; it now uses the matcher's prompt (`judgeRegulations`) with
      the user's note appended. Tests cover both.
-   - **H.I.G.'s 14 stored matches:** re-checked once *before* the prompts
-     were unified: 3 removed (crypto, Rule 14a-8, Florida air plan), 11
-     kept, $1.21 (each kept item rewrites its analysis, ≈ $0.10, which the
-     $0.14 estimate left out). The second pass on the unified prompt failed
-     on every call: **the Anthropic credit ran out**, nothing was written.
-     To finish after a top-up: re-check the 11 (≈ $0.10 + ≈ $0.10 per item
-     kept); backup of the original 14 rows was taken locally.
-   - **Switch to Haiku: not done.** Re-test at temperature 0 first
-     (≈ $0.10), then switch the regulatory and geopolitical matchers only;
-     enforcement was not tested.
-   - Sonnet 5.5 ($2/$10) would need the forced `tool_choice` moved to
-     `auto` + `strict: true` first; not tested.
+   - **H.I.G.'s 14 stored matches — done.** First pass (old re-check
+     prompt): 3 removed, $1.21 (each kept item rewrites its analysis,
+     ≈ $0.10, which the $0.14 estimate left out). Credit ran out on the
+     second pass; after the top-up the 11 still kept were re-checked on the
+     unified prompt: 4 more removed (Medicare IRF, IPF, SNF and hospice
+     corrections), 7 kept (Form PF, BOI revision, Subpart F, GLOBE, IPPS
+     correction, Part D RFI, Medicaid/CHIP rule), $0.84. A single-item
+     re-check is still a little more generous than the batch matcher.
+   - **Regulatory matcher switched to Haiku 4.5 (2026-10-05).** Re-test at
+     temperature 0 on the same 40 items: regulatory 40/40 agreement with
+     Sonnet; geopolitical 36/40, Haiku adding three links the prompt
+     forbids (an OFAC designation of persons in Italy "could affect" A.L.A.)
+     and missing the aircraft-import match. So `judgeRegulations` (matcher
+     and regulatory re-check) runs on Haiku; the geopolitical judge,
+     enforcement matcher, analyses, chat and scans stay on Sonnet 4.5.
+     Verified live: a re-check on Haiku costs $0.002.
 4. **Message Batches API (50% off)** for work nobody is waiting on:
    `run-matching` and any background analyses. Results arrive within
    minutes to hours, fine for a 30-minute schedule.

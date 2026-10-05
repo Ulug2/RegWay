@@ -55,6 +55,12 @@ describe.each(['match-relevance', 'match-enforcement-relevance'])('%s', name => 
     expect(model[0].body.temperature).toBe(0)
   })
 
+  it('uses the model chosen for this matcher', async () => {
+    const { model } = await run(name, { candidates: three }, [])
+    // Regulatory moved to Haiku after the 2026-10-05 comparison; enforcement was not compared.
+    expect(model[0].body.model).toBe(name === 'match-relevance' ? 'claude-haiku-4-5' : 'claude-sonnet-4-5')
+  })
+
   it('makes no AI call, and uses none of the rate limit, when nothing is new', async () => {
     const { model, db, res } = await run(name, { candidates: three, evaluated: ['reg-a', 'reg-b', 'reg-c'] }, [], asUser(name))
     expect(await res.json()).toEqual({ evaluated: 0, relevant: 0 })

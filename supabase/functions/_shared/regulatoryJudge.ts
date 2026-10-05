@@ -8,7 +8,11 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4
 import { describe, type FirmEntities, type Verdict } from './relevance.ts'
 import { recordUsage } from './usage.ts'
 
-export const REGULATORY_MODEL = 'claude-sonnet-4-5'
+// Haiku 4.5 (a third of Sonnet 4.5's price): on 40 already-judged H.I.G.
+// items at temperature 0 it gave the same verdict as Sonnet on all 40
+// (2026-10-05, roadmap item 6.3). The geopolitical judge stays on Sonnet:
+// there Haiku linked sanctions on persons in a country to any company there.
+export const REGULATORY_MODEL = 'claude-haiku-4-5'
 
 export interface RegulatoryCandidate {
   id: string
