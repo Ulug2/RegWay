@@ -55,6 +55,22 @@ test.describe('RegWay AI chat', () => {
     expect(third.conversationId).not.toBe(first.conversationId)
   })
 
+  test('keeps the suggested questions after the first message, and they send', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = ({ message }) => ({ sse: aiReply(`Answer to: ${message}`) })
+    await openCopilot(page)
+
+    await ask(page, 'First question')
+    await expect(page.getByText('Answer to: First question')).toBeVisible()
+    const suggestion = page.getByRole('button', { name: "Summarize today's regulatory changes" })
+    await expect(suggestion).toBeEnabled()
+    await suggestion.click()
+    await expect(page.getByText("Answer to: Summarize today's regulatory changes")).toBeVisible()
+
+    const [first, second] = chatCalls(backend)
+    expect(second.message).toBe("Summarize today's regulatory changes")
+    expect(second.conversationId).toBe(first.conversationId)
+  })
+
   test('opens already focused on the company whose page is showing', async ({ page, backend }) => {
     backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('The Medicare payment update.') })
     await signIn(page)

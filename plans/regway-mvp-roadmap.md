@@ -122,6 +122,8 @@ save / resume with multi-turn memory ($0.011), and on H.I.G. on 2026-10-04
 verdicts, $0.15), analyses for the 8 new matches (after fixing the cut-off
 below) plus the 2 re-written by re-checks (10 × avg $0.077 = $0.77), and
 the geopolitical and the regulatory re-check (rows replaced, $0.017).
+On 2026-10-05 the owner ran, as the H.I.G. user: the copilot opened from
+GetixHealth's page (answered from its matched rules) and a PDF upload.
 
 Still owed. These need the H.I.G. user signed in in the app (the functions
 take a user session; testing them by signing in as that user from a script
@@ -129,23 +131,20 @@ was refused, rightly):
 
 | What | How to test (as the H.I.G. user) | Est. cost |
 |---|---|---|
-| Company scan storing a real `why_it_applies` | Edit a company's profile and save (triggers a re-scan), then read "Why it's here" on its new items | $0.20–0.70 |
-| Copilot opened from a fund / company page (scoped matches) | Open RegWay AI from GetixHealth's page, ask "what's relevant to this company right now?" | $0.02–0.14 |
-| Copilot file upload (.txt/.md/.pdf) (item 1) | Attach a short PDF and ask about it | $0.05–0.15 |
+| Company scan storing a real `why_it_applies` | Change a company's HQ, sectors or regions and save (other fields don't re-scan), then read "Why it's here" on its new items | $0.20–0.70 |
 | Analysis of a not-yet-published document | Only when a pre-publication item is matched to H.I.G. (none today: the 4 scheduled for 10-05 were judged not relevant) | $0.06–0.22 |
 | Fund rows derived from holdings, on H.I.G. | Record which H.I.G. fund holds each company (company cards); not set yet, so no fund-level derived matches exist | $0.06–0.40 (re-written analyses) |
 | Haiku vs Sonnet verdict accuracy (item 6.3) | Same ~40 items through both models, per matcher (script) | ≈ $0.30 |
-| **Total** | | **≈ $0.70–1.90** |
+| **Total** | | **≈ $0.60–1.60** |
 
-### 1. RegWay AI overhaul — remaining verification (S)
-No code: two checks by hand.
-The build itself is done (see Completed). Two things flagged but not yet
-confirmed:
-- The file-upload path (`.txt`/`.md` inlined, `.pdf` as a native document
-  block) hasn't been exercised with a real user-provided file.
-- Whether the drawer expanding to a full-page view on first message (with
-  the suggestion chips disappearing) is the right call — flagged earlier as
-  a judgment call on an ambiguous request, still unconfirmed either way.
+### 1. RegWay AI overhaul — remaining verification — done
+Both checks settled 2026-10-05:
+- File upload verified live by the owner on H.I.G. with a PDF (a page of
+  notes, summarised correctly); `.txt`/`.md` go through the simpler inline
+  path, covered by the unit tests.
+- Full-page view on the first message: **kept** (owner's call), but the
+  suggested questions now stay under the conversation instead of
+  disappearing, disabled while a reply is streaming. Browser test added.
 
 ### 2. Move the RegWay AI input so it's always in reach — done
 See Completed, "Roadmap items 2–5".
