@@ -5,10 +5,10 @@ into `main`; production (Supabase project
 `cfspwaqtidfliupmlfwz`) matches it: migrations 0024–0029 applied, every
 edge function deployed.
 
-**Not yet deployed:** commit `69ce235` changed `_shared/holdings.ts` (wording
-of fund reasons only), so `match-geopolitical-relevance` and
-`rematch-regulation` need a redeploy, and the frontend fixes in the same
-commit need a frontend deploy.
+**Frontend not yet redeployed:** the fixes and features since commit
+`69ce235` (sticky AI input, password flows, chat limits, markdown link fix,
+dismiss fix) go live with the next frontend deploy. Edge functions are
+current as of commit `a2eb75e`.
 
 ## Setting up on a new machine
 
