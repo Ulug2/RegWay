@@ -141,9 +141,10 @@ Both checks settled 2026-10-05:
 - File upload verified live by the owner on H.I.G. with a PDF (a page of
   notes, summarised correctly); `.txt`/`.md` go through the simpler inline
   path, covered by the unit tests.
-- Full-page view on the first message: **kept** (owner's call), but the
-  suggested questions now stay under the conversation instead of
-  disappearing, disabled while a reply is streaming. Browser test added.
+- Full-page view on the first message, with the suggested questions
+  removed once the first message is sent: **kept as built** (owner's call;
+  briefly changed to keep the suggestions, then reverted). Browser test
+  covers it.
 
 ### 2. Move the RegWay AI input so it's always in reach — done
 See Completed, "Roadmap items 2–5".
