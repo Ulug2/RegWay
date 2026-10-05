@@ -14,8 +14,9 @@
 //
 // Only firms listed in `scheduled_matching_firms` are matched (migration
 // 0029): each run costs AI money per firm, so test and dormant accounts are
-// left out. Enrolling a firm counts as work, so its backlog starts clearing
-// on the next run.
+// left out. Enrolling a firm, or a re-check after one of its profile edits
+// (migration 0030), counts as work, so the backlog clears over the next
+// runs.
 //
 // Every run that does work is recorded in `sync_runs` (source `matching`)
 // with stats; a failing run (e.g. the AI provider refusing calls) shows in
@@ -53,8 +54,9 @@ interface RunStats {
   errors: string[]
 }
 
-// Nothing to do when no development arrived and no firm was enrolled since
-// the last recorded run, and that run cleared its backlog.
+// Nothing to do when no development arrived since the last recorded run, no
+// firm was enrolled or asked for a re-check since (`requested_at`, set on
+// enrolment and after a profile edit), and that run cleared its backlog.
 async function hasWork(admin: SupabaseClient): Promise<boolean> {
   const { data: last } = await admin
     .from('sync_runs')
@@ -68,7 +70,7 @@ async function hasWork(admin: SupabaseClient): Promise<boolean> {
   const since = last.ran_at as string
   const [regs, firms] = await Promise.all([
     admin.from('regulations').select('id', { count: 'exact', head: true }).gt('created_at', since),
-    admin.from('scheduled_matching_firms').select('firm_id', { count: 'exact', head: true }).gt('enabled_at', since),
+    admin.from('scheduled_matching_firms').select('firm_id', { count: 'exact', head: true }).gt('requested_at', since),
   ])
   return (regs.count ?? 0) > 0 || (firms.count ?? 0) > 0
 }

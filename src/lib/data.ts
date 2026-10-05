@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
 import { toRow, type Answers } from './questionnaire'
+import { firmLocationChanged, matchingFactsChanged } from './matchingFacts'
 import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
@@ -228,6 +229,17 @@ export async function matchGeopoliticalDevelopments(opts: { reevaluate?: boolean
   return result.relevant ?? 0
 }
 
+// Re-discovery after a profile edit (roadmap item 11): the matchers judged
+// recent items against the old facts, so the ones they rejected are judged
+// again (first batch now, the rest on the next scheduled runs for enrolled
+// firms). Fire-and-forget, like refreshEntityImpacts. Only called when a
+// fact the matchers read changed (lib/matchingFacts.ts).
+function rediscoverMatches(opts: { geopolitical?: boolean } = {}): void {
+  callFunction('match-relevance', { reevaluate: true }).catch(() => {})
+  callFunction('match-enforcement-relevance', { reevaluate: true }).catch(() => {})
+  if (opts.geopolitical) matchGeopoliticalDevelopments({ reevaluate: true }).catch(() => {})
+}
+
 // Company profile answers that feed the geopolitical footprint (HQ is
 // compared via the derived `hq_location` column instead).
 const LOCATION_FIELDS = ['supplier_locations', 'facility_locations', 'operating_locations', 'foreign_countries'] as const
@@ -237,22 +249,29 @@ const LOCATION_FIELDS = ['supplier_locations', 'facility_locations', 'operating_
 const recorded = (v: unknown) => (v == null || v === '' || (Array.isArray(v) && v.length === 0) ? null : v)
 
 export async function saveFirmAnswers(firmId: string, answers: Answers): Promise<void> {
+  const before = getCachedFirm()
   const row = toRow('firm', answers)
   const { error } = await supabase.from('firms').update(row).eq('id', firmId)
   if (error) throw error
   patchCache<Firm>('firm', prev => ({ ...prev, ...row }) as Firm)
   refreshEntityImpacts('firm')
+  if (matchingFactsChanged('firm', before, row)) rediscoverMatches({ geopolitical: firmLocationChanged(before, row) })
 }
 
 export async function addFund(firmId: string, answers: Answers): Promise<void> {
   const { error } = await supabase.from('funds').insert({ ...toRow('fund', answers), firm_id: firmId })
   if (error) throw error
+  // A new fund: items rejected before it existed may concern it.
+  rediscoverMatches()
 }
 
 export async function saveFundAnswers(fundId: string, answers: Answers): Promise<void> {
-  const { error } = await supabase.from('funds').update(toRow('fund', answers)).eq('id', fundId)
+  const before = getCachedFunds()?.find(f => f.id === fundId)
+  const row = toRow('fund', answers)
+  const { error } = await supabase.from('funds').update(row).eq('id', fundId)
   if (error) throw error
   refreshEntityImpacts('fund', fundId)
+  if (matchingFactsChanged('fund', before, row)) rediscoverMatches()
 }
 
 export async function removeFund(fundId: string): Promise<void> {
@@ -327,7 +346,10 @@ export async function saveCompanyAnswers(firmId: string, previous: PortfolioComp
   const locationChanged =
     !same(previous.hq_location, row.hq_location) ||
     LOCATION_FIELDS.some(f => !same(recorded(previous.profile?.[f]), recorded(answers[f])))
-  if (locationChanged) matchGeopoliticalDevelopments({ reevaluate: true }).catch(() => {})
+  // The firm-wide matchers read each company's sectors, regions and what
+  // it does too (match-relevance's company lines).
+  if (matchingFactsChanged('company', previous, row)) rediscoverMatches({ geopolitical: locationChanged })
+  else if (locationChanged) matchGeopoliticalDevelopments({ reevaluate: true }).catch(() => {})
 }
 
 export async function removePortfolioCompany(companyId: string): Promise<void> {

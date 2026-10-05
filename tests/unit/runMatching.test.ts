@@ -36,8 +36,9 @@ describe('run-matching', () => {
     expect(calls).toEqual([])
     expect(background).toEqual([])
     expect(db.ran('sync_runs', 'insert')).toEqual([])
-    // "New" means created after the last run.
+    // "New" means created after the last run; a re-check request after it too.
     expect(hasFilter(db.ran('regulations')[0], 'gt', 'created_at', '2026-10-04T21:40:00Z')).toBe(true)
+    expect(hasFilter(db.ran('scheduled_matching_firms')[0], 'gt', 'requested_at', '2026-10-04T21:40:00Z')).toBe(true)
   })
 
   it.each([
@@ -45,7 +46,7 @@ describe('run-matching', () => {
     ['the last run left a backlog', { last: lastRun({ backlog: true }) }],
     ['the last run failed', { last: lastRun({ backlog: false }, false) }],
     ['a development arrived since', { last: lastRun({ backlog: false }), newRegulations: 3 }],
-    ['a firm was enrolled since', { last: lastRun({ backlog: false }), newFirms: 1 }],
+    ['a firm was enrolled, or asked for a re-check after a profile edit, since', { last: lastRun({ backlog: false }), newFirms: 1 }],
   ])('runs when %s', async (_, state) => {
     setClient(fakeClient(database({ ...state, firms: ['hig'] })))
     const { handler, background } = await loadHandler('run-matching')

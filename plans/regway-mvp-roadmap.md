@@ -282,26 +282,8 @@ See Completed, "Fund and company pages; day-by-day lists".
 ### 10. Landing page: sign-in / sign-up in place, scroll animations — done
 See Completed, "Landing page: sign-in in place, scroll reveals".
 
-### 11. Re-match discovery after settings edits (M)
-The match-correction loop (see Completed) covers *re-checking and
-refreshing the explanation* for regulations already matched to an entity.
-It deliberately does not cover the other half: *discovering new matches*
-after a firm/fund profile edit. Today `match-relevance` only evaluates
-regulations with no existing relevance row for a firm (including
-"not relevant" marker rows), so editing a firm's jurisdictions or adding a
-fund doesn't cause previously-rejected regulations to be re-considered —
-the firm/fund dashboard tabs can go stale until the next full match run.
-(Portfolio-company edits are handled differently and already work: changing
-HQ, sectors or regions clears that company's cached scan so it re-runs via
-a fresh on-demand web search on next click — see `saveCompanyAnswers`.)
-Building this safely for firm/fund needs more thought than it first
-appears: naively clearing a firm's relevance rows and re-running
-`match-relevance` would re-evaluate the *entire* historical regulations
-backlog against the firm (potentially thousands of items), not just what
-the edit actually affects — a real cost/scale risk, which is why this
-wasn't done opportunistically alongside the match-correction loop. Likely
-superseded by "Live regulation monitoring" (item 12) once that exists, since
-an event-driven pipeline removes the need for a special re-discovery path.
+### 11. Re-match discovery after settings edits — done (live run pending the owner's OK)
+See Completed, "Re-discovery after profile edits".
 
 ### 12. Live regulation monitoring (near-real-time, US + global) (M–L)
 **Phase 1a done (2026-10-04)** — see Completed, "Live monitoring, Phase
@@ -561,6 +543,40 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Re-discovery after profile edits (2026-10-05)
+Roadmap item 11. Notes: `prompts/rediscovery-after-edits.md`.
+- **Gap:** the regulatory and enforcement matchers never looked again at
+  an item once they had rejected it, so editing the firm (strategy,
+  adviser registration, jurisdictions…), a fund, or what a company does,
+  or adding a fund, never brought in matches the new facts justify. Only
+  company location edits (geopolitical) and company HQ / sector / region
+  edits (re-scan) were handled.
+- **Now:** a save that changes a fact the matchers read
+  (`lib/matchingFacts.ts`, the stored row normalised through the
+  questionnaire first so an older row doesn't read as changed) calls
+  `match-relevance` and `match-enforcement-relevance` with
+  `reevaluate: true`; a firm location change also re-checks geopolitical.
+  Adding a fund always does. Edits to anything else (website, headcount…)
+  cost nothing.
+- **Bounded:** each matcher forgets only its own rejections on its
+  candidate window (newest 200; `forgetRejections` in `_shared/relevance.ts`),
+  never matches or dismissals, judges the first batch at once, and sets
+  `scheduled_matching_firms.requested_at` (migration 0030) so run-matching
+  clears the rest over the next runs (enrolled firms; others get the first
+  batch).
+- **Cost on H.I.G. today** (193 regulatory and 46 enforcement rejections in
+  the windows; 123 geopolitical): ≈ $0.25 per matching-fact edit (Haiku
+  regulatory ≈ $0.14, enforcement ≈ $0.12), ≈ $0.55 when the firm's
+  location changes too, plus ≈ $0.10 per new match's analysis. Spread over
+  about 5 scheduled runs (≈ 2.5 h).
+- Tests: 6 unit (`matchingFacts.test.ts`), 2 per matcher (forgets only
+  rejections in its window and requests a scheduled re-check; an ordinary
+  run forgets nothing), run-matching watches `requested_at`; 2 browser
+  (`rediscovery.spec.ts`: a strategy edit re-checks, a website edit
+  doesn't).
+- **Not run live yet:** it deletes and re-judges H.I.G.'s rejection markers
+  (production data), so it waits for the owner's OK.
 
 ### Landing page: sign-in in place, scroll reveals (2026-10-05)
 Roadmap item 10. Notes: `prompts/landing-page-motion.md`.

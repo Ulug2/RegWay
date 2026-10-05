@@ -20,7 +20,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { generateImpacts } from '../_shared/impact.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
-import { resolveFirmContext, loadFirmEntities, checkRateLimit, buildRelevanceRows, upsertRelevanceRows } from '../_shared/relevance.ts'
+import { resolveFirmContext, loadFirmEntities, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, forgetRejections, requestScheduledRematch } from '../_shared/relevance.ts'
 import { judgeRegulations } from '../_shared/regulatoryJudge.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
@@ -34,6 +34,8 @@ Deno.serve(async (req) => {
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
+    // `{ reevaluate: true }`: re-check recent rejections after a profile edit.
+    const body = await req.clone().json().catch(() => ({}))
     const ctx = await resolveFirmContext(req, admin)
     if (ctx instanceof Response) return ctx
     const { firmId, rateLimitClient } = ctx
@@ -55,6 +57,14 @@ Deno.serve(async (req) => {
       .limit(200)
 
     if (!candidates || candidates.length === 0) return json({ evaluated: 0, relevant: 0 })
+
+    // After an edit to a fact this matcher uses: judge the recent items it
+    // had rejected again (this window only), first batch now, the rest on
+    // the next scheduled runs.
+    if (body?.reevaluate === true) {
+      await forgetRejections(admin, firmId, candidates.map(c => c.id))
+      await requestScheduledRematch(admin, firmId)
+    }
 
     const { data: alreadyEvaluated } = await admin
       .from('regulation_relevance')

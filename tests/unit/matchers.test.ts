@@ -61,6 +61,24 @@ describe.each(['match-relevance', 'match-enforcement-relevance'])('%s', name => 
     expect(model[0].body.model).toBe(name === 'match-relevance' ? 'claude-haiku-4-5' : 'claude-sonnet-4-5')
   })
 
+  it('after a profile edit, forgets its rejections on the items it looks at (never matches or dismissals) and asks scheduled matching to continue', async () => {
+    const reevaluate = post(name, { token: SERVICE_KEY, body: { firmId: FIRM_ID, reevaluate: true } })
+    const { db } = await run(name, { candidates: three, evaluated: ['reg-a'] }, [], reevaluate)
+    const [forget] = db.ran('regulation_relevance', 'delete')
+    expect(hasFilter(forget, 'eq', 'firm_id', FIRM_ID)).toBe(true)
+    expect(hasFilter(forget, 'in', 'regulation_id', ['reg-a', 'reg-b', 'reg-c'])).toBe(true)
+    expect(hasFilter(forget, 'like', 'relevance_reason', 'NOT_RELEVANT:%')).toBe(true)
+    expect(hasFilter(forget, 'is', 'dismissed_at', null)).toBe(true)
+    const [request] = db.ran('scheduled_matching_firms', 'update')
+    expect(hasFilter(request, 'eq', 'firm_id', FIRM_ID)).toBe(true)
+  })
+
+  it('forgets nothing on an ordinary run', async () => {
+    const { db } = await run(name, { candidates: three, evaluated: ['reg-a'] }, [])
+    expect(db.ran('regulation_relevance', 'delete')).toEqual([])
+    expect(db.ran('scheduled_matching_firms', 'update')).toEqual([])
+  })
+
   it('makes no AI call, and uses none of the rate limit, when nothing is new', async () => {
     const { model, db, res } = await run(name, { candidates: three, evaluated: ['reg-a', 'reg-b', 'reg-c'] }, [], asUser(name))
     expect(await res.json()).toEqual({ evaluated: 0, relevant: 0 })

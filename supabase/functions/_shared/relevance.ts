@@ -206,3 +206,37 @@ export async function replaceRegulationVerdicts(admin: SupabaseClient, firmId: s
   }
   await upsertRelevanceRows(admin, fresh)
 }
+
+// Re-discovery after a profile edit (roadmap item 11): forgets this firm's
+// "not relevant" verdicts on the given regulations, so the matcher judges
+// them again against the edited facts. Only rejections: matches stay, and
+// so do the user's dismissals. Callers pass the matcher's own candidate
+// window (newest items), which bounds what a re-check can cost. Returns
+// how many verdicts were forgotten.
+const FORGET_CHUNK = 100
+
+export async function forgetRejections(admin: SupabaseClient, firmId: string, regulationIds: string[]): Promise<number> {
+  let forgotten = 0
+  // Chunked: the ids travel in the query string.
+  for (let i = 0; i < regulationIds.length; i += FORGET_CHUNK) {
+    const { data, error } = await admin
+      .from('regulation_relevance')
+      .delete()
+      .eq('firm_id', firmId)
+      .in('regulation_id', regulationIds.slice(i, i + FORGET_CHUNK))
+      .like('relevance_reason', 'NOT_RELEVANT:%')
+      .is('dismissed_at', null)
+      .select('id')
+    if (error) throw error
+    forgotten += data?.length ?? 0
+  }
+  return forgotten
+}
+
+// Tells run-matching this firm has a re-check under way, so scheduled runs
+// keep going until it's done (each call judges one batch). A no-op for a
+// firm not enrolled in scheduled matching.
+export async function requestScheduledRematch(admin: SupabaseClient, firmId: string): Promise<void> {
+  const { error } = await admin.from('scheduled_matching_firms').update({ requested_at: new Date().toISOString() }).eq('firm_id', firmId)
+  if (error) throw error
+}

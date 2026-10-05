@@ -41,7 +41,7 @@ import { handleOptions, json } from '../_shared/cors.ts'
 import { companyFootprint, firmFootprint, foreignCountries, hasForeignExposure, type EntityFootprint } from '../_shared/footprint.ts'
 import { CANDIDATE_COLUMNS, judgeGeopolitical, type Candidate } from '../_shared/geopoliticalJudge.ts'
 import { syncHoldingsRollup } from '../_shared/holdings.ts'
-import { buildRelevanceRows, checkRateLimit, loadFirmEntities, resolveFirmContext, upsertRelevanceRows, type CompanyRow, type FirmRow, type FundRow } from '../_shared/relevance.ts'
+import { buildRelevanceRows, checkRateLimit, loadFirmEntities, requestScheduledRematch, resolveFirmContext, upsertRelevanceRows, type CompanyRow, type FirmRow, type FundRow } from '../_shared/relevance.ts'
 
 const FUNCTION_NAME = 'match-geopolitical-relevance'
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
@@ -155,7 +155,11 @@ Deno.serve(async req => {
     const { firm, funds, companies } = await loadFirmEntities(admin, firmId)
     if (!firm) return json({ error: 'Firm not found' }, 404)
 
-    if (body?.reevaluate === true) await forgetRejections(admin, firmId)
+    if (body?.reevaluate === true) {
+      await forgetRejections(admin, firmId)
+      // More than one batch may now be waiting: scheduled runs continue it.
+      await requestScheduledRematch(admin, firmId)
+    }
 
     const result = await evaluateNew(admin, firmId, { firm, funds, companies }, rateLimitClient)
 
