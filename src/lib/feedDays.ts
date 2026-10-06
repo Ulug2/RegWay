@@ -41,7 +41,8 @@ export const resolveDay = (selection: DaySelection, today: string): string | nul
 export function dayLabel(day: string, today: string): string {
   if (day === today) return 'Today'
   if (day === shiftDay(today, -1)) return 'Yesterday'
-  return parseDay(day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  // The weekday only: the full date is shown beside it.
+  return parseDay(day).toLocaleDateString('en-US', { weekday: 'long' })
 }
 
 export const fullDate = (day: string): string =>

@@ -285,6 +285,72 @@ See Completed, "Landing page: sign-in in place, scroll reveals".
 ### 11. Re-match discovery after settings edits — done (live run pending the owner's OK)
 See Completed, "Re-discovery after profile edits".
 
+### 11a. Inaccuracies and weak spots from the 2026-10-05 review — done
+An independent check of branch `claude/eager-maxwell-1oqaw3` (tests re-run,
+production compared with the hand-off report, the app clicked through as
+the H.I.G. user) found the report accurate and the items below. All fixed
+2026-10-05; `match-relevance`, `match-enforcement-relevance` and
+`regway-ai-chat` redeployed. Checks after: type checks, 274 unit tests, 84
+browser tests. Numbered 11a so later items keep their numbers.
+
+| Found | Fix |
+|---|---|
+| `prompts/next-session.md` said 11 commits ahead (it was 12) and mixed 10-05 / 10-06 dates | Note rewritten for the current state, dates marked UTC |
+| Hand-off report said the password flows weren't live; the build on reg-way.vercel.app (2026-10-05 02:28 UTC) has them | Noted in `next-session.md` |
+| A profile-edit re-check forgot every rejection in the 200-item window but judged only 40; the rest waited for scheduled runs, or for ever on a firm not enrolled | The client repeats the matcher call until a short batch comes back (`recheckRejections` in `lib/data.ts`, at most 6 calls) |
+| Rejections were forgotten before the rate-limit check | Both matchers check the limit first; a refused re-check forgets nothing and the limit is counted once |
+| `addFund` always re-checked | Skipped when only the fund's name is recorded (`hasMatchingFacts`) |
+| A chat stopped before its first answer stayed in the sidebar, empty (owner: must not be stored) | Server deletes the new conversation when the reader goes away before anything is saved (`cancel` on the stream); the client also removes a conversation with no saved messages after a stop or failure (`discardEmptyConversation`). The one existing empty row was deleted |
+| Answers crawled when the tab wasn't in front (30 s on the server, 4 min on screen) and the chat stayed locked | The reveal is paced by elapsed time, not timer ticks |
+| Profile's back button said "Back to Dashboard" when it returns to a fund / company page | `ProfileScreen` takes a `backLabel`, like the detail view |
+| Suggested questions ignored the chat's focus | They name the focused fund / company, or ask about the regulation |
+| Day heading repeated the date ("Tue, Sep 29 · September 29, 2026") | Weekday only beside the date ("Tuesday · September 29, 2026") |
+| One analysis was generated and paid for 4 times on opening one item ($0.17) | `requestImpact` shares one in-flight request per regulation. Cause: the item had no stored analysis, React's dev-mode double effect asked twice, and reopening asked again. Not fixed: the server still doesn't refuse a second request for an analysis already being written (two tabs, two users) |
+
+Verified live on H.I.G. during the review:
+- Focus switching mid-chat ($0.05): firm question answered about the firm,
+  then after switching to GetixHealth the notice showed, the answer was
+  about GetixHealth, the stored scope changed and all four messages saved.
+- The profile-edit re-check (02:40 UTC on 10-06): the owner added "Venture
+  Capital" to the firm's strategies. Within 40 seconds 239 rejections were
+  forgotten (364 → 125), `requested_at` set, 40 regulatory (Haiku, $0.02)
+  and 40 enforcement (Sonnet, $0.075) items re-judged, all not relevant
+  again, the 37 matches untouched, existing analyses rewritten, and the
+  geopolitical matcher correctly not called. That run used the old code,
+  so 153 regulatory and 5 enforcement items were left for scheduled runs.
+
+Left open:
+- **"Venture Capital" is still in H.I.G.'s strategies.** The owner removes
+  it in Settings → Firm; with the fix that save re-checks to the end at
+  once.
+- Verified live on localhost after the fix: a new chat stopped before its
+  answer left no conversation behind, and a short answer appeared at once
+  in a background tab. Not yet verified live: a re-check finishing without
+  waiting for scheduled runs (the owner's next profile save will show it).
+- After a stop, the empty answer bubble stays on screen until the next
+  message (cosmetic, not fixed).
+- Deployed edge functions other than the three above were compared with
+  the code by deploy time, not line by line.
+
+### 11b. Move the site to regwayai.com (S)
+The site is on https://reg-way.vercel.app; the owner has bought
+`regwayai.com`.
+- Vercel: add `regwayai.com` (and `www`) to the project, set the DNS
+  records at the registrar, make it the primary domain and redirect
+  reg-way.vercel.app to it.
+- Supabase Auth → URL Configuration: set Site URL to the new domain and add
+  it to the redirect allow-list (keep the old one until the move is done).
+  Sign-up confirmation, password-reset and email-change links use
+  `window.location.origin`, so they fail from the new domain until it is
+  allowed.
+- Check the wording and links in the Supabase auth email templates.
+- `index.html` has `noindex, nofollow`: decide whether the new domain
+  should be indexed.
+- Edge functions allow any origin (`_shared/cors.ts`), so nothing changes
+  there; if that is ever restricted, list the new domain.
+- Test on the new domain: sign up, sign in, password reset link, and one
+  chat message.
+
 ### 12. Live regulation monitoring (near-real-time, US + global) (M–L)
 **Phase 1a done (2026-10-04)** — see Completed, "Live monitoring, Phase
 1a". The audit found the real gap: matching ran only at onboarding, so

@@ -23,7 +23,7 @@ describe('feed days', () => {
   it('says Today and Yesterday, then the date', () => {
     expect(dayLabel('2026-10-05', '2026-10-05')).toBe('Today')
     expect(dayLabel('2026-10-04', '2026-10-05')).toBe('Yesterday')
-    expect(dayLabel('2026-10-02', '2026-10-05')).toBe('Fri, Oct 2')
+    expect(dayLabel('2026-10-02', '2026-10-05')).toBe('Friday')
   })
 
   it('opens on today unless a day or all days was chosen', () => {

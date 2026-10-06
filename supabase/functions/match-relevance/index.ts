@@ -26,6 +26,7 @@ import { judgeRegulations } from '../_shared/regulatoryJudge.ts'
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
 const BATCH_SIZE = 40
+const rateLimited = () => json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
@@ -59,9 +60,13 @@ Deno.serve(async (req) => {
     if (!candidates || candidates.length === 0) return json({ evaluated: 0, relevant: 0 })
 
     // After an edit to a fact this matcher uses: judge the recent items it
-    // had rejected again (this window only), first batch now, the rest on
-    // the next scheduled runs.
-    if (body?.reevaluate === true) {
+    // had rejected again (this window only). One batch per call: the caller
+    // repeats the call until a short batch comes back, and scheduled runs
+    // finish the job for an enrolled firm. The rate limit is checked before
+    // anything is forgotten, so a refused call changes nothing.
+    const reevaluate = body?.reevaluate === true
+    if (reevaluate) {
+      if (rateLimitClient && !(await checkRateLimit(rateLimitClient, 'match-relevance', 15, 60))) return rateLimited()
       await forgetRejections(admin, firmId, candidates.map(c => c.id))
       await requestScheduledRematch(admin, firmId)
     }
@@ -77,10 +82,7 @@ Deno.serve(async (req) => {
 
     if (unevaluated.length === 0) return json({ evaluated: 0, relevant: 0 })
 
-    if (rateLimitClient) {
-      const allowed = await checkRateLimit(rateLimitClient, 'match-relevance', 15, 60)
-      if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
-    }
+    if (rateLimitClient && !reevaluate && !(await checkRateLimit(rateLimitClient, 'match-relevance', 15, 60))) return rateLimited()
 
     const verdicts = await judgeRegulations(admin, { firmId, entities: { firm, funds, companies }, candidates: unevaluated, functionName: 'match-relevance' })
 

@@ -99,6 +99,60 @@ test.describe('RegWay AI chat', () => {
   })
 })
 
+test.describe('a chat with no answer is not kept', () => {
+  // As the server does on a first message: the conversation exists before the answer.
+  const starts = (backend: MockBackend, reply: { status?: number; json?: unknown; sse?: string; delay?: number }) => {
+    backend.functions['regway-ai-chat'] = ({ conversationId, message }) => {
+      backend.tables.regway_ai_conversations.push({ id: conversationId, firm_id: FIRM_ID, user_id: USER.id, title: message, context: null, updated_at: '2026-10-05T10:00:00Z' })
+      return reply
+    }
+  }
+
+  test('stopping the first answer removes the chat', async ({ page, backend }) => {
+    starts(backend, { sse: aiReply('Too late.'), delay: 4000 })
+    await openCopilot(page)
+    await ask(page, 'A question I change my mind about')
+    await page.getByTitle('Stop generating').click()
+
+    await expect.poll(() => backend.tables.regway_ai_conversations.length).toBe(0)
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    await expect(page.getByText('No saved conversations yet')).toBeVisible()
+  })
+
+  test('a first answer that fails removes the chat', async ({ page, backend }) => {
+    starts(backend, { status: 500, json: { error: 'The AI provider is unavailable' } })
+    await openCopilot(page)
+    await ask(page, 'A question that fails')
+    await expect(page.getByText(/Something went wrong/)).toBeVisible()
+    await expect.poll(() => backend.tables.regway_ai_conversations.length).toBe(0)
+  })
+
+  test('stopping a later answer keeps the chat and what was saved', async ({ page, backend }) => {
+    backend.tables.regway_ai_conversations.push({ id: 'conv-kept', firm_id: FIRM_ID, user_id: USER.id, title: 'Form PF deadlines', context: null, updated_at: '2026-10-01T10:00:00Z' })
+    backend.tables.regway_ai_messages.push({ conversation_id: 'conv-kept', role: 'user', content: 'When is Form PF due?', citations: null, created_at: '2026-10-01T10:00:00Z' })
+    backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('Too late.'), delay: 4000 })
+    await openCopilot(page)
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    await page.getByRole('button', { name: /Form PF deadlines/ }).click()
+    await ask(page, 'And the next one?')
+    await page.getByTitle('Stop generating').click()
+
+    await expect(page.getByTitle('Send')).toBeVisible()
+    await page.waitForLoadState('networkidle')
+    expect(backend.tables.regway_ai_conversations.map(c => c.id)).toEqual(['conv-kept'])
+  })
+})
+
+test.describe('suggested questions', () => {
+  test('are about the company the chat is focused on', async ({ page }) => {
+    await openCopilot(page)
+    await expect(page.getByRole('button', { name: 'What deadlines are coming up for my funds?' })).toBeVisible()
+    await page.getByRole('complementary', { name: 'Session context' }).getByRole('button', { name: /GetixHealth/ }).click()
+    await expect(page.getByRole('button', { name: 'What deadlines are coming up for GetixHealth?' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'What deadlines are coming up for my funds?' })).toHaveCount(0)
+  })
+})
+
 test.describe('saved conversations', () => {
   const saved = (backend: MockBackend) => {
     backend.tables.regway_ai_conversations.push(

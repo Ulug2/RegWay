@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
-import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, type ConversationSummary } from '../lib/data'
+import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, type ConversationSummary } from '../lib/data'
 import ConversationHistory from './ConversationHistory'
 import SessionContext, { type Focus } from './SessionContext'
 import { renderMarkdown } from '../lib/markdown'
@@ -23,6 +23,13 @@ interface Message {
   citations?: Citation[]
   attachmentName?: string
   status?: string
+}
+
+// Suggested first questions, about whatever the chat is focused on.
+function suggestedQuestions(context?: AiContext | null): string[] {
+  if (context?.type === 'regulation') return ['Summarize this in plain language', 'Who does this apply to?', 'What are the key dates and deadlines?']
+  if (context) return [`Summarize what's new for ${context.name}`, `What deadlines are coming up for ${context.name}?`, `Which developments matter most for ${context.name}?`]
+  return ["Summarize today's regulatory changes", 'What deadlines are coming up for my funds?', 'Any new state-level rules affecting my portfolio companies?']
 }
 
 function welcomeMessage(context?: AiContext | null): Message {
@@ -162,6 +169,9 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
   // Bumped after each exchange so the chats list picks up a new or
   // re-titled conversation.
   const [savedVersion, setSavedVersion] = useState(0)
+  // Whether this conversation has an exchange saved on the server (false for
+  // a new chat until its first answer finishes).
+  const savedExchangeRef = useRef(false)
   const [resumeError, setResumeError] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -308,6 +318,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
     let target = ''
     let revealed = 0
     let streamDone = false
+    let answered = false
     const citations: Citation[] = []
 
     const statusTimer = setInterval(() => {
@@ -321,7 +332,14 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
     }, STATUS_CYCLE_MS)
     statusTimerRef.current = statusTimer
 
+    // Paced by the clock, not by ticks: browsers slow timers in a tab that
+    // isn't in front (to about one a second), which made an answer take
+    // minutes to appear and kept the chat locked meanwhile.
+    let lastReveal = performance.now()
     const revealTimer = setInterval(() => {
+      const now = performance.now()
+      const due = Math.max(1, Math.round((now - lastReveal) / REVEAL_INTERVAL_MS)) * REVEAL_CHARS_PER_TICK
+      lastReveal = now
       if (revealed >= target.length) {
         if (streamDone) {
           clearInterval(revealTimer)
@@ -336,7 +354,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
         }
         return
       }
-      revealed = Math.min(target.length, revealed + REVEAL_CHARS_PER_TICK)
+      revealed = Math.min(target.length, revealed + due)
       setMessages(m => {
         const copy = [...m]
         copy[copy.length - 1] = { role: 'ai', content: target.slice(0, revealed), citations: [...citations] }
@@ -373,6 +391,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
           citations.push(evt.delta.citation)
         }
       })
+      answered = true
     } catch (err) {
       clearInterval(statusTimer)
       if ((err as Error).name !== 'AbortError') {
@@ -389,6 +408,11 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
       // new message) until the full answer is actually on screen.
       streamDone = true
       clearInterval(statusTimer)
+      // Stopped or failed before the answer finished: the server saved
+      // nothing, so a conversation with nothing else in it must not stay in
+      // the chats list.
+      if (answered) savedExchangeRef.current = true
+      else if (!savedExchangeRef.current) await discardEmptyConversation(conversationId).catch(() => {})
       setSavedVersion(v => v + 1)
     }
   }
@@ -396,6 +420,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
   const startNewChat = () => {
     if (isTyping) return
     setConversationId(crypto.randomUUID())
+    savedExchangeRef.current = false
     setActiveContext(context)
     setPendingRefocus(null)
     setMessages([welcomeMessage(context)])
@@ -407,6 +432,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
     try {
       const saved = await fetchConversationMessages(conversation.id)
       setConversationId(conversation.id)
+      savedExchangeRef.current = saved.length > 0
       setActiveContext(conversation.context)
       setMessages([
         welcomeMessage(conversation.context),
@@ -443,11 +469,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
     setIsTyping(false)
   }
 
-  const chips = [
-    "Summarize today's regulatory changes",
-    'What deadlines are coming up for my funds?',
-    'Any new state-level rules affecting my portfolio companies?',
-  ]
+  const chips = suggestedQuestions(activeContext)
 
   return (
     <div

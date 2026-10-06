@@ -246,7 +246,7 @@ export default function App() {
         )}
 
         {view === 'profile' && (
-          <ProfileScreen onBack={goBack} initialTab={profileTab} focusId={profileFocus} />
+          <ProfileScreen onBack={goBack} backLabel={returnTo === 'entity' && entity ? 'Back' : 'Back to Dashboard'} initialTab={profileTab} focusId={profileFocus} />
         )}
       </div>
 

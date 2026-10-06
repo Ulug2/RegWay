@@ -29,6 +29,20 @@ test.describe('re-discovery after a profile edit', () => {
     expect(reevaluations(backend, 'match-geopolitical-relevance')).toEqual([])
   })
 
+  test('keeps going until the matcher has no full batch left, without forgetting again', async ({ page, backend }) => {
+    const batches = [40, 40, 12]
+    backend.functions['match-relevance'] = () => ({ json: { evaluated: batches.shift() ?? 0, relevant: 0 } })
+    backend.functions['match-enforcement-relevance'] = () => ({ json: { evaluated: 3, relevant: 0 } })
+    await openFirmProfile(page)
+    await page.getByRole('button', { name: 'Growth Equity', exact: true }).click()
+    await save(page, backend)
+    await expect.poll(() => backend.called('POST', 'functions/v1/match-relevance').length).toBe(3)
+    await page.waitForLoadState('networkidle')
+    expect(backend.called('POST', 'functions/v1/match-relevance')).toHaveLength(3)
+    expect(reevaluations(backend, 'match-relevance')).toHaveLength(1)
+    expect(backend.called('POST', 'functions/v1/match-enforcement-relevance')).toHaveLength(1)
+  })
+
   test('a changed website re-checks nothing', async ({ page, backend }) => {
     await openFirmProfile(page)
     await page.getByPlaceholder('https://').first().fill('https://harbor.example')

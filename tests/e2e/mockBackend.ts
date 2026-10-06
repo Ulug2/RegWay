@@ -119,7 +119,8 @@ export interface Call {
   body: any
 }
 
-type FunctionReply = { status?: number; json?: unknown; sse?: string }
+// `delay` (ms) holds the reply back, e.g. so a test can stop an answer before it arrives.
+type FunctionReply = { status?: number; json?: unknown; sse?: string; delay?: number }
 type FunctionHandler = (body: any) => FunctionReply
 
 // PostgREST's filter syntax, as far as the app uses it.
@@ -233,6 +234,7 @@ export class MockBackend {
     }
     this.calls.push({ method, path, query: url.searchParams, body })
     const reply = this.handle(method, path, url.searchParams, body, request.headers().accept ?? '')
+    if (reply.delay) await new Promise(resolve => setTimeout(resolve, reply.delay))
     if (reply.sse !== undefined) return route.fulfill({ status: 200, headers: { ...CORS, 'Content-Type': 'text/event-stream' }, body: reply.sse })
     const status = reply.status ?? 200
     return route.fulfill({ status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: status === 204 ? undefined : JSON.stringify(reply.json ?? null) })

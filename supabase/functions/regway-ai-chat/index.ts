@@ -404,6 +404,12 @@ Use web search to ground every regulatory claim in a real, current source. Alway
       async flush() {
         await persist()
       },
+      // The reader went away before the answer finished (stop button, a
+      // closed tab): nothing was saved, so a conversation this message
+      // started must not stay in the user's history as an empty entry.
+      async cancel() {
+        if (startedConversation && !persisted) await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
+      },
     })
 
     return new Response(anthropicRes.body.pipeThrough(tee), {

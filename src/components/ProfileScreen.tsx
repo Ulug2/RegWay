@@ -21,12 +21,14 @@ const TABS: { key: ProfileTab; label: string }[] = [
 
 interface ProfileScreenProps {
   onBack: () => void
+  // Where "back" goes: the dashboard, or the fund / company page it was opened from.
+  backLabel?: string
   initialTab?: ProfileTab
   // A fund/company to open straight away (from a completion reminder).
   focusId?: string | null
 }
 
-export default function ProfileScreen({ onBack, initialTab = 'account', focusId }: ProfileScreenProps) {
+export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard', initialTab = 'account', focusId }: ProfileScreenProps) {
   const [tab, setTab] = useState<ProfileTab>(initialTab)
   const [firmId, setFirmId] = useState<string | null>(getCachedFirmId)
 
@@ -152,7 +154,7 @@ export default function ProfileScreen({ onBack, initialTab = 'account', focusId 
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Back to Dashboard
+            {backLabel}
           </button>
           <div className="flex items-center gap-2">
             <LogoMark size={24} />

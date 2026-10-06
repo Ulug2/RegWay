@@ -305,6 +305,32 @@ describe('regway-ai-chat', () => {
     expect(hasFilter(removed, 'eq', 'id', CONVERSATION)).toBe(true)
   })
 
+  // The reader goes away mid-answer: the stop button, or a closed tab.
+  async function stopped(state: State, body: Record<string, unknown>) {
+    const db = fakeClient(database(state))
+    setClient(db)
+    const { handler } = await loadHandler('regway-ai-chat')
+    const half = new TextEncoder().encode(REPLY.slice(0, 40))
+    stubFetch(url => (url.hostname === 'api.anthropic.com' ? new Response(new ReadableStream({ start: c => c.enqueue(half) })) : undefined))
+    const res = await handler(post('regway-ai-chat', { token: 'user-jwt', body }))
+    const reader = res.body!.getReader()
+    await reader.read()
+    await reader.cancel()
+    return db
+  }
+
+  it('removes a conversation whose first answer was stopped, and saves nothing', async () => {
+    const db = await stopped({}, { message: 'hi', conversationId: CONVERSATION })
+    expect(db.ran('regway_ai_messages', 'insert')).toEqual([])
+    const [removed] = db.ran('regway_ai_conversations', 'delete')
+    expect(hasFilter(removed, 'eq', 'id', CONVERSATION)).toBe(true)
+  })
+
+  it('keeps an existing conversation when a later answer is stopped', async () => {
+    const db = await stopped({ conversation: { context: null } }, { message: 'again', conversationId: CONVERSATION })
+    expect(db.ran('regway_ai_conversations', 'delete')).toEqual([])
+  })
+
   it('keeps an existing conversation when a later message fails', async () => {
     const { db } = await chat({ conversation: { context: null } }, { message: 'again', conversationId: CONVERSATION }, outage)
     expect(db.ran('regway_ai_conversations', 'delete')).toEqual([])

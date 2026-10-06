@@ -73,6 +73,23 @@ describe.each(['match-relevance', 'match-enforcement-relevance'])('%s', name => 
     expect(hasFilter(request, 'eq', 'firm_id', FIRM_ID)).toBe(true)
   })
 
+  it('a re-check refused by the rate limit forgets nothing', async () => {
+    const reevaluate = post(name, { token: 'user-jwt', body: { reevaluate: true } })
+    const { res, db, model } = await run(name, { candidates: three, evaluated: ['reg-a'], allowed: false }, [], reevaluate)
+    expect(res.status).toBe(429)
+    expect(db.ran('regulation_relevance', 'delete')).toEqual([])
+    expect(db.ran('scheduled_matching_firms', 'update')).toEqual([])
+    expect(model).toEqual([])
+  })
+
+  it('a re-check counts once against the rate limit', async () => {
+    const reevaluate = post(name, { token: 'user-jwt', body: { reevaluate: true } })
+    const { db, model } = await run(name, { candidates: three, evaluated: ['reg-a'] }, [], reevaluate)
+    expect(db.ran('check_rate_limit')).toHaveLength(1)
+    expect(db.ran('regulation_relevance', 'delete')).toHaveLength(1)
+    expect(model).toHaveLength(1)
+  })
+
   it('forgets nothing on an ordinary run', async () => {
     const { db } = await run(name, { candidates: three, evaluated: ['reg-a'] }, [])
     expect(db.ran('regulation_relevance', 'delete')).toEqual([])

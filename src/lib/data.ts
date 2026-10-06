@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
 import { toRow, type Answers } from './questionnaire'
-import { firmLocationChanged, matchingFactsChanged } from './matchingFacts'
+import { firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
 import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
@@ -235,9 +235,25 @@ export async function matchGeopoliticalDevelopments(opts: { reevaluate?: boolean
 // firms). Fire-and-forget, like refreshEntityImpacts. Only called when a
 // fact the matchers read changed (lib/matchingFacts.ts).
 function rediscoverMatches(opts: { geopolitical?: boolean } = {}): void {
-  callFunction('match-relevance', { reevaluate: true }).catch(() => {})
-  callFunction('match-enforcement-relevance', { reevaluate: true }).catch(() => {})
+  recheckRejections('match-relevance').catch(() => {})
+  recheckRejections('match-enforcement-relevance').catch(() => {})
   if (opts.geopolitical) matchGeopoliticalDevelopments({ reevaluate: true }).catch(() => {})
+}
+
+// Same as each matcher's BATCH_SIZE, and enough calls to cover its window of
+// 200 candidates.
+const MATCHER_BATCH = 40
+const RECHECK_MAX_CALLS = 6
+
+// One matcher's re-check, to the end: the first call forgets the recent
+// rejections and judges one batch, and each further call judges the next
+// batch, until a short one comes back. Without this a firm that isn't on
+// scheduled matching was left with the rest of its items unjudged.
+async function recheckRejections(matcher: 'match-relevance' | 'match-enforcement-relevance'): Promise<void> {
+  let result = await callFunction<{ evaluated?: number }>(matcher, { reevaluate: true })
+  for (let call = 1; call < RECHECK_MAX_CALLS && (result.evaluated ?? 0) >= MATCHER_BATCH; call++) {
+    result = await callFunction<{ evaluated?: number }>(matcher, {})
+  }
 }
 
 // Company profile answers that feed the geopolitical footprint (HQ is
@@ -259,10 +275,12 @@ export async function saveFirmAnswers(firmId: string, answers: Answers): Promise
 }
 
 export async function addFund(firmId: string, answers: Answers): Promise<void> {
-  const { error } = await supabase.from('funds').insert({ ...toRow('fund', answers), firm_id: firmId })
+  const row = toRow('fund', answers)
+  const { error } = await supabase.from('funds').insert({ ...row, firm_id: firmId })
   if (error) throw error
-  // A new fund: items rejected before it existed may concern it.
-  rediscoverMatches()
+  // A new fund: items rejected before it existed may concern it, unless
+  // only its name is recorded so far (nothing for a matcher to judge by).
+  if (hasMatchingFacts('fund', row)) rediscoverMatches()
 }
 
 export async function saveFundAnswers(fundId: string, answers: Answers): Promise<void> {
@@ -413,11 +431,21 @@ export async function fetchImpactStatuses(firmId: string, regulationIds: string[
 // background as soon as a regulation is matched, so this is the fallback).
 // Null when the analysis can't be written yet: a document on public
 // inspection whose text isn't readable until publication.
-export async function requestImpact(regulationId: string): Promise<ImpactContent | null> {
-  const { content } = await callFunction<{ content: ImpactContent | null }>('regulation-impact', { regulationId })
-  if (content) writeCache(`impact:${regulationId}`, content)
-  return content
+export function requestImpact(regulationId: string): Promise<ImpactContent | null> {
+  // One request per regulation at a time: an item opened twice before its
+  // analysis is back (or an effect run twice) must not pay for it twice.
+  const pending = impactRequests.get(regulationId)
+  if (pending) return pending
+  const request = callFunction<{ content: ImpactContent | null }>('regulation-impact', { regulationId })
+    .then(({ content }) => {
+      if (content) writeCache(`impact:${regulationId}`, content)
+      return content
+    })
+    .finally(() => impactRequests.delete(regulationId))
+  impactRequests.set(regulationId, request)
+  return request
 }
+const impactRequests = new Map<string, Promise<ImpactContent | null>>()
 
 export interface RematchResult {
   // Relevant to at least one entity after the re-check.
@@ -548,6 +576,15 @@ export async function fetchConversationMessages(conversationId: string): Promise
     .order('created_at')
   if (error) throw error
   return data ?? []
+}
+
+// Removes a conversation that has no saved messages: one whose first answer
+// was stopped or failed, which must not stay in the chats list. A
+// conversation with anything saved is left alone.
+export async function discardEmptyConversation(conversationId: string): Promise<void> {
+  const { data, error } = await supabase.from('regway_ai_messages').select('conversation_id').eq('conversation_id', conversationId).limit(1)
+  if (error) throw error
+  if (data.length === 0) await deleteConversation(conversationId)
 }
 
 // Deletes the conversation and (by cascade) its messages.

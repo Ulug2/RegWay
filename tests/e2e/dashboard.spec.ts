@@ -295,3 +295,17 @@ test.describe('dashboard chrome', () => {
     })
   }
 })
+
+test.describe('profile opened from a company page', () => {
+  test('its back button says where it goes: the page, not the dashboard', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Portfolio Companies' }).click()
+    await page.getByRole('button', { name: 'G GetixHealth Healthcare' }).click()
+    await page.getByRole('button', { name: 'Edit profile' }).click()
+
+    await expect(page.getByRole('button', { name: 'Back to Dashboard' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Back', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'GetixHealth' })).toBeVisible()
+  })
+})

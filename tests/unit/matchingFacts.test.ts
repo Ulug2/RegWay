@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { firmLocationChanged, matchingFactsChanged } from '../../src/lib/matchingFacts'
+import { firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from '../../src/lib/matchingFacts'
 import { fromRow, toRow, type Answers } from '../../src/lib/questionnaire'
 
 // As stored: an older row, with the location only in `hq_location`.
@@ -24,6 +24,11 @@ describe('which edits re-check matches', () => {
 
   it('re-checks when there is nothing to compare against', () => {
     expect(matchingFactsChanged('fund', null, toRow('fund', { name: 'New fund' }))).toBe(true)
+  })
+
+  it('a new fund with only a name gives the matchers nothing to judge by', () => {
+    expect(hasMatchingFacts('fund', toRow('fund', { name: 'New fund' }))).toBe(false)
+    expect(hasMatchingFacts('fund', toRow('fund', { name: 'New fund', strategy: 'Buyout' }))).toBe(true)
   })
 
   it("a company's sectors", () => {

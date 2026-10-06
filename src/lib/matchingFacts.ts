@@ -52,3 +52,8 @@ export const matchingFactsChanged = (scope: 'firm' | 'fund' | 'company', before:
   differs(MATCHING[scope], asSaved(scope, before), after)
 
 export const firmLocationChanged = (before: Row | null | undefined, after: Row) => differs(FIRM_LOCATION, asSaved('firm', before), after)
+
+// Whether a new entity has anything recorded that a matcher judges by,
+// beyond its name: a fund added with only a name can't change a verdict.
+export const hasMatchingFacts = (scope: 'firm' | 'fund' | 'company', row: Row): boolean =>
+  MATCHING[scope].columns.some(k => k !== 'name' && normal(field(row, k)) !== null) || MATCHING[scope].profile.some(k => normal(answer(row, k)) !== null)
