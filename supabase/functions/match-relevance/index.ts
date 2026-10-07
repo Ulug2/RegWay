@@ -22,6 +22,7 @@ import { generateImpacts } from '../_shared/impact.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { resolveFirmContext, loadFirmEntities, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, forgetRejections, requestScheduledRematch } from '../_shared/relevance.ts'
 import { judgeRegulations } from '../_shared/regulatoryJudge.ts'
+import { regulatorySourcesFor } from '../_shared/regulatorFeeds.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
@@ -49,10 +50,14 @@ Deno.serve(async (req) => {
     // Regulatory category only: the Federal Register also carries sanctions,
     // export-control and trade documents, which match-geopolitical-relevance
     // evaluates by location instead.
+    // Sources: the Federal Register and the U.S. regulator feeds for every
+    // firm; UK and EU feeds only for a firm connected to those regions (the
+    // free pre-filter, so nobody pays to have a UK rule judged against a
+    // U.S.-only firm).
     const { data: candidates } = await admin
       .from('regulations')
       .select('id, title, agency, jurisdiction, summary')
-      .eq('source', 'federal_register')
+      .in('source', regulatorySourcesFor({ firm, funds, companies }))
       .eq('category', 'regulatory')
       .order('published_date', { ascending: false })
       .limit(200)

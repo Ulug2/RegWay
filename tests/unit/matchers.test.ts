@@ -177,10 +177,12 @@ describe.each(['match-relevance', 'match-enforcement-relevance'])('%s', name => 
 })
 
 describe('match-relevance candidates', () => {
-  it('looks only at regulatory Federal Register documents, newest 200', async () => {
+  it('looks only at regulatory documents from the sources this firm is connected to, newest 200', async () => {
     const { db } = await run('match-relevance', { candidates: three }, [])
     const [query] = db.ran('regulations')
-    expect(hasFilter(query, 'eq', 'source', 'federal_register')).toBe(true)
+    // The Federal Register, the U.S. feeds, and (the test firm holds a company
+    // in Italy) the EU feeds; not the UK's.
+    expect(hasFilter(query, 'in', 'source', ['federal_register', 'sec_news', 'ftc_news', 'cfpb_news', 'esma_news', 'eur_lex'])).toBe(true)
     expect(hasFilter(query, 'eq', 'category', 'regulatory')).toBe(true)
     expect(hasFilter(query, 'limit', 200)).toBe(true)
   })

@@ -22,6 +22,8 @@ export interface RegulatoryCandidate {
   summary: string | null
 }
 
+const NON_US = new Set(['United Kingdom', 'European Union'])
+
 const correctionText = (correction: string | null | undefined) =>
   correction === undefined
     ? ''
@@ -60,7 +62,10 @@ export async function judgeRegulations(
   const fundList = (funds ?? []).map(f => `- ${f.name} (${f.structure ?? 'structure n/a'}, jurisdictions: ${(f.jurisdictions ?? []).join('/')}${fundDetail(f.profile) ? '; ' + fundDetail(f.profile) : ''})`).join('\n') || 'none on file'
   const companyList =
     (companies ?? []).map(c => `- ${c.name} (sectors: ${(c.sectors ?? []).join('/')}, regions: ${(c.regions ?? []).join('/')}${c.offerings ? `; does: ${c.offerings}` : ''})`).join('\n') || 'none on file'
-  const regList = candidates.map((r, i) => `${i}. [${r.agency ?? r.jurisdiction}] ${r.title} — ${r.summary ?? 'no summary'}`).join('\n')
+  // A non-U.S. item says where it applies: the issuer's name alone ("ESMA")
+  // doesn't tell the model it binds only entities connected to that place.
+  const issuer = (r: RegulatoryCandidate) => (r.agency && r.jurisdiction && NON_US.has(r.jurisdiction) ? `${r.agency}, ${r.jurisdiction}` : (r.agency ?? r.jurisdiction))
+  const regList = candidates.map((r, i) => `${i}. [${issuer(r)}] ${r.title} — ${r.summary ?? 'no summary'}`).join('\n')
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -125,7 +130,7 @@ ${fundList}
 Portfolio companies:
 ${companyList}
 
-For each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like "may have," "could be exposed to," or "might apply," mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just "this firm is generally in a regulated industry."`,
+For each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like "may have," "could be exposed to," or "might apply," mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just "this firm is generally in a regulated industry." Some items are a regulator's own announcement of a proposal, rule, guidance or relief rather than the published document: judge them by the measure they announce. An item marked United Kingdom or European Union binds only an entity established, authorised, marketing or operating there: mark it relevant only when the facts above record that connection for the entity you name.`,
             },
             { type: 'text', text: regList + correctionText(opts.correction) },
           ],

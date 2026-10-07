@@ -68,6 +68,15 @@ export interface Regulation {
     | 'sec_admin_proceedings'
     | 'finra_enforcement'
     | 'state_travel_advisories'
+    // Regulator feeds (supabase/functions/_shared/regulatorFeeds.ts).
+    | 'sec_news'
+    | 'ftc_news'
+    | 'cfpb_news'
+    | 'fca_publications'
+    | 'pra_publications'
+    | 'uk_legislation'
+    | 'esma_news'
+    | 'eur_lex'
   category: 'regulatory' | 'enforcement' | 'geopolitical'
   // Countries the development concerns (empty = global/unspecified).
   countries: string[]

@@ -519,6 +519,8 @@ const SOURCE_LABELS: Record<string, string> = {
   finra_enforcement: 'FINRA enforcement',
   sec_admin_proceedings: 'SEC administrative proceedings',
   state_travel_advisories: 'State Department travel advisories',
+  // sync-regulator-feeds: SEC, FTC, CFPB, FCA, PRA, UK legislation, ESMA, EUR-Lex.
+  regulator_feeds: 'Regulator feeds (U.S., UK and EU)',
   // run-matching: the scheduled AI matching of new developments to firms.
   matching: 'Automatic matching',
 }

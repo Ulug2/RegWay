@@ -351,16 +351,29 @@ The site is on https://reg-way.vercel.app; the owner has bought
 - Test on the new domain: sign up, sign in, password reset link, and one
   chat message.
 
-### 12. Live regulation monitoring (near-real-time, US + global) (M–L)
-**Phase 1a done (2026-10-04)** — see Completed, "Live monitoring, Phase
-1a". The audit found the real gap: matching ran only at onboarding, so
-firm/fund pages never received anything synced afterwards. **Public
-inspection done too** (see Completed, "Pre-publication documents"): the
-documents search already returns scheduled documents days early, so no
-separate feed was needed; they're now labelled as not yet published.
-Remaining: a regulatory pre-filter (not needed at ≈4 items/day yet) and
-moving SEC/FINRA/advisories off daily (Phase 2 territory). Original plan
-below for reference.
+### 12. Live regulation monitoring (near-real-time, US + global) — Phases 1 and 2 done; Phase 3 (alerts) open
+**Phase 1a (2026-10-04)** and **pre-publication documents** are done (see
+Completed). **Phase 2 done 2026-10-07** (see Completed, "Live monitoring,
+Phase 2: regulator feeds"): nine regulator feeds (SEC, FTC, CFPB, UK FCA,
+PRA and statutory instruments, EU ESMA and EUR-Lex) polled every 30
+minutes, the jurisdiction pre-filter, and the enforcement and advisory
+syncs moved off once-a-day.
+
+Still open:
+- **Phase 3: alerts** (email / push for high-priority items, the Morning
+  Brief). Needs an email provider and the owner's choice of what counts as
+  high priority.
+- **CFTC**: its feeds refuse the edge functions' addresses (403). Its rules
+  still arrive through the Federal Register; its announcements and
+  enforcement cases don't.
+- **Federal Reserve and OCC** feeds work but were left out (bank
+  supervision). One registry entry each if a portfolio company is a bank.
+- **Duplicates**: an SEC proposal now arrives twice, as the announcement
+  and later as the Federal Register document. That is item 15.
+- **Title-only items**: EUR-Lex entries carry no summary, so the matcher
+  judges them on the title alone.
+
+Original plan below for reference.
 
 Replaces the once-a-day model. Goal: when a regulation is published, check it
 against every firm/fund/portfolio company within minutes and update the
@@ -609,6 +622,31 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Live monitoring, Phase 2: regulator feeds (2026-10-07)
+Roadmap item 12. Notes: `prompts/live-monitoring-phase-2.md`.
+- **Feeds** (`_shared/regulatorFeeds.ts`): SEC press releases, FTC, CFPB,
+  FCA publications, PRA publications, UK statutory instruments, ESMA, and
+  EUR-Lex (Parliament and Council acts; Commission delegated acts). Each
+  was fetched and read first; each has a rule for which entries to keep
+  (rulemaking, not enforcement, speeches or events). Not used: SEC's stale
+  proposed-rules feed, the FCA news feed, EBA digests, CFTC (blocked).
+- **`sync-regulator-feeds`**: every 30 minutes at :05 / :35, no AI. Stores
+  entries from the last 30 days once each. One feed failing doesn't stop
+  the others; the run only counts as failed after a feed fails three runs
+  in a row.
+- **Pre-filter**: `match-relevance` reads UK and EU feeds only for a firm
+  connected to those regions (`regionsOf`), so a U.S.-only firm is never
+  billed for them. The judge is told where a non-U.S. item applies.
+- **Schedules** (migration 0031): SEC and FINRA enforcement hourly, SEC
+  administrative proceedings every 3 hours, travel advisories every 6
+  (all were daily).
+- **Live on H.I.G.** (connected to the U.S., UK and EU): 24 feed items
+  judged for $0.02; 2 relevant, both SEC proposals announced before their
+  Federal Register publication; all 16 UK / EU items rejected with a
+  specific reason.
+- Tests: 322 unit (feed parsing, each feed's rule on real titles, regions,
+  the sync function), 84 browser.
 
 ### Re-discovery after profile edits (2026-10-05)
 Roadmap item 11. Notes: `prompts/rediscovery-after-edits.md`.

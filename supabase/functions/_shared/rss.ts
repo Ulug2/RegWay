@@ -52,3 +52,69 @@ export function parseRssItems(xml: string): FeedItem[] {
   }
   return items
 }
+
+// ---------------------------------------------------------------------------
+// Any regulator feed: RSS 2.0 <item> or Atom <entry>, with whatever date
+// format the publisher chose. Used by sync-regulator-feeds.
+// ---------------------------------------------------------------------------
+
+export interface FeedEntry {
+  title: string
+  link: string
+  // The day the publisher put on the entry, as written ("YYYY-MM-DD"); null
+  // when none can be read.
+  date: string | null
+  // Plain text of <description> / <summary>.
+  description: string
+}
+
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+const iso = (year: string, month: number, day: string) => `${year}-${String(month).padStart(2, '0')}-${day.padStart(2, '0')}`
+
+// The calendar day written in a date string, in the publisher's own time
+// zone: "Tue, 06 Oct 2026 00:00:00 +0200" is October 6, though it is still
+// October 5 in UTC. Handles RFC 822 ("06 Oct 2026"), ISO ("2026-10-06T…")
+// and long form ("Tuesday, October 6, 2026 - 10:00", the FCA's).
+export function writtenDate(text: string | null | undefined): string | null {
+  if (!text) return null
+  const isoMatch = text.match(/(\d{4})-(\d{2})-(\d{2})/)
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`
+  const dayFirst = text.match(/(\d{1,2})\s+([A-Za-z]{3})[a-z]*\.?,?\s+(\d{4})/)
+  if (dayFirst && MONTHS.includes(dayFirst[2].toLowerCase())) return iso(dayFirst[3], MONTHS.indexOf(dayFirst[2].toLowerCase()) + 1, dayFirst[1])
+  const monthFirst = text.match(/([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/)
+  if (monthFirst && MONTHS.includes(monthFirst[1].toLowerCase())) return iso(monthFirst[3], MONTHS.indexOf(monthFirst[1].toLowerCase()) + 1, monthFirst[2])
+  return null
+}
+
+const plain = (raw: string) =>
+  decodeEntities(raw)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+// Atom carries several <link>s per entry: the page itself is the one with no
+// `rel`, or `rel="alternate"` as HTML; never `rel="self"` (the feed's id).
+function atomLink(block: string): string | undefined {
+  const links = [...block.matchAll(/<link\b([^>]*)\/?>/g)].map(m => m[1])
+  const attr = (attrs: string, name: string) => attrs.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1]
+  const page = links.find(a => !attr(a, 'rel') && attr(a, 'href')) ?? links.find(a => attr(a, 'rel') === 'alternate' && (attr(a, 'type') ?? 'text/html') === 'text/html')
+  return page ? decodeEntities(attr(page, 'href')!) : undefined
+}
+
+export function parseFeedEntries(xml: string): FeedEntry[] {
+  const entries: FeedEntry[] = []
+  for (const block of xml.split(/<(?:item|entry)(?=[\s>])/).slice(1)) {
+    const field = (tag: string) => unwrapCdata(block.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`))?.[1]?.trim())
+    const rawTitle = field('title')
+    const link = field('link')?.split('\n')[0].trim() || atomLink(block)
+    if (!rawTitle || !link) continue
+    const rawDescription = field('description') ?? field('summary') ?? ''
+    // Some feeds (ESMA) carry no date field, only a <time datetime="…"> in
+    // the (escaped) description.
+    const date =
+      writtenDate(field('pubDate') ?? field('updated') ?? field('published') ?? field('dc:date')) ??
+      writtenDate(decodeEntities(rawDescription).match(/datetime="([^"]+)"/)?.[1])
+    entries.push({ title: plain(rawTitle), link, date, description: plain(rawDescription) })
+  }
+  return entries
+}

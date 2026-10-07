@@ -29,7 +29,7 @@ const icon = (path: React.ReactNode) => (
 const FEATURES = [
   {
     title: 'Real regulatory data',
-    description: 'The Federal Register every 30 minutes, plus SEC and FINRA enforcement, sanctions, export controls, trade actions and State Department advisories. Not a demo feed.',
+    description: 'The Federal Register and regulators’ own announcements every 30 minutes (U.S., UK and EU), plus SEC and FINRA enforcement, sanctions, export controls, trade actions and State Department advisories. Not a demo feed.',
     icon: icon(
       <>
         <rect x="3" y="2.5" width="12" height="13" rx="1.5" stroke="#0284C7" strokeWidth="1.3" />
@@ -69,7 +69,7 @@ const STEPS = [
   },
 ]
 
-const SOURCES = ['Federal Register', 'SEC litigation releases', 'SEC administrative proceedings', 'FINRA disciplinary actions', 'OFAC sanctions', 'BIS export controls', 'USTR trade actions', 'State Department travel advisories']
+const SOURCES = ['Federal Register', 'SEC announcements', 'SEC litigation releases', 'SEC administrative proceedings', 'FINRA disciplinary actions', 'FTC', 'CFPB', 'OFAC sanctions', 'BIS export controls', 'USTR trade actions', 'State Department travel advisories', 'UK FCA', 'UK PRA', 'UK legislation', 'EU ESMA', 'EUR-Lex']
 
 export default function LandingPage({ authMode, notice, onOpenAuth, onCloseAuth, onAuthenticated }: LandingPageProps) {
   const open = authMode !== null
