@@ -620,6 +620,11 @@ Roadmap item 14, part 1. `sync-federal-register` gained a
 `defenseTradeControls` feed (State Department RULE / PRORULE naming the
 ITAR or the U.S. Munitions List), stored as geopolitical with the countries
 each names. First sync: 2 documents. Tests: 337 unit.
+Live on H.I.G. (scheduled run, 22:40 UTC): the U.S. Munitions List review
+was matched to A.L.A. S.p.A. (aerospace and defense logistics) with its
+analysis written ($0.11 in all); the Syria revision and the 14 UK / EU
+sanctions items never reached the model, since H.I.G. touches none of
+their countries.
 
 ### Geopolitical Phase 2: UK and EU sanctions (2026-10-07)
 Roadmap item 13. Notes: `prompts/geopolitical-phase-2-sanctions.md`.
