@@ -30,6 +30,10 @@ const sdnNotice = doc({ document_number: '2026-19005', type: 'Notice', title: 'N
 const tariffProclamation = doc({ document_number: '2026-19006', type: 'Presidential Document', title: 'Adjusting Imports of Timber and Lumber Into the United States', agencies: [PRESIDENT] })
 const heritageMonth = doc({ document_number: '2026-19007', type: 'Presidential Document', title: 'National Hispanic Heritage Month, 2026', agencies: [PRESIDENT] })
 
+const STATE = { name: 'State Department', slug: 'state-department', parent_id: null }
+const itarRule = doc({ document_number: '2026-19008', title: 'International Traffic in Arms Regulations: Syria Country Policy Revision', agencies: [STATE] })
+const passportRule = doc({ document_number: '2026-19009', title: 'Passports: Expanding Online Passport Renewal Overseas', agencies: [STATE] })
+
 const SDN_TEXT = `<html><pre>DEPARTMENT OF THE TREASURY. Notice of OFAC Sanctions Actions. ${'The following persons are blocked. [GRAPHIC] [TIFF OMITTED] '.repeat(8)} (Authority: E.O. 13902.)</pre></html>`
 
 type Row = { external_id: string; category: string; countries: string[]; agency: string; jurisdiction: string; on_public_inspection: boolean; raw: { countries_from_full_text: boolean; raw_text_url: string } }
@@ -46,6 +50,7 @@ function federalRegister(opts: { readBefore?: boolean } = {}) {
       const types = url.searchParams.getAll('conditions[type][]').join(',')
       const agencies = url.searchParams.getAll('conditions[agencies][]')
       if (types === 'PRESDOCU') return jsonResponse({ results: [tariffProclamation, heritageMonth] })
+      if (agencies[0] === 'state-department') return jsonResponse({ results: [itarRule, passportRule] })
       if (types === 'RULE,PRORULE') return jsonResponse({ results: [medicareRule, scheduledRule, ofacRule] })
       if (agencies[0] === 'securities-and-exchange-commission') return jsonResponse({ results: [finraNotice, exchangeNotice] })
       if (agencies[0] === 'foreign-assets-control-office') return jsonResponse({ results: [sdnNotice] })
@@ -77,8 +82,8 @@ beforeEach(() => {
 describe('sync-federal-register', () => {
   it('keeps the documents each feed is for and drops the rest', async () => {
     const { rows, res } = await sync()
-    expect(rows.map(r => r.external_id).sort()).toEqual(['2026-19001', '2026-19002', '2026-19003', '2026-19005', '2026-19006', '2026-19100'])
-    expect(await res.json()).toMatchObject({ synced: 6, geopolitical: 3, notYetPublished: 1, fullTextReads: 1 })
+    expect(rows.map(r => r.external_id).sort()).toEqual(['2026-19001', '2026-19002', '2026-19003', '2026-19005', '2026-19006', '2026-19008', '2026-19100'])
+    expect(await res.json()).toMatchObject({ synced: 7, geopolitical: 4, notYetPublished: 1, fullTextReads: 1 })
   })
 
   it('files sanctions, export-control and trade documents as geopolitical', async () => {
@@ -88,6 +93,12 @@ describe('sync-federal-register', () => {
     expect(row('2026-19002').category).toBe('geopolitical')
     expect(row('2026-19005').category).toBe('geopolitical')
     expect(row('2026-19006').category).toBe('geopolitical')
+  })
+
+  it("takes the State Department's defense trade (ITAR) rules, tagged by country, and none of its other rules", async () => {
+    const { row, rows } = await sync()
+    expect(row('2026-19008')).toMatchObject({ category: 'geopolitical', countries: ['Syria'], agency: 'State Department' })
+    expect(rows.find(r => r.external_id === '2026-19009')).toBeUndefined()
   })
 
   it('labels a document by the specific bureau, not its parent department', async () => {
@@ -165,7 +176,7 @@ describe('sync-federal-register', () => {
     expect(db.ran('sync_runs', 'insert')[0].payload).toMatchObject({
       source: 'federal_register',
       ok: true,
-      detail: '6 synced, 3 geopolitical (rules 3, finraNotices 1, ofacNotices 1, tradeActions 0, presidentialDocuments 1); 1 not yet published',
+      detail: '7 synced, 4 geopolitical (rules 3, finraNotices 1, ofacNotices 1, tradeActions 0, defenseTradeControls 1, presidentialDocuments 1); 1 not yet published',
     })
   })
 

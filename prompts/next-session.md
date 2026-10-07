@@ -11,9 +11,12 @@ item 11b, the move to `regwayai.com`.
 
 Done since the last note: item 11a (review fixes), item 12 Phase 2
 (regulator feeds: SEC, FTC, CFPB, UK, EU, with a jurisdiction pre-filter)
-and item 13's UK / EU sanctions. Next in the roadmap's order: item 14
-(source registry grounding), unless the owner picks item 12 Phase 3
-(alerts), which needs an email provider.
+item 13's UK / EU sanctions, and item 14's defense trade (ITAR) feed.
+Item 14's other half (registry-grounded scan prompts) was tested live and
+not shipped: see `prompts/source-registry-grounding.md`. Next in the
+roadmap's order: item 15 (duplicate-coverage grouping), which the new
+feeds make more visible; or item 12 Phase 3 (alerts), which needs an
+email provider.
 
 ## Setting up on the Mac
 
@@ -23,7 +26,7 @@ and item 13's UK / EU sanctions. Next in the roadmap's order: item 14
   `VITE_SUPABASE_ANON_KEY` (the publishable key); `pnpm dev`.
 - Deploys / SQL: `SUPABASE_ACCESS_TOKEN` set, `supabase` CLI, then
   `supabase functions deploy --project-ref cfspwaqtidfliupmlfwz --use-api`.
-- Checks: `pnpm test:all` (type-checks, 336 unit tests, 84 browser tests;
+- Checks: `pnpm test:all` (type-checks, 337 unit tests, 84 browser tests;
   first time `pnpm exec playwright install chromium`).
 
 ## State at hand-off
@@ -63,7 +66,7 @@ Keep using the audit → implement flow, save each pass's prompt under
 prompts/, and keep code clean and scalable. Test only on the H.I.G. Capital
 account. Check the last few `matching` rows in `sync_runs` and the AI spend
 since 2026-10-06 (UTC) in `usage_events`, then continue with the roadmap's
-Priority order (next: item 14). Run
+Priority order (next: item 15). Run
 `pnpm test:all` before and after each change and add tests for what you
 build. Deploy and test against the live project; tell me before anything
 that deletes or overwrites production data beyond test rows you created.

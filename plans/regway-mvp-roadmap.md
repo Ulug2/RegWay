@@ -441,33 +441,26 @@ Still open:
   has a recorded location both in a sanctioned country and in the UK / EU.
 - The EU publishes each action as two instruments, so two rows (item 15).
 
-### 14. Ground AI matching/search in the regulatory source registry doc (M–L)
+### 14. Ground AI matching/search in the regulatory source registry doc — DDTC done; prompt grounding tested and not shipped
 From `docs/Regway_US_Regulatory_Source_Master_Registry_Comprehensive_V2.docx`
-— the healthcare/trade agencies (item above, Completed) were the quick,
-mechanical part. The doc's real scope is far bigger: 52 sections, federal
-through tribal/county/professional-licensing-board level. Its own §50
-"coverage algorithm" and §50's scope note both say this can't be
-statically enumerated (no fixed API per county/board) and should be
-*dynamically resolved* per entity — which is exactly what
-`company-regulations`'s live Claude web search already does today, just
-without this doc's structure to ground it. Two concrete, bounded pieces:
-1. **DDTC/ITAR coverage**: §17/§18 name DDTC (defense trade controls) as
-   a source directly relevant to A.L.A. and any future defense/aerospace
-   portfolio company, but DDTC has no Federal Register agency slug of its
-   own — it publishes under the generic `state-department`, which would
-   pull in unrelated State Department rulemaking. Same shape of problem
-   FINRA's coverage already solved (fetch the parent's documents, filter
-   client-side on a reliable title pattern) — needs the equivalent title
-   marker investigated for DDTC/ITAR notices before building.
-2. **Feed the doc's taxonomy into the live-search prompts** — rather than
-   building static integrations for state/local/licensing-board sources
-   (the doc itself advises against that), ground `company-regulations`'s
-   and `match-relevance`'s prompts in the doc's structured activity →
-   source mapping so the AI's web search reasons against an authoritative
-   list instead of whatever it happens to surface. Cheaper than new sync
-   infrastructure and fits the architecture that already exists. Lower
-   priority than item 13 (geopolitical/sanctions) since it's a quality
-   improvement to an existing working path, not new coverage from zero.
+(52 sections, federal through tribal / county / licensing-board level; its
+own §50 says the state and local layers can't be enumerated and must be
+resolved per entity). Notes: `prompts/source-registry-grounding.md`.
+
+1. **DDTC / ITAR coverage: done 2026-10-07.** A `defenseTradeControls`
+   feed in `sync-federal-register`: State Department rules and proposed
+   rules whose title names the ITAR or the U.S. Munitions List (15 of the
+   department's 33 rules in a year, and none of the other 18), filed as
+   geopolitical like BIS export controls.
+2. **Feeding the registry into the company scan's search prompt: built,
+   tested live, not shipped.** On GetixHealth the scan as it is found 8
+   items; with the registry's sources added it found 2 (both too old), and
+   with a lighter version 0. The list pulls the model into one generic
+   search per regulator and away from "what changed recently for this
+   activity", and five searches don't cover both. The code was removed.
+   Untested alternatives: use the registry to filter results after the
+   search; give the scan more searches first; use it to choose which
+   agencies' Federal Register documents each firm's matcher reads.
 
 ### 15. Duplicate-coverage grouping (L)
 The doc wants multiple articles about the same underlying event merged into
@@ -621,6 +614,12 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Defense trade controls (ITAR) from the Federal Register (2026-10-07)
+Roadmap item 14, part 1. `sync-federal-register` gained a
+`defenseTradeControls` feed (State Department RULE / PRORULE naming the
+ITAR or the U.S. Munitions List), stored as geopolitical with the countries
+each names. First sync: 2 documents. Tests: 337 unit.
 
 ### Geopolitical Phase 2: UK and EU sanctions (2026-10-07)
 Roadmap item 13. Notes: `prompts/geopolitical-phase-2-sanctions.md`.

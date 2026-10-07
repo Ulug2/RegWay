@@ -163,6 +163,8 @@ const GEOPOLITICAL_TOPIC_PATTERN =
 // hearing logistics; keep only actual trade actions.
 const TRADE_ACTION_PATTERN = /\b(tariffs?|duties|Section 301|Section 232|imports?|exports?|trade (action|agreement|preference)s?|exclusions?)\b/i
 
+const ITAR_PATTERN = /\b(International Traffic in Arms Regulations|ITAR|U\.S\. Munitions List)\b/
+
 interface FederalRegisterQuery {
   agencies: string[]
   types: string[]
@@ -203,6 +205,18 @@ const FEEDS: Feed[] = [
     name: 'tradeActions',
     query: { agencies: ['trade-representative-office-of-united-states'], types: ['RULE', 'PRORULE', 'NOTICE'] },
     keep: doc => TRADE_ACTION_PATTERN.test(docText(doc)),
+  },
+  // Defense trade controls (the State Department's DDTC) have no agency slug
+  // of their own: they publish under `state-department`, next to passport,
+  // visa and consular-fee rules. Checked over a year of its rules
+  // (2026-10-07): 15 of 33 were ITAR rules, and every one of them, and none
+  // of the others, carries the regulation's name in its title. Export
+  // controls, so geopolitical, like BIS.
+  {
+    name: 'defenseTradeControls',
+    query: { agencies: ['state-department'], types: ['RULE', 'PRORULE'] },
+    keep: doc => ITAR_PATTERN.test(docText(doc)),
+    category: 'geopolitical',
   },
   {
     name: 'presidentialDocuments',
