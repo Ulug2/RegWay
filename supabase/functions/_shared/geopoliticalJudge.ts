@@ -32,7 +32,9 @@ function candidateLine(c: Candidate, i: number, footprints: EntityFootprint[]): 
    Summary: ${summary}`
 }
 
-const INSTRUCTIONS = `Below are numbered geopolitical developments from official U.S. government sources: OFAC sanctions actions and regulations, BIS export controls, USTR trade actions, presidential sanctions/tariff documents, and State Department travel advisories (levels 3-4).
+const INSTRUCTIONS = `Below are numbered geopolitical developments from official government sources. Most are U.S.: OFAC sanctions actions and regulations, BIS export controls, USTR trade actions, presidential sanctions/tariff documents, and State Department travel advisories (levels 3-4). Some are UK sanctions (UK sanctions regulations, OFSI general licences and notices) or EU sanctions (the Council's restrictive measures); the issuer in brackets says which.
+
+A UK or EU sanctions measure binds people and businesses in the UK or the EU, and business done there. For one of those, a recorded connection to the affected country is not enough on its own: the same entity must also be recorded as headquartered, having facilities or operating in the UK (for a UK measure) or in an EU member state (for an EU measure). Name both facts in the reason, or mark it not relevant.
 
 For each development, decide whether it has a supported connection to the firm or a specific portfolio company through a recorded location: where the entity is headquartered or domiciled, where its facilities are, where it operates, or where its key suppliers are. "Overlapping profile facts" lists the exact matches already found; base your verdict on those and on the footprints above, never on assumed facts.
 

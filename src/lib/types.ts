@@ -77,6 +77,9 @@ export interface Regulation {
     | 'uk_legislation'
     | 'esma_news'
     | 'eur_lex'
+    | 'eu_sanctions'
+    | 'uk_sanctions'
+    | 'ofsi'
   category: 'regulatory' | 'enforcement' | 'geopolitical'
   // Countries the development concerns (empty = global/unspecified).
   countries: string[]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { REGULATOR_FEEDS, regionsOf, regulatorySourcesFor, sourcesIn } from '../../supabase/functions/_shared/regulatorFeeds.ts'
+import { REGULATOR_FEEDS, geopoliticalSourcesOutside, regionsOf, regulatorySourcesFor, sourcesIn } from '../../supabase/functions/_shared/regulatorFeeds.ts'
 import { companies, firm, funds } from './helpers/firm'
 
 // Titles are real ones, read from each feed on 2026-10-06.
@@ -31,6 +31,17 @@ describe('which feed entries are kept', () => {
     ['uk_legislation', 'The Russia (Sanctions) (EU Exit) (Amendment) Regulations 2026', false],
     ['esma_news', 'ESMA consults on disclosure requirements and updates guidelines and Q&As under the Prospectus Regulation', true],
     ['esma_news', 'Upcoming changes to the Euribor Panel', false],
+    ['uk_sanctions', 'The Russia (Sanctions) (EU Exit) (Amendment) Regulations 2026', true],
+    ['uk_sanctions', 'The Employment Rights Act 2025 (Commencement No. 6 and Transitional and Saving Provisions) Regulations 2026', false],
+    ['ofsi', 'Guidance: OFSI General licence INT/2025/5635700', true],
+    ['ofsi', 'Statutory guidance: Iran sanctions: guidance', true],
+    ['ofsi', 'Notice: Imposition of Monetary Penalty – Citibank, N.A., London Branch', true],
+    ['ofsi', 'Guidance: UK Financial Sanctions FAQs', false],
+    ['ofsi', 'Financial sanctions webinars and events', false],
+    ['ofsi', 'Guidance: Check if an email or communication claiming to be from OFSI is genuine', false],
+    ['eu_sanctions', 'CELEX:32026R2193: Council Implementing Regulation (EU) 2026/2193 of 28 September 2026 implementing Regulation (EU) 2024/1485 concerning restrictive measures in view of the situation in Russia', true],
+    ['eu_sanctions', 'CELEX:32026D2240: Council Decision (EU) 2026/2240 of 24 September 2026 on the position to be adopted', false],
+    ['eu_sanctions', 'CELEX:32026R2193R(01): Corrigendum to Council Implementing Regulation (EU) 2026/2193 concerning restrictive measures', false],
   ])('%s: %s', (source, title, kept) => {
     expect(keeps(source, title)).toBe(kept)
   })
@@ -62,6 +73,8 @@ describe('which regions a firm is connected to', () => {
     expect(regionsOf(usOnly)).toEqual(['US'])
     expect(regulatorySourcesFor(usOnly)).toEqual(['federal_register', ...sourcesIn('US')])
     expect(regulatorySourcesFor(usOnly)).not.toContain('eur_lex')
+    // Sanctions feeds go to the geopolitical matcher, not this one.
+    expect(regulatorySourcesFor({ firm, funds, companies })).not.toContain('eu_sanctions')
   })
 
   it('the EU, through a portfolio company headquartered in Italy', () => {
@@ -73,6 +86,12 @@ describe('which regions a firm is connected to', () => {
   it('the UK, through a fund domiciled there or a company operating there', () => {
     expect(regionsOf({ ...usOnly, funds: [{ ...funds[0], jurisdictions: ['United Kingdom'] }] })).toEqual(['US', 'UK'])
     expect(regionsOf({ ...usOnly, companies: [{ ...companies[0], profile: { operating_locations: ['United Kingdom'] } }] })).toEqual(['US', 'UK'])
+  })
+
+  it('skips UK and EU sanctions for a firm not connected there', () => {
+    expect(geopoliticalSourcesOutside(usOnly)).toEqual(['eu_sanctions', 'uk_sanctions', 'ofsi'])
+    expect(geopoliticalSourcesOutside({ firm, funds, companies })).toEqual(['uk_sanctions', 'ofsi'])
+    expect(geopoliticalSourcesOutside({ ...usOnly, firm: { ...firm, profile: { geographies: ['Global'] } } })).toEqual([])
   })
 
   it('both, when the firm says it invests in Europe or globally', () => {

@@ -69,7 +69,7 @@ const STEPS = [
   },
 ]
 
-const SOURCES = ['Federal Register', 'SEC announcements', 'SEC litigation releases', 'SEC administrative proceedings', 'FINRA disciplinary actions', 'FTC', 'CFPB', 'OFAC sanctions', 'BIS export controls', 'USTR trade actions', 'State Department travel advisories', 'UK FCA', 'UK PRA', 'UK legislation', 'EU ESMA', 'EUR-Lex']
+const SOURCES = ['Federal Register', 'SEC announcements', 'SEC litigation releases', 'SEC administrative proceedings', 'FINRA disciplinary actions', 'FTC', 'CFPB', 'OFAC sanctions', 'BIS export controls', 'USTR trade actions', 'State Department travel advisories', 'UK FCA', 'UK PRA', 'UK legislation', 'UK sanctions (OFSI)', 'EU ESMA', 'EUR-Lex', 'EU sanctions']
 
 export default function LandingPage({ authMode, notice, onOpenAuth, onCloseAuth, onAuthenticated }: LandingPageProps) {
   const open = authMode !== null

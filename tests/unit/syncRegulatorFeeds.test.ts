@@ -17,7 +17,7 @@ const EUR_LEX = () => rss(item('CELEX:32026R2108: Regulation (EU) 2026/2108 of t
 // Every other feed: present, with nothing recent in it.
 const QUIET = () => rss(item('Final rule from the spring', 'https://example.test/spring', 'Wed, 01 Apr 2026 12:00:00 GMT'))
 
-type Row = { source: string; category: string; external_id: string; title: string; agency: string; jurisdiction: string; summary: string; published_date: string; source_url: string }
+type Row = { source: string; category: string; countries: string[]; external_id: string; title: string; agency: string; jurisdiction: string; summary: string; published_date: string; source_url: string }
 
 async function sync(feeds: Record<string, () => Response>, known: string[] = [], lastRun: unknown = null) {
   const db = fakeClient(q => {
@@ -56,6 +56,7 @@ describe('sync-regulator-feeds', () => {
         published_date: '2026-10-01',
         effective_date: null,
         source_url: 'https://www.sec.gov/newsroom/press-releases/2026-97-private-markets',
+        countries: [],
         raw: { feed: 'https://www.sec.gov/news/pressreleases.rss' },
       },
       expect.objectContaining({
@@ -72,6 +73,25 @@ describe('sync-regulator-feeds', () => {
     expect(db.ran('regulations', 'upsert')[0].options).toEqual({ onConflict: 'source,external_id', ignoreDuplicates: true })
   })
 
+  it('stores a sanctions measure as geopolitical, tagged with the countries it names', async () => {
+    const eu = () =>
+      rss(
+        item('CELEX:32026R2193: Council Implementing Regulation (EU) 2026/2193 of 28 September 2026 implementing Regulation (EU) 2024/1485 concerning restrictive measures in view of the situation in Russia', 'https://eur-lex.europa.eu/./legal-content/AUTO/?uri=CELEX:32026R2193', 'Tue, 06 Oct 2026 00:00:00 +0200'),
+        // Names no country: not stored (it would be a candidate for every firm).
+        item('CELEX:32026R2138: Council Implementing Regulation (EU) 2026/2138 concerning restrictive measures directed against certain individuals, groups, undertakings and entities', 'https://eur-lex.europa.eu/./legal-content/AUTO/?uri=CELEX:32026R2138', 'Tue, 06 Oct 2026 00:00:00 +0200'),
+      )
+    const ofsi = () =>
+      new Response(`<feed><entry><title>Statutory guidance: Iran sanctions: guidance</title><updated>2026-10-01T09:28:10Z</updated><link rel="alternate" type="text/html" href="https://www.gov.uk/government/publications/iran-sanctions-guidance"/><summary>Statutory guidance for the Iran sanctions regime.</summary></entry>
+        <entry><title>Guidance: UK Financial Sanctions FAQs</title><updated>2026-10-01T09:28:10Z</updated><link rel="alternate" type="text/html" href="https://www.gov.uk/government/publications/uk-financial-sanctions-faqs"/><summary>Short-form guidance.</summary></entry>
+        <entry><title>Guidance: OFSI General Licence INT/2026/9491628</title><updated>2026-10-01T09:28:10Z</updated><link rel="alternate" type="text/html" href="https://www.gov.uk/government/publications/gl-9491628"/><summary>Details for OFSI General Licence INT/2026/9491628, UK legal fees</summary></entry></feed>`)
+    const { rows } = await sync({ 'rssId=162': eu, 'office-of-financial-sanctions-implementation': ofsi })
+    expect(rows.map(r => [r.source, r.category, r.countries, r.jurisdiction, r.title.slice(0, 44)])).toEqual([
+      ['eu_sanctions', 'geopolitical', ['Russia'], 'European Union', 'Council Implementing Regulation (EU) 2026/21'],
+      // "Statutory guidance: " dropped; the UK is where it applies, not a country it names.
+      ['ofsi', 'geopolitical', ['Iran'], 'United Kingdom', 'Iran sanctions: guidance'],
+    ])
+  })
+
   it('does not store an entry again', async () => {
     const { rows, body, db } = await sync({ 'sec.gov': SEC }, ['/newsroom/press-releases/2026-97-private-markets'])
     expect(rows).toEqual([])
@@ -82,9 +102,10 @@ describe('sync-regulator-feeds', () => {
 
   it('records one run for all feeds', async () => {
     const { db, fetched } = await sync({ 'sec.gov': SEC })
-    expect(fetched).toHaveLength(9)
+    // Twelve feeds over ten URLs: two publication streams feed a regulatory rule and a sanctions rule each.
+    expect(fetched).toHaveLength(10)
     const [run] = db.ran('sync_runs', 'insert')
-    expect(run.payload).toMatchObject({ source: 'regulator_feeds', ok: true, detail: '1 new of 1 kept from 9 of 9 feeds' })
+    expect(run.payload).toMatchObject({ source: 'regulator_feeds', ok: true, detail: '1 new of 1 kept from 12 of 12 feeds' })
   })
 
   it('carries on when one feed is down or serves something else, and says which', async () => {
@@ -93,12 +114,12 @@ describe('sync-regulator-feeds', () => {
     expect(rows).toHaveLength(1)
     const [run] = db.ran('sync_runs', 'insert')
     // One miss isn't an outage yet.
-    expect(run.payload).toMatchObject({ ok: true, detail: '1 new of 1 kept from 7 of 9 feeds; failed: ftc_news (returned 403), esma_news (returned something that is not a feed)' })
+    expect(run.payload).toMatchObject({ ok: true, detail: '1 new of 1 kept from 10 of 12 feeds; failed: ftc_news (returned 403), esma_news (returned something that is not a feed)' })
   })
 
   it('an empty feed is not a failure', async () => {
     const { db } = await sync({ 'rssId=162': () => new Response('<?xml version="1.0"?><rss version="2.0"><channel><title>Lex Alerts</title></channel></rss>') })
-    expect(db.ran('sync_runs', 'insert')[0].payload).toMatchObject({ ok: true, detail: '0 new of 0 kept from 9 of 9 feeds' })
+    expect(db.ran('sync_runs', 'insert')[0].payload).toMatchObject({ ok: true, detail: '0 new of 0 kept from 12 of 12 feeds' })
   })
 
   it('retries a rate-limited feed once', async () => {
@@ -115,7 +136,7 @@ describe('sync-regulator-feeds', () => {
     const second = await sync(down, [], lastRun(1))
     expect(second.db.ran('sync_runs', 'insert')[0].payload).toMatchObject({ ok: true })
     const third = await sync(down, [], lastRun(2))
-    expect(third.db.ran('sync_runs', 'insert')[0].payload).toMatchObject({ ok: false, detail: '0 new of 0 kept from 8 of 9 feeds; failed: ftc_news (returned 403, 3 runs in a row)' })
+    expect(third.db.ran('sync_runs', 'insert')[0].payload).toMatchObject({ ok: false, detail: '0 new of 0 kept from 11 of 12 feeds; failed: ftc_news (returned 403, 3 runs in a row)' })
     // A feed that answers again starts from zero.
     const recovered = await sync({}, [], lastRun(5))
     expect(recovered.db.ran('sync_runs', 'insert')[0].payload).toMatchObject({ ok: true })

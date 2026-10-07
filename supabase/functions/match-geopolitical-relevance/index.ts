@@ -41,6 +41,7 @@ import { handleOptions, json } from '../_shared/cors.ts'
 import { companyFootprint, firmFootprint, foreignCountries, hasForeignExposure, type EntityFootprint } from '../_shared/footprint.ts'
 import { CANDIDATE_COLUMNS, judgeGeopolitical, type Candidate } from '../_shared/geopoliticalJudge.ts'
 import { syncHoldingsRollup } from '../_shared/holdings.ts'
+import { geopoliticalSourcesOutside } from '../_shared/regulatorFeeds.ts'
 import { buildRelevanceRows, checkRateLimit, loadFirmEntities, requestScheduledRematch, resolveFirmContext, upsertRelevanceRows, type CompanyRow, type FirmRow, type FundRow } from '../_shared/relevance.ts'
 
 const FUNCTION_NAME = 'match-geopolitical-relevance'
@@ -55,9 +56,15 @@ const DELETE_CHUNK = 100
 // country the firm is connected to, plus country-less (global) measures
 // when anything has a non-U.S. footprint. Two indexed queries rather than
 // one OR, so neither needs hand-built PostgREST array literals.
-async function loadCandidates(admin: SupabaseClient, footprints: EntityFootprint[]): Promise<Candidate[]> {
+//
+// `skipSources`: UK and EU sanctions feeds, for a firm with no connection to
+// that region (those measures bind people and businesses there).
+async function loadCandidates(admin: SupabaseClient, footprints: EntityFootprint[], skipSources: string[]): Promise<Candidate[]> {
   const countries = foreignCountries(footprints)
-  const base = () => admin.from('regulations').select(CANDIDATE_COLUMNS).eq('category', 'geopolitical').order('published_date', { ascending: false }).limit(CANDIDATE_WINDOW)
+  const base = () => {
+    const query = admin.from('regulations').select(CANDIDATE_COLUMNS).eq('category', 'geopolitical')
+    return (skipSources.length ? query.not('source', 'in', `(${skipSources.join(',')})`) : query).order('published_date', { ascending: false }).limit(CANDIDATE_WINDOW)
+  }
 
   const [byCountry, global] = await Promise.all([
     countries.length ? base().overlaps('countries', countries) : Promise.resolve({ data: [], error: null }),
@@ -109,7 +116,7 @@ async function evaluateNew(
   rateLimitClient: SupabaseClient | null,
 ): Promise<EvaluationResult | Response> {
   const footprints = [firmFootprint(firm), ...companies.map(companyFootprint)]
-  const candidates = await loadCandidates(admin, footprints)
+  const candidates = await loadCandidates(admin, footprints, geopoliticalSourcesOutside({ firm, funds, companies }))
   if (candidates.length === 0) return { evaluated: 0, relevantIds: [], candidates: 0 }
 
   const { data: alreadyEvaluated, error: evaluatedError } = await admin

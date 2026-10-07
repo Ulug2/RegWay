@@ -423,24 +423,23 @@ Caveats
   below (event-driven removes the need for per-firm schedules); the
   timezone still matters for when the Morning Brief email is sent.
 
-### 13. Geopolitical monitoring, Phase 2 (M–L)
-Phase 1, fund → company holdings, the geopolitical re-check and the
-entity-page category filter are done (see Completed). What's left, roughly
-in order of value:
-1. **UK/EU sanctions** (OFSI consolidated list, EU sanctions map) and OFAC
-   Recent Actions, once a portfolio company with UK/EU-specific exposure
-   makes them worth a connector.
-2. **One known residual false positive** in the H.I.G. test data: a
-   Section 301 "manufacturing sectors" investigation matched to 3Pillar
-   Global (software) via India. The model's own reason says the sector fit
-   isn't confirmed. Left in place as an honest example of the limit, not
-   fixed by more prompt tuning. Same class seen on the holdings test firm
-   (2026-10-04): a drone-export rule matched to an aerospace-logistics
-   company "if it manufactures UAVs … not recorded". A structural fix is
-   the Skeptic pass (item 17), not another prompt rule.
+### 13. Geopolitical monitoring, Phase 2 — UK / EU sanctions done; the false positive waits for item 17
+**UK and EU sanctions done 2026-10-07** (see Completed, "Geopolitical
+Phase 2: UK and EU sanctions"). OFAC has no usable recent-actions feed and
+keeps arriving through the Federal Register.
 
-"Live regulation monitoring" (item 12) is the other large net-new piece of
-work. It should be scoped as its own investigate/implement pass.
+Still open:
+- **One known residual false positive** in the H.I.G. test data: a
+  Section 301 "manufacturing sectors" investigation matched to 3Pillar
+  Global (software) via India. The model's own reason says the sector fit
+  isn't confirmed. Left in place as an honest example of the limit, not
+  fixed by more prompt tuning. Same class seen on the holdings test firm
+  (2026-10-04): a drone-export rule matched to an aerospace-logistics
+  company "if it manufactures UAVs … not recorded". A structural fix is
+  the Skeptic pass (item 17), not another prompt rule.
+- **Not exercised live with a firm the new sources match**: no test firm
+  has a recorded location both in a sanctioned country and in the UK / EU.
+- The EU publishes each action as two instruments, so two rows (item 15).
 
 ### 14. Ground AI matching/search in the regulatory source registry doc (M–L)
 From `docs/Regway_US_Regulatory_Source_Master_Registry_Comprehensive_V2.docx`
@@ -622,6 +621,24 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Geopolitical Phase 2: UK and EU sanctions (2026-10-07)
+Roadmap item 13. Notes: `prompts/geopolitical-phase-2-sanctions.md`.
+- **Sources**: the EU Council's restrictive measures (EUR-Lex), UK
+  sanctions regulations (legislation.gov.uk) and OFSI general licences,
+  notices and regime guidance (gov.uk). Three more entries in the feed
+  registry, polled by `sync-regulator-feeds` every 30 minutes; migration
+  0032 allows the sources.
+- **Tagging**: each entry carries the countries it names, never the
+  publisher's own; an entry naming none is not stored.
+- **Pre-filter**: `match-geopolitical-relevance` skips UK / EU sanctions
+  for a firm not connected to that region, before its country filter.
+- **Judge**: a UK / EU measure needs a recorded connection to the affected
+  country and a recorded presence in the UK / EU, on the same entity.
+- **Live**: 14 items stored on the first sync (Russia, Ukraine, DR Congo,
+  Burundi, Afghanistan, Iran). None names a country H.I.G. touches, so
+  none reached the model ($0).
+- Tests: 336 unit, 84 browser.
 
 ### Live monitoring, Phase 2: regulator feeds (2026-10-07)
 Roadmap item 12. Notes: `prompts/live-monitoring-phase-2.md`.

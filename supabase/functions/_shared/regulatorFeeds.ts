@@ -24,7 +24,7 @@ export interface RegulatorFeed {
   url: string
   agency: string
   region: Region
-  category: 'regulatory' | 'enforcement'
+  category: 'regulatory' | 'enforcement' | 'geopolitical'
   keep: (entry: FeedEntry) => boolean
   // Where the publisher prefixes every title with an identifier.
   cleanTitle?: (title: string) => string
@@ -44,7 +44,8 @@ const rulemaking = (e: FeedEntry) => RULEMAKING.test(e.title) && !NOT_RULEMAKING
 // most are flight restrictions, road orders and electoral changes.
 const UK_BUSINESS_LAW = /\b(financial|markets?|money laundering|economic crime|compan(y|ies)|partnerships?|data protection|employment|tax(es|ation)?|insolvency|competition|consumer|pensions?|investment|securit(y|ies)|bank(s|ing)?|insurance|payments?|audit|export|trade|customs|medic(al|ines)|health|energy|environment\w*|batteries|product safety|online safety|digital|procurement|subsid(y|ies)|payroll|minimum wage|corporate|limited liability)\b/i
 // Sanctions instruments are geopolitical measures, matched by country, not
-// regulatory ones: left to the geopolitical sources (roadmap item 13).
+// regulatory ones: they come in through the sanctions feeds at the end of
+// the list instead (roadmap item 13).
 const SANCTIONS = /\b(sanctions?|restrictive measures)\b/i
 
 // EUR-Lex prefixes every title with "CELEX:32026R2202: ".
@@ -138,7 +139,48 @@ export const REGULATOR_FEEDS: RegulatorFeed[] = [
     keep: e => isEuAct(e, /^Commission Delegated (Regulation|Directive)/),
     cleanTitle: withoutCelex,
   },
+
+  // Sanctions outside the U.S. (roadmap item 13). Geopolitical: matched by
+  // the countries each names, by match-geopolitical-relevance, and only for
+  // a firm connected to the UK or the EU. An entry that names no country is
+  // not stored. U.S. sanctions (OFAC) arrive through the Federal Register:
+  // OFAC's own RSS feed lists program pages last touched years ago, not
+  // recent actions.
+  {
+    // The Council's restrictive measures: new regimes, sectoral measures and
+    // the (more frequent) changes to who is listed.
+    source: 'eu_sanctions',
+    url: 'https://eur-lex.europa.eu/EN/display-feed.rss?rssId=162',
+    agency: 'Council of the European Union (EU sanctions)',
+    region: 'EU',
+    category: 'geopolitical',
+    keep: e => /\brestrictive measures\b/i.test(e.title) && /^Council (Implementing )?(Regulation|Decision)\b/.test(withoutCelex(e.title)),
+    cleanTitle: withoutCelex,
+  },
+  {
+    source: 'uk_sanctions',
+    url: 'https://www.legislation.gov.uk/new/uksi/data.feed',
+    agency: 'UK Government (sanctions regulations)',
+    region: 'UK',
+    category: 'geopolitical',
+    keep: e => /\bsanctions\b/i.test(e.title) && !/\bcorrection slip\b/i.test(e.title),
+  },
+  {
+    // General licences, notices and regime guidance from the UK's sanctions
+    // office; not its webinars, FAQs or general licensing guidance.
+    source: 'ofsi',
+    url: 'https://www.gov.uk/government/organisations/office-of-financial-sanctions-implementation.atom',
+    agency: 'Office of Financial Sanctions Implementation (OFSI, UK)',
+    region: 'UK',
+    category: 'geopolitical',
+    keep: e => /\b(general licen[cs]es?|sanctions|monetary penalty|price cap|services ban)\b/i.test(e.title) && !/\b(webinars?|events|FAQs?|genuine|overview|licensing guidance|supplementary guidance|frozen asset review)\b/i.test(e.title),
+    cleanTitle: title => title.replace(/^(Guidance|Statutory guidance|Notice|News story|Press release|Collection|Policy paper):\s*/i, ''),
+  },
 ]
+
+// A feed's own country is where it applies, not what it's about: "UK
+// Financial Sanctions" names no affected country.
+export const HOME_COUNTRIES: Record<Region, string[]> = { US: ['United States'], UK: ['United Kingdom'], EU: [] }
 
 export const sourcesIn = (region: Region, category: RegulatorFeed['category'] = 'regulatory'): string[] => [
   ...new Set(REGULATOR_FEEDS.filter(f => f.region === region && f.category === category).map(f => f.source)),
@@ -183,3 +225,11 @@ export function regionsOf(entities: FirmEntities): Region[] {
 // The `regulations.source` values whose regulatory items a firm's matcher
 // reads: the Federal Register plus the feeds of each region it's connected to.
 export const regulatorySourcesFor = (entities: FirmEntities): string[] => ['federal_register', ...regionsOf(entities).flatMap(region => sourcesIn(region))]
+
+// Geopolitical feed sources a firm's matcher must skip: a UK or EU sanctions
+// measure binds people and businesses there, so it isn't a candidate for a
+// firm with no connection to that region.
+export function geopoliticalSourcesOutside(entities: FirmEntities): string[] {
+  const connected = regionsOf(entities)
+  return [...new Set(REGULATOR_FEEDS.filter(f => f.category === 'geopolitical' && !connected.includes(f.region)).map(f => f.source))]
+}
