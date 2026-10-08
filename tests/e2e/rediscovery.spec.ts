@@ -13,7 +13,8 @@ const requested = (backend: MockBackend) => backend.called('POST', 'rest/v1/prof
 async function openProfile(page: Page, tab?: string) {
   await signIn(page)
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await page.getByRole('button', { name: 'Firm', exact: true }).click()
   if (tab) return page.getByRole('button', { name: tab, exact: true }).click()
   await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible()
 }

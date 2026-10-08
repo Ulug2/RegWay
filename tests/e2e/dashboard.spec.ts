@@ -268,7 +268,7 @@ test.describe('dashboard chrome', () => {
     await page.mouse.wheel(0, 2500)
     await expect(aiInput(page)).toBeInViewport()
     // The page header stays put as well.
-    await expect(page.getByRole('button', { name: 'Settings' })).toBeInViewport()
+    await expect(page.getByRole('switch', { name: 'Dark mode' })).toBeInViewport()
 
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await expect(aiInput(page)).toBeInViewport()

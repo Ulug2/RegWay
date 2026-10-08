@@ -10,7 +10,7 @@ export default function AiAskBar({ placeholder, onOpen, style }: { placeholder: 
     <div className="max-w-2xl mx-auto sticky z-30" style={{ bottom: 'max(24px, env(safe-area-inset-bottom))', ...style }}>
       <div className="relative">
         <input
-          className="glass-input w-full py-[18px] pl-6 pr-28 text-ellipsis"
+          className="glass-input w-full py-[24px] pl-6 pr-28 text-ellipsis"
           // More opaque than the default glass, with a shadow: list items
           // scroll underneath it.
           style={{ fontSize: 15, color: 'var(--text-900)', background: 'rgb(var(--surface-rgb) / 0.94)', boxShadow: 'var(--shadow-float)' }}

@@ -50,10 +50,10 @@ const MAX_TEXT_BYTES = 150 * 1024
 
 // How tall the chat input is allowed to auto-grow before it scrolls
 // internally instead of pushing the rest of the drawer around.
-const MAX_INPUT_HEIGHT = 160
+const MAX_INPUT_HEIGHT = 240
 
 // Shown in the empty AI bubble while waiting for the first token — cycles
-// every couple of seconds so a slow web-search phase (Claude's tool-use
+// every couple of seconds so a slow web-search phase (the model's tool-use
 // round-trip before any text arrives) doesn't look stalled.
 // One word — the wobbling dots next to it already carry the "…" meaning.
 const STATUS_PHRASES = ['Diligencing', 'Underwriting', 'Benchmarking', 'Sourcing', 'Structuring', 'Modeling', 'Auditing', 'Researching']
@@ -92,6 +92,7 @@ function withCursor(html: string): string {
 
 interface SseEvent {
   type: string
+  content_block?: { type: string }
   delta?: { type: string; text?: string; citation?: Citation; stop_reason?: string }
 }
 
@@ -317,6 +318,9 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
     let revealed = 0
     let streamDone = false
     let answered = false
+    // The model writes a sentence, runs a search, then carries on in a new
+    // block of text that doesn't start with a space.
+    let afterTool = false
     const citations: Citation[] = []
 
     const statusTimer = setInterval(() => {
@@ -381,9 +385,12 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
           target += '\n\n*(Response cut off: it reached the length limit. Ask me to continue for more.)*'
           return
         }
+        if (evt.type === 'content_block_start' && evt.content_block && evt.content_block.type !== 'text') afterTool = true
         if (evt.type !== 'content_block_delta' || !evt.delta) return
         if (evt.delta.type === 'text_delta' && evt.delta.text) {
           if (!target) clearInterval(statusTimer)
+          if (afterTool && /\S$/.test(target) && /^\S/.test(evt.delta.text)) target += ' '
+          afterTool = false
           target += evt.delta.text
         } else if (evt.delta.type === 'citations_delta' && evt.delta.citation) {
           citations.push(evt.delta.citation)
@@ -718,10 +725,10 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                 <div className="relative flex-1">
                   <textarea
                     ref={textareaRef}
-                    rows={1}
+                    rows={3}
                     name="message"
                     aria-label="Message RegWay AI"
-                    className="glass-input w-full pt-3.5 pb-4 px-5 pr-20 resize-none block"
+                    className="glass-input w-full py-4 px-5 pr-20 resize-none block"
                     style={{ fontSize: 15, color: 'var(--text-900)', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto', borderRadius: 18 }}
                     placeholder="Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure…"
                     value={input}

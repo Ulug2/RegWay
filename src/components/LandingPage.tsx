@@ -31,7 +31,7 @@ const FEATURES = [
   {
     Icon: Funnel,
     title: 'AI that filters, not floods',
-    description: 'Claude evaluates every new development against your actual jurisdictions, funds, and portfolio companies. Only genuine matches reach your dashboard, each with the reason it is there.',
+    description: 'RegWay AI evaluates every new development against your actual jurisdictions, funds, and portfolio companies. Only genuine matches reach your dashboard, each with the reason it is there.',
   },
   {
     Icon: TreeStructure,

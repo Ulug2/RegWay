@@ -10,7 +10,7 @@ import type { DaySelection } from '../lib/feedDays'
 import { markVisit } from '../lib/lastVisit'
 import PageHeader from './PageHeader'
 import SiteFooter from './SiteFooter'
-import { GearSix } from './icons'
+import ThemeToggle from './ThemeToggle'
 import EntityFeed from './EntityFeed'
 import AiAskBar from './AiAskBar'
 import { dayKey, type EntityRef } from './EntityPage'
@@ -195,9 +195,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     <div className="min-h-[100dvh] flex flex-col">
       <a href="#main" className="skip-link">Skip to content</a>
       <PageHeader width="max-w-[1200px]">
-        <button onClick={() => onNavigate('profile', { tab: 'firm' })} className="btn-tool relative">
-          <GearSix size={16} aria-hidden="true" />
-          Settings
+        <ThemeToggle />
+        {/* Avatar: click for Profile */}
+        <button
+          className="relative w-9 h-9 flex items-center justify-center text-[13px] font-semibold text-white rounded-full transition-transform active:scale-95"
+          style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))' }}
+          title="Profile"
+          aria-label="Profile"
+          onClick={() => onNavigate('profile')}
+        >
+          {initials}
           {completion.ready && completion.incomplete.length > 0 && (
             <span
               className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
@@ -205,16 +212,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               title="Profile incomplete"
             />
           )}
-        </button>
-        {/* Avatar: click for Profile */}
-        <button
-          className="w-9 h-9 flex items-center justify-center text-[13px] font-semibold text-white rounded-full transition-transform active:scale-95"
-          style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))' }}
-          title="Profile"
-          aria-label="Profile"
-          onClick={() => onNavigate('profile')}
-        >
-          {initials}
         </button>
       </PageHeader>
 

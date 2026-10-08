@@ -4,7 +4,8 @@ import { FIRM_ID, expect, signIn, test } from './mockBackend'
 async function openProfile(page: Page, tab: 'Funds' | 'Portfolio Companies') {
   await signIn(page)
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await page.getByRole('button', { name: 'Firm', exact: true }).click()
   await page.getByRole('button', { name: tab, exact: true }).click()
 }
 

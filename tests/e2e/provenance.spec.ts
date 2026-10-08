@@ -12,7 +12,8 @@ const nameLine = (page: Page) => factLines(page).first()
 async function openFirmProfile(page: Page) {
   await signIn(page)
   await page.goto('/')
-  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await page.getByRole('button', { name: 'Firm', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible()
 }
 
@@ -93,7 +94,8 @@ test.describe('where a profile fact came from', () => {
   test('signup and "add" forms show no provenance: nothing is recorded yet', async ({ page }) => {
     await signIn(page)
     await page.goto('/')
-    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('button', { name: 'Profile', exact: true }).click()
+    await page.getByRole('button', { name: 'Firm', exact: true }).click()
     await page.getByRole('button', { name: /Funds/ }).first().click()
     await expect(page.getByRole('button', { name: 'Add Fund' })).toBeVisible()
     const addCard = page.locator('.glass-card', { has: page.getByRole('button', { name: 'Add Fund' }) })

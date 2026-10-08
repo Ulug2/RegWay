@@ -354,6 +354,8 @@ Use web search to ground every regulatory claim in a real, current source. Alway
     const decoder = new TextDecoder()
     let sseBuffer = ''
     let fullText = ''
+    // Text that resumes after a search doesn't start with a space.
+    let afterTool = false
     const citations: unknown[] = []
     const usage: UsageTotals = {}
     let persisted = false
@@ -387,7 +389,11 @@ Use web search to ground every regulatory claim in a real, current source. Alway
           if (!line.startsWith('data: ')) continue
           try {
             const evt = JSON.parse(line.slice(6))
-            if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+            if (evt.type === 'content_block_start' && evt.content_block?.type !== 'text') {
+              afterTool = true
+            } else if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+              if (afterTool && /\S$/.test(fullText) && /^\S/.test(evt.delta.text)) fullText += ' '
+              afterTool = false
               fullText += evt.delta.text
             } else if (evt.type === 'content_block_delta' && evt.delta?.type === 'citations_delta' && evt.delta.citation) {
               citations.push(evt.delta.citation)

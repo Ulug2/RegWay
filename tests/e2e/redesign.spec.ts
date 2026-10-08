@@ -104,7 +104,8 @@ test.describe('signed in', () => {
   test('each profile question is the label of its own field', async ({ page }) => {
     await signIn(page)
     await page.goto('/')
-    await page.getByRole('button', { name: 'Settings' }).click()
+    await page.getByRole('button', { name: 'Profile', exact: true }).click()
+    await page.getByRole('button', { name: 'Firm', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible()
     const website = page.getByPlaceholder('https://').first()
     const id = await website.getAttribute('id')
@@ -131,4 +132,46 @@ test('with reduced motion nothing lifts or slides', async ({ page }) => {
   const tile = page.getByRole('button', { name: 'GetixHealth Healthcare' })
   await tile.hover()
   await expect(tile).toHaveCSS('transform', 'none')
+})
+
+test.describe('the theme switch in the header', () => {
+  test('follows the device until it is used, then remembers the choice', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await signIn(page)
+    await page.goto('/')
+    const toggle = page.getByRole('switch', { name: 'Dark mode' })
+    await expect(toggle).toHaveAttribute('aria-checked', 'true')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await expect(page.getByRole('button', { name: 'Settings' })).toHaveCount(0)
+
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-checked', 'false')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    await page.reload()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    await expect(page.getByRole('switch', { name: 'Dark mode' })).toHaveAttribute('aria-checked', 'false')
+  })
+})
+
+test('an answer that resumes after a search keeps a space between its sentences', async ({ page, backend }) => {
+  const events = [
+    { type: 'content_block_start', content_block: { type: 'text' } },
+    { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Let me check the latest rule.' } },
+    { type: 'content_block_start', content_block: { type: 'server_tool_use' } },
+    { type: 'content_block_start', content_block: { type: 'web_search_tool_result' } },
+    { type: 'content_block_start', content_block: { type: 'text' } },
+    { type: 'content_block_delta', delta: { type: 'text_delta', text: 'It takes effect' } },
+    // A block split only by a citation carries its own spacing.
+    { type: 'content_block_start', content_block: { type: 'text' } },
+    { type: 'content_block_delta', delta: { type: 'text_delta', text: ' in January.' } },
+    { type: 'message_stop' },
+  ]
+  backend.functions['regway-ai-chat'] = () => ({ sse: events.map(e => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`).join('') })
+  await signIn(page)
+  await page.goto('/')
+  await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+  const box = page.getByRole('textbox', { name: 'Message RegWay AI' })
+  await box.fill('When does it start?')
+  await box.press('Enter')
+  await expect(page.getByText('Let me check the latest rule. It takes effect in January.')).toBeVisible()
 })
