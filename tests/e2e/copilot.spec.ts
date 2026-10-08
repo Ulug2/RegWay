@@ -60,7 +60,7 @@ test.describe('RegWay AI chat', () => {
     backend.functions['regway-ai-chat'] = ({ message }) => ({ sse: aiReply(`Answer to: ${message}`) })
     await openCopilot(page)
 
-    const suggestion = page.getByRole('button', { name: "Summarize today's regulatory changes" })
+    const suggestion = page.getByRole('button', { name: "Today's changes" })
     await suggestion.click()
     await expect(page.getByText("Answer to: Summarize today's regulatory changes")).toBeVisible()
     await expect(suggestion).toHaveCount(0)
@@ -146,10 +146,10 @@ test.describe('a chat with no answer is not kept', () => {
 test.describe('suggested questions', () => {
   test('are about the company the chat is focused on', async ({ page }) => {
     await openCopilot(page)
-    await expect(page.getByRole('button', { name: 'What deadlines are coming up for my funds?' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Upcoming fund deadlines' })).toBeVisible()
     await page.getByRole('complementary', { name: 'Session context' }).getByRole('button', { name: /GetixHealth/ }).click()
-    await expect(page.getByRole('button', { name: 'What deadlines are coming up for GetixHealth?' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'What deadlines are coming up for my funds?' })).toHaveCount(0)
+    await expect(page.getByTitle('What deadlines are coming up for GetixHealth?')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Upcoming fund deadlines' })).toHaveCount(0)
   })
 })
 

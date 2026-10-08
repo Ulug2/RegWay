@@ -26,11 +26,32 @@ interface Message {
   status?: string
 }
 
-// Suggested first questions, about whatever the chat is focused on.
-function suggestedQuestions(context?: AiContext | null): string[] {
-  if (context?.type === 'regulation') return ['Summarize this in plain language', 'Who does this apply to?', 'What are the key dates and deadlines?']
-  if (context) return [`Summarize what's new for ${context.name}`, `What deadlines are coming up for ${context.name}?`, `Which developments matter most for ${context.name}?`]
-  return ["Summarize today's regulatory changes", 'What deadlines are coming up for my funds?', 'Any new state-level rules affecting my portfolio companies?']
+// Suggested first questions, about whatever the chat is focused on. The
+// button shows a short label so all three fit on one line; the full
+// question is what gets sent.
+interface Suggestion {
+  label: string
+  prompt: string
+}
+
+function suggestedQuestions(context?: AiContext | null): Suggestion[] {
+  if (context?.type === 'regulation')
+    return [
+      { label: 'Plain-language summary', prompt: 'Summarize this in plain language' },
+      { label: 'Who does this apply to?', prompt: 'Who does this apply to?' },
+      { label: 'Key dates and deadlines', prompt: 'What are the key dates and deadlines?' },
+    ]
+  if (context)
+    return [
+      { label: "What's new?", prompt: `Summarize what's new for ${context.name}` },
+      { label: 'Upcoming deadlines', prompt: `What deadlines are coming up for ${context.name}?` },
+      { label: 'What matters most?', prompt: `Which developments matter most for ${context.name}?` },
+    ]
+  return [
+    { label: "Today's changes", prompt: "Summarize today's regulatory changes" },
+    { label: 'Upcoming fund deadlines', prompt: 'What deadlines are coming up for my funds?' },
+    { label: 'New state rules for my companies', prompt: 'Any new state-level rules affecting my portfolio companies?' },
+  ]
 }
 
 function welcomeMessage(context?: AiContext | null): Message {
@@ -730,12 +751,13 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                 <div className="flex flex-wrap gap-2 mb-3">
                 {chips.map(chip => (
                   <button
-                    key={chip}
-                    onClick={() => sendMessage(chip)}
+                    key={chip.prompt}
+                    onClick={() => sendMessage(chip.prompt)}
+                    title={chip.prompt}
                     className="btn-tool"
                     style={{ fontSize: 13, color: 'var(--primary)', background: 'rgb(var(--surface-rgb) / 0.94)' }}
                   >
-                    {chip}
+                    {chip.label}
                   </button>
                 ))}
                 </div>

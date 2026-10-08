@@ -222,9 +222,12 @@ test.describe('the chat', () => {
     backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('An answer.') })
     await page.setViewportSize({ width: 900, height: 800 })
     await openChat(page)
-    for (const name of ["Summarize today's regulatory changes", 'What deadlines are coming up for my funds?', 'Any new state-level rules affecting my portfolio companies?']) {
+    for (const name of ["Today's changes", 'Upcoming fund deadlines', 'New state rules for my companies']) {
       await expect(page.getByRole('button', { name })).toBeInViewport({ ratio: 1 })
     }
+    // Short enough to sit on one line.
+    const tops = await Promise.all(["Today's changes", 'New state rules for my companies'].map(async name => (await page.getByRole('button', { name }).boundingBox())!.y))
+    expect(tops[0]).toBe(tops[1])
     await expect(page.getByText('Always verify with qualified legal counsel.')).toBeVisible()
     const box = page.getByRole('textbox', { name: 'Message RegWay AI' })
     await box.fill('When does it start?')

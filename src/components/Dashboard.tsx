@@ -215,13 +215,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </button>
       </PageHeader>
 
-      <main id="main" className="flex-1 w-full max-w-[1200px] mx-auto px-5 sm:px-8 pt-10 sm:pt-14 pb-16">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-9">
-            <h1 className="text-[28px] sm:text-[32px] font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.035em', lineHeight: 1.15 }}>
+      {/* With no level open the page is a greeting, three choices and the
+          AI bar: that sits in the middle of the window (a little above
+          true centre, which reads as centred). An open list starts at the top. */}
+      <main id="main" className={`flex-1 w-full max-w-[1200px] mx-auto px-5 sm:px-8 flex flex-col ${activeToggle ? 'pt-10 sm:pt-14 pb-16' : 'justify-center pt-10 pb-[14vh]'}`}>
+        <div className="w-full max-w-2xl mx-auto">
+          <div className="mb-10 text-center">
+            <h1 className="text-[30px] sm:text-[36px] font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.035em', lineHeight: 1.15 }}>
               {greeting()}, {firstName}.
             </h1>
-            <p className="text-[15px] mt-2" style={{ color: 'var(--text-400)' }}>
+            <p className="text-base mt-3" style={{ color: 'var(--text-400)' }}>
               {firm ? `Here's what's moving across ${firm.name} today.` : "Here's what's moving across your firm today."}
             </p>
           </div>
@@ -319,7 +322,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         <AiAskBar
           placeholder="Ask RegWay AI about today's regulatory impact across your funds and portfolio…"
           onOpen={() => onNavigate('ai')}
-          style={{ marginTop: activeToggle ? 0 : 32 }}
+          style={{ marginTop: activeToggle ? 0 : 20, width: '100%' }}
         />
       </main>
 
