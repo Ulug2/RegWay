@@ -47,7 +47,8 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
   const [impactStatuses, setImpactStatuses] = useCachedState<Record<string, string>>('regs:impactStatus', {})
   const [feedFilter, setFeedFilter] = useCachedState<FeedFilter>('ui:feedFilter', DEFAULT_FILTER)
   const [day, setDay] = useCachedState<DaySelection>(dayKey(entity), null)
-  const [holdings, setHoldings] = useState<FundHolding[] | null>(null)
+  // Cached, so the "Holds" / "Held by" line is there when the page opens.
+  const [holdings, setHoldings] = useCachedState<FundHolding[] | null>('holdings', null)
   const [newSince, setNewSince] = useState<string | null>(null)
   const [, forceRender] = useState(0)
 
@@ -72,7 +73,7 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
         setFirmId(id)
         const { data: { session } } = await supabase.auth.getSession()
         if (session) setNewSince(markVisit(session.user.id, id))
-        fetchHoldings(id).then(setHoldings).catch(() => setHoldings([]))
+        fetchHoldings(id).then(setHoldings).catch(() => setHoldings(prev => prev ?? []))
         if (company && needsScan(company) && !isScanning(entity.id)) {
           scanCompany(id, entity.id).catch(() => {})
           return

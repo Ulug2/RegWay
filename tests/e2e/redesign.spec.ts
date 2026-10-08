@@ -257,3 +257,13 @@ test.describe('the chat', () => {
     expect(await page.evaluate(() => (window as unknown as { __sawLoading: boolean }).__sawLoading)).toBe(false)
   })
 })
+
+test('which fund holds which company is in hand before a fund or company page opens', async ({ page, backend }) => {
+  await signIn(page)
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Dana')
+  expect(await page.evaluate(() => localStorage.getItem('regway:cache:v1:holdings'))).not.toBeNull()
+  // The page is drawn from that, without asking again first.
+  const before = backend.called('GET', 'rest/v1/fund_holdings').length
+  expect(before).toBeGreaterThan(0)
+})

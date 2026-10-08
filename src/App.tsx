@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
-import { getFirmId, getCachedFirmId, getCachedFirm, fetchFirm, fetchFunds, fetchPortfolioCompanies } from './lib/data'
+import { getFirmId, getCachedFirmId, getCachedFirm, fetchFirm, fetchFunds, fetchPortfolioCompanies, fetchHoldings } from './lib/data'
 import { bindCacheToUser, clearCache } from './lib/cache'
 import LandingPage from './components/LandingPage'
 import ProfileScreen, { type ProfileTab } from './components/ProfileScreen'
@@ -57,7 +57,7 @@ export default function App() {
   // The dashboard greets the user by name and counts their funds and
   // companies. Have those in hand before it shows, so nothing on it is seen
   // changing from a placeholder. A failure here only means it fills in late.
-  const loadFirm = (firmId: string) => Promise.all([fetchFirm(firmId), fetchFunds(firmId), fetchPortfolioCompanies(firmId)]).catch(() => {})
+  const loadFirm = (firmId: string) => Promise.all([fetchFirm(firmId), fetchFunds(firmId), fetchPortfolioCompanies(firmId), fetchHoldings(firmId)]).catch(() => {})
 
   useEffect(() => {
     let mounted = true
@@ -80,6 +80,8 @@ export default function App() {
       if (getCachedFirmId() && getCachedFirm() && mounted) setView('dashboard')
       const firmId = await getFirmId().catch(() => getCachedFirmId())
       if (firmId && !getCachedFirm()) await loadFirm(firmId)
+      // Already showing from the cache: bring the holdings in behind it.
+      else if (firmId) fetchHoldings(firmId).catch(() => {})
       if (mounted && !recovering.current) setView(firmId ? 'dashboard' : 'onboarding')
     }
     init()

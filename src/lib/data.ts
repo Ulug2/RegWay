@@ -369,6 +369,7 @@ export async function removeFund(fundId: string): Promise<void> {
 export async function fetchHoldings(firmId: string): Promise<FundHolding[]> {
   const { data, error } = await supabase.from('fund_holdings').select('fund_id, portfolio_company_id').eq('firm_id', firmId)
   if (error) throw error
+  writeCache('holdings', data ?? [])
   return data ?? []
 }
 
@@ -380,6 +381,10 @@ export async function setHolding(firmId: string, fundId: string, companyId: stri
     ? await supabase.from('fund_holdings').upsert({ firm_id: firmId, fund_id: fundId, portfolio_company_id: companyId })
     : await supabase.from('fund_holdings').delete().eq('fund_id', fundId).eq('portfolio_company_id', companyId)
   if (error) throw error
+  patchCache<FundHolding[]>('holdings', prev => {
+    const others = prev.filter(h => !(h.fund_id === fundId && h.portfolio_company_id === companyId))
+    return held ? [...others, { fund_id: fundId, portfolio_company_id: companyId }] : others
+  })
   dropCache('regs:fund')
   matchGeopoliticalDevelopments().catch(() => {})
 }
