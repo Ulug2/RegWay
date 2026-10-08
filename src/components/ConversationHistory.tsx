@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
+import { useCachedState } from '../lib/useCachedState'
 import { deleteConversation, fetchConversations, type ConversationSummary } from '../lib/data'
 import { Plus, Trash, X } from './icons'
 
 // The chat's left sidebar: "New chat" and the signed-in user's saved RegWay
 // AI conversations, most recent first. Choosing one resumes it. Reloads
 // when `refreshKey` changes (after each exchange), so a new conversation
-// appears as soon as its first message is answered.
+// appears as soon as its first message is answered. The list is kept in the
+// cache, so opening the sidebar shows it at once and the reload is silent.
 
 function formatWhen(iso: string) {
   const d = new Date(iso)
@@ -30,7 +32,7 @@ export default function ConversationHistory({
   onNewChat: () => void
   onClose: () => void
 }) {
-  const [conversations, setConversations] = useState<ConversationSummary[] | null>(null)
+  const [conversations, setConversations] = useCachedState<ConversationSummary[] | null>('conversations', null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {

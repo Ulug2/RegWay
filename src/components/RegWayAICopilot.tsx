@@ -50,7 +50,7 @@ const MAX_TEXT_BYTES = 150 * 1024
 
 // How tall the chat input is allowed to auto-grow before it scrolls
 // internally instead of pushing the rest of the drawer around.
-const MAX_INPUT_HEIGHT = 240
+const MAX_INPUT_HEIGHT = 160
 
 
 // Shown in the empty AI bubble while waiting for the first token — cycles
@@ -193,6 +193,19 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
   const [hasStarted, setHasStarted] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
   const [headerH, setHeaderH] = useState(68)
+  // The floating input's height (it grows with the text and with an
+  // attached file), so the last message can always scroll clear of it.
+  const floatRef = useRef<HTMLDivElement>(null)
+  const [floatH, setFloatH] = useState(96)
+  useLayoutEffect(() => {
+    const el = floatRef.current
+    if (!el) return
+    const measure = () => setFloatH(el.offsetHeight)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
   useLayoutEffect(() => {
     if (headerRef.current) setHeaderH(headerRef.current.offsetHeight)
   }, [hasStarted])
@@ -603,7 +616,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               onWheel={handleUserScrollIntent}
               onTouchMove={handleUserScrollIntent}
               className="flex-1 overflow-y-auto scrollable min-h-0 px-4 sm:px-6 py-5 space-y-5"
-              style={{ overscrollBehavior: 'contain', paddingTop: 'calc(20px + var(--chat-top, 0px))' }}
+              style={{ overscrollBehavior: 'contain', paddingTop: 'calc(20px + var(--chat-top, 0px))', paddingBottom: floatH + 8 }}
             >
               {resumeError && <div className="text-xs" role="alert" style={{ color: 'var(--warning)' }}>{resumeError}</div>}
               <div className="max-w-3xl mx-auto space-y-7" onClick={copyCode}>
@@ -696,7 +709,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               <button
                 onClick={scrollToBottom}
                 className="absolute left-1/2 -translate-x-1/2 w-9 h-9 flex items-center justify-center rounded-full transition-ui hover:shadow-md"
-                style={{ bottom: hasStarted ? 160 : 180, background: 'rgb(var(--surface-rgb) / 0.95)', border: '1px solid rgb(var(--line-rgb) / 0.60)', boxShadow: '0 4px 16px rgb(var(--primary-rgb) / 0.18)', color: 'var(--primary)' }}
+                style={{ bottom: floatH + 8, background: 'rgb(var(--surface-rgb) / 0.95)', border: '1px solid rgb(var(--line-rgb) / 0.60)', boxShadow: '0 4px 16px rgb(var(--primary-rgb) / 0.18)', color: 'var(--primary)' }}
                 title="Scroll to latest"
                 aria-label="Scroll to latest"
               >
@@ -705,29 +718,32 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
             )}
 
             {/* Suggested questions — only until the first message is sent */}
+            {/* Suggestions and the input float over the foot of the
+                conversation, which scrolls underneath them. */}
+            <div
+              ref={floatRef}
+              className="absolute bottom-0 inset-x-0 z-10 px-4 sm:px-6 pt-8 pb-4 pointer-events-none"
+              style={{ background: 'linear-gradient(to bottom, rgb(var(--canvas-rgb) / 0), rgb(var(--canvas-rgb) / 0.92) 32px)' }}
+            >
+            <div className="max-w-3xl mx-auto pointer-events-auto">
             {!hasStarted && (
-              <div
-                className="px-4 sm:px-6 py-3 flex-shrink-0"
-                style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.25)' }}
-              >
-                <div className="max-w-3xl mx-auto flex gap-2 overflow-x-auto">
+                <div className="flex flex-wrap gap-2 mb-3">
                 {chips.map(chip => (
                   <button
                     key={chip}
                     onClick={() => sendMessage(chip)}
-                    className="btn-tool flex-shrink-0"
-                    style={{ fontSize: 13, color: 'var(--primary)' }}
+                    className="btn-tool"
+                    style={{ fontSize: 13, color: 'var(--primary)', background: 'rgb(var(--surface-rgb) / 0.94)' }}
                   >
                     {chip}
                   </button>
                 ))}
                 </div>
-              </div>
             )}
 
             {/* Input */}
-            <div className="px-4 sm:px-6 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.25)' }}>
-              <div className="max-w-3xl mx-auto">
+            <div>
+              <div>
               {pendingRefocus && (
                 <div className="mb-2 text-xs" style={{ color: 'var(--primary)' }}>
                   Focus switched to {activeContext ? activeContext.name : 'the whole firm'}. Your next message will be answered about it.
@@ -747,11 +763,11 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                 <div className="relative flex-1">
                   <textarea
                     ref={textareaRef}
-                    rows={3}
+                    rows={1}
                     name="message"
                     aria-label="Message RegWay AI"
-                    className="glass-input w-full py-4 px-5 pr-20 resize-none block"
-                    style={{ fontSize: 15, color: 'var(--text-900)', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto', borderRadius: 18 }}
+                    className="glass-input w-full pt-3.5 pb-4 px-5 pr-20 resize-none block"
+                    style={{ fontSize: 15, color: 'var(--text-900)', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto', borderRadius: 18, background: 'rgb(var(--surface-rgb) / 0.94)', boxShadow: 'var(--shadow-float)' }}
                     placeholder="Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure…"
                     value={input}
                     onChange={e => setInput(e.target.value)}
@@ -788,10 +804,14 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                   </button>
                 </div>
               </div>
-              <div className="text-[11px] mt-2 text-center" style={{ color: 'var(--text-300)' }}>
-                RegWay AI references primary regulatory sources only. Always verify with qualified legal counsel.
+              {!hasStarted && (
+                <div className="text-[11px] mt-2 text-center" style={{ color: 'var(--text-300)' }}>
+                  RegWay AI references primary regulatory sources only. Always verify with qualified legal counsel.
+                </div>
+              )}
               </div>
-              </div>
+            </div>
+            </div>
             </div>
           </div>
 

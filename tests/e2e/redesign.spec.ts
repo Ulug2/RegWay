@@ -209,3 +209,48 @@ test('in the full-screen chat the header floats over the conversation', async ({
   const headerBottom = (await header.boundingBox())!.y + (await header.boundingBox())!.height
   expect((await page.getByText('When does it start?').boundingBox())!.y).toBeGreaterThan(headerBottom)
 })
+
+test.describe('the chat', () => {
+  async function openChat(page: import('@playwright/test').Page) {
+    await signIn(page)
+    await page.goto('/')
+    await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+    await expect(page.getByRole('heading', { name: 'RegWay AI Copilot' })).toBeVisible()
+  }
+
+  test('every suggestion is fully on screen, and the note under the input goes once a message is sent', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('An answer.') })
+    await page.setViewportSize({ width: 900, height: 800 })
+    await openChat(page)
+    for (const name of ["Summarize today's regulatory changes", 'What deadlines are coming up for my funds?', 'Any new state-level rules affecting my portfolio companies?']) {
+      await expect(page.getByRole('button', { name })).toBeInViewport({ ratio: 1 })
+    }
+    await expect(page.getByText('Always verify with qualified legal counsel.')).toBeVisible()
+    const box = page.getByRole('textbox', { name: 'Message RegWay AI' })
+    await box.fill('When does it start?')
+    await box.press('Enter')
+    await expect(page.getByText('An answer.')).toBeVisible()
+    await expect(page.getByText('Always verify with qualified legal counsel.')).toHaveCount(0)
+    // The answer ends above the floating input, not behind it.
+    const answer = (await page.getByText('An answer.').boundingBox())!
+    expect(answer.y + answer.height).toBeLessThan((await box.boundingBox())!.y)
+  })
+
+  test('past conversations show at once when the sidebar is reopened', async ({ page }) => {
+    await openChat(page)
+    await page.getByRole('button', { name: 'Chats' }).click()
+    await expect(page.getByText('Past conversations')).toBeVisible()
+    await expect(page.getByRole('status', { name: 'Loading conversations' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Chats' }).click()
+    await expect(page.getByText('Past conversations')).toHaveCount(0)
+    await page.evaluate(() => {
+      ;(window as unknown as { __sawLoading: boolean }).__sawLoading = false
+      new MutationObserver(() => {
+        if (document.querySelector('[aria-label="Loading conversations"]')) (window as unknown as { __sawLoading: boolean }).__sawLoading = true
+      }).observe(document, { childList: true, subtree: true })
+    })
+    await page.getByRole('button', { name: 'Chats' }).click()
+    await expect(page.getByText('Past conversations')).toBeVisible()
+    expect(await page.evaluate(() => (window as unknown as { __sawLoading: boolean }).__sawLoading)).toBe(false)
+  })
+})
