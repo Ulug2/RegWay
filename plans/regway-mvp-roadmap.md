@@ -340,7 +340,9 @@ at Squarespace; `https://www.regwayai.com` serves the current build, and
 `regwayai.com` and `reg-way.vercel.app` both redirect to it (308). Still to
 confirm by the owner: Supabase Auth Site URL and redirect allow-list
 include `https://www.regwayai.com/**` (and the bare domain), and a
-password-reset email opens the new address. `noindex` is still set.
+password-reset email opens the new address. Search engines may list the
+site as of 2026-10-08 (the `noindex` tag and the `robots.txt` block were
+removed at the owner's request).
 
 The site is on https://reg-way.vercel.app; the owner has bought
 `regwayai.com`.
