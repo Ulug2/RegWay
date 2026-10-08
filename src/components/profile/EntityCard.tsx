@@ -56,16 +56,16 @@ function LogoUpload({ title, logoUrl, onUpload }: { title: string; logoUrl: stri
     <div className="flex items-center gap-4 mb-6">
       <div
         className="w-14 h-14 shrink-0 flex items-center justify-center text-base font-bold overflow-hidden"
-        style={logoUrl ? { borderRadius: 12 } : { background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 12, color: 'white' }}
+        style={logoUrl ? { borderRadius: 12 } : { background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', borderRadius: 12, color: 'white' }}
       >
         {logoUrl ? <img src={logoUrl} alt="" className="w-full h-full block object-cover" /> : (title || '?').slice(0, 1).toUpperCase()}
       </div>
       <div>
-        <label className="text-xs font-medium px-3 py-1.5 inline-block cursor-pointer" style={{ borderRadius: 9999, border: '1px solid rgba(186,230,253,0.50)', color: '#0284C7', background: 'rgba(255,255,255,0.6)' }}>
+        <label className="text-xs font-medium px-3 py-1.5 inline-block cursor-pointer" style={{ borderRadius: 9999, border: '1px solid rgb(var(--line-rgb) / 0.50)', color: 'var(--primary)', background: 'rgb(var(--surface-rgb) / 0.6)' }}>
           {busy ? 'Uploading…' : logoUrl ? 'Change logo' : 'Upload logo'}
           <input type="file" accept="image/*" onChange={pick} disabled={busy} style={{ display: 'none' }} />
         </label>
-        {error && <div className="text-xs mt-1" style={{ color: '#334155' }}>{error}</div>}
+        {error && <div className="text-xs mt-1" style={{ color: 'var(--text-600)' }}>{error}</div>}
       </div>
     </div>
   )
@@ -171,8 +171,8 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
       <button className="w-full flex items-center gap-4 text-left" style={{ padding: 24 }} onClick={() => setOpen(o => !o)}>
         <ProgressRing percent={percent} size={44} label={left === 0 ? '✓' : undefined} />
         <div className="flex-1 min-w-0">
-          <div className="text-base font-semibold truncate" style={{ color: '#0F172A' }}>{title || 'Untitled'}</div>
-          <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>
+          <div className="text-base font-semibold truncate" style={{ color: 'var(--text-900)' }}>{title || 'Untitled'}</div>
+          <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>
             {left === 0 ? 'Profile complete' : `${left} required ${left === 1 ? 'question' : 'questions'} left`}
             {subtitle ? ` · ${subtitle}` : ''}
             {(() => {
@@ -182,7 +182,7 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
             {due > 0 ? ` · ${due} ${due === 1 ? 'answer' : 'answers'} not confirmed in over a year` : ''}
           </div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: '#94a3b8' }}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: 'var(--text-300)' }}>
           <path d="M3 6l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
@@ -191,11 +191,11 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
         <div style={{ padding: '4px 28px 28px' }}>
           {onUploadLogo && <LogoUpload title={title} logoUrl={logoUrl} onUpload={onUploadLogo} />}
           {extra && <div className="mb-7">{extra}</div>}
-          <p className="text-xs mb-6" style={{ color: '#64748B', lineHeight: 1.6 }}>
+          <p className="text-xs mb-6" style={{ color: 'var(--text-400)', lineHeight: 1.6 }}>
             Each answer shows where it came from and when it was last confirmed. A blank answer is treated as unknown, never as “no”.
           </p>
           <QuestionForm questions={questionsFor(scope)} answers={answers} onChange={change} flagMissing sections provenance={provenance} />
-          <div className="flex items-center gap-4 mt-7 pt-5" style={{ borderTop: '1px solid rgba(186,230,253,0.35)' }}>
+          <div className="flex items-center gap-4 mt-7 pt-5" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)' }}>
             <button className="btn-primary" onClick={save} disabled={busy || !dirty}>{busy ? 'Saving…' : 'Save changes'}</button>
             {answered.length > 0 && (
               <button className="btn-ghost" onClick={confirmAll} disabled={busy} title="Marks every answer above as confirmed today; applied when you save.">
@@ -203,9 +203,9 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
               </button>
             )}
             {onRemove && <RemoveButton onConfirm={onRemove} disabled={busy} />}
-            {error && <span className="text-xs" style={{ color: '#334155' }}>{error}</span>}
+            {error && <span className="text-xs" style={{ color: 'var(--text-600)' }}>{error}</span>}
             {savedAt && !error && (
-              <span className="text-xs" style={{ color: '#0284C7' }}>
+              <span className="text-xs" style={{ color: 'var(--primary)' }}>
                 Saved. Matches and analyses update a few minutes after your last change.
               </span>
             )}

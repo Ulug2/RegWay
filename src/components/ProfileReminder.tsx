@@ -40,7 +40,7 @@ export default function ProfileReminder({ completion, onOpen }: ProfileReminderP
         aria-label="Dismiss reminder"
         title="Dismiss until next login"
         className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
-        style={{ color: '#94a3b8', zIndex: 1 }}
+        style={{ color: 'var(--text-300)', zIndex: 1 }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -49,10 +49,10 @@ export default function ProfileReminder({ completion, onOpen }: ProfileReminderP
       <div className="flex items-center gap-5">
         <ProgressRing percent={percent} size={60} />
         <div className="flex-1 min-w-0">
-          <div className="text-base font-semibold" style={{ color: '#0F172A', letterSpacing: '-0.01em' }}>
+          <div className="text-base font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.01em' }}>
             Finish setting up RegWay
           </div>
-          <p className="text-sm mt-0.5" style={{ color: '#64748B' }}>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-400)' }}>
             {left} quick {left === 1 ? 'answer' : 'answers'} left — the more RegWay knows, the sharper your alerts.
           </p>
         </div>
@@ -64,14 +64,14 @@ export default function ProfileReminder({ completion, onOpen }: ProfileReminderP
             key={`${i.scope}-${i.id}`}
             onClick={() => onOpen(tabFor(i), i.id)}
             className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium transition-all hover:bg-sky-50"
-            style={{ borderRadius: 9999, background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(148,197,224,0.55)', color: '#334155' }}
+            style={{ borderRadius: 9999, background: 'rgb(var(--surface-rgb) / 0.75)', border: '1px solid rgb(var(--line-strong-rgb) / 0.55)', color: 'var(--text-600)' }}
           >
             {i.label}
-            <span style={{ color: '#0284C7' }}>{i.total - i.answered} left</span>
+            <span style={{ color: 'var(--primary)' }}>{i.total - i.answered} left</span>
           </button>
         ))}
         {incomplete.length > 4 && (
-          <span className="text-xs self-center" style={{ color: '#94a3b8' }}>+{incomplete.length - 4} more</span>
+          <span className="text-xs self-center" style={{ color: 'var(--text-300)' }}>+{incomplete.length - 4} more</span>
         )}
       </div>
     </div>

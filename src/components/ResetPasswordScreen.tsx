@@ -46,25 +46,25 @@ export default function ResetPasswordScreen({ onDone }: ResetPasswordScreenProps
       <div className="glass-modal w-full max-w-sm" style={{ padding: 32 }}>
         <div className="flex items-center gap-2 mb-8">
           <LogoMark size={36} />
-          <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
+          <span className="font-semibold text-lg" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
         </div>
 
-        <h2 className="text-xl font-semibold mb-1" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>Set a new password</h2>
-        <p className="text-sm mb-6" style={{ color: '#64748B' }}>Choose a new password for your account.</p>
+        <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>Set a new password</h2>
+        <p className="text-sm mb-6" style={{ color: 'var(--text-400)' }}>Choose a new password for your account.</p>
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>New password</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>New password</label>
             <PasswordInput required value={password} onChange={setPassword} placeholder="Create a password" autoComplete="new-password" />
             <PasswordRequirements password={password} />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Confirm password</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>Confirm password</label>
             <PasswordInput required value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" autoComplete="new-password" />
           </div>
 
           {error && (
-            <div className="text-xs p-3 rounded-lg" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155' }}>
+            <div className="text-xs p-3 rounded-lg" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)' }}>
               {error}
             </div>
           )}

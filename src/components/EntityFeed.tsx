@@ -39,40 +39,40 @@ function FeedItem({ item, status, isNew, onOpen, onDismiss }: { item: MatchedReg
           {isNew && (
             <span
               className="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
-              style={{ borderRadius: 9999, background: 'linear-gradient(135deg,#0284C7,#38BDF8)', color: 'white' }}
+              style={{ borderRadius: 9999, background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', color: 'white' }}
               title="Matched since your last visit"
             >
               New
             </span>
           )}
         </div>
-        <div className="text-sm font-semibold mb-2 pr-8" style={{ color: '#0F172A', lineHeight: 1.5 }}>
+        <div className="text-sm font-semibold mb-2 pr-8" style={{ color: 'var(--text-900)', lineHeight: 1.5 }}>
           {item.title}
         </div>
-        <div className="flex items-center gap-2 text-xs" style={{ color: '#64748B' }}>
+        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-400)' }}>
           <span>{item.agency || item.jurisdiction || 'Unknown source'}</span>
           {item.published_date && (
             <>
-              <span style={{ color: '#BAE6FD' }}>●</span>
+              <span style={{ color: 'rgb(var(--line-rgb))' }}>●</span>
               <span>{item.on_public_inspection ? 'Publishes' : 'Published'} {formatDate(item.published_date)}</span>
             </>
           )}
         </div>
         {item.summary && (
-          <p className="text-xs mt-3 line-clamp-2" style={{ color: '#475569', lineHeight: 1.6 }}>
+          <p className="text-xs mt-3 line-clamp-2" style={{ color: 'var(--text-500)', lineHeight: 1.6 }}>
             {item.summary}
           </p>
         )}
         {item.match_reason && (
-          <p className="text-xs mt-3 line-clamp-2" style={{ color: '#334155', lineHeight: 1.6 }}>
-            <span className="font-semibold" style={{ color: '#0284C7' }}>Why it's here: </span>
+          <p className="text-xs mt-3 line-clamp-2" style={{ color: 'var(--text-600)', lineHeight: 1.6 }}>
+            <span className="font-semibold" style={{ color: 'var(--primary)' }}>Why it's here: </span>
             {item.match_reason}
           </p>
         )}
       </button>
       {!!item.also_published_as?.length && (
         // Outside the card's button: these are links of their own.
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-6 pt-2 text-xs" style={{ color: '#64748B' }}>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-6 pt-2 text-xs" style={{ color: 'var(--text-400)' }}>
           <span>Also published as:</span>
           {item.also_published_as.map(v => (
             <a
@@ -82,7 +82,7 @@ function FeedItem({ item, status, isNew, onOpen, onDismiss }: { item: MatchedReg
               rel="noreferrer"
               title={v.title}
               className="underline hover:text-sky-600"
-              style={{ color: '#0284C7' }}
+              style={{ color: 'var(--primary)' }}
             >
               {publisherName(v)}
               {v.published_date ? ` · ${formatDate(v.published_date)}` : ''}
@@ -95,7 +95,7 @@ function FeedItem({ item, status, isNew, onOpen, onDismiss }: { item: MatchedReg
         aria-label="Dismiss"
         title="Not relevant — dismiss (restore in Profile → Dismissed)"
         className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-sky-50"
-        style={{ color: '#94a3b8', background: 'rgba(255,255,255,0.85)' }}
+        style={{ color: 'var(--text-300)', background: 'rgb(var(--surface-rgb) / 0.85)' }}
       >
         <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
           <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -107,7 +107,7 @@ function FeedItem({ item, status, isNew, onOpen, onDismiss }: { item: MatchedReg
 
 function Message({ children }: { children: React.ReactNode }) {
   return (
-    <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: '#94a3b8', padding: '24px 0' }}>
+    <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: 'var(--text-300)', padding: '24px 0' }}>
       {children}
     </div>
   )
@@ -127,7 +127,7 @@ function FilterBar({ items, filter, onChange }: { items: MatchedRegulation[]; fi
           </Chip>
         ))}
         {isFiltered(filter) && (
-          <button className="ml-auto text-xs underline" style={{ color: '#0284C7' }} onClick={() => onChange(DEFAULT_FILTER)}>
+          <button className="ml-auto text-xs underline" style={{ color: 'var(--primary)' }} onClick={() => onChange(DEFAULT_FILTER)}>
             Clear filters
           </button>
         )}
@@ -166,9 +166,9 @@ const stepButton = 'w-9 h-9 flex items-center justify-center rounded-full transi
 function DayStepper({ day, today, first, count, onChange }: { day: string | null; today: string; first: string; count: number; onChange: (d: DaySelection) => void }) {
   if (day === null) {
     return (
-      <div className="flex items-center justify-between mb-4 text-sm" style={{ color: '#334155' }}>
+      <div className="flex items-center justify-between mb-4 text-sm" style={{ color: 'var(--text-600)' }}>
         <span className="font-semibold">All days</span>
-        <button className="text-xs underline" style={{ color: '#0284C7' }} onClick={() => onChange(null)}>
+        <button className="text-xs underline" style={{ color: 'var(--primary)' }} onClick={() => onChange(null)}>
           Back to today
         </button>
       </div>
@@ -177,22 +177,22 @@ function DayStepper({ day, today, first, count, onChange }: { day: string | null
   const go = (d: string) => onChange(d === today ? null : d)
   return (
     <div className="flex items-center gap-2 mb-4">
-      <button className={stepButton} style={{ color: '#334155' }} aria-label="Previous day" disabled={day <= first} onClick={() => go(shiftDay(day, -1))}>
+      <button className={stepButton} style={{ color: 'var(--text-600)' }} aria-label="Previous day" disabled={day <= first} onClick={() => go(shiftDay(day, -1))}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       <div className="flex-1 text-center">
-        <div className="text-sm font-semibold" style={{ color: '#0F172A' }} aria-live="polite">
+        <div className="text-sm font-semibold" style={{ color: 'var(--text-900)' }} aria-live="polite">
           {dayLabel(day, today)}
-          <span className="font-normal" style={{ color: '#64748B' }}> · {fullDate(day)}</span>
+          <span className="font-normal" style={{ color: 'var(--text-400)' }}> · {fullDate(day)}</span>
         </div>
-        <div className="text-xs" style={{ color: '#64748B' }}>
+        <div className="text-xs" style={{ color: 'var(--text-400)' }}>
           {count === 0 ? 'Nothing new found' : `${count} found by RegWay`}
         </div>
       </div>
-      <button className={stepButton} style={{ color: '#334155' }} aria-label="Next day" disabled={day >= today} onClick={() => go(shiftDay(day, 1))}>
+      <button className={stepButton} style={{ color: 'var(--text-600)' }} aria-label="Next day" disabled={day >= today} onClick={() => go(shiftDay(day, 1))}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
-      <button className="text-xs underline ml-1" style={{ color: '#0284C7' }} onClick={() => onChange('all')}>
+      <button className="text-xs underline ml-1" style={{ color: 'var(--primary)' }} onClick={() => onChange('all')}>
         All days
       </button>
     </div>
@@ -236,12 +236,12 @@ export default function EntityFeed({ items, loadingMessage, emptyMessage, status
         <Message>
           Nothing new was found for {dayLabel(day, today) === 'Today' ? 'today' : fullDate(day)}.{' '}
           {earlier && (
-            <button className="underline" style={{ color: '#0284C7' }} onClick={() => onDayChange(earlier)}>
+            <button className="underline" style={{ color: 'var(--primary)' }} onClick={() => onDayChange(earlier)}>
               See {dayLabel(earlier, today) === 'Yesterday' ? 'yesterday' : fullDate(earlier)} ({itemsOnDay(items, earlier).length})
             </button>
           )}
           {earlier && ' · '}
-          <button className="underline" style={{ color: '#0284C7' }} onClick={() => onDayChange('all')}>
+          <button className="underline" style={{ color: 'var(--primary)' }} onClick={() => onDayChange('all')}>
             Show all days
           </button>
         </Message>
@@ -252,7 +252,7 @@ export default function EntityFeed({ items, loadingMessage, emptyMessage, status
             <Message>
               Nothing here matches these filters.{' '}
               {isFiltered(filter) && (
-                <button className="underline" style={{ color: '#0284C7' }} onClick={() => onFilterChange(DEFAULT_FILTER)}>
+                <button className="underline" style={{ color: 'var(--primary)' }} onClick={() => onFilterChange(DEFAULT_FILTER)}>
                   Clear filters
                 </button>
               )}

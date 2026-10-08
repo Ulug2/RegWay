@@ -132,13 +132,13 @@ function CopyButton({ text }: { text: string }) {
     <button
       onClick={copy}
       className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity flex items-center gap-1 text-[11px] mt-2"
-      style={{ color: '#94a3b8' }}
+      style={{ color: 'var(--text-300)' }}
       title="Copy message"
     >
       {copied ? (
         <>
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="#0284C7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          <span style={{ color: '#0284C7' }}>Copied</span>
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 5" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span style={{ color: 'var(--primary)' }}>Copied</span>
         </>
       ) : (
         <>
@@ -475,7 +475,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
     <div
       className="fixed inset-0 z-50 flex flex-col"
       style={{
-        background: hasStarted ? 'transparent' : 'rgba(15,23,42,0.25)',
+        background: hasStarted ? 'transparent' : 'rgb(var(--ink-rgb) / 0.25)',
         backdropFilter: hasStarted ? 'none' : 'blur(4px)',
         transition: 'opacity 0.3s ease, background 0.4s ease',
         opacity: visible ? 1 : 0,
@@ -488,9 +488,9 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
         className="mt-auto flex flex-col"
         style={{
           height: hasStarted ? '100vh' : '90vh',
-          background: 'rgba(253,251,247,0.96)',
+          background: 'rgb(var(--canvas-rgb) / 0.96)',
           backdropFilter: 'blur(24px)',
-          borderTop: hasStarted ? 'none' : '1px solid rgba(186,230,253,0.50)',
+          borderTop: hasStarted ? 'none' : '1px solid rgb(var(--line-rgb) / 0.50)',
           borderRadius: hasStarted ? 0 : '24px 24px 0 0',
           boxShadow: hasStarted ? 'none' : '0 -20px 60px rgba(0,0,0,0.14)',
           transform: visible ? 'translateY(0)' : 'translateY(100%)',
@@ -500,14 +500,14 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
         {/* Drag handle — only meaningful while this still reads as a sheet */}
         {!hasStarted && (
           <div className="flex justify-center pt-4 pb-2 flex-shrink-0">
-            <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(186,230,253,0.60)' }} />
+            <div className="w-10 h-1 rounded-full" style={{ background: 'rgb(var(--line-rgb) / 0.60)' }} />
           </div>
         )}
 
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-          style={{ borderBottom: '1px solid rgba(186,230,253,0.30)' }}
+          style={{ borderBottom: '1px solid rgb(var(--line-rgb) / 0.30)' }}
         >
           <div className="flex items-center gap-3">
             <button
@@ -516,7 +516,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               aria-pressed={chatsOpen}
               title="Chats"
               className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors hover:bg-slate-100"
-              style={{ color: '#334155', background: chatsOpen ? 'rgba(2,132,199,0.12)' : undefined }}
+              style={{ color: 'var(--text-600)', background: chatsOpen ? 'rgb(var(--primary-rgb) / 0.12)' : undefined }}
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
@@ -530,9 +530,9 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               R
             </div>
             <div>
-              <div className="font-semibold" style={{ color: '#0F172A', letterSpacing: '-0.01em' }}>RegWay AI Copilot</div>
-              <div className="text-xs flex items-center gap-1.5" style={{ color: '#64748B' }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#38BDF8' }} />
+              <div className="font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.01em' }}>RegWay AI Copilot</div>
+              <div className="text-xs flex items-center gap-1.5" style={{ color: 'var(--text-400)' }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--primary-light)' }} />
                 {activeContext ? `Focused on ${activeContext.name}` : firm ? `Grounded in live web search for ${firm.name}` : 'Loading firm context…'}
               </div>
             </div>
@@ -542,7 +542,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               <button
                 onClick={() => setContextOpen(true)}
                 className="hidden xl:inline-flex px-4 py-2 text-xs font-medium rounded-full transition-all"
-                style={{ background: 'rgba(255,255,255,0.70)', color: '#334155', border: '1px solid rgba(186,230,253,0.50)' }}
+                style={{ background: 'rgb(var(--surface-rgb) / 0.70)', color: 'var(--text-600)', border: '1px solid rgb(var(--line-rgb) / 0.50)' }}
               >
                 Session context
               </button>
@@ -550,9 +550,9 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
             <button
               className="px-4 py-2 text-xs font-medium rounded-full transition-all"
               style={{
-                background: 'rgba(2,132,199,0.08)',
-                color: '#0284C7',
-                border: '1px solid rgba(2,132,199,0.20)',
+                background: 'rgb(var(--primary-rgb) / 0.08)',
+                color: 'var(--primary)',
+                border: '1px solid rgb(var(--primary-rgb) / 0.20)',
               }}
             >
               Export Memo
@@ -560,7 +560,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
             <button
               onClick={handleClose}
               className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors"
-              style={{ color: '#64748B' }}
+              style={{ color: 'var(--text-400)' }}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -585,7 +585,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
           {/* Conversation */}
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 relative">
             {resumeError && (
-              <div className="px-6 pt-3 text-xs" style={{ color: '#B45309' }}>{resumeError}</div>
+              <div className="px-6 pt-3 text-xs" style={{ color: 'var(--warning)' }}>{resumeError}</div>
             )}
             <div
               ref={scrollRef}
@@ -608,22 +608,22 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                     <div
                       className={msg.role === 'ai' ? 'glass-card p-4' : ''}
                       style={msg.role === 'user' ? {
-                        background: 'rgba(2,132,199,0.12)',
-                        border: '1px solid rgba(2,132,199,0.20)',
+                        background: 'rgb(var(--primary-rgb) / 0.12)',
+                        border: '1px solid rgb(var(--primary-rgb) / 0.20)',
                         borderRadius: '20px 20px 4px 20px',
                         padding: '12px 16px',
-                        color: '#0F172A',
+                        color: 'var(--text-900)',
                       } : {}}
                     >
                       {msg.role === 'ai' && msg.content === '' && isTyping && i === messages.length - 1 ? (
                         <div className="flex items-center gap-2.5 py-1">
-                          {msg.status && <span className="text-sm italic" style={{ color: '#64748B' }}>{msg.status}</span>}
+                          {msg.status && <span className="text-sm italic" style={{ color: 'var(--text-400)' }}>{msg.status}</span>}
                           <div className="flex items-center gap-1">
                             {[0, 1, 2].map(d => (
                               <span
                                 key={d}
                                 className="dot-wobble"
-                                style={{ width: 5, height: 5, background: '#94a3b8', animationDelay: `${d * 0.15}s` }}
+                                style={{ width: 5, height: 5, background: 'var(--text-300)', animationDelay: `${d * 0.15}s` }}
                               />
                             ))}
                           </div>
@@ -631,7 +631,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                       ) : (
                         <>
                           {msg.attachmentName && (
-                            <div className="text-xs mb-1.5 flex items-center gap-1" style={{ color: msg.role === 'user' ? '#0369A1' : '#64748B' }}>
+                            <div className="text-xs mb-1.5 flex items-center gap-1" style={{ color: msg.role === 'user' ? 'var(--primary-dark)' : 'var(--text-400)' }}>
                               <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
                                 <path d="M11.5 5L6.2 10.3a2 2 0 002.8 2.8l5.3-5.3a3.5 3.5 0 00-5-5L3.5 8.6a5 5 0 007 7L15 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                               </svg>
@@ -640,7 +640,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                           )}
                           <div
                             className={msg.role === 'ai' ? 'ai-markdown text-sm leading-relaxed' : 'text-sm leading-relaxed whitespace-pre-line'}
-                            style={{ color: '#0F172A' }}
+                            style={{ color: 'var(--text-900)' }}
                             dangerouslySetInnerHTML={{
                               __html:
                                 msg.role === 'ai'
@@ -662,10 +662,10 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                                 rel="noreferrer"
                                 className="text-xs font-medium flex items-center gap-1 hover:underline"
                                 style={{
-                                  background: 'rgba(15,23,42,0.05)',
-                                  color: '#0284C7',
+                                  background: 'rgb(var(--neutral-rgb) / 0.10)',
+                                  color: 'var(--primary)',
                                   borderRadius: 6,
-                                  border: '1px solid rgba(15,23,42,0.08)',
+                                  border: '1px solid rgb(var(--neutral-rgb) / 0.18)',
                                   padding: '3px 7px',
                                   maxWidth: 220,
                                 }}
@@ -693,7 +693,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               <button
                 onClick={scrollToBottom}
                 className="absolute left-1/2 -translate-x-1/2 w-9 h-9 flex items-center justify-center rounded-full transition-all hover:shadow-md"
-                style={{ bottom: hasStarted ? 160 : 180, background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(186,230,253,0.60)', boxShadow: '0 4px 16px rgba(2,132,199,0.18)', color: '#0284C7' }}
+                style={{ bottom: hasStarted ? 160 : 180, background: 'rgb(var(--surface-rgb) / 0.95)', border: '1px solid rgb(var(--line-rgb) / 0.60)', boxShadow: '0 4px 16px rgb(var(--primary-rgb) / 0.18)', color: 'var(--primary)' }}
                 title="Scroll to latest"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -706,7 +706,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
             {!hasStarted && (
               <div
                 className="px-6 py-3 flex gap-2 overflow-x-auto flex-shrink-0"
-                style={{ borderTop: '1px solid rgba(186,230,253,0.25)' }}
+                style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.25)' }}
               >
                 {chips.map(chip => (
                   <button
@@ -714,9 +714,9 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                     onClick={() => sendMessage(chip)}
                     className="text-xs px-3 py-2 rounded-full whitespace-nowrap flex-shrink-0 transition-all hover:shadow-sm"
                     style={{
-                      background: 'rgba(224,242,254,0.60)',
-                      color: '#0284C7',
-                      border: '1px solid rgba(186,230,253,0.50)',
+                      background: 'rgb(var(--ice-rgb) / 0.60)',
+                      color: 'var(--primary)',
+                      border: '1px solid rgb(var(--line-rgb) / 0.50)',
                     }}
                   >
                     {chip}
@@ -726,29 +726,29 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
             )}
 
             {/* Input */}
-            <div className="px-6 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(186,230,253,0.25)' }}>
+            <div className="px-6 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.25)' }}>
               {pendingRefocus && (
-                <div className="mb-2 text-xs" style={{ color: '#0284C7' }}>
+                <div className="mb-2 text-xs" style={{ color: 'var(--primary)' }}>
                   Focus switched to {activeContext ? activeContext.name : 'the whole firm'}. Your next message will be answered about it.
                 </div>
               )}
               {pendingFile && (
-                <div className="flex items-center gap-2 mb-2 text-xs" style={{ color: '#0284C7' }}>
+                <div className="flex items-center gap-2 mb-2 text-xs" style={{ color: 'var(--primary)' }}>
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                     <path d="M11.5 5L6.2 10.3a2 2 0 002.8 2.8l5.3-5.3a3.5 3.5 0 00-5-5L3.5 8.6a5 5 0 007 7L15 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                   </svg>
                   {pendingFile.name}
-                  <button onClick={() => setPendingFile(null)} style={{ color: '#94a3b8' }}>✕</button>
+                  <button onClick={() => setPendingFile(null)} style={{ color: 'var(--text-300)' }}>✕</button>
                 </div>
               )}
-              {attachError && <div className="text-xs mb-2" style={{ color: '#334155' }}>{attachError}</div>}
+              {attachError && <div className="text-xs mb-2" style={{ color: 'var(--text-600)' }}>{attachError}</div>}
               <div className="flex items-center gap-3">
                 <div className="relative flex-1">
                   <textarea
                     ref={textareaRef}
                     rows={1}
                     className="glass-input w-full pt-3.5 pb-4 px-5 pr-20 text-sm resize-none block"
-                    style={{ fontSize: 14, color: '#0F172A', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto', borderRadius: 18 }}
+                    style={{ fontSize: 14, color: 'var(--text-900)', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto', borderRadius: 18 }}
                     placeholder="Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure..."
                     value={input}
                     onChange={e => setInput(e.target.value)}
@@ -764,7 +764,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isTyping}
                     className="absolute right-12 bottom-[9px] w-8 h-8 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors disabled:opacity-40"
-                    style={{ color: '#94a3b8' }}
+                    style={{ color: 'var(--text-300)' }}
                     title="Attach a .txt, .md, or .pdf file"
                   >
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -774,7 +774,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                   <button
                     onClick={() => (isTyping ? stopGenerating() : sendMessage(input))}
                     className="absolute right-2 bottom-[9px] w-8 h-8 flex items-center justify-center text-white transition-all"
-                    style={{ background: isTyping ? '#334155' : 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 9999 }}
+                    style={{ background: isTyping ? 'var(--text-600)' : 'linear-gradient(135deg,var(--brand),var(--brand-light))', borderRadius: 9999 }}
                     title={isTyping ? 'Stop generating' : 'Send'}
                   >
                     {isTyping ? (
@@ -787,7 +787,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                   </button>
                 </div>
               </div>
-              <div className="text-[10px] mt-2 text-center" style={{ color: '#94a3b8' }}>
+              <div className="text-[10px] mt-2 text-center" style={{ color: 'var(--text-300)' }}>
                 RegWay AI references primary regulatory sources only. Always verify with qualified legal counsel.
               </div>
             </div>

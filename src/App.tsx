@@ -133,11 +133,12 @@ export default function App() {
   return (
     <div
       className="relative min-h-screen overflow-x-clip"
-      style={{ background: '#FDFBF7', fontFamily: 'Inter, system-ui, sans-serif' }}
+      style={{ background: 'var(--canvas)', fontFamily: 'Inter, system-ui, sans-serif' }}
     >
       {/* Ambient radial sphere 1 — sky blue */}
       <div
         aria-hidden="true"
+        data-ambient
         style={{
           position: 'fixed',
           top: '-200px',
@@ -145,7 +146,7 @@ export default function App() {
           width: 700,
           height: 700,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(186,230,253,0.55) 0%, rgba(224,242,254,0.25) 50%, transparent 75%)',
+          background: 'radial-gradient(circle, rgb(var(--line-rgb) / 0.55) 0%, rgb(var(--ice-rgb) / 0.25) 50%, transparent 75%)',
           filter: 'blur(60px)',
           pointerEvents: 'none',
           zIndex: 0,
@@ -154,6 +155,7 @@ export default function App() {
       {/* Ambient radial sphere 2 — ice blue */}
       <div
         aria-hidden="true"
+        data-ambient
         style={{
           position: 'fixed',
           bottom: '-150px',
@@ -161,7 +163,7 @@ export default function App() {
           width: 800,
           height: 800,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(224,242,254,0.60) 0%, rgba(186,230,253,0.20) 50%, transparent 72%)',
+          background: 'radial-gradient(circle, rgb(var(--ice-rgb) / 0.60) 0%, rgb(var(--line-rgb) / 0.20) 50%, transparent 72%)',
           filter: 'blur(80px)',
           pointerEvents: 'none',
           zIndex: 0,
@@ -170,6 +172,7 @@ export default function App() {
       {/* Ambient radial sphere 3 — warm center accent */}
       <div
         aria-hidden="true"
+        data-ambient
         style={{
           position: 'fixed',
           top: '40%',
@@ -177,7 +180,7 @@ export default function App() {
           width: 500,
           height: 500,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(186,230,253,0.20) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgb(var(--line-rgb) / 0.20) 0%, transparent 70%)',
           filter: 'blur(90px)',
           pointerEvents: 'none',
           zIndex: 0,
@@ -188,7 +191,7 @@ export default function App() {
       <div className="relative" style={{ zIndex: 1 }}>
         {view === 'loading' && (
           <div className="min-h-screen flex items-center justify-center">
-            <div className="text-sm" style={{ color: '#64748B' }}>Loading…</div>
+            <div className="text-sm" style={{ color: 'var(--text-400)' }}>Loading…</div>
           </div>
         )}
 
@@ -215,11 +218,11 @@ export default function App() {
                 <LogoMark size={64} />
                 <h1
                   className="text-3xl font-semibold mb-2"
-                  style={{ color: '#0F172A', letterSpacing: '-0.03em' }}
+                  style={{ color: 'var(--text-900)', letterSpacing: '-0.03em' }}
                 >
                   RegWay
                 </h1>
-                <p className="text-base" style={{ color: '#64748B' }}>
+                <p className="text-base" style={{ color: 'var(--text-400)' }}>
                   AI-powered regulatory intelligence for private equity and general partners.
                 </p>
               </div>

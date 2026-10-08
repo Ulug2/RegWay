@@ -33,7 +33,7 @@ export default function PasswordInput({ value, onChange, placeholder, required, 
         aria-label={visible ? 'Hide password' : 'Show password'}
         title={visible ? 'Hide password' : 'Show password'}
         className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
-        style={{ color: '#94a3b8' }}
+        style={{ color: 'var(--text-300)' }}
       >
         {visible ? (
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

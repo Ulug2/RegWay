@@ -11,7 +11,7 @@ export default function AiAskBar({ placeholder, onOpen, style }: { placeholder: 
           className="glass-input w-full py-5 px-7 pr-28 text-sm"
           // More opaque than the default glass, with a shadow: list items
           // scroll underneath it.
-          style={{ fontSize: 14, color: '#0F172A', background: 'rgba(255,255,255,0.94)', boxShadow: '0 10px 30px rgba(15,23,42,0.14)' }}
+          style={{ fontSize: 14, color: 'var(--text-900)', background: 'rgb(var(--surface-rgb) / 0.94)', boxShadow: '0 10px 30px rgb(var(--ink-rgb) / 0.14)' }}
           placeholder={placeholder}
           readOnly
           onFocus={onOpen}
@@ -21,7 +21,7 @@ export default function AiAskBar({ placeholder, onOpen, style }: { placeholder: 
         <button
           onClick={onOpen}
           className="absolute right-14 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
-          style={{ color: '#94a3b8' }}
+          style={{ color: 'var(--text-300)' }}
           title="Attach a file"
         >
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -32,7 +32,7 @@ export default function AiAskBar({ placeholder, onOpen, style }: { placeholder: 
         <button
           onClick={onOpen}
           className="absolute right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-white"
-          style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 9999, boxShadow: '0 4px 12px rgba(2,132,199,0.30)' }}
+          style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', borderRadius: 9999, boxShadow: '0 4px 12px rgb(var(--primary-rgb) / 0.30)' }}
           aria-label="Ask RegWay AI"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

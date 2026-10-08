@@ -8,11 +8,11 @@ export default function ProgressRing({ percent, size = 44, label }: { percent: n
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#0284C7" />
-            <stop offset="100%" stopColor="#38BDF8" />
+            <stop offset="0%" stopColor="var(--primary)" />
+            <stop offset="100%" stopColor="var(--primary-light)" />
           </linearGradient>
         </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(186,230,253,0.55)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(var(--line-rgb) / 0.55)" strokeWidth={stroke} />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -28,7 +28,7 @@ export default function ProgressRing({ percent, size = 44, label }: { percent: n
       </svg>
       <div
         className="absolute inset-0 flex items-center justify-center font-semibold"
-        style={{ fontSize: Math.round(size / 3.6), color: '#0284C7' }}
+        style={{ fontSize: Math.round(size / 3.6), color: 'var(--primary)' }}
       >
         {label ?? `${Math.round(percent)}%`}
       </div>

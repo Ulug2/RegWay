@@ -7,10 +7,10 @@ export default function Chip({ selected, onClick, children }: { selected: boolea
       className="px-3.5 py-1.5 text-xs font-medium transition-all"
       style={{
         borderRadius: 9999,
-        background: selected ? 'linear-gradient(135deg,#0284C7,#38BDF8)' : 'rgba(255,255,255,0.75)',
-        color: selected ? 'white' : '#334155',
-        border: selected ? '1px solid transparent' : '1px solid rgba(148,197,224,0.55)',
-        boxShadow: selected ? '0 2px 8px rgba(2,132,199,0.22)' : 'none',
+        background: selected ? 'linear-gradient(135deg,var(--brand),var(--brand-light))' : 'rgb(var(--surface-rgb) / 0.75)',
+        color: selected ? 'white' : 'var(--text-600)',
+        border: selected ? '1px solid transparent' : '1px solid rgb(var(--line-strong-rgb) / 0.55)',
+        boxShadow: selected ? '0 2px 8px rgb(var(--primary-rgb) / 0.22)' : 'none',
       }}
     >
       {children}

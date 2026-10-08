@@ -10,6 +10,14 @@
       content="AI-powered regulatory intelligence for private equity firms and general partners."
     />
     <meta name="robots" content="noindex, nofollow" />
+    <script>
+      // The theme, before anything paints (see src/lib/theme.ts).
+      try {
+        var choice = localStorage.getItem('regway:theme')
+        var dark = choice === 'dark' || (choice !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

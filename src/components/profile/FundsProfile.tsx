@@ -24,7 +24,7 @@ export default function FundsProfile({ firmId, focusId }: { firmId: string; focu
 
   return (
     <div className="space-y-5">
-      {funds?.length === 0 && <p className="text-sm" style={{ color: '#94a3b8' }}>No funds yet. Add your first below.</p>}
+      {funds?.length === 0 && <p className="text-sm" style={{ color: 'var(--text-300)' }}>No funds yet. Add your first below.</p>}
       {funds?.map(f => (
         <EntityCard
           key={f.id}

@@ -1,8 +1,8 @@
 import type { Regulation } from '../lib/types'
 
 const STYLES: Record<Regulation['category'], { label: string; bg: string; fg: string }> = {
-  regulatory: { label: 'Regulatory', bg: 'rgba(2,132,199,0.10)', fg: '#0284C7' },
-  enforcement: { label: 'Enforcement', bg: 'rgba(217,119,6,0.12)', fg: '#B45309' },
+  regulatory: { label: 'Regulatory', bg: 'rgb(var(--primary-rgb) / 0.10)', fg: 'var(--primary)' },
+  enforcement: { label: 'Enforcement', bg: 'rgba(217,119,6,0.12)', fg: 'var(--warning)' },
   geopolitical: { label: 'Geopolitical', bg: 'rgba(124,58,237,0.10)', fg: '#7C3AED' },
 }
 

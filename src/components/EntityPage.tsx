@@ -145,21 +145,21 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
           <button
             onClick={() => onNavigate('dashboard')}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full transition-all hover:bg-sky-50"
-            style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(186,230,253,0.40)', color: '#334155' }}
+            style={{ background: 'rgb(var(--surface-rgb) / 0.60)', border: '1px solid rgb(var(--line-rgb) / 0.40)', color: 'var(--text-600)' }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
             Dashboard
           </button>
           <div className="flex items-center gap-2.5 ml-auto">
             <LogoMark size={28} />
-            <span className="font-semibold text-base" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
+            <span className="font-semibold text-base" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-[1440px] mx-auto w-full px-8" style={{ paddingTop: 48, paddingBottom: 64 }}>
         {!name ? (
-          <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: '#94a3b8', padding: '24px 0' }}>
+          <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: 'var(--text-300)', padding: '24px 0' }}>
             This {isFund ? 'fund' : 'company'} isn't on file any more.
           </div>
         ) : (
@@ -167,15 +167,15 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
             <div className="max-w-2xl mx-auto flex items-start gap-4" style={{ marginBottom: 32 }}>
               <div
                 className="w-14 h-14 flex items-center justify-center text-base font-bold overflow-hidden flex-shrink-0"
-                style={company?.logo_url ? { borderRadius: 14 } : { background: 'rgba(224,242,254,0.85)', color: '#0284C7', borderRadius: 14 }}
+                style={company?.logo_url ? { borderRadius: 14 } : { background: 'rgb(var(--ice-rgb) / 0.85)', color: 'var(--primary)', borderRadius: 14 }}
               >
                 {company?.logo_url ? <img src={company.logo_url} alt="" className="w-full h-full block object-cover" /> : initialsOf(name)}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>{isFund ? 'Fund' : 'Portfolio company'}</div>
-                <h1 className="text-2xl font-semibold" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>{name}</h1>
-                {subtitle && <div className="text-sm mt-0.5" style={{ color: '#64748B' }}>{subtitle}</div>}
-                <div className="text-xs mt-2" style={{ color: '#334155' }}>
+                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-400)' }}>{isFund ? 'Fund' : 'Portfolio company'}</div>
+                <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>{name}</h1>
+                {subtitle && <div className="text-sm mt-0.5" style={{ color: 'var(--text-400)' }}>{subtitle}</div>}
+                <div className="text-xs mt-2" style={{ color: 'var(--text-600)' }}>
                   {related === null
                     ? ' '
                     : related.length
@@ -188,7 +188,7 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
               <button
                 onClick={() => onNavigate('profile', { tab: isFund ? 'funds' : 'portfolio', focusId: entity.id })}
                 className="text-xs underline flex-shrink-0 mt-1"
-                style={{ color: '#0284C7' }}
+                style={{ color: 'var(--primary)' }}
               >
                 Edit profile
               </button>
@@ -196,7 +196,7 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
 
             <div style={{ marginBottom: 48 }}>
               {scanning ? (
-                <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: '#94a3b8', padding: '24px 0' }}>
+                <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: 'var(--text-300)', padding: '24px 0' }}>
                   RegWay AI is researching regulations for this company. This can take a minute the first time — results are saved.
                 </div>
               ) : (

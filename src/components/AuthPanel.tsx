@@ -85,7 +85,7 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
           onClick={onClose}
           aria-label="Close"
           className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
-          style={{ color: '#94a3b8' }}
+          style={{ color: 'var(--text-300)' }}
         >
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
             <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -93,8 +93,8 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
         </button>
         {checkEmail ? (
           <div className="text-center py-4">
-            <h2 className="text-lg font-semibold mb-2" style={{ color: '#0F172A' }}>Check your email</h2>
-            <p className="text-sm" style={{ color: '#64748B', lineHeight: 1.6 }}>
+            <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-900)' }}>Check your email</h2>
+            <p className="text-sm" style={{ color: 'var(--text-400)', lineHeight: 1.6 }}>
               We sent a confirmation link to <strong>{email}</strong>. Click it, then come back and sign in.
             </p>
             <button
@@ -106,8 +106,8 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
           </div>
         ) : mode === 'forgot' && resetSent ? (
           <div className="text-center py-4">
-            <h2 className="text-lg font-semibold mb-2" style={{ color: '#0F172A' }}>Check your email</h2>
-            <p className="text-sm" style={{ color: '#64748B', lineHeight: 1.6 }}>
+            <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-900)' }}>Check your email</h2>
+            <p className="text-sm" style={{ color: 'var(--text-400)', lineHeight: 1.6 }}>
               If an account exists for <strong>{email}</strong>, we sent a link to reset your password.
             </p>
             <button className="btn-ghost mt-6" onClick={backToSignIn}>
@@ -116,10 +116,10 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
           </div>
         ) : (
           <>
-            <h2 className="text-xl font-semibold mb-1" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>
+            <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>
               {mode === 'sign-up' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}
             </h2>
-            <p className="text-sm mb-6" style={{ color: '#64748B' }}>
+            <p className="text-sm mb-6" style={{ color: 'var(--text-400)' }}>
               {mode === 'sign-up'
                 ? 'Set up regulatory intelligence for your firm.'
                 : mode === 'forgot'
@@ -128,14 +128,14 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
             </p>
 
             {notice && mode === 'sign-in' && (
-              <div role="status" className="text-xs p-3 rounded-lg mb-4" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155', lineHeight: 1.6 }}>
+              <div role="status" className="text-xs p-3 rounded-lg mb-4" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)', lineHeight: 1.6 }}>
                 {notice}
               </div>
             )}
 
             <form onSubmit={submit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Email</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>Email</label>
                 <input
                   type="email"
                   required
@@ -149,12 +149,12 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
               {mode !== 'forgot' && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-medium" style={{ color: '#334155' }}>Password</label>
+                    <label className="block text-xs font-medium" style={{ color: 'var(--text-600)' }}>Password</label>
                     {mode === 'sign-in' && (
                       <button
                         type="button"
                         className="text-xs font-medium"
-                        style={{ color: '#0284C7' }}
+                        style={{ color: 'var(--primary)' }}
                         onClick={() => { setMode('forgot'); setError(null) }}
                       >
                         Forgot password?
@@ -173,7 +173,7 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
               )}
 
               {error && (
-                <div className="text-xs p-3 rounded-lg" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155' }}>
+                <div className="text-xs p-3 rounded-lg" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)' }}>
                   {error}
                 </div>
               )}
@@ -184,13 +184,13 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
             </form>
 
             {mode === 'forgot' ? (
-              <button className="text-xs mt-5 w-full text-center" style={{ color: '#0284C7' }} onClick={backToSignIn}>
+              <button className="text-xs mt-5 w-full text-center" style={{ color: 'var(--primary)' }} onClick={backToSignIn}>
                 Back to sign in
               </button>
             ) : (
               <button
                 className="text-xs mt-5 w-full text-center"
-                style={{ color: '#0284C7' }}
+                style={{ color: 'var(--primary)' }}
                 onClick={() => { setMode(m => (m === 'sign-up' ? 'sign-in' : 'sign-up')); setError(null) }}
               >
                 {mode === 'sign-up' ? 'Already have an account? Sign in' : "Don't have an account? Create one"}

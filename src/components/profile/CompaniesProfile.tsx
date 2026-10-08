@@ -22,7 +22,7 @@ export default function CompaniesProfile({ firmId, focusId }: { firmId: string; 
 
   return (
     <div className="space-y-5">
-      {companies?.length === 0 && <p className="text-sm" style={{ color: '#94a3b8' }}>No portfolio companies yet. Add your first below.</p>}
+      {companies?.length === 0 && <p className="text-sm" style={{ color: 'var(--text-300)' }}>No portfolio companies yet. Add your first below.</p>}
       {companies?.map(co => (
         <EntityCard
           key={co.id}

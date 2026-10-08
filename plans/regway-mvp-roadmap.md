@@ -634,7 +634,7 @@ Verified on 2026-10-08 with the owner signed in on localhost (H.I.G.):
 2. **Email alerts**: skipped for now.
 3. **Domain**: unanswered (11b stays skipped).
 4. **Footer pages**: unanswered.
-5. **Duplicates**: yes to both. Now task 16b.1.
+5. **Duplicates**: yes to both. Done as 16b.1.
 6. **Provenance**: the owner asked for the options to be explained before
    deciding. As put to them: today "Add document" stores only a label you
    type (a name or a link); RegWay never sees the document. The
@@ -646,48 +646,49 @@ Verified on 2026-10-08 with the owner signed in on localhost (H.I.G.):
    ask for re-confirmation; whether to record which user confirmed.
 7. **Profile edits that cost money**: wait about five minutes after the
    last edit before spending AI credit, since a user often changes several
-   things in a row. Now task 16b.2.
+   things in a row. Done as 16b.2.
 8. **Scheduled matching beyond H.I.G.**: unanswered.
 9. **CFTC and OFAC through the Federal Register only**: unanswered.
 10. **Registry grounding (item 14 part 2)**: unanswered.
 11. **Item 17**: on hold until the owner says.
 
-### 16b. Decided on 2026-10-08, ready to build
+### 16b. Decided on 2026-10-08 — done
+Notes: `prompts/16b-decided-tasks.md`. See Completed.
+- **16b.1** The official document replaces its announcement as the card.
+- **16b.2** AI work waits five minutes after the last profile edit.
+- **16b.3** Dark mode.
 
-**16b.1 The official document becomes the card (M).** When the Federal
-Register document for an announcement arrives, it replaces the
-announcement as the card, the announcement becomes its "also published
-as" link, and the analysis is written from the official text. Today the
-announcement stays the card (`_shared/duplicates.ts` always makes it the
-first version) and its analysis is never rewritten. To settle while
-building: an announcement that covers several documents (the SEC
-retailization release has two) would then show as several cards, one per
-rule, each linking the same announcement; what happens to the "New" badge,
-notes, flags and a dismissal made on the announcement; and that the
-official document is matched and analysed even when the announcement was
-(which the current "skip the analysis for a covered version" rule
-prevents).
+Left open by these three:
+- Notes and flags made on an announcement stay with it, and it is no
+  longer shown once its document is.
+- A document from a package that was judged not relevant (the
+  interval-fund rule on H.I.G.) is no longer linked from the page.
+- A real profile edit going through the five-minute wait and re-judging
+  items was not watched live (test rows were).
+- The theme choice is kept per browser, not per account. The onboarding
+  wizard, password-reset screen, fund / company pages and dismissed list
+  were not looked at in dark.
+- Onboarding still runs the matchers at once (not an edit).
 
-**16b.2 Hold AI work for about five minutes after a profile edit (M).**
-Today every save that changes a matching fact at once forgets rejections,
-re-judges a batch and rewrites the analyses of what the entity is matched
-to (`rediscoverMatches` and `refreshEntityImpacts` in `src/lib/data.ts`):
-three quick edits pay three times (the "Venture Capital" removal alone
-cost $0.83). Instead: a save records that the profile changed; the AI
-work runs once, five minutes after the last change. It has to run on the
-server (the user may close the tab), so a scheduled job picks up firms
-whose last profile change is over five minutes old, for every firm, not
-only those on scheduled matching. The Profile page should say that
-matches will update in a few minutes.
+### 16c. Frontend tooling to look at (from the owner, 2026-10-08)
+Five Claude Code add-ons for frontend work, sent by the owner as a list
+("5 Claude Code Plugins for Better Websites"). Each link was opened on
+2026-10-08; none is installed. Two links in the list had typos (the
+taste-skill owner is `Leonxlnx`, with a lowercase L; "SKILL.ma" is
+`SKILL.md`).
 
-**16b.3 Dark mode (M).** The app has one light theme, with colours
-written inline in most components (`#0F172A`, `rgba(255,255,255,0.88)`,
-the sky-blue gradients) rather than as theme tokens. Needs: colour tokens
-in `src/index.css` for both themes, the inline colours moved onto them, a
-switch (follow the system setting by default, with a manual override
-remembered per user), and a pass over every screen including the landing
-page, the badges and the glass cards, which rely on light
-backgrounds.
+| Add-on | What it is | Use here | Note |
+|---|---|---|---|
+| Taste Skill, tasteskill.dev (`npx skills add Leonxlnx/taste-skill`) | 13 instruction files that push an AI coding agent away from generic-looking UI: type, spacing, colour, layout, motion; includes a "redesign an existing project" audit. MIT. | A pass over the landing page and dashboard for polish. | Third-party instructions that run inside the agent: read them before installing. |
+| Web Design Guidelines, `vercel-labs/agent-skills` | Reviews UI code against Vercel's Web Interface Guidelines and reports `file:line` findings (accessibility, focus, forms, motion). | An accessibility and UX audit of `src/components`, most useful right after dark mode. | It downloads its rules from GitHub at every run, so what it checks can change without notice. |
+| Image to Code, `Leonxlnx/taste-skill` (`skills/image-to-code-skill`) | Generates design images first, then writes the frontend to match them. | Little: RegWay has an established look. | Written for OpenAI's Codex and needs an image-generation tool. |
+| Awesome Design, `VoltAgent/awesome-design-md` | 73 `DESIGN.md` files, each describing a well-known site's design system (colours, type, components, do's and don'ts) for an agent to follow. MIT. | Write RegWay's own `DESIGN.md` from the theme variables added in 16b.3, so future UI work stays consistent. Copying another brand's file is not the goal. | The files describe other companies' visual identities. |
+| Playwright CLI, `microsoft/playwright-cli` (`npm i -g @playwright/cli`) | Command-line browser control for agents: record, inspect selectors, screenshot. Lighter on context than the Playwright MCP server. Apache-2.0. | Checking screens while working, in place of the throwaway screenshot tests used this session. The project's own browser tests already use Playwright. | From Microsoft; lowest risk of the five. |
+
+Suggested order if any are adopted: Playwright CLI (tooling only), then a
+`DESIGN.md` for RegWay, then one Web Design Guidelines audit. Questions for
+the owner: which of these do you want installed, and is the aim a redesign
+or an audit of what exists?
 
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
@@ -811,6 +812,21 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### 16b: wait before AI work, official document as the card, dark mode (2026-10-08)
+Notes: `prompts/16b-decided-tasks.md`.
+- **Five-minute wait**: a profile save records what it calls for in
+  `profile_changes` (migration 0035); `apply-profile-changes` (every
+  minute) does it once per firm, five minutes after the last change.
+  Company re-scans wait the same way. Live: test rows waited, then ran as
+  "1 firms, 2 calls".
+- **Official document as the card**: a Federal Register document replaces
+  the SEC / FTC / CFPB announcement of it once matched, with the
+  announcement as its link and its own analysis from the official text.
+  Live on H.I.G.: two such cards.
+- **Dark mode**: all colours are theme variables; follows the device, with
+  Match device / Light / Dark in Profile → Account.
+- Tests: 416 unit, 106 browser.
 
 ### Fact provenance and "last confirmed" dates (2026-10-08)
 Roadmap item 16. Notes: `prompts/fact-provenance.md`.

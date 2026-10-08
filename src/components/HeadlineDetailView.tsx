@@ -152,7 +152,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl transition-all hover:bg-sky-50"
-            style={{ color: '#334155', border: '1px solid rgba(186,230,253,0.40)', background: 'rgba(255,255,255,0.60)' }}
+            style={{ color: 'var(--text-600)', border: '1px solid rgb(var(--line-rgb) / 0.40)', background: 'rgb(var(--surface-rgb) / 0.60)' }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -161,7 +161,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
           </button>
           <div className="flex items-center gap-2">
             <LogoMark size={24} />
-            <span className="font-semibold text-sm" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
+            <span className="font-semibold text-sm" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
         </div>
       </header>
@@ -175,29 +175,29 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
             {prePublication && <PrePublicationBadge />}
             <span
               className="text-xs font-medium px-3 py-1"
-              style={{ background: 'rgba(2,132,199,0.08)', color: '#0284C7', borderRadius: 9999 }}
+              style={{ background: 'rgb(var(--primary-rgb) / 0.08)', color: 'var(--primary)', borderRadius: 9999 }}
             >
               {jurisdiction}
             </span>
-            {dateLabel && <span className="text-xs" style={{ color: '#64748B' }}>{dateLabel}</span>}
+            {dateLabel && <span className="text-xs" style={{ color: 'var(--text-400)' }}>{dateLabel}</span>}
           </div>
           <h1
             className="text-2xl font-semibold mb-3"
-            style={{ color: '#0F172A', lineHeight: 1.35, letterSpacing: '-0.025em' }}
+            style={{ color: 'var(--text-900)', lineHeight: 1.35, letterSpacing: '-0.025em' }}
           >
             {title}
           </h1>
 
           {relatedMatches.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mt-2">
-              <span className="text-xs" style={{ color: '#64748B' }}>Also relevant to:</span>
+              <span className="text-xs" style={{ color: 'var(--text-400)' }}>Also relevant to:</span>
               {relatedMatches.map(m => (
                 <button
                   key={`${m.entity_type}-${m.entity_name}`}
                   onClick={() => { setFocusEntity(m.entity_name); setFocusToken(t => t + 1) }}
                   title={m.relevance_reason ?? undefined}
                   className="text-xs font-medium px-3 py-1 transition-colors hover:bg-sky-50"
-                  style={{ borderRadius: 9999, border: '1px solid rgba(186,230,253,0.50)', color: '#0284C7', background: 'rgba(255,255,255,0.6)' }}
+                  style={{ borderRadius: 9999, border: '1px solid rgb(var(--line-rgb) / 0.50)', color: 'var(--primary)', background: 'rgb(var(--surface-rgb) / 0.6)' }}
                 >
                   {m.entity_name}
                 </button>
@@ -206,17 +206,17 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
           )}
 
           {/* Contextual Date Filter */}
-          <div className="flex items-center gap-3 flex-wrap mt-6 pt-5" style={{ borderTop: '1px solid rgba(186,230,253,0.30)' }}>
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>History</span>
-            <div className="flex items-center gap-1 p-1" style={{ background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(186,230,253,0.35)', borderRadius: 9999 }}>
+          <div className="flex items-center gap-3 flex-wrap mt-6 pt-5" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.30)' }}>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-400)' }}>History</span>
+            <div className="flex items-center gap-1 p-1" style={{ background: 'rgb(var(--surface-rgb) / 0.55)', border: '1px solid rgb(var(--line-rgb) / 0.35)', borderRadius: 9999 }}>
               {DATE_MODES.map(mode => (
                 <button
                   key={mode}
                   onClick={() => setDateMode(mode)}
                   className="px-3.5 py-1.5 text-xs font-medium rounded-full transition-all"
                   style={{
-                    background: dateMode === mode ? 'linear-gradient(135deg,#0284C7,#38BDF8)' : 'transparent',
-                    color: dateMode === mode ? 'white' : '#64748B',
+                    background: dateMode === mode ? 'linear-gradient(135deg,var(--brand),var(--brand-light))' : 'transparent',
+                    color: dateMode === mode ? 'white' : 'var(--text-400)',
                   }}
                 >
                   {mode}
@@ -237,7 +237,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
           {/* Action Toolbar */}
           <div
             className="flex items-center gap-3 flex-wrap mt-5 pt-5"
-            style={{ borderTop: '1px solid rgba(186,230,253,0.30)' }}
+            style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.30)' }}
           >
             {regulationId && (
               <button
@@ -256,7 +256,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                   })
                 }
                 className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:bg-sky-50"
-                style={{ background: 'rgba(2,132,199,0.08)', color: '#0284C7', border: '1px solid rgba(2,132,199,0.20)' }}
+                style={{ background: 'rgb(var(--primary-rgb) / 0.08)', color: 'var(--primary)', border: '1px solid rgb(var(--primary-rgb) / 0.20)' }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M7 1.5l1.2 3 3 1.2-3 1.2L7 10l-1.2-3-3-1.2 3-1.2L7 1.5z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
@@ -269,14 +269,14 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
               onClick={toggleFlag}
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"
               style={{
-                background: flagged ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.60)',
-                color: flagged ? '#B45309' : '#334155',
-                border: flagged ? '1px solid rgba(245,158,11,0.35)' : '1px solid rgba(186,230,253,0.50)',
+                background: flagged ? 'rgba(245,158,11,0.12)' : 'rgb(var(--surface-rgb) / 0.60)',
+                color: flagged ? 'var(--warning)' : 'var(--text-600)',
+                border: flagged ? '1px solid rgba(245,158,11,0.35)' : '1px solid rgb(var(--line-rgb) / 0.50)',
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill={flagged ? '#F59E0B' : 'none'}>
-                <path d="M2 2h8l-2 4 2 4H2V2z" stroke={flagged ? '#B45309' : '#64748B'} strokeWidth="1.3" strokeLinejoin="round"/>
-                <path d="M2 2v10" stroke={flagged ? '#B45309' : '#64748B'} strokeWidth="1.3" strokeLinecap="round"/>
+                <path d="M2 2h8l-2 4 2 4H2V2z" stroke={flagged ? 'var(--warning)' : 'var(--text-400)'} strokeWidth="1.3" strokeLinejoin="round"/>
+                <path d="M2 2v10" stroke={flagged ? 'var(--warning)' : 'var(--text-400)'} strokeWidth="1.3" strokeLinecap="round"/>
               </svg>
               {flagged ? 'Flagged for Review' : 'Flag for Review'}
             </button>
@@ -286,9 +286,9 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                 onClick={() => setDisputeOpen(o => !o)}
                 className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"
                 style={{
-                  background: disputeOpen ? 'rgba(2,132,199,0.10)' : 'rgba(255,255,255,0.60)',
-                  color: disputeOpen ? '#0284C7' : '#334155',
-                  border: disputeOpen ? '1px solid rgba(2,132,199,0.25)' : '1px solid rgba(186,230,253,0.50)',
+                  background: disputeOpen ? 'rgb(var(--primary-rgb) / 0.10)' : 'rgb(var(--surface-rgb) / 0.60)',
+                  color: disputeOpen ? 'var(--primary)' : 'var(--text-600)',
+                  border: disputeOpen ? '1px solid rgb(var(--primary-rgb) / 0.25)' : '1px solid rgb(var(--line-rgb) / 0.50)',
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -303,9 +303,9 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
               onClick={() => setNoteOpen(o => !o)}
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"
               style={{
-                background: noteOpen ? 'rgba(2,132,199,0.10)' : 'rgba(255,255,255,0.60)',
-                color: noteOpen ? '#0284C7' : '#334155',
-                border: noteOpen ? '1px solid rgba(2,132,199,0.25)' : '1px solid rgba(186,230,253,0.50)',
+                background: noteOpen ? 'rgb(var(--primary-rgb) / 0.10)' : 'rgb(var(--surface-rgb) / 0.60)',
+                color: noteOpen ? 'var(--primary)' : 'var(--text-600)',
+                border: noteOpen ? '1px solid rgb(var(--primary-rgb) / 0.25)' : '1px solid rgb(var(--line-rgb) / 0.50)',
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -317,7 +317,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
 
             {confirmDismiss ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: '#64748B' }}>Remove from your dashboard? Restore any time in Profile → Dismissed.</span>
+                <span className="text-xs" style={{ color: 'var(--text-400)' }}>Remove from your dashboard? Restore any time in Profile → Dismissed.</span>
                 <button className="btn-primary" onClick={dismiss} disabled={dismissing}>{dismissing ? 'Dismissing…' : 'Dismiss'}</button>
                 <button className="btn-ghost" onClick={() => setConfirmDismiss(false)}>Cancel</button>
               </div>
@@ -325,7 +325,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
               <button
                 onClick={() => setConfirmDismiss(true)}
                 className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:bg-sky-50"
-                style={{ background: 'rgba(255,255,255,0.60)', color: '#334155', border: '1px solid rgba(186,230,253,0.50)' }}
+                style={{ background: 'rgb(var(--surface-rgb) / 0.60)', color: 'var(--text-600)', border: '1px solid rgb(var(--line-rgb) / 0.50)' }}
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -339,9 +339,9 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                 href={headline.source_url}
                 className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all ml-auto"
                 style={{
-                  background: 'linear-gradient(135deg,#0284C7,#38BDF8)',
+                  background: 'linear-gradient(135deg,var(--brand),var(--brand-light))',
                   color: 'white',
-                  boxShadow: '0 4px 12px rgba(2,132,199,0.25)',
+                  boxShadow: '0 4px 12px rgb(var(--primary-rgb) / 0.25)',
                 }}
                 target="_blank"
                 rel="noreferrer"
@@ -358,33 +358,33 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
           {disputeOpen && (
             <div
               className="mt-4 p-5 rounded-xl space-y-4"
-              style={{ background: 'rgba(255,255,255,0.70)', border: '1px solid rgba(186,230,253,0.45)' }}
+              style={{ background: 'rgb(var(--surface-rgb) / 0.70)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}
             >
               {disputeResult ? (
                 <div className="space-y-3">
-                  <div className="text-sm font-semibold" style={{ color: disputeResult.relevant ? '#0284C7' : '#B45309' }}>
+                  <div className="text-sm font-semibold" style={{ color: disputeResult.relevant ? 'var(--primary)' : 'var(--warning)' }}>
                     {disputeResult.relevant ? 'Re-checked — still considered relevant.' : 'Re-checked — no longer considered relevant.'}
                   </div>
                   {disputeResult.verdicts && disputeResult.verdicts.length > 1 ? (
                     <ul className="space-y-2">
                       {disputeResult.verdicts.map((v, i) => (
-                        <li key={`${v.entity}-${i}`} className="text-sm" style={{ color: '#334155', lineHeight: 1.6 }}>
+                        <li key={`${v.entity}-${i}`} className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.6 }}>
                           <span className="font-semibold">{v.entity}</span>
-                          <span style={{ color: v.relevant ? '#0284C7' : '#B45309' }}>{v.relevant ? ' · relevant' : ' · not relevant'}</span>
+                          <span style={{ color: v.relevant ? 'var(--primary)' : 'var(--warning)' }}>{v.relevant ? ' · relevant' : ' · not relevant'}</span>
                           {' — '}{v.reason}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm" style={{ color: '#334155', lineHeight: 1.6 }}>{disputeResult.reason}</p>
+                    <p className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.6 }}>{disputeResult.reason}</p>
                   )}
                   {!disputeResult.relevant && (
-                    <p className="text-xs" style={{ color: '#94a3b8' }}>This will stop appearing on your dashboard the next time it loads.</p>
+                    <p className="text-xs" style={{ color: 'var(--text-300)' }}>This will stop appearing on your dashboard the next time it loads.</p>
                   )}
                 </div>
               ) : (
                 <>
-                  <p className="text-xs" style={{ color: '#64748B' }}>
+                  <p className="text-xs" style={{ color: 'var(--text-400)' }}>
                     RegWay AI will re-check this match against your firm, fund, and company profiles as they stand right now. If a profile fact was wrong, correct it in Settings first — or describe what's off below and submit anyway.
                   </p>
                   <textarea
@@ -393,7 +393,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                       background: 'transparent',
                       border: 'none',
                       outline: 'none',
-                      color: '#0F172A',
+                      color: 'var(--text-900)',
                       lineHeight: 1.6,
                       minHeight: 64,
                       fontFamily: 'Inter, sans-serif',
@@ -403,11 +403,11 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                     onChange={e => setDisputeNote(e.target.value)}
                     disabled={disputing}
                   />
-                  {disputeError && <p className="text-xs" style={{ color: '#B45309' }}>{disputeError}</p>}
+                  {disputeError && <p className="text-xs" style={{ color: 'var(--warning)' }}>{disputeError}</p>}
                   <div className="flex justify-end">
                     <button
                       className="text-xs px-4 py-2 rounded-full disabled:opacity-60"
-                      style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', color: 'white' }}
+                      style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', color: 'white' }}
                       onClick={submitDispute}
                       disabled={disputing}
                     >
@@ -423,14 +423,14 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
           {noteOpen && (
             <div
               className="mt-4 p-5 rounded-xl space-y-4"
-              style={{ background: 'rgba(255,255,255,0.70)', border: '1px solid rgba(186,230,253,0.45)' }}
+              style={{ background: 'rgb(var(--surface-rgb) / 0.70)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}
             >
               {notes.map(n => (
-                <div key={n.id} className="pb-3" style={{ borderBottom: '1px solid rgba(186,230,253,0.30)' }}>
-                  <div className="text-xs font-medium mb-1" style={{ color: '#94a3b8' }}>
+                <div key={n.id} className="pb-3" style={{ borderBottom: '1px solid rgb(var(--line-rgb) / 0.30)' }}>
+                  <div className="text-xs font-medium mb-1" style={{ color: 'var(--text-300)' }}>
                     {new Date(n.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                   </div>
-                  <div className="text-sm" style={{ color: '#0F172A', lineHeight: 1.6 }}>{n.body}</div>
+                  <div className="text-sm" style={{ color: 'var(--text-900)', lineHeight: 1.6 }}>{n.body}</div>
                 </div>
               ))}
               <div>
@@ -440,7 +440,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                     background: 'transparent',
                     border: 'none',
                     outline: 'none',
-                    color: '#0F172A',
+                    color: 'var(--text-900)',
                     lineHeight: 1.6,
                     minHeight: 80,
                     fontFamily: 'Inter, sans-serif',
@@ -452,7 +452,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                 <div className="flex justify-end mt-2">
                   <button
                     className="text-xs px-4 py-2 rounded-full"
-                    style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', color: 'white' }}
+                    style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', color: 'white' }}
                     onClick={saveNote}
                   >
                     Save Note
@@ -481,7 +481,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
           <div className="space-y-6">
             {headline?.source_url && (
               <div className="glass-card" style={{ padding: 24 }}>
-                <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#64748B' }}>
+                <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-400)' }}>
                   Primary Source
                 </div>
                 <a
@@ -489,15 +489,15 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                   target="_blank"
                   rel="noreferrer"
                   className="block p-4 rounded-xl transition-all hover:shadow-md"
-                  style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)' }}
+                  style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)' }}
                 >
                   {sourceDomain(headline.source_url) && (
-                    <div className="text-xs font-medium mb-1" style={{ color: '#0284C7' }}>{sourceDomain(headline.source_url)}</div>
+                    <div className="text-xs font-medium mb-1" style={{ color: 'var(--primary)' }}>{sourceDomain(headline.source_url)}</div>
                   )}
-                  <div className="text-sm font-semibold" style={{ color: '#0F172A', lineHeight: 1.4 }}>
+                  <div className="text-sm font-semibold" style={{ color: 'var(--text-900)', lineHeight: 1.4 }}>
                     {title}
                   </div>
-                  <div className="flex items-center gap-1 mt-3 text-xs" style={{ color: '#0284C7' }}>
+                  <div className="flex items-center gap-1 mt-3 text-xs" style={{ color: 'var(--primary)' }}>
                     View source
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                       <path d="M1 9L9 1M9 1H4M9 1v5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -509,7 +509,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
 
             {versions.length > 0 && (
               <div className="glass-card" style={{ padding: 24 }}>
-                <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#64748B' }}>
+                <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-400)' }}>
                   Also published as
                 </div>
                 <div className="space-y-3">
@@ -520,13 +520,13 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                       target="_blank"
                       rel="noreferrer"
                       className="block p-4 rounded-xl transition-all hover:shadow-md"
-                      style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(186,230,253,0.45)' }}
+                      style={{ background: 'rgb(var(--surface-rgb) / 0.60)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}
                     >
-                      <div className="text-xs font-medium mb-1" style={{ color: '#0284C7' }}>
+                      <div className="text-xs font-medium mb-1" style={{ color: 'var(--primary)' }}>
                         {publisherName(v)}
-                        {formatDate(v.published_date) && <span style={{ color: '#64748B' }}> · {formatDate(v.published_date)}</span>}
+                        {formatDate(v.published_date) && <span style={{ color: 'var(--text-400)' }}> · {formatDate(v.published_date)}</span>}
                       </div>
-                      <div className="text-sm" style={{ color: '#0F172A', lineHeight: 1.4 }}>{v.title}</div>
+                      <div className="text-sm" style={{ color: 'var(--text-900)', lineHeight: 1.4 }}>{v.title}</div>
                     </a>
                   ))}
                 </div>
@@ -534,7 +534,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
             )}
 
             <div className="glass-card" style={{ padding: 24 }}>
-              <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#64748B' }}>
+              <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-400)' }}>
                 Regulatory Metadata
               </div>
               <div className="space-y-2.5">
@@ -548,8 +548,8 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                   .filter(item => item.value)
                   .map(item => (
                     <div key={item.label} className="flex justify-between text-xs gap-3">
-                      <span style={{ color: '#94a3b8' }}>{item.label}</span>
-                      <span className="font-medium text-right" style={{ color: '#334155' }}>{item.value}</span>
+                      <span style={{ color: 'var(--text-300)' }}>{item.label}</span>
+                      <span className="font-medium text-right" style={{ color: 'var(--text-600)' }}>{item.value}</span>
                     </div>
                   ))}
               </div>
@@ -562,18 +562,18 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
       <footer
         className="mt-8"
         style={{
-          background: 'rgba(255,255,255,0.60)',
+          background: 'rgb(var(--surface-rgb) / 0.60)',
           backdropFilter: 'blur(12px)',
-          borderTop: '1px solid rgba(186,230,253,0.30)',
+          borderTop: '1px solid rgb(var(--line-rgb) / 0.30)',
         }}
       >
         <div className="max-w-[1200px] mx-auto px-8 py-5 flex items-center justify-between">
-          <div className="text-xs" style={{ color: '#94a3b8' }}>
+          <div className="text-xs" style={{ color: 'var(--text-300)' }}>
             RegWay · Regulatory intelligence for private markets · © 2026
           </div>
           <div className="flex items-center gap-6">
             {['About Us', 'Sources', 'Legal Disclaimers'].map(link => (
-              <a key={link} href="#" className="text-xs hover:text-sky-600 transition-colors" style={{ color: '#64748B' }}>
+              <a key={link} href="#" className="text-xs hover:text-sky-600 transition-colors" style={{ color: 'var(--text-400)' }}>
                 {link}
               </a>
             ))}

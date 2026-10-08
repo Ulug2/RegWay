@@ -23,7 +23,7 @@ interface DashboardProps {
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: '#94a3b8', padding: '24px 0' }}>
+    <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: 'var(--text-300)', padding: '24px 0' }}>
       {message}
     </div>
   )
@@ -200,7 +200,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <LogoMark size={32} />
-            <span className="font-semibold text-base" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
+            <span className="font-semibold text-base" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
 
           <div className="ml-auto flex items-center gap-3">
@@ -209,21 +209,21 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               onClick={() => onNavigate('profile', { tab: 'firm' })}
               className="relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:bg-sky-50"
               style={{
-                background: 'rgba(255,255,255,0.60)',
-                border: '1px solid rgba(186,230,253,0.40)',
-                color: '#334155',
+                background: 'rgb(var(--surface-rgb) / 0.60)',
+                border: '1px solid rgb(var(--line-rgb) / 0.40)',
+                color: 'var(--text-600)',
                 borderRadius: 9999,
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="2" stroke="#64748B" strokeWidth="1.3"/>
-                <path d="M7 1v1.5M7 11.5V13M13 7h-1.5M2.5 7H1M11.1 2.9l-1.1 1.1M4 9l-1.1 1.1M11.1 11.1L10 10M4 5L2.9 3.9" stroke="#64748B" strokeWidth="1.3" strokeLinecap="round"/>
+                <circle cx="7" cy="7" r="2" stroke="var(--text-400)" strokeWidth="1.3"/>
+                <path d="M7 1v1.5M7 11.5V13M13 7h-1.5M2.5 7H1M11.1 2.9l-1.1 1.1M4 9l-1.1 1.1M11.1 11.1L10 10M4 5L2.9 3.9" stroke="var(--text-400)" strokeWidth="1.3" strokeLinecap="round"/>
               </svg>
               Settings
               {completion.ready && completion.incomplete.length > 0 && (
                 <span
                   className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
-                  style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', boxShadow: '0 0 0 2px #FDFBF7' }}
+                  style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', boxShadow: '0 0 0 2px var(--canvas)' }}
                   title="Profile incomplete"
                 />
               )}
@@ -232,7 +232,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             {/* Avatar — click for Profile */}
             <button
               className="w-9 h-9 flex items-center justify-center text-sm font-semibold text-white rounded-full"
-              style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)' }}
+              style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))' }}
               title="Profile"
               onClick={() => onNavigate('profile')}
             >
@@ -247,10 +247,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
         {/* Greeting */}
         <div className="text-center" style={{ marginBottom: 48 }}>
-          <h1 className="text-2xl font-semibold mb-2" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>
+          <h1 className="text-2xl font-semibold mb-2" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>
             {greeting()}, {firstName}.
           </h1>
-          <p className="text-sm" style={{ color: '#64748B' }}>
+          <p className="text-sm" style={{ color: 'var(--text-400)' }}>
             {firm ? `Here's what's moving across ${firm.name} today.` : "Here's what's moving across your firm today."}
           </p>
         </div>
@@ -258,7 +258,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         {failingSources.length > 0 && (
           <div
             className="max-w-2xl mx-auto text-xs text-center"
-            style={{ marginBottom: 32, padding: '10px 16px', borderRadius: 12, background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155' }}
+            style={{ marginBottom: 32, padding: '10px 16px', borderRadius: 12, background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)' }}
           >
             {failingSources.length === 1
               ? `${failingSources[0]} hasn't updated successfully recently — recent items from this source may be missing.`
@@ -282,15 +282,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   padding: '28px 16px',
                   fontSize: 16,
                   background: active
-                    ? 'linear-gradient(135deg, rgba(224,242,254,0.95), rgba(186,230,253,0.70))'
-                    : 'rgba(255,255,255,0.88)',
+                    ? 'linear-gradient(135deg, rgb(var(--ice-rgb) / 0.95), rgb(var(--line-rgb) / 0.70))'
+                    : 'rgb(var(--surface-rgb) / 0.88)',
                   backdropFilter: 'blur(20px) saturate(160%)',
                   WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-                  border: active ? '1.5px solid rgba(56,189,248,0.55)' : '1px solid rgba(148,197,224,0.55)',
-                  color: active ? '#0284C7' : '#334155',
+                  border: active ? '1.5px solid rgb(var(--primary-light-rgb) / 0.55)' : '1px solid rgb(var(--line-strong-rgb) / 0.55)',
+                  color: active ? 'var(--primary)' : 'var(--text-600)',
                   boxShadow: active
-                    ? 'inset 0 0 0 1.5px rgba(56,189,248,0.35), 0 8px 24px rgba(2,132,199,0.18)'
-                    : '0 4px 16px rgba(15,23,42,0.08)',
+                    ? 'inset 0 0 0 1.5px rgb(var(--primary-light-rgb) / 0.35), 0 8px 24px rgb(var(--primary-rgb) / 0.18)'
+                    : '0 4px 16px rgb(var(--ink-rgb) / 0.08)',
                 }}
               >
                 {t.label}
@@ -327,12 +327,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                       >
                         <div
                           className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4"
-                          style={{ background: 'rgba(224,242,254,0.85)', color: '#0284C7', borderRadius: 12 }}
+                          style={{ background: 'rgb(var(--ice-rgb) / 0.85)', color: 'var(--primary)', borderRadius: 12 }}
                         >
                           {f.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
-                        <div className="text-sm font-semibold" style={{ color: '#0F172A' }}>{f.name}</div>
-                        <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>{f.structure ?? 'Structure n/a'}</div>
+                        <div className="text-sm font-semibold" style={{ color: 'var(--text-900)' }}>{f.name}</div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>{f.structure ?? 'Structure n/a'}</div>
                       </button>
                     )
                   })}
@@ -357,7 +357,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                       >
                         <div
                           className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4 overflow-hidden"
-                          style={co.logo_url ? { borderRadius: 12 } : { background: 'rgba(224,242,254,0.85)', color: '#0284C7', borderRadius: 12 }}
+                          style={co.logo_url ? { borderRadius: 12 } : { background: 'rgb(var(--ice-rgb) / 0.85)', color: 'var(--primary)', borderRadius: 12 }}
                         >
                           {co.logo_url ? (
                             <img src={co.logo_url} alt="" className="w-full h-full block object-cover" />
@@ -365,11 +365,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                             co.name.split(' ').map(w => w[0]).join('').slice(0, 2)
                           )}
                         </div>
-                        <div className="text-sm font-semibold" style={{ color: '#0F172A' }}>{co.name}</div>
-                        <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>{(co.sectors ?? []).join(', ')}</div>
+                        <div className="text-sm font-semibold" style={{ color: 'var(--text-900)' }}>{co.name}</div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>{(co.sectors ?? []).join(', ')}</div>
                         {(isScanning(co.id) || needsScan(co)) && (
-                          <div className="flex items-center gap-1.5 mt-3 text-[11px]" style={{ color: '#0284C7' }}>
-                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#38BDF8' }} />
+                          <div className="flex items-center gap-1.5 mt-3 text-[11px]" style={{ color: 'var(--primary)' }}>
+                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--primary-light)' }} />
                             Researching…
                           </div>
                         )}
@@ -394,16 +394,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       {/* Footer */}
       <footer
         style={{
-          background: 'rgba(255,255,255,0.60)',
+          background: 'rgb(var(--surface-rgb) / 0.60)',
           backdropFilter: 'blur(12px)',
-          borderTop: '1px solid rgba(186,230,253,0.30)',
+          borderTop: '1px solid rgb(var(--line-rgb) / 0.30)',
         }}
       >
         <div className="max-w-[1440px] mx-auto px-8 py-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <LogoMark size={24} />
-            <span className="text-sm font-semibold" style={{ color: '#334155' }}>RegWay</span>
-            <span className="text-xs ml-2" style={{ color: '#94a3b8' }}>© 2026 · Regulatory intelligence for private markets</span>
+            <span className="text-sm font-semibold" style={{ color: 'var(--text-600)' }}>RegWay</span>
+            <span className="text-xs ml-2" style={{ color: 'var(--text-300)' }}>© 2026 · Regulatory intelligence for private markets</span>
           </div>
           <div className="flex items-center gap-6">
             {['About Us', 'Landing Page', 'Sources', 'Legal Disclaimers', 'Privacy Policy'].map(link => (
@@ -411,7 +411,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 key={link}
                 href="#"
                 className="text-xs hover:text-sky-600 transition-colors"
-                style={{ color: '#64748B' }}
+                style={{ color: 'var(--text-400)' }}
               >
                 {link}
               </a>

@@ -15,13 +15,13 @@ function FreeTags({ value, onChange, placeholder }: { value: string[]; onChange:
   return (
     <div
       className="flex flex-wrap gap-2 p-2"
-      style={{ background: 'rgba(255,255,255,0.70)', border: '1px solid rgba(186,230,253,0.50)', borderRadius: 10, minHeight: 44 }}
+      style={{ background: 'rgb(var(--surface-rgb) / 0.70)', border: '1px solid rgb(var(--line-rgb) / 0.50)', borderRadius: 10, minHeight: 44 }}
     >
       {value.map(tag => (
         <span
           key={tag}
           className="flex items-center gap-1 px-3 py-1 text-xs font-medium"
-          style={{ background: 'rgba(2,132,199,0.10)', color: '#0284C7', borderRadius: 9999, border: '1px solid rgba(2,132,199,0.20)' }}
+          style={{ background: 'rgb(var(--primary-rgb) / 0.10)', color: 'var(--primary)', borderRadius: 9999, border: '1px solid rgb(var(--primary-rgb) / 0.20)' }}
         >
           {tag}
           <button type="button" className="ml-1 hover:opacity-60" onClick={() => onChange(value.filter(t => t !== tag))}>×</button>
@@ -39,7 +39,7 @@ function FreeTags({ value, onChange, placeholder }: { value: string[]; onChange:
         onBlur={commit}
         placeholder={value.length ? '' : placeholder}
         className="flex-1 min-w-[140px] bg-transparent outline-none text-sm px-1"
-        style={{ color: '#0F172A' }}
+        style={{ color: 'var(--text-900)' }}
       />
     </div>
   )
@@ -91,7 +91,7 @@ export interface FactProvenance {
 }
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-const linkStyle = { color: '#0284C7' }
+const linkStyle = { color: 'var(--primary)' }
 
 function FactLine({ fact, label }: { fact: FactProvenance; label: string }) {
   const { meta } = fact
@@ -112,7 +112,7 @@ function FactLine({ fact, label }: { fact: FactProvenance; label: string }) {
   }
 
   return (
-    <div className="mt-1.5 text-[11px] flex flex-wrap items-baseline gap-x-2 gap-y-0.5" style={{ color: stale ? '#B45309' : '#94a3b8' }} data-fact-line>
+    <div className="mt-1.5 text-[11px] flex flex-wrap items-baseline gap-x-2 gap-y-0.5" style={{ color: stale ? 'var(--warning)' : 'var(--text-300)' }} data-fact-line>
       <span>{origin}</span>
       {!fact.changed && (stale || !meta) && (
         <button type="button" className="underline" style={linkStyle} onClick={fact.onConfirm} aria-label={`Confirm ${label} is still correct`}>
@@ -229,12 +229,12 @@ export default function QuestionField({ question: q, value, onChange, flagMissin
   return (
     <div>
       <div className="flex items-center gap-2 mb-1.5 min-h-[20px]">
-        <label className="block text-xs font-medium" style={{ color: '#334155' }}>{q.label}</label>
-        {!q.required && <span className="text-[10px]" style={{ color: '#94a3b8' }}>Optional</span>}
+        <label className="block text-xs font-medium" style={{ color: 'var(--text-600)' }}>{q.label}</label>
+        {!q.required && <span className="text-[10px]" style={{ color: 'var(--text-300)' }}>Optional</span>}
         {missing && (
           <span
             className="text-[10px] font-medium px-2 py-0.5"
-            style={{ borderRadius: 9999, background: 'rgba(2,132,199,0.10)', color: '#0284C7' }}
+            style={{ borderRadius: 9999, background: 'rgb(var(--primary-rgb) / 0.10)', color: 'var(--primary)' }}
           >
             Needed
           </span>
@@ -243,7 +243,7 @@ export default function QuestionField({ question: q, value, onChange, flagMissin
           // A blank answer is a gap in what RegWay knows, not a "no".
           <span
             className="text-[10px] font-medium px-2 py-0.5"
-            style={{ borderRadius: 9999, background: 'rgba(100,116,139,0.10)', color: '#64748B' }}
+            style={{ borderRadius: 9999, background: 'rgb(var(--neutral-rgb) / 0.10)', color: 'var(--text-400)' }}
             title="Not recorded. RegWay treats a blank answer as unknown, not as “no” or “none”."
           >
             Unknown
@@ -252,7 +252,7 @@ export default function QuestionField({ question: q, value, onChange, flagMissin
       </div>
       {control}
       {fact && !isEmpty(shown) && <FactLine fact={fact} label={q.label} />}
-      {q.help && <p className="text-[11px] mt-1.5" style={{ color: '#94a3b8' }}>{q.help}</p>}
+      {q.help && <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-300)' }}>{q.help}</p>}
     </div>
   )
 }

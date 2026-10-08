@@ -32,8 +32,8 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
       <div
         className="min-h-[44px] flex flex-wrap gap-2 p-2 cursor-text"
         style={{
-          background: 'rgba(255,255,255,0.70)',
-          border: '1px solid rgba(186,230,253,0.50)',
+          background: 'rgb(var(--surface-rgb) / 0.70)',
+          border: '1px solid rgb(var(--line-rgb) / 0.50)',
           borderRadius: 10,
         }}
         onClick={() => setOpen(true)}
@@ -43,10 +43,10 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
             key={tag}
             className="flex items-center gap-1 px-3 py-1 text-xs font-medium"
             style={{
-              background: 'rgba(2,132,199,0.10)',
-              color: '#0284C7',
+              background: 'rgb(var(--primary-rgb) / 0.10)',
+              color: 'var(--primary)',
               borderRadius: 9999,
-              border: '1px solid rgba(2,132,199,0.20)',
+              border: '1px solid rgb(var(--primary-rgb) / 0.20)',
             }}
           >
             {tag}
@@ -60,16 +60,16 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
           </span>
         ))}
         {tags.length === 0 && (
-          <span className="text-sm" style={{ color: '#94a3b8', padding: '4px 6px' }}>{placeholder}</span>
+          <span className="text-sm" style={{ color: 'var(--text-300)', padding: '4px 6px' }}>{placeholder}</span>
         )}
       </div>
       {open && remaining.length > 0 && (
         <div
           className="absolute top-full left-0 right-0 mt-1 z-50 py-2"
           style={{
-            background: 'rgba(255,255,255,0.95)',
+            background: 'rgb(var(--surface-rgb) / 0.95)',
             backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(186,230,253,0.50)',
+            border: '1px solid rgb(var(--line-rgb) / 0.50)',
             borderRadius: 12,
             boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
           }}
@@ -98,19 +98,19 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
               <button
                 key={opt}
                 className="w-full text-left px-4 py-2 text-sm hover:bg-sky-50 transition-colors"
-                style={{ color: '#334155' }}
+                style={{ color: 'var(--text-600)' }}
                 onClick={() => pick(opt)}
               >
                 {opt}
               </button>
             ))}
             {available.length === 0 && (
-              <div className="px-4 py-2 text-sm" style={{ color: '#94a3b8' }}>No matches</div>
+              <div className="px-4 py-2 text-sm" style={{ color: 'var(--text-300)' }}>No matches</div>
             )}
           </div>
           <button
             className="w-full text-left px-4 py-2 text-xs border-t"
-            style={{ color: '#94a3b8', borderColor: 'rgba(186,230,253,0.30)' }}
+            style={{ color: 'var(--text-300)', borderColor: 'rgb(var(--line-rgb) / 0.30)' }}
             onClick={close}
           >
             Close

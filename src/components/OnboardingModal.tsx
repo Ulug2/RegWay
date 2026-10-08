@@ -24,24 +24,24 @@ function AddedList({ items, onRemove, subtitle }: { items: Answers[]; onRemove: 
         <div
           key={i}
           className="flex items-center justify-between p-3 rounded-xl"
-          style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(186,230,253,0.40)' }}
+          style={{ background: 'rgb(var(--surface-rgb) / 0.60)', border: '1px solid rgb(var(--line-rgb) / 0.40)' }}
         >
           <div className="flex items-center gap-3 min-w-0">
             <div
               className="w-8 h-8 shrink-0 flex items-center justify-center text-xs font-bold"
-              style={{ background: 'linear-gradient(135deg,#0284C7,#38BDF8)', borderRadius: 8, color: 'white' }}
+              style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', borderRadius: 8, color: 'white' }}
             >
               {String(item.name)[0]}
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-semibold truncate" style={{ color: '#0F172A' }}>{String(item.name)}</div>
-              <div className="text-xs truncate" style={{ color: '#64748B' }}>{subtitle(item)}</div>
+              <div className="text-sm font-semibold truncate" style={{ color: 'var(--text-900)' }}>{String(item.name)}</div>
+              <div className="text-xs truncate" style={{ color: 'var(--text-400)' }}>{subtitle(item)}</div>
             </div>
           </div>
           <button
             onClick={() => onRemove(i)}
             className="text-xs px-3 py-1 rounded-full hover:bg-sky-50 transition-colors"
-            style={{ color: '#64748B', border: '1px solid rgba(186,230,253,0.50)' }}
+            style={{ color: 'var(--text-400)', border: '1px solid rgb(var(--line-rgb) / 0.50)' }}
           >
             Remove
           </button>
@@ -129,27 +129,27 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   const heading = (title: string, sub: string) => (
     <div>
-      <h2 className="text-xl font-semibold mb-1" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>{title}</h2>
-      <p className="text-sm" style={{ color: '#64748B' }}>{sub}</p>
+      <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>{title}</h2>
+      <p className="text-sm" style={{ color: 'var(--text-400)' }}>{sub}</p>
     </div>
   )
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(6px)' }}
+      style={{ background: 'rgb(var(--ink-rgb) / 0.35)', backdropFilter: 'blur(6px)' }}
     >
       <div className="glass-modal w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollable">
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2">
               <LogoMark size={36} />
-              <span className="font-semibold text-lg" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
+              <span className="font-semibold text-lg" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
             </div>
             <button
               onClick={() => supabase.auth.signOut()}
               className="text-xs font-medium"
-              style={{ color: '#64748B' }}
+              style={{ color: 'var(--text-400)' }}
             >
               Cancel
             </button>
@@ -164,21 +164,21 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all"
                   style={{
                     borderRadius: 9999,
-                    background: step === s.n ? 'linear-gradient(135deg, #0284C7, #38BDF8)' : step > s.n ? 'rgba(2,132,199,0.12)' : 'rgba(186,230,253,0.25)',
-                    color: step === s.n ? 'white' : step > s.n ? '#0284C7' : '#94a3b8',
-                    boxShadow: step === s.n ? '0 4px 12px rgba(2,132,199,0.25)' : 'none',
+                    background: step === s.n ? 'linear-gradient(135deg, var(--brand), var(--brand-light))' : step > s.n ? 'rgb(var(--primary-rgb) / 0.12)' : 'rgb(var(--line-rgb) / 0.25)',
+                    color: step === s.n ? 'white' : step > s.n ? 'var(--primary)' : 'var(--text-300)',
+                    boxShadow: step === s.n ? '0 4px 12px rgb(var(--primary-rgb) / 0.25)' : 'none',
                   }}
                 >
                   <span
                     className="w-5 h-5 flex items-center justify-center text-xs font-bold"
-                    style={{ borderRadius: 9999, background: step === s.n ? 'rgba(255,255,255,0.25)' : 'transparent' }}
+                    style={{ borderRadius: 9999, background: step === s.n ? 'rgb(var(--surface-rgb) / 0.25)' : 'transparent' }}
                   >
                     {step > s.n ? '✓' : s.n}
                   </span>
                   {s.label}
                 </button>
                 {i < STEPS.length - 1 && (
-                  <div className="w-8 h-px" style={{ background: step > s.n ? 'rgba(2,132,199,0.30)' : 'rgba(186,230,253,0.40)' }} />
+                  <div className="w-8 h-px" style={{ background: step > s.n ? 'rgb(var(--primary-rgb) / 0.30)' : 'rgb(var(--line-rgb) / 0.40)' }} />
                 )}
               </div>
             ))}
@@ -188,10 +188,10 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             <div className="space-y-6">
               {heading('Tell us about your firm', 'Just the essentials — this is what lets RegWay show relevant regulations right away.')}
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#334155' }}>Your name</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>Your name</label>
                 <input className="glass-input-rect" value={yourName} onChange={e => setYourName(e.target.value)} placeholder="e.g. James Whitmore" />
                 {attempted && !yourName.trim() && (
-                  <span className="inline-block text-[10px] font-medium px-2 py-0.5 mt-1.5" style={{ borderRadius: 9999, background: 'rgba(2,132,199,0.10)', color: '#0284C7' }}>Needed</span>
+                  <span className="inline-block text-[10px] font-medium px-2 py-0.5 mt-1.5" style={{ borderRadius: 9999, background: 'rgb(var(--primary-rgb) / 0.10)', color: 'var(--primary)' }}>Needed</span>
                 )}
               </div>
               <QuestionForm
@@ -225,20 +225,20 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 subtitle={a => [a.industry, formatLocation(a.hq as LocationValue)].filter(Boolean).join(' · ')}
               />
               <AddEntityCard scope="company" heading={companies.length ? 'Add another company' : 'Portfolio company'} cta="Add Company" onAdd={async a => { setCompanies(c => [...c, a]) }} />
-              <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.12)', color: '#334155' }}>
-                <strong style={{ color: '#0284C7' }}>Almost there.</strong> After launch, your dashboard will show a short checklist for the remaining
+              <div className="p-4 rounded-xl text-sm" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.12)', color: 'var(--text-600)' }}>
+                <strong style={{ color: 'var(--primary)' }}>Almost there.</strong> After launch, your dashboard will show a short checklist for the remaining
                 details (operating locations, products, fund preferences…). The more you add, the sharper your alerts.
               </div>
             </div>
           )}
 
           {saveError && (
-            <div className="mt-6 p-3 rounded-lg text-xs" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155' }}>
+            <div className="mt-6 p-3 rounded-lg text-xs" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)' }}>
               {saveError}
             </div>
           )}
-          <div className="flex items-center justify-between mt-8 pt-6" style={{ borderTop: '1px solid rgba(186,230,253,0.35)' }}>
-            <div className="text-xs" style={{ color: '#94a3b8' }}>
+          <div className="flex items-center justify-between mt-8 pt-6" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)' }}>
+            <div className="text-xs" style={{ color: 'var(--text-300)' }}>
               {step === 1 ? 'Step 1 of 3' : step === 2 ? `${funds.length} fund${funds.length === 1 ? '' : 's'} added` : `${companies.length} compan${companies.length === 1 ? 'y' : 'ies'} added`}
             </div>
             <div className="flex items-center gap-3">

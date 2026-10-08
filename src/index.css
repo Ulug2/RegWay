@@ -21,10 +21,86 @@
   box-sizing: border-box;
 }
 
+/* ── Themes ────────────────────────────────────────────────────────────
+   Every colour in the app is one of these variables (components use them
+   in inline styles too). Light is the default; dark applies when
+   <html data-theme="dark">, which src/lib/theme.ts sets from the user's
+   choice or, by default, the system setting.
+
+   `*-rgb` variables are bare channels for use with an alpha:
+   rgb(var(--surface-rgb) / 0.6). `--brand*` is for filled surfaces that
+   carry white text (buttons, avatars) and is the same in both themes;
+   `--primary*` is for text, icons and links, and is lighter on dark. */
+:root {
+  color-scheme: light;
+  --canvas: #FDFBF7;
+  --canvas-rgb: 253 251 247;
+  --surface-rgb: 255 255 255;
+  --ice-rgb: 224 242 254;
+  --line-rgb: 186 230 253;
+  --line-strong-rgb: 148 197 224;
+  --neutral-rgb: 100 116 139;
+  --ink-rgb: 15 23 42;
+  --text-900: #0F172A;
+  --text-600: #334155;
+  --text-500: #475569;
+  --text-400: #64748B;
+  --text-300: #94A3B8;
+  --primary: #0284C7;
+  --primary-light: #38BDF8;
+  --primary-dark: #0369A1;
+  --primary-rgb: 2 132 199;
+  --primary-light-rgb: 56 189 248;
+  --brand: #0284C7;
+  --brand-light: #38BDF8;
+  --warning: #B45309;
+  --code-block: #0F172A;
+  --hover-tint: #F0F9FF;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: #0B1220;
+  --canvas-rgb: 11 18 32;
+  --surface-rgb: 30 41 59;
+  --ice-rgb: 12 74 110;
+  --line-rgb: 71 105 148;
+  --line-strong-rgb: 90 126 170;
+  --neutral-rgb: 148 163 184;
+  --ink-rgb: 0 0 0;
+  --text-900: #F1F5F9;
+  --text-600: #CBD5E1;
+  --text-500: #B4C0D0;
+  --text-400: #94A3B8;
+  --text-300: #7C8BA1;
+  --primary: #38BDF8;
+  --primary-light: #7DD3FC;
+  --primary-dark: #BAE6FD;
+  --primary-rgb: 56 189 248;
+  --primary-light-rgb: 125 211 252;
+  --warning: #FBBF24;
+  --code-block: #020617;
+  --hover-tint: rgb(56 189 248 / 0.12);
+}
+
+/* Tailwind's light hover tints, which components use by class name. */
+:root[data-theme='dark'] .hover\:bg-sky-50:hover,
+:root[data-theme='dark'] .hover\:bg-sky-100:hover,
+:root[data-theme='dark'] .hover\:bg-slate-100:hover {
+  background-color: var(--hover-tint);
+}
+:root[data-theme='dark'] .hover\:text-sky-600:hover {
+  color: var(--primary-light);
+}
+/* The ambient glows behind every page are tuned for a light canvas. */
+:root[data-theme='dark'] [data-ambient] {
+  opacity: 0.35;
+}
+
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: #FDFBF7;
-  color: #0F172A;
+  background-color: var(--canvas);
+  color: var(--text-900);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -37,20 +113,20 @@ body {
 }
 .scrollable:hover {
   scrollbar-width: thin;
-  scrollbar-color: rgba(186, 230, 253, 0.6) transparent;
+  scrollbar-color: rgb(var(--line-rgb) / 0.6) transparent;
 }
 .scrollable:hover::-webkit-scrollbar {
   display: block;
   width: 4px;
 }
 .scrollable:hover::-webkit-scrollbar-thumb {
-  background: rgba(186, 230, 253, 0.6);
+  background: rgb(var(--line-rgb) / 0.6);
   border-radius: 9999px;
 }
 
 .glass-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.75);
+  background: rgb(var(--surface-rgb) / 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
@@ -61,7 +137,7 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(186, 230, 253, 0.35));
+  background: linear-gradient(135deg, rgb(var(--surface-rgb) / 0.95), rgb(var(--line-rgb) / 0.35));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -72,7 +148,7 @@ body {
 
 .glass-card-light {
   position: relative;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgb(var(--surface-rgb) / 0.55);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-radius: 16px;
@@ -83,7 +159,7 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.90), rgba(186, 230, 253, 0.25));
+  background: linear-gradient(135deg, rgb(var(--surface-rgb) / 0.90), rgb(var(--line-rgb) / 0.25));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -94,7 +170,7 @@ body {
 
 .glass-modal {
   position: relative;
-  background: rgba(255, 255, 255, 0.84);
+  background: rgb(var(--surface-rgb) / 0.84);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-radius: 24px;
@@ -105,7 +181,7 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(186, 230, 253, 0.40));
+  background: linear-gradient(135deg, rgb(var(--surface-rgb) / 0.95), rgb(var(--line-rgb) / 0.40));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -117,50 +193,50 @@ body {
 /* No `position` here: every header using this is `sticky top-0`, and a
    position set in this class would override that utility. */
 .glass-nav {
-  background: rgba(255, 255, 255, 0.82);
+  background: rgb(var(--surface-rgb) / 0.82);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(186, 230, 253, 0.40);
+  border-bottom: 1px solid rgb(var(--line-rgb) / 0.40);
 }
 
 .glass-input {
-  background: rgba(255, 255, 255, 0.70);
+  background: rgb(var(--surface-rgb) / 0.70);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(186, 230, 253, 0.50);
+  border: 1px solid rgb(var(--line-rgb) / 0.50);
   border-radius: 9999px;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .glass-input:focus {
-  border-color: rgba(2, 132, 199, 0.50);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.08);
+  border-color: rgb(var(--primary-rgb) / 0.50);
+  box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / 0.08);
 }
 
 .glass-input-rect {
-  background: rgba(255, 255, 255, 0.70);
+  background: rgb(var(--surface-rgb) / 0.70);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(186, 230, 253, 0.50);
+  border: 1px solid rgb(var(--line-rgb) / 0.50);
   border-radius: 10px;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   width: 100%;
   padding: 10px 14px;
   font-size: 14px;
-  color: #0F172A;
+  color: var(--text-900);
   font-family: 'Inter', sans-serif;
 }
 .glass-input-rect:focus {
-  border-color: rgba(2, 132, 199, 0.50);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.08);
+  border-color: rgb(var(--primary-rgb) / 0.50);
+  box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / 0.08);
 }
 .glass-input-rect::placeholder {
-  color: #94a3b8;
+  color: var(--text-300);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #0284C7, #38BDF8);
+  background: linear-gradient(135deg, var(--brand), var(--brand-light));
   color: white;
   border-radius: 9999px;
   padding: 11px 24px;
@@ -169,32 +245,32 @@ body {
   border: none;
   cursor: pointer;
   transition: opacity 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.30);
+  box-shadow: 0 4px 14px rgb(var(--primary-rgb) / 0.30);
   font-family: 'Inter', sans-serif;
 }
 .btn-primary:hover {
   opacity: 0.92;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.38);
+  box-shadow: 0 6px 20px rgb(var(--primary-rgb) / 0.38);
 }
 .btn-primary:active {
   transform: translateY(0);
 }
 
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.50);
-  color: #334155;
+  background: rgb(var(--surface-rgb) / 0.50);
+  color: var(--text-600);
   border-radius: 9999px;
   padding: 11px 24px;
   font-weight: 500;
   font-size: 14px;
-  border: 1px solid rgba(186, 230, 253, 0.55);
+  border: 1px solid rgb(var(--line-rgb) / 0.55);
   cursor: pointer;
   transition: background 0.2s ease, transform 0.15s ease;
   font-family: 'Inter', sans-serif;
 }
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgb(var(--surface-rgb) / 0.75);
   transform: translateY(-1px);
 }
 
@@ -203,7 +279,7 @@ body {
 }
 .glass-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(186, 230, 253, 0.40), 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 12px 32px rgb(var(--line-rgb) / 0.40), 0 2px 8px rgba(0,0,0,0.06);
 }
 
 /* RegWay AI "thinking" dots (shown next to the status phrase before the
@@ -234,7 +310,7 @@ body {
   height: 1em;
   margin-left: 1px;
   vertical-align: text-bottom;
-  background: #0F172A;
+  background: var(--text-900);
   animation: cursor-blink 1s step-end infinite;
 }
 
@@ -252,7 +328,7 @@ body {
 .ai-markdown h5,
 .ai-markdown h6 {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-900);
   margin: 14px 0 6px;
   line-height: 1.3;
 }
@@ -270,14 +346,14 @@ body {
   margin-bottom: 4px;
 }
 .ai-markdown code {
-  background: rgba(2, 132, 199, 0.08);
+  background: rgb(var(--primary-rgb) / 0.08);
   border-radius: 4px;
   padding: 1px 5px;
   font-size: 0.9em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .ai-markdown pre {
-  background: #0f172a;
+  background: var(--code-block);
   color: #e2e8f0;
   border-radius: 10px;
   padding: 12px 14px;
@@ -294,11 +370,11 @@ body {
 .ai-markdown blockquote {
   margin: 0 0 10px;
   padding: 2px 14px;
-  border-left: 3px solid rgba(2, 132, 199, 0.35);
-  color: #475569;
+  border-left: 3px solid rgb(var(--primary-rgb) / 0.35);
+  color: var(--text-500);
 }
 .ai-markdown a {
-  color: #0284c7;
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -312,7 +388,7 @@ select.glass-input-rect {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748B' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
-  background-color: rgba(255, 255, 255, 0.70);
+  background-color: rgb(var(--surface-rgb) / 0.70);
   padding-right: 32px;
 }
 

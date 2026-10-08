@@ -2,7 +2,7 @@
 
 Last updated 2026-10-07 (UTC). All work is on `main`, pushed. Production
 (Supabase project `cfspwaqtidfliupmlfwz`) matches it on the server side:
-migrations 0024–0034 applied, every edge function deployed.
+migrations 0024–0035 applied, every edge function deployed.
 
 **Frontend**: the site is https://reg-way.vercel.app. Check that its build
 is the latest `main` (the landing page's source list should include "UK
@@ -15,9 +15,10 @@ Done since the last note: item 15 (duplicate grouping,
 12 Phase 3 (email alerts, later). Next in the roadmap's order: item 17
 (the multi-role architecture, `plans/regway-ai-multi-agent-architecture.md`).
 Roadmap item 16a lists everything this session left open, the
-inconsistencies it found and the owner's answers; item 16b holds the three
-tasks decided from them (official document as the card, a five-minute
-wait before AI work after a profile edit, dark mode). Item 17 is on hold
+inconsistencies it found and the owner's answers. Item 16b (official
+document as the card, a five-minute wait before AI work after a profile
+edit, dark mode) is done: `prompts/16b-decided-tasks.md`. Item 16c lists
+five frontend add-ons the owner sent, none installed. Item 17 is on hold
 until the owner says.
 
 ## Setting up on the Mac
@@ -28,7 +29,7 @@ until the owner says.
   `VITE_SUPABASE_ANON_KEY` (the publishable key); `pnpm dev`.
 - Deploys / SQL: `SUPABASE_ACCESS_TOKEN` set, `supabase` CLI, then
   `supabase functions deploy --project-ref cfspwaqtidfliupmlfwz --use-api`.
-- Checks: `pnpm test:all` (type-checks, 396 unit tests, 96 browser tests;
+- Checks: `pnpm test:all` (type-checks, 416 unit tests, 106 browser tests;
   first time `pnpm exec playwright install chromium`).
 
 ## State at hand-off
@@ -42,6 +43,8 @@ until the owner says.
 - **Duplicate grouping**: `group-duplicates` every 30 minutes (:08 / :38);
   runs that looked at something are in `sync_runs` as `duplicates` (not
   shown in the dashboard banner).
+- **After a profile edit**: `apply-profile-changes` every minute; AI work
+  runs five minutes after a firm's last change (`profile_changes`).
 - **Scheduled matching** runs for H.I.G. only (`scheduled_matching_firms`,
   cron `run-matching-30min`); H.I.G.'s backlog is clear and runs since are
   no-ops. Check: `select * from sync_runs where source = 'matching' order by ran_at desc`.

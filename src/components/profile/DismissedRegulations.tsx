@@ -25,16 +25,16 @@ export default function DismissedRegulations({ firmId }: { firmId: string }) {
   if (items === null) return null
   return (
     <div className="space-y-4">
-      <p className="text-sm" style={{ color: '#64748B' }}>
+      <p className="text-sm" style={{ color: 'var(--text-400)' }}>
         Regulations you dismissed stay hidden from your dashboard and won't come back from new matches. Restore one to bring it back.
       </p>
-      {items.length === 0 && <p className="text-sm" style={{ color: '#94a3b8' }}>Nothing dismissed.</p>}
+      {items.length === 0 && <p className="text-sm" style={{ color: 'var(--text-300)' }}>Nothing dismissed.</p>}
       {items.map(r => (
         <div key={r.id} className="glass-card flex items-center gap-4" style={{ padding: 20 }}>
           <div className="flex-1 min-w-0">
             <div className="mb-1.5"><CategoryBadge category={r.category} /></div>
-            <div className="text-sm font-semibold" style={{ color: '#0F172A', lineHeight: 1.5 }}>{r.title}</div>
-            <div className="text-xs mt-1" style={{ color: '#64748B' }}>
+            <div className="text-sm font-semibold" style={{ color: 'var(--text-900)', lineHeight: 1.5 }}>{r.title}</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-400)' }}>
               {r.jurisdiction || r.agency || 'Unknown'} · {fmt(r.effective_date || r.published_date)}
             </div>
           </div>

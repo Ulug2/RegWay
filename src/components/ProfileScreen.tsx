@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getFirmId, fetchFirm, updateFirm, getCachedFirmId, getCachedFirm } from '../lib/data'
 import { readCache, writeCache } from '../lib/cache'
+import { getThemeChoice, setThemeChoice, type ThemeChoice } from '../lib/theme'
+import Chip from './Chip'
 import LogoMark from './LogoMark'
 import PasswordInput from './PasswordInput'
 import FirmProfile from './profile/FirmProfile'
@@ -19,6 +21,12 @@ const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'dismissed', label: 'Dismissed' },
 ]
 
+const THEMES: { key: ThemeChoice; label: string }[] = [
+  { key: 'system', label: 'Match device' },
+  { key: 'light', label: 'Light' },
+  { key: 'dark', label: 'Dark' },
+]
+
 interface ProfileScreenProps {
   onBack: () => void
   // Where "back" goes: the dashboard, or the fund / company page it was opened from.
@@ -30,6 +38,7 @@ interface ProfileScreenProps {
 
 export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard', initialTab = 'account', focusId }: ProfileScreenProps) {
   const [tab, setTab] = useState<ProfileTab>(initialTab)
+  const [theme, setTheme] = useState<ThemeChoice>(getThemeChoice)
   const [firmId, setFirmId] = useState<string | null>(getCachedFirmId)
 
   const [name, setName] = useState(() => getCachedFirm()?.lead_gp_name ?? '')
@@ -149,7 +158,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl transition-all hover:bg-sky-50"
-            style={{ color: '#334155', border: '1px solid rgba(186,230,253,0.40)', background: 'rgba(255,255,255,0.60)' }}
+            style={{ color: 'var(--text-600)', border: '1px solid rgb(var(--line-rgb) / 0.40)', background: 'rgb(var(--surface-rgb) / 0.60)' }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -158,20 +167,20 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
           </button>
           <div className="flex items-center gap-2">
             <LogoMark size={24} />
-            <span className="font-semibold text-sm" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>RegWay</span>
+            <span className="font-semibold text-sm" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
           </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-[900px] mx-auto w-full px-8" style={{ paddingTop: 56, paddingBottom: 64 }}>
         <div style={{ marginBottom: 40 }}>
-          <h1 className="text-2xl font-semibold mb-2" style={{ color: '#0F172A', letterSpacing: '-0.02em' }}>Profile</h1>
-          <p className="text-sm" style={{ color: '#64748B' }}>Your account and your firm's workspace settings.</p>
+          <h1 className="text-2xl font-semibold mb-2" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>Profile</h1>
+          <p className="text-sm" style={{ color: 'var(--text-400)' }}>Your account and your firm's workspace settings.</p>
         </div>
 
         <div
           className="inline-flex flex-wrap gap-1 p-1.5"
-          style={{ marginBottom: 32, background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(186,230,253,0.40)', borderRadius: 9999 }}
+          style={{ marginBottom: 32, background: 'rgb(var(--surface-rgb) / 0.60)', border: '1px solid rgb(var(--line-rgb) / 0.40)', borderRadius: 9999 }}
         >
           {TABS.map(t => (
             <button
@@ -180,8 +189,8 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
               className="px-5 py-2 text-sm font-medium transition-all"
               style={{
                 borderRadius: 9999,
-                background: tab === t.key ? 'linear-gradient(135deg,#0284C7,#38BDF8)' : 'transparent',
-                color: tab === t.key ? 'white' : '#64748B',
+                background: tab === t.key ? 'linear-gradient(135deg,var(--brand),var(--brand-light))' : 'transparent',
+                color: tab === t.key ? 'white' : 'var(--text-400)',
               }}
             >
               {t.label}
@@ -197,10 +206,21 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
 
         {tab === 'account' && (
         <div className="space-y-6">
+          {/* Appearance */}
+          <div className="glass-card" style={{ padding: 28 }}>
+            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Appearance</h2>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-300)' }}>Light, dark, or whatever your device is set to. Remembered in this browser.</p>
+            <div className="flex gap-2" role="radiogroup" aria-label="Theme">
+              {THEMES.map(t => (
+                <Chip key={t.key} selected={theme === t.key} onClick={() => { setThemeChoice(t.key); setTheme(t.key) }}>{t.label}</Chip>
+              ))}
+            </div>
+          </div>
+
           {/* Name */}
           <div className="glass-card" style={{ padding: 28 }}>
-            <h2 className="text-base font-semibold mb-1" style={{ color: '#0F172A' }}>Your name</h2>
-            <p className="text-xs mb-4" style={{ color: '#94a3b8' }}>Shown across the dashboard and in RegWay AI's context.</p>
+            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Your name</h2>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-300)' }}>Shown across the dashboard and in RegWay AI's context.</p>
             <div className="flex items-end gap-3">
               <div className="flex-1">
                 <input
@@ -214,16 +234,16 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
                 {nameLoading ? 'Saving…' : 'Save'}
               </button>
             </div>
-            {nameError && <div className="text-xs mt-3" style={{ color: '#334155' }}>{nameError}</div>}
-            {nameSaved && <div className="text-xs mt-3" style={{ color: '#0284C7' }}>Saved.</div>}
+            {nameError && <div className="text-xs mt-3" style={{ color: 'var(--text-600)' }}>{nameError}</div>}
+            {nameSaved && <div className="text-xs mt-3" style={{ color: 'var(--primary)' }}>Saved.</div>}
           </div>
 
           {/* Email */}
           <div className="glass-card" style={{ padding: 28 }}>
-            <h2 className="text-base font-semibold mb-1" style={{ color: '#0F172A' }}>Email</h2>
-            <p className="text-xs mb-4" style={{ color: '#94a3b8' }}>Used to sign in to your account.</p>
+            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Email</h2>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-300)' }}>Used to sign in to your account.</p>
             {emailCheckInbox ? (
-              <div className="text-sm p-3 rounded-lg" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155' }}>
+              <div className="text-sm p-3 rounded-lg" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)' }}>
                 Check <strong>{email}</strong> for a confirmation link. The change won't take effect until you click it.
               </div>
             ) : (
@@ -242,13 +262,13 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
                 </button>
               </div>
             )}
-            {emailError && <div className="text-xs mt-3" style={{ color: '#334155' }}>{emailError}</div>}
+            {emailError && <div className="text-xs mt-3" style={{ color: 'var(--text-600)' }}>{emailError}</div>}
           </div>
 
           {/* Password */}
           <div className="glass-card" style={{ padding: 28 }}>
-            <h2 className="text-base font-semibold mb-1" style={{ color: '#0F172A' }}>Password</h2>
-            <p className="text-xs mb-4" style={{ color: '#94a3b8' }}>
+            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Password</h2>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-300)' }}>
               Enter your current password and we'll email you a link to set a new one. After you set it, you'll sign in again.
             </p>
             <div className="mb-4 md:max-w-sm">
@@ -263,16 +283,16 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
               <button className="btn-primary" onClick={updatePassword} disabled={passwordLoading}>
                 {passwordLoading ? 'Please wait…' : 'Update Password'}
               </button>
-              <button type="button" className="text-xs font-medium" style={{ color: '#0284C7' }} onClick={forgotPassword} disabled={passwordLoading || !accountEmail}>
+              <button type="button" className="text-xs font-medium" style={{ color: 'var(--primary)' }} onClick={forgotPassword} disabled={passwordLoading || !accountEmail}>
                 Forgot password?
               </button>
             </div>
             {resetLinkSent && (
-              <div role="status" className="text-sm mt-4 p-3 rounded-lg" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.15)', color: '#334155', lineHeight: 1.6 }}>
+              <div role="status" className="text-sm mt-4 p-3 rounded-lg" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)', lineHeight: 1.6 }}>
                 We sent a link to <strong>{accountEmail}</strong>. Open it to set your new password; you'll then be asked to sign in again.
               </div>
             )}
-            {passwordError && <div className="text-xs mt-3" style={{ color: '#334155' }}>{passwordError}</div>}
+            {passwordError && <div className="text-xs mt-3" style={{ color: 'var(--text-600)' }}>{passwordError}</div>}
           </div>
 
           {/* Sign out */}
