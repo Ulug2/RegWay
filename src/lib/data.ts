@@ -3,7 +3,7 @@ import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
 import { toRow, type Answers, type ProfileMeta } from './questionnaire'
 import { firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
-import { collapseDuplicates, versionsOf } from './duplicates'
+import { collapseDuplicates, isAnnouncement, isOfficialDocument, versionsOf } from './duplicates'
 import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, PublishedVersion, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
@@ -67,7 +67,8 @@ async function fetchRelevantRegulations(filters: {
     .sort((a, b) => (b.published_date ?? '').localeCompare(a.published_date ?? ''))
 
   // One card per development: later versions go under the first one.
-  const [versions, dismissed] = await Promise.all([fetchVersions(matched), fetchDismissedIds(filters.firmId, firstVersionIds(matched))])
+  const versions = await fetchVersions(matched)
+  const dismissed = await fetchDismissedIds(filters.firmId, [...new Set([...firstVersionIds(matched), ...versions.map(v => v.id)])])
   return collapseDuplicates(matched, versions, dismissed)
 }
 
@@ -119,10 +120,18 @@ async function fetchDismissedIds(firmId: string, regulationIds: string[]): Promi
 }
 
 // A development's own id with every version of it, for actions that apply
-// to the development as a whole (dismiss, restore).
+// to the development as a whole (dismiss, restore). An official document
+// that followed an announcement stands for itself: the announcement may
+// cover other rules too, and it stays hidden behind a dismissed document
+// anyway (see collapseDuplicates).
 async function developmentIds(regulationId: string): Promise<string[]> {
   const [own, later] = await Promise.all([versionRows('id', [regulationId]), versionRows('duplicate_of', [regulationId])])
-  return [...new Set([regulationId, ...own.map(v => v.duplicate_of).filter((id): id is string => !!id), ...later.map(v => v.id)])]
+  const first = own[0]?.duplicate_of
+  if (first && isOfficialDocument(own[0].source)) {
+    const [announcement] = await versionRows('id', [first])
+    if (isAnnouncement(announcement?.source)) return [regulationId]
+  }
+  return [...new Set([regulationId, ...(first ? [first] : []), ...later.map(v => v.id)])]
 }
 
 export interface RelatedEntityMatch {
@@ -247,13 +256,37 @@ export async function addNote(regulationId: string, firmId: string, body: string
 // (which also derives the legacy columns the AI functions read).
 // ---------------------------------------------------------------------------
 
-// Fire-and-forget: force-regenerates the impact analysis (the AI-written
-// explanation) for whatever this entity is already matched to, so an edit
-// here doesn't leave a stale explanation behind — see refresh-entity-impacts.
-// Never awaited by callers; a failure here shouldn't block the profile save
-// that triggered it.
-function refreshEntityImpacts(scope: 'firm' | 'fund' | 'company', entityId?: string): void {
-  callFunction('refresh-entity-impacts', { scope, entityId }).catch(() => {})
+// What a profile edit asks of the AI: rewrite the analyses of what the
+// entity is matched to, re-judge recent items rejected on the old facts
+// (regulatory and enforcement, and geopolitical when a location changed).
+// None of it runs now. The request is recorded and the server does it all
+// once, five minutes after the firm's last change (apply-profile-changes),
+// so correcting several answers in a row is paid for once. Never awaited by
+// callers: failing to record it must not fail the save.
+interface ProfileWork {
+  scope: 'firm' | 'fund' | 'company'
+  entityId?: string
+  refreshImpacts?: boolean
+  rediscover?: boolean
+  geopolitical?: boolean
+}
+
+function queueProfileWork(firmId: string | null | undefined, work: ProfileWork): void {
+  if (!firmId || !(work.refreshImpacts || work.rediscover || work.geopolitical)) return
+  supabase
+    .from('profile_changes')
+    .insert({
+      firm_id: firmId,
+      scope: work.scope,
+      entity_id: work.entityId ?? null,
+      refresh_impacts: !!work.refreshImpacts,
+      rediscover: !!work.rediscover,
+      geopolitical: !!work.geopolitical,
+    })
+    .then(
+      () => {},
+      () => {},
+    )
 }
 
 // Calls `onChange` (debounced) whenever this firm gains or changes a match:
@@ -280,39 +313,12 @@ export function subscribeToMatches(firmId: string, onChange: () => void): () => 
 // Matches new geopolitical developments (sanctions, export controls, trade
 // actions, travel advisories) against the firm's recorded locations. Cheap
 // to call often: the function returns without any AI call when nothing new
-// touches a country the firm is connected to. `reevaluate` after a location
-// edit re-checks items rejected under the old footprint (e.g. a newly added
-// supplier country). Resolves to how many new matches were found.
-export async function matchGeopoliticalDevelopments(opts: { reevaluate?: boolean } = {}): Promise<number> {
-  const result = await callFunction<{ relevant?: number }>('match-geopolitical-relevance', opts)
+// touches a country the firm is connected to. (A re-check after a location
+// edit goes through queueProfileWork instead.) Resolves to how many new
+// matches were found.
+export async function matchGeopoliticalDevelopments(): Promise<number> {
+  const result = await callFunction<{ relevant?: number }>('match-geopolitical-relevance', {})
   return result.relevant ?? 0
-}
-
-// Re-discovery after a profile edit (roadmap item 11): the matchers judged
-// recent items against the old facts, so the ones they rejected are judged
-// again (first batch now, the rest on the next scheduled runs for enrolled
-// firms). Fire-and-forget, like refreshEntityImpacts. Only called when a
-// fact the matchers read changed (lib/matchingFacts.ts).
-function rediscoverMatches(opts: { geopolitical?: boolean } = {}): void {
-  recheckRejections('match-relevance').catch(() => {})
-  recheckRejections('match-enforcement-relevance').catch(() => {})
-  if (opts.geopolitical) matchGeopoliticalDevelopments({ reevaluate: true }).catch(() => {})
-}
-
-// Same as each matcher's BATCH_SIZE, and enough calls to cover its window of
-// 200 candidates.
-const MATCHER_BATCH = 40
-const RECHECK_MAX_CALLS = 6
-
-// One matcher's re-check, to the end: the first call forgets the recent
-// rejections and judges one batch, and each further call judges the next
-// batch, until a short one comes back. Without this a firm that isn't on
-// scheduled matching was left with the rest of its items unjudged.
-async function recheckRejections(matcher: 'match-relevance' | 'match-enforcement-relevance'): Promise<void> {
-  let result = await callFunction<{ evaluated?: number }>(matcher, { reevaluate: true })
-  for (let call = 1; call < RECHECK_MAX_CALLS && (result.evaluated ?? 0) >= MATCHER_BATCH; call++) {
-    result = await callFunction<{ evaluated?: number }>(matcher, {})
-  }
 }
 
 // Company profile answers that feed the geopolitical footprint (HQ is
@@ -331,8 +337,8 @@ export async function saveFirmAnswers(firmId: string, answers: Answers, meta?: P
   const { error } = await supabase.from('firms').update(row).eq('id', firmId)
   if (error) throw error
   patchCache<Firm>('firm', prev => ({ ...prev, ...row }) as Firm)
-  refreshEntityImpacts('firm')
-  if (matchingFactsChanged('firm', before, row)) rediscoverMatches({ geopolitical: firmLocationChanged(before, row) })
+  const rediscover = matchingFactsChanged('firm', before, row)
+  queueProfileWork(firmId, { scope: 'firm', refreshImpacts: true, rediscover, geopolitical: rediscover && firmLocationChanged(before, row) })
 }
 
 export async function addFund(firmId: string, answers: Answers): Promise<void> {
@@ -341,7 +347,7 @@ export async function addFund(firmId: string, answers: Answers): Promise<void> {
   if (error) throw error
   // A new fund: items rejected before it existed may concern it, unless
   // only its name is recorded so far (nothing for a matcher to judge by).
-  if (hasMatchingFacts('fund', row)) rediscoverMatches()
+  queueProfileWork(firmId, { scope: 'fund', rediscover: hasMatchingFacts('fund', row) })
 }
 
 export async function saveFundAnswers(fundId: string, answers: Answers, meta?: ProfileMeta): Promise<void> {
@@ -349,8 +355,7 @@ export async function saveFundAnswers(fundId: string, answers: Answers, meta?: P
   const row = toRow('fund', answers, { previous: before, meta })
   const { error } = await supabase.from('funds').update(row).eq('id', fundId)
   if (error) throw error
-  refreshEntityImpacts('fund', fundId)
-  if (matchingFactsChanged('fund', before, row)) rediscoverMatches()
+  queueProfileWork(before?.firm_id ?? getCachedFirmId(), { scope: 'fund', entityId: fundId, refreshImpacts: true, rediscover: matchingFactsChanged('fund', before, row) })
 }
 
 export async function removeFund(fundId: string): Promise<void> {
@@ -383,52 +388,61 @@ export async function addPortfolioCompany(firmId: string, answers: Answers): Pro
   const { error } = await supabase.from('portfolio_companies').insert({ ...toRow('company', answers), firm_id: firmId })
   if (error) throw error
   // A new company can bring new countries into the firm's footprint.
-  matchGeopoliticalDevelopments({ reevaluate: true }).catch(() => {})
+  queueProfileWork(firmId, { scope: 'company', geopolitical: true })
 }
 
-// Cached company-regulations results were computed from the company's old
-// location/industry/operating footprint, so if any of those changed, drop
-// them — the dashboard re-scans on the next click when nothing is cached.
+// A company's own research (company-regulations) was done from its old
+// location, industry and operating footprint, so if any of those changed it
+// is marked as needing a new scan. The scan itself, like the rest of the AI
+// work an edit calls for, waits until the edits have stopped (lib/scans.ts),
+// and replaces the old results only then.
+//
+// The mark is a scan date no real scan can have: unlike "never scanned"
+// (null), it says there are old results to replace.
+export const RESCAN_REQUESTED = '1970-01-01T00:00:00.000Z'
+export const rescanRequested = (c: { last_scanned_at: string | null }) => !!c.last_scanned_at && Date.parse(c.last_scanned_at) === 0
+
 export async function saveCompanyAnswers(firmId: string, previous: PortfolioCompany, answers: Answers, meta?: ProfileMeta): Promise<void> {
   const row = toRow('company', answers, { previous, meta })
-  const { error } = await supabase.from('portfolio_companies').update(row).eq('id', previous.id)
-  if (error) throw error
-
   const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
-  const changed =
-    !same(previous.hq_location, row.hq_location) ||
-    !same(previous.sectors, row.sectors) ||
-    !same(previous.regions, row.regions)
-  if (changed) {
-    // Forget the old scan so it's re-run (in the background) with the new details.
-    await supabase.from('portfolio_companies').update({ last_scanned_at: null }).eq('id', previous.id)
-    const { error: clearError } = await supabase
-      .from('regulation_relevance')
-      .delete()
-      .eq('firm_id', firmId)
-      .eq('portfolio_company_id', previous.id)
-      .is('dismissed_at', null) // keep the user's dismissals across a rescan
-    if (clearError) throw clearError
-    patchCache<Record<string, unknown>>('regs:company', prev => {
-      const { [previous.id]: _dropped, ...rest } = prev
-      return rest
-    })
-  }
-  // Covers the other case too: a fact changed (e.g. regulated status,
-  // sensitive data) that doesn't trigger a rescan above but does feed the
-  // impact analysis, so its existing matches' explanations would otherwise
-  // go stale silently.
-  refreshEntityImpacts('company', previous.id)
+  const rescan = !same(previous.hq_location, row.hq_location) || !same(previous.sectors, row.sectors) || !same(previous.regions, row.regions)
+  const { error } = await supabase
+    .from('portfolio_companies')
+    .update(rescan && previous.last_scanned_at ? { ...row, last_scanned_at: RESCAN_REQUESTED } : row)
+    .eq('id', previous.id)
+  if (error) throw error
 
   // Spec §3: a changed location or supplier fact must cause geopolitical
   // matches to be reconsidered, not just future ones.
   const locationChanged =
     !same(previous.hq_location, row.hq_location) ||
     LOCATION_FIELDS.some(f => !same(recorded(previous.profile?.[f]), recorded(answers[f])))
-  // The firm-wide matchers read each company's sectors, regions and what
-  // it does too (match-relevance's company lines).
-  if (matchingFactsChanged('company', previous, row)) rediscoverMatches({ geopolitical: locationChanged })
-  else if (locationChanged) matchGeopoliticalDevelopments({ reevaluate: true }).catch(() => {})
+  queueProfileWork(firmId, {
+    scope: 'company',
+    entityId: previous.id,
+    // Any fact can feed the analyses of what the company is matched to.
+    refreshImpacts: true,
+    // The firm-wide matchers read each company's sectors, regions and what
+    // it does too (match-relevance's company lines).
+    rediscover: matchingFactsChanged('company', previous, row),
+    geopolitical: locationChanged,
+  })
+}
+
+// Clears what a company's last scan found, just before it is scanned again
+// from changed details. The user's dismissals are kept.
+export async function clearCompanyResults(firmId: string, companyId: string): Promise<void> {
+  const { error } = await supabase
+    .from('regulation_relevance')
+    .delete()
+    .eq('firm_id', firmId)
+    .eq('portfolio_company_id', companyId)
+    .is('dismissed_at', null)
+  if (error) throw error
+  patchCache<Record<string, unknown>>('regs:company', prev => {
+    const { [companyId]: _dropped, ...rest } = prev
+    return rest
+  })
 }
 
 export async function removePortfolioCompany(companyId: string): Promise<void> {
@@ -591,7 +605,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 // Recorded in sync_runs but not a data source: a failed run delays the
 // grouping of duplicates, it doesn't leave anything missing.
-const NOT_DATA_SOURCES = new Set(['duplicates'])
+const NOT_DATA_SOURCES = new Set(['duplicates', 'profile_changes'])
 
 // A source is "failing" when its most recent recorded sync run didn't
 // succeed — shown so an empty or stale-looking dashboard reads as a stated

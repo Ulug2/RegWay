@@ -106,6 +106,8 @@ function seed(): Record<string, Row[]> {
     // Developments no one is matched to; matched ones are read from
     // regulation_relevance (see `select`).
     regulations: [],
+    // AI work a profile edit asked for, waiting for the edits to stop.
+    profile_changes: [],
     regulation_impacts: [],
     regulation_flags: [],
     regulation_notes: [],

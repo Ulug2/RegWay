@@ -50,6 +50,7 @@ export interface PortfolioCompany {
   last_scanned_at: string | null
   profile_updated_at: string | null
   logo_url: string | null
+  created_at?: string
 }
 
 export interface AiContext {

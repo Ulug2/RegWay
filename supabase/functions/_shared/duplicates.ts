@@ -8,7 +8,10 @@
 // (one level only: the first version never points anywhere). Nothing is
 // merged or deleted. Each version is still judged per firm; the lists show
 // the first version as the card and the others as "also published as" links
-// (src/lib/duplicates.ts).
+// (src/lib/duplicates.ts). The exception is shown there too: once the
+// official document for an announcement is matched, the document is the
+// card and the announcement its link. The pointer still runs from the
+// document to the announcement, since one announcement can cover several.
 //
 // Three rules need no AI: they compare identifiers the publishers put in the
 // title or the link. The fourth, announcement to Federal Register document,
@@ -283,20 +286,25 @@ export async function linkDuplicate(admin: SupabaseClient, link: Link): Promise<
 // firm: a later version whose first version is already matched to the firm
 // is shown under that one, so its analysis is only written if someone opens
 // it on a page where it stands alone (the on-demand path).
+//
+// Not so for the official document that follows an agency's announcement:
+// it takes the announcement's place as the card (roadmap 16b.1), and its
+// analysis, written from the official text, is the one people read.
 export async function withoutCoveredDuplicates(admin: SupabaseClient, firmId: string, regulationIds: string[]): Promise<string[]> {
   if (regulationIds.length === 0) return regulationIds
-  const { data: versions, error } = await admin.from('regulations').select('id, duplicate_of').in('id', regulationIds).not('duplicate_of', 'is', null)
+  const { data: versions, error } = await admin.from('regulations').select('id, source, duplicate_of').in('id', regulationIds).not('duplicate_of', 'is', null)
   if (error || !versions?.length) return regulationIds
 
-  const { data: matched, error: matchedError } = await admin
-    .from('regulation_relevance')
-    .select('regulation_id')
-    .eq('firm_id', firmId)
-    .in('regulation_id', [...new Set(versions.map(v => v.duplicate_of as string))])
-    .not('relevance_reason', 'like', 'NOT_RELEVANT:%')
+  const firstIds = [...new Set(versions.map(v => v.duplicate_of as string))]
+  const [{ data: matched, error: matchedError }, { data: firsts }] = await Promise.all([
+    admin.from('regulation_relevance').select('regulation_id').eq('firm_id', firmId).in('regulation_id', firstIds).not('relevance_reason', 'like', 'NOT_RELEVANT:%'),
+    admin.from('regulations').select('id, source').in('id', firstIds),
+  ])
   if (matchedError || !matched?.length) return regulationIds
 
+  const announcements = new Set((firsts ?? []).filter(f => f.source in ANNOUNCING_AGENCIES).map(f => f.id))
+  const supersedes = (v: { source: string; duplicate_of: string }) => v.source === 'federal_register' && announcements.has(v.duplicate_of)
   const matchedFirst = new Set(matched.map(m => m.regulation_id))
-  const covered = new Set(versions.filter(v => matchedFirst.has(v.duplicate_of)).map(v => v.id))
+  const covered = new Set(versions.filter(v => matchedFirst.has(v.duplicate_of) && !supersedes(v)).map(v => v.id))
   return regulationIds.filter(id => !covered.has(id))
 }

@@ -33,6 +33,7 @@ interface Row {
     jurisdiction: string | null
     published_date: string | null
     on_public_inspection: boolean | null
+    source: string
     duplicate_of: string | null
   } | null
 }
@@ -48,7 +49,7 @@ export async function loadMatchedDevelopments(client: SupabaseClient, firmId: st
   let query = client
     .from('regulation_relevance')
     .select(
-      'relevance_reason, fund_id, portfolio_company_id, funds(name), portfolio_companies(name), regulations(id, title, category, agency, jurisdiction, published_date, on_public_inspection, duplicate_of)',
+      'relevance_reason, fund_id, portfolio_company_id, funds(name), portfolio_companies(name), regulations(id, title, category, agency, jurisdiction, published_date, on_public_inspection, source, duplicate_of)',
     )
     .eq('firm_id', firmId)
     .is('dismissed_at', null)
@@ -72,20 +73,29 @@ export async function loadMatchedDevelopments(client: SupabaseClient, firmId: st
   }
 
   // One entry per development (roadmap item 15): a later version of one
-  // already listed (the Federal Register document for an announcement) is
-  // named on the first version's line instead of being listed again.
-  // An entity matched only to the later version keeps its line.
+  // already listed is named on the first version's line instead of being
+  // listed again. An official document that followed an agency's
+  // announcement is the one kept (16b.1), as on the dashboard, with the
+  // announcement named on its line.
+  // An entity matched only to the version that goes keeps its line.
   const entityOf = (line: string) => line.slice(0, line.indexOf(':'))
+  const fold = (keptId: string, goneId: string) => {
+    const kept = byRegulation.get(keptId)!
+    const gone = byRegulation.get(goneId)!
+    const named = new Set(kept.lines.map(entityOf))
+    kept.lines.push(...gone.lines.filter(l => !named.has(entityOf(l))))
+    published.set(keptId, [...(published.get(keptId) ?? []), gone.reg.title])
+    byRegulation.delete(goneId)
+  }
   const published = new Map<string, string[]>()
-  for (const [id, { reg, lines }] of byRegulation) {
+  const ANNOUNCEMENTS = ['sec_news', 'ftc_news', 'cfpb_news']
+  for (const [id, { reg }] of [...byRegulation]) {
     const first = reg.duplicate_of ? byRegulation.get(reg.duplicate_of) : undefined
     if (!first) continue
-    const named = new Set(first.lines.map(entityOf))
-    first.lines.push(...lines.filter(l => !named.has(entityOf(l))))
-    published.set(reg.duplicate_of!, [...(published.get(reg.duplicate_of!) ?? []), reg.title])
-    byRegulation.delete(id)
+    if (reg.source === 'federal_register' && ANNOUNCEMENTS.includes(first.reg.source)) fold(id, first.reg.id)
+    else fold(first.reg.id, id)
   }
-  for (const [id, titles] of published) byRegulation.get(id)!.lines.push(`   - Also published as: ${titles.join('; ')}`)
+  for (const [id, titles] of published) byRegulation.get(id)?.lines.push(`   - Also published as: ${titles.join('; ')}`)
 
   const all = [...byRegulation.values()].sort((a, b) => (b.reg.published_date ?? '').localeCompare(a.reg.published_date ?? ''))
   const shown = all.slice(0, MAX_DEVELOPMENTS)

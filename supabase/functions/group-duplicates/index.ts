@@ -183,7 +183,8 @@ async function run(admin: SupabaseClient, dryRun: boolean): Promise<RunStats> {
       try {
         stats.aiCalls++
         const index = await matchAnnouncement(admin, document, candidates, await bodies(candidates))
-        // The announcement is the card whichever came first by a day or two.
+        // The document points at its announcement whichever came first by
+        // a day or two (one announcement can cover several documents).
         if (index !== null) add('announcement', [{ secondary: document.id, primary: candidates[index].id }])
         checked.add(document.id)
       } catch (err) {

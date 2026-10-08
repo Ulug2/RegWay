@@ -11,16 +11,38 @@ import type { PublishedVersion, Regulation } from './types'
 // same list, and not at all when the user dismissed the first version.
 // Where the first version isn't matched to this entity, the later one is
 // the card and links back to it.
+//
+// One exception (roadmap 16b.1): an agency's announcement gives way to the
+// official document published for it. Once a Federal Register document it
+// announced is in the list, that document is the card (its analysis is
+// written from the official text) and the announcement is its link. An
+// announcement of two rules becomes two cards, one per rule. Until a
+// document arrives, or where none was matched, the announcement stays.
 export function collapseDuplicates<T extends Regulation>(
   items: T[],
   versions: PublishedVersion[],
   dismissed: ReadonlySet<string> = new Set(),
 ): (T & { also_published_as: PublishedVersion[] })[] {
   const listed = new Set(items.map(i => i.id))
-  return items
-    .filter(item => !item.duplicate_of || (!listed.has(item.duplicate_of) && !dismissed.has(item.duplicate_of)))
-    .map(item => ({ ...item, also_published_as: versionsOf(item, versions) }))
+  const sourceOf = new Map<string, string>([...versions, ...items].map(v => [v.id, v.source]))
+  const supersedes = (item: Pick<Regulation, 'source' | 'duplicate_of'>) => isOfficialDocument(item.source) && !!item.duplicate_of && isAnnouncement(sourceOf.get(item.duplicate_of))
+  // Official documents each announcement was followed by, matched here or not.
+  const documentsOf = (id: string) => versions.filter(v => v.duplicate_of === id && isOfficialDocument(v.source))
+
+  const hidden = (item: T): boolean => {
+    // An announcement whose document is listed, or was dismissed.
+    if (isAnnouncement(item.source) && documentsOf(item.id).some(d => listed.has(d.id) || dismissed.has(d.id))) return true
+    if (!item.duplicate_of) return false
+    if (dismissed.has(item.duplicate_of)) return true
+    return listed.has(item.duplicate_of) && !supersedes(item)
+  }
+  return items.filter(item => !hidden(item)).map(item => ({ ...item, also_published_as: versionsOf(item, versions) }))
 }
+
+// Agencies' own announcements, which a Federal Register document follows.
+const ANNOUNCEMENT_SOURCES = new Set(['sec_news', 'ftc_news', 'cfpb_news'])
+export const isAnnouncement = (source: string | undefined) => !!source && ANNOUNCEMENT_SOURCES.has(source)
+export const isOfficialDocument = (source: string | undefined) => source === 'federal_register'
 
 // The other versions of one item: the ones that point at it, and the one it
 // points at. Earliest first. A company scan's result is never offered as a

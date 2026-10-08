@@ -179,24 +179,44 @@ describe('regway-ai-chat', () => {
   })
 
   it('lists a development once when it was published twice, keeping every entity matched to either version', async () => {
-    const announcement = { id: 'news', title: 'SEC Proposes Crypto Custody Rules', category: 'regulatory', agency: 'SEC', jurisdiction: null, published_date: '2026-10-01', on_public_inspection: false, duplicate_of: null }
-    const document = { id: 'doc', title: 'Adviser and Regulated Fund Custody Rules', category: 'regulatory', agency: 'SEC', jurisdiction: null, published_date: '2026-10-06', on_public_inspection: false, duplicate_of: 'news' }
+    const first = { id: 'gc', title: 'GC26/6: Primary Market Bulletin No. 66', category: 'regulatory', agency: 'FCA', jurisdiction: null, published_date: '2026-09-30', on_public_inspection: false, source: 'fca_publications', duplicate_of: null }
+    const second = { ...first, id: 'fg', title: 'FG26/8: Primary Market Bulletin No. 66', duplicate_of: 'gc' }
     const firmLevel = { portfolio_company_id: null, portfolio_companies: null }
     const { system } = await chat(
       {
         matches: [
-          match('doc', document.title, '2026-10-06', 'The firm is a registered adviser (document).', { ...firmLevel, regulations: document }),
-          match('doc', document.title, '2026-10-06', 'GetixHealth holds client assets.', { regulations: document }),
-          match('news', announcement.title, '2026-10-01', 'The firm is a registered adviser.', { ...firmLevel, regulations: announcement }),
+          match('fg', second.title, '2026-09-30', 'The firm lists securities in London (second listing).', { ...firmLevel, regulations: second }),
+          match('fg', second.title, '2026-09-30', 'GetixHealth has listed debt.', { regulations: second }),
+          match('gc', first.title, '2026-09-30', 'The firm lists securities in London.', { ...firmLevel, regulations: first }),
         ],
       },
       { message: "What's relevant to us right now?" },
     )
     expect(system).toContain(
-      '- [regulatory] SEC Proposes Crypto Custody Rules (SEC, published 2026-10-01)\n   - Firm H.I.G. Capital: The firm is a registered adviser.\n   - Company GetixHealth: GetixHealth holds client assets.\n   - Also published as: Adviser and Regulated Fund Custody Rules',
+      '- [regulatory] GC26/6: Primary Market Bulletin No. 66 (FCA, published 2026-09-30)\n   - Firm H.I.G. Capital: The firm lists securities in London.\n   - Company GetixHealth: GetixHealth has listed debt.\n   - Also published as: FG26/8: Primary Market Bulletin No. 66',
     )
-    expect(system).not.toContain('- [regulatory] Adviser and Regulated Fund Custody Rules')
-    expect(system).not.toContain('(document)')
+    expect(system).not.toContain('- [regulatory] FG26/8')
+    expect(system).not.toContain('(second listing)')
+  })
+
+  it('names the official document, not the announcement of it, once the document is matched', async () => {
+    const announcement = { id: 'news', title: 'SEC Proposes Crypto Custody Rules', category: 'regulatory', agency: 'SEC', jurisdiction: null, published_date: '2026-10-01', on_public_inspection: false, source: 'sec_news', duplicate_of: null }
+    const document = { ...announcement, id: 'doc', title: 'Adviser and Regulated Fund Custody Rules', published_date: '2026-10-06', source: 'federal_register', duplicate_of: 'news' }
+    const firmLevel = { portfolio_company_id: null, portfolio_companies: null }
+    const { system } = await chat(
+      {
+        matches: [
+          match('news', announcement.title, '2026-10-01', 'The firm is a registered adviser (announcement).', { ...firmLevel, regulations: announcement }),
+          match('doc', document.title, '2026-10-06', 'The firm is a registered adviser with custody.', { ...firmLevel, regulations: document }),
+        ],
+      },
+      { message: "What's relevant to us right now?" },
+    )
+    expect(system).toContain(
+      '- [regulatory] Adviser and Regulated Fund Custody Rules (SEC, published 2026-10-06)\n   - Firm H.I.G. Capital: The firm is a registered adviser with custody.\n   - Also published as: SEC Proposes Crypto Custody Rules',
+    )
+    expect(system).not.toContain('- [regulatory] SEC Proposes Crypto Custody Rules')
+    expect(system).not.toContain('(announcement)')
   })
 
   it('says so when nothing has been matched, without claiming nothing applies', async () => {

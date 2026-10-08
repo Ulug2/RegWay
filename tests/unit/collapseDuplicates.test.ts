@@ -27,28 +27,27 @@ const docB = reg('doc-b', { duplicate_of: 'news', published_date: '2026-10-06' }
 const other = reg('other')
 const all = [news, docA, docB].map(asVersion)
 
+// Two listings of one FCA bulletin: neither is an announcement of the other.
+const bulletin = reg('gc', { source: 'fca_publications', published_date: '2026-09-30' })
+const bulletinAgain = reg('fg', { source: 'fca_publications', duplicate_of: 'gc', published_date: '2026-09-30' })
+const fca = [bulletin, bulletinAgain].map(asVersion)
+
 describe('one card per development', () => {
-  it('lists later versions under the first version when it is in the same list', () => {
-    const cards = collapseDuplicates([docB, docA, news, other], all)
-    expect(cards.map(c => c.id)).toEqual(['news', 'other'])
-    expect(cards[0].also_published_as.map(v => v.id)).toEqual(['doc-a', 'doc-b'])
+  it('lists a later version under the first version when it is in the same list', () => {
+    const cards = collapseDuplicates([bulletinAgain, bulletin, other], fca)
+    expect(cards.map(c => c.id)).toEqual(['gc', 'other'])
+    expect(cards[0].also_published_as.map(v => v.id)).toEqual(['fg'])
     expect(cards[1].also_published_as).toEqual([])
   })
 
-  it('links to versions the entity was never matched to', () => {
-    // Only the announcement was matched here; the documents still exist.
-    expect(collapseDuplicates([news], all)[0].also_published_as.map(v => v.id)).toEqual(['doc-a', 'doc-b'])
-  })
-
   it('keeps a later version as its own card where the first version is not listed, linking back to it', () => {
-    const cards = collapseDuplicates([docA, docB], all)
-    // Two documents announced together are two rules: each is a card.
-    expect(cards.map(c => c.id)).toEqual(['doc-a', 'doc-b'])
-    expect(cards[0].also_published_as.map(v => v.id)).toEqual(['news'])
+    const cards = collapseDuplicates([bulletinAgain], fca)
+    expect(cards.map(c => c.id)).toEqual(['fg'])
+    expect(cards[0].also_published_as.map(v => v.id)).toEqual(['gc'])
   })
 
   it('hides a later version when the first version was dismissed', () => {
-    expect(collapseDuplicates([docA, other], all, new Set(['news'])).map(c => c.id)).toEqual(['other'])
+    expect(collapseDuplicates([bulletinAgain, other], fca, new Set(['gc'])).map(c => c.id)).toEqual(['other'])
   })
 
   it("hides a company scan's copy of a document under the document, and never offers the scan's page as a link", () => {
@@ -68,6 +67,42 @@ describe('one card per development', () => {
 
   it('never lists an item as a version of itself, or one version twice', () => {
     expect(versionsOf(news, [...all, ...all]).map(v => v.id)).toEqual(['doc-a', 'doc-b'])
+  })
+})
+
+describe('an announcement and the official documents published for it', () => {
+  it('is the card, with links to the documents, until one of them is matched', () => {
+    const cards = collapseDuplicates([news, other], all)
+    expect(cards.map(c => c.id)).toEqual(['news', 'other'])
+    // The documents exist and are linked, matched to this entity or not.
+    expect(cards[0].also_published_as.map(v => v.id)).toEqual(['doc-a', 'doc-b'])
+  })
+
+  it('gives way to the official document once it is in the list', () => {
+    const cards = collapseDuplicates([news, docA, other], all)
+    expect(cards.map(c => c.id)).toEqual(['doc-a', 'other'])
+    expect(cards[0].also_published_as.map(v => v.id)).toEqual(['news'])
+  })
+
+  it('becomes one card per rule when it announced two', () => {
+    const cards = collapseDuplicates([docB, docA, news], all)
+    expect(cards.map(c => c.id)).toEqual(['doc-b', 'doc-a'])
+    for (const card of cards) expect(card.also_published_as.map(v => v.id)).toEqual(['news'])
+  })
+
+  it('stays hidden behind a document the user dismissed, while the other rule it announced stays', () => {
+    // doc-a was dismissed (so it is no longer listed); the announcement must not come back.
+    expect(collapseDuplicates([news, docB], all, new Set(['doc-a'])).map(c => c.id)).toEqual(['doc-b'])
+    expect(collapseDuplicates([news], all, new Set(['doc-a'])).map(c => c.id)).toEqual([])
+  })
+
+  it('keeps later documents hidden when the announcement itself was dismissed', () => {
+    expect(collapseDuplicates([docA, other], all, new Set(['news'])).map(c => c.id)).toEqual(['other'])
+  })
+
+  it("hides a scan's copy that points at the announcement along with it", () => {
+    const scanned = reg('scan', { source: 'ai_search', duplicate_of: 'news' })
+    expect(collapseDuplicates([news, docA, scanned], [...all, asVersion(scanned)]).map(c => c.id)).toEqual(['doc-a'])
   })
 })
 

@@ -204,7 +204,11 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
             )}
             {onRemove && <RemoveButton onConfirm={onRemove} disabled={busy} />}
             {error && <span className="text-xs" style={{ color: '#334155' }}>{error}</span>}
-            {savedAt && !error && <span className="text-xs" style={{ color: '#0284C7' }}>Saved.</span>}
+            {savedAt && !error && (
+              <span className="text-xs" style={{ color: '#0284C7' }}>
+                Saved. Matches and analyses update a few minutes after your last change.
+              </span>
+            )}
           </div>
         </div>
       )}

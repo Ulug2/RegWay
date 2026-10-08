@@ -242,20 +242,35 @@ describe('linking', () => {
 })
 
 describe('analyses prepared ahead', () => {
-  const database = (versions: unknown[], matched: unknown[]) =>
+  // `versions`: which of the ids are later versions. `firsts`: their first versions.
+  const database = (versions: unknown[], matched: unknown[], firsts: unknown[] = []) =>
     fakeClient(q => {
-      if (q.table === 'regulations') return { data: versions }
+      if (q.table === 'regulations') return { data: q.columns === 'id, source' ? firsts : versions }
       if (q.table === 'regulation_relevance') return { data: matched }
     })
 
   it('skips a later version whose first version is already matched to the firm', async () => {
-    const db = database([{ id: 'doc', duplicate_of: 'news' }, { id: 'doc-2', duplicate_of: 'rejected-news' }], [{ regulation_id: 'news' }])
-    expect(await withoutCoveredDuplicates(db, 'firm-1', ['doc', 'doc-2', 'plain'])).toEqual(['doc-2', 'plain'])
+    const db = database(
+      [{ id: 'fg', source: 'fca_publications', duplicate_of: 'gc' }, { id: 'fg-2', source: 'fca_publications', duplicate_of: 'rejected' }],
+      [{ regulation_id: 'gc' }],
+      [{ id: 'gc', source: 'fca_publications' }, { id: 'rejected', source: 'fca_publications' }],
+    )
+    expect(await withoutCoveredDuplicates(db, 'firm-1', ['fg', 'fg-2', 'plain'])).toEqual(['fg-2', 'plain'])
     const [lookup] = db.ran('regulation_relevance')
     expect(hasFilter(lookup, 'eq', 'firm_id', 'firm-1')).toBe(true)
-    expect(hasFilter(lookup, 'in', 'regulation_id', ['news', 'rejected-news'])).toBe(true)
+    expect(hasFilter(lookup, 'in', 'regulation_id', ['gc', 'rejected'])).toBe(true)
     // A first version the firm's matcher rejected covers nothing.
     expect(hasFilter(lookup, 'not', 'relevance_reason', 'like', 'NOT_RELEVANT:%')).toBe(true)
+  })
+
+  it('never skips the official document that follows an announcement: it becomes the card', async () => {
+    const db = database(
+      [{ id: 'doc', source: 'federal_register', duplicate_of: 'news' }, { id: 'scan', source: 'ai_search', duplicate_of: 'news' }],
+      [{ regulation_id: 'news' }],
+      [{ id: 'news', source: 'sec_news' }],
+    )
+    // The scan's copy of the same thing is still covered.
+    expect(await withoutCoveredDuplicates(db, 'firm-1', ['doc', 'scan'])).toEqual(['doc'])
   })
 
   it('asks nothing further when none of them is a later version', async () => {
@@ -265,12 +280,12 @@ describe('analyses prepared ahead', () => {
   })
 
   it('queues an analysis for the rest only, but a forced refresh covers every version', async () => {
-    setClient(database([{ id: 'doc', duplicate_of: 'news' }], [{ regulation_id: 'news' }]))
+    setClient(database([{ id: 'fg', source: 'fca_publications', duplicate_of: 'gc' }], [{ regulation_id: 'gc' }], [{ id: 'gc', source: 'fca_publications' }]))
     const { queued } = stubModel({})
-    await generateImpacts(['doc', 'plain'], 'firm-1')
+    await generateImpacts(['fg', 'plain'], 'firm-1')
     expect(queued.map(q => q.regulationId)).toEqual(['plain'])
 
-    await generateImpacts(['doc', 'plain'], 'firm-1', 8, { force: true })
-    expect(queued.map(q => q.regulationId)).toEqual(['plain', 'doc', 'plain'])
+    await generateImpacts(['fg', 'plain'], 'firm-1', 8, { force: true })
+    expect(queued.map(q => q.regulationId)).toEqual(['plain', 'fg', 'plain'])
   })
 })
