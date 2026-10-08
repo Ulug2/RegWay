@@ -192,9 +192,6 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
         <div className="px-5 sm:px-7 pt-1 pb-6 sm:pb-7">
           {onUploadLogo && <LogoUpload title={title} logoUrl={logoUrl} onUpload={onUploadLogo} />}
           {extra && <div className="mb-7">{extra}</div>}
-          <p className="text-xs mb-6" style={{ color: 'var(--text-400)', lineHeight: 1.6 }}>
-            Each answer shows where it came from and when it was last confirmed. A blank answer is treated as unknown, never as “no”.
-          </p>
           <QuestionForm questions={questionsFor(scope)} answers={answers} onChange={change} flagMissing sections provenance={provenance} />
           <div className="flex items-center gap-x-3 gap-y-3 flex-wrap mt-7 pt-5" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)' }}>
             <button className="btn-primary" onClick={save} disabled={busy || !dirty}>{busy ? 'Saving…' : 'Save changes'}</button>

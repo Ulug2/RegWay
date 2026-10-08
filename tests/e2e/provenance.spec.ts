@@ -31,7 +31,6 @@ test.describe('where a profile fact came from', () => {
   test('an answer from before dates were kept says so, and a blank optional one shows as unknown', async ({ page }) => {
     await openFirmProfile(page)
     await expect(nameLine(page)).toContainText('Recorded earlier · not confirmed since')
-    await expect(page.getByText('A blank answer is treated as unknown, never as “no”.')).toBeVisible()
     // "Legal name of your management company" is optional and blank.
     await expect(page.getByText('Unknown', { exact: true }).first()).toBeVisible()
     // A blank required one keeps its "Needed" badge instead.

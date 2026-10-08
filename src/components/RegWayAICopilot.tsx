@@ -52,6 +52,9 @@ const MAX_TEXT_BYTES = 150 * 1024
 // internally instead of pushing the rest of the drawer around.
 const MAX_INPUT_HEIGHT = 240
 
+// The drawer's header is a little see-through; its body is not.
+const HEADER_BG = 'rgb(var(--canvas-rgb) / 0.82)'
+
 // Shown in the empty AI bubble while waiting for the first token — cycles
 // every couple of seconds so a slow web-search phase (the model's tool-use
 // round-trip before any text arrives) doesn't look stalled.
@@ -493,8 +496,11 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
         className="mt-auto flex flex-col"
         style={{
           height: hasStarted ? '100dvh' : '90dvh',
-          background: 'rgb(var(--canvas-rgb) / 0.96)',
+          // The header lets a little of the page show through; the rest is
+          // near-solid so the conversation stays readable.
+          overflow: 'hidden',
           backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
           borderTop: hasStarted ? 'none' : '1px solid rgb(var(--line-rgb) / 0.50)',
           borderRadius: hasStarted ? 0 : '24px 24px 0 0',
           boxShadow: hasStarted ? 'none' : '0 -20px 60px rgba(0,0,0,0.14)',
@@ -504,7 +510,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
       >
         {/* Drag handle — only meaningful while this still reads as a sheet */}
         {!hasStarted && (
-          <div className="flex justify-center pt-4 pb-2 flex-shrink-0">
+          <div className="flex justify-center pt-4 pb-2 flex-shrink-0" style={{ background: HEADER_BG }}>
             <div className="w-10 h-1 rounded-full" style={{ background: 'rgb(var(--line-rgb) / 0.60)' }} />
           </div>
         )}
@@ -512,7 +518,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
         {/* Header */}
         <div
           className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 flex-shrink-0"
-          style={{ borderBottom: '1px solid rgb(var(--line-rgb) / 0.30)' }}
+          style={{ borderBottom: '1px solid rgb(var(--line-rgb) / 0.30)', background: HEADER_BG }}
         >
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -556,7 +562,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
         </div>
 
         {/* Content area: chats sidebar + conversation + session context */}
-        <div className="flex-1 flex overflow-hidden min-h-0 relative">
+        <div className="flex-1 flex overflow-hidden min-h-0 relative" style={{ background: 'rgb(var(--canvas-rgb) / 0.96)' }}>
           {chatsOpen && (
             <ConversationHistory
               activeId={conversationId}

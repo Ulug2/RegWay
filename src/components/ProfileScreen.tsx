@@ -183,8 +183,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
         <div className="space-y-6">
           {/* Appearance */}
           <div className="glass-card p-6 sm:p-7">
-            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Appearance</h2>
-            <p className="text-[13px] mb-4" style={{ color: 'var(--text-400)' }}>Light, dark, or whatever your device is set to. Remembered in this browser.</p>
+            <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-900)' }}>Appearance</h2>
             <div className="flex gap-2" role="radiogroup" aria-label="Theme">
               {THEMES.map(t => (
                 <Chip key={t.key} selected={theme === t.key} onClick={() => { setThemeChoice(t.key); setTheme(t.key) }}>{t.label}</Chip>
@@ -194,8 +193,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
 
           {/* Name */}
           <div className="glass-card p-6 sm:p-7">
-            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}><label htmlFor="account-name">Your name</label></h2>
-            <p className="text-[13px] mb-4" style={{ color: 'var(--text-400)' }}>Shown across the dashboard and in RegWay AI's context.</p>
+            <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-900)' }}><label htmlFor="account-name">Your name</label></h2>
             <div className="flex items-end gap-3 flex-wrap">
               <div className="flex-1 min-w-[14rem]">
                 <input
@@ -218,8 +216,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
 
           {/* Email */}
           <div className="glass-card p-6 sm:p-7">
-            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}><label htmlFor="account-email">Email</label></h2>
-            <p className="text-[13px] mb-4" style={{ color: 'var(--text-400)' }}>Used to sign in to your account.</p>
+            <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-900)' }}><label htmlFor="account-email">Email</label></h2>
             {emailCheckInbox ? (
               <div className="notice" aria-live="polite">
                 Check <strong>{email}</strong> for a confirmation link. The change won't take effect until you click it.
@@ -249,10 +246,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
 
           {/* Password */}
           <div className="glass-card p-6 sm:p-7">
-            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Password</h2>
-            <p className="text-[13px] mb-4" style={{ color: 'var(--text-400)', lineHeight: 1.6 }}>
-              Enter your current password and we'll email you a link to set a new one. After you set it, you'll sign in again.
-            </p>
+            <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-900)' }}>Password</h2>
             <div className="mb-4 md:max-w-sm">
               <PasswordInput
                 value={currentPassword}
