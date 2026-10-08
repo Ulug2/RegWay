@@ -472,6 +472,166 @@ confirmed; blanks show as unknown, in the forms and to the AI. See
 Completed and `prompts/fact-provenance.md` (including what was left open:
 no document upload, no record of which user confirmed).
 
+### 16a. Open items, inconsistencies and questions from the 2026-10-05 to 10-08 session
+Everything this session left unbuilt, found wrong, or could not decide
+without the owner. Nothing here is started. Sizes are rough.
+
+#### Not built, or left for later
+
+Skipped by the owner's call:
+- **11b, move to regwayai.com** (S). Steps are in item 11b.
+- **12 Phase 3, email alerts** (M). Needs an email provider and a
+  definition of "high priority" (see Questions).
+
+Sources:
+- **CFTC feeds** answer 403 to Supabase's addresses, so they are not
+  polled; CFTC rules still arrive through the Federal Register. No
+  workaround tried (a proxy, or a different CFTC endpoint).
+- **OFAC** has no usable recent-actions feed; it arrives through the
+  Federal Register only, days later than OFAC's own site.
+- **UK / EU sanctions matching is untested against a firm it should
+  match**: no test firm has a location in both a sanctioned country and
+  the UK or EU. On H.I.G. all 14 items were pre-filtered (correctly).
+- **Item 14 part 2 (registry in the company-scan prompt)**: tested live
+  twice, both worse than today's scan (8 items → 2 → 0), not shipped.
+  Whether to try a different approach is a question below.
+- **UK and EU announcements are not paired with their later
+  instruments** (FCA policy statement and the handbook instrument, ESMA
+  and EUR-Lex); only SEC / FTC / CFPB announcements are.
+
+Duplicate grouping (item 15):
+- **The card's analysis is written from the first version.** When the
+  official Federal Register text arrives, the announcement's analysis is
+  not rewritten from it (the fuller text has the dates and thresholds).
+- **Near-identical results inside one company scan** are not grouped
+  ("Amendments to 23 NYCRR Part 500" twice for one company; the German
+  battery act twice). A scan-prompt or scan-dedup matter.
+- **A later version opened where it stands alone has no analysis ready**:
+  it is written on first open (30 to 70 seconds), because preparing it
+  ahead is skipped when the firm already sees the first version.
+- **The announcement rule has no review step**: its links (the only ones
+  an AI makes) go live at once. All 8 so far were read and correct. An
+  unlink control or a periodic read of new links does not exist.
+
+Fact provenance (item 16):
+- **No document upload**: a "supporting document" is a name or link the
+  user types, and nothing checks that it says what the answer says.
+- **Which user entered or confirmed an answer is not recorded** (a firm
+  can have several members).
+- **Matchers do not read provenance**: only analyses and chat are told
+  what is not recorded or over a year old.
+- **A development's page does not show the dates of the facts its match
+  rests on** (spec: "Where the match depends on an unconfirmed fact, the
+  page states that dependency").
+- **Answers entered before 2026-10-08 are undated** until someone presses
+  "Still correct" or "Confirm all". Not back-dated on purpose.
+
+From the 11a review, still open:
+- The server does not refuse a second analysis request for the same
+  development while the first is running (the client now does).
+- After stopping a chat answer, the empty answer bubble stays until the
+  next message.
+- A possible first-click miss on the dashboard's "Ask RegWay AI" bar, seen
+  once, not reproduced.
+- Deployed functions other than the ones redeployed this session were
+  compared with the code by deploy time, not line by line.
+
+Other:
+- **Footer pages** (About Us, Sources, Legal Disclaimers, Privacy Policy)
+  are `href="#"` on the dashboard and the development page.
+- **The known false positive** (the Section 301 manufacturing
+  investigation matched to 3Pillar) is parked in item 17.
+
+#### Not verified
+- **Items 15 and 16 were never looked at with real data in a browser.**
+  The browser the assistant controls was signed out of localhost and it
+  may not type the password. Both were checked through browser tests on
+  mock data, screenshots of those, and the production database. To do:
+  the owner signs in on localhost, then open the firm page (two SEC
+  developments should each be one card with "Also published as" links)
+  and Settings → Firm (a line under each answer).
+- **A re-check running to the end from the browser** after a profile
+  save (item 11a's fix) was not watched live; the owner's "Venture
+  Capital" removal did run, through scheduled matching and 14 analyses.
+- **The "last confirmed over a year ago" marker to the AI** has unit
+  tests only; nothing on H.I.G. is that old.
+- **Scheduled matching after the credit top-up**: the last recorded run
+  (01:10 UTC on 10-08) failed before the top-up took effect. Check
+  `select ran_at, ok, detail from sync_runs where source = 'matching' order by ran_at desc limit 3`.
+
+#### Inconsistencies found
+- **The AI account ran out of credit with no warning** (00:28 to about
+  01:13 UTC on 10-08). Matching, analyses and chat all failed; the only
+  sign was the dashboard banner, which says the source "hasn't updated
+  successfully recently" and not why. Nothing watches the balance or the
+  daily spend.
+- **A profile edit can cost close to a dollar without saying so**: the
+  "Venture Capital" removal re-judged the backlog and rewrote 14 analyses
+  ($0.83). The form gives no hint that a save does this.
+- **Every analysis includes the firm, whether or not the firm was
+  matched** (`_shared/impact.ts` always lists the FIRM line). The
+  "Transparency in Coverage" analysis, matched to GetixHealth only, asks
+  five open questions about H.I.G. Capital's own health plan.
+- **An analysis doubted that a portfolio company belongs to the firm**:
+  the regenerated ITAR analysis says "if H.I.G. does not hold A.L.A., no
+  connection to the firm exists", because fund holdings are not recorded
+  for H.I.G. A portfolio company on the firm's own list is the firm's.
+- **`regulation_impacts.created_at` keeps its first value when an
+  analysis is regenerated**, so there is no way to tell when the text on
+  screen was written. Needs an `updated_at`.
+- **Legacy locations with a full state name are misread**:
+  `parseLegacyLocation("Miami, Florida")` gives city Miami, *country*
+  Florida (only two-letter state codes are recognised). Affects rows that
+  have `hq_location` but no `profile.hq`; H.I.G. is not one.
+- **The development page's "History" control does nothing**: "Today's
+  Status / Custom Range" and its date picker set state that nothing
+  reads.
+- **The development page shows the raw source id** ("sec_news",
+  "federal_register") under Regulatory Metadata, while cards use readable
+  names. Source names now live in three places (`data.ts` SOURCE_LABELS,
+  `duplicates.ts` SOURCE_NAMES, the landing page's list).
+- **"JWT issued at future"**: the database now and then refuses a newly
+  started function's first query. Two functions retry it
+  (`sync-regulator-feeds`, `group-duplicates`); the rest fail the run.
+- **The one-year staleness threshold is defined twice** (client
+  `questionnaire.ts`, server `entityFacts.ts`).
+- **Test spending outside the app's records**: about $0.50 of direct API
+  calls for the registry tests (item 14) used the key in `.env.local` and
+  are not in `usage_events`.
+- **The owner's screenshot about the $100 credit could not be opened**
+  (file permission), so the question "don't I have $100 in credit" was
+  never answered from it.
+
+#### Questions for the owner
+1. **Credit**: which Anthropic organisation holds the server's key, and do
+   you want a low-balance or daily-spend alert (and where should it go)?
+2. **Email alerts**: which provider, and what counts as high priority (a
+   final rule? anything matched to the firm itself? a deadline inside N
+   days?)?
+3. **Domain**: when to move to regwayai.com, and should the new domain be
+   indexed by search engines (the page is `noindex` today)?
+4. **Footer pages**: who writes About Us, Sources, Legal Disclaimers and
+   Privacy Policy?
+5. **Duplicates**: when the official document arrives, should the card's
+   analysis be rewritten from it? Should the official document then
+   become the card, with the announcement as the link?
+6. **Provenance**: is a typed document name or link enough, or do you want
+   real upload? Is one year the right age to ask for re-confirmation?
+   Should RegWay record which user confirmed?
+7. **Profile edits that cost money**: show the user what a save will
+   re-check, cap it, or leave it silent?
+8. **Scheduled matching** runs for H.I.G. only. Which other firms, if
+   any, should be enrolled?
+9. **CFTC and OFAC**: is arriving through the Federal Register (days
+   later) acceptable, or worth a workaround?
+10. **Registry grounding (item 14 part 2)**: drop it, or try once more a
+    different way (for example, as a checklist after the scan rather than
+    inside the search prompt)?
+11. **Item 17**: which part first? The plan is in
+    `plans/regway-ai-multi-agent-architecture.md`; the firm-in-every-
+    analysis and holdings inconsistencies above would be natural first
+    fixes.
+
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
 rather than inlined here because the brief is long (architecture, 7

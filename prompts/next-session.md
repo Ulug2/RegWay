@@ -14,11 +14,13 @@ Done since the last note: item 15 (duplicate grouping,
 `prompts/fact-provenance.md`). Skipped by the owner: 11b (domain) and item
 12 Phase 3 (email alerts, later). Next in the roadmap's order: item 17
 (the multi-role architecture, `plans/regway-ai-multi-agent-architecture.md`).
+Roadmap item 16a lists everything this session left open, the
+inconsistencies it found and the questions waiting on the owner.
 
 ## Setting up on the Mac
 
-- Work on `main` (already fast-forwarded to the branch on the Mac); commit
-  the 11a changes and `git push origin main` when the owner says so.
+- Work on `main`; commit and `git push origin main` (which deploys the
+  site) as each item is finished.
 - `pnpm install`; `.env.local` (gitignored) with `VITE_SUPABASE_URL` and
   `VITE_SUPABASE_ANON_KEY` (the publishable key); `pnpm dev`.
 - Deploys / SQL: `SUPABASE_ACCESS_TOKEN` set, `supabase` CLI, then
