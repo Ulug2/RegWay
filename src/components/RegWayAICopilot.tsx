@@ -11,6 +11,11 @@ import { ArrowDown, ArrowUpRight, Check, Copy, PaperPlaneRight, Paperclip, Sideb
 interface RegWayAICopilotProps {
   onClose: () => void
   context?: AiContext | null
+  // Closed while an answer was still being written: kept alive out of sight
+  // so the answer finishes and is saved, and shown again as it was if the
+  // chat is reopened before then.
+  hidden?: boolean
+  onBusyChange?: (busy: boolean) => void
 }
 
 interface Citation {
@@ -185,7 +190,7 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotProps) {
+export default function RegWayAICopilot({ onClose, context, hidden = false, onBusyChange }: RegWayAICopilotProps) {
   const [messages, setMessages] = useState<Message[]>(() => [welcomeMessage(context)])
   // Each chat is a saved conversation: the id is made here and the server
   // creates the row on the first message. A resumed conversation keeps the
@@ -257,8 +262,16 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
   const statusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    setTimeout(() => setVisible(true), 30)
-  }, [])
+    if (hidden) return
+    const timer = setTimeout(() => setVisible(true), 30)
+    // Reopened part-way through an answer: go to where it is being written.
+    forceScrollRef.current = true
+    return () => clearTimeout(timer)
+  }, [hidden])
+
+  useEffect(() => {
+    onBusyChange?.(isTyping)
+  }, [isTyping, onBusyChange])
 
   // Auto-grow the chat textarea as the user types past one line, capping
   // at MAX_INPUT_HEIGHT and letting it scroll internally beyond that.
@@ -530,7 +543,9 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
+      hidden={hidden}
       style={{
+        display: hidden ? 'none' : undefined,
         background: hasStarted ? 'transparent' : 'rgb(var(--ink-rgb) / 0.45)',
                 transition: 'opacity 0.3s ease, background 0.4s ease',
         opacity: visible ? 1 : 0,

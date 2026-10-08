@@ -143,6 +143,34 @@ test.describe('a chat with no answer is not kept', () => {
   })
 })
 
+test.describe('closing the chat while an answer is being written', () => {
+  test('the answer carries on, and reopening the chat returns to it', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('A late answer.'), delay: 2500 })
+    await openCopilot(page)
+    await ask(page, 'A slow question')
+    await page.getByRole('button', { name: 'Close RegWay AI' }).click()
+    await expect(page.getByText('RegWay AI Copilot')).toBeHidden()
+
+    await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+    await expect(page.getByText('A slow question')).toBeVisible()
+    await expect(page.getByText('A late answer.')).toBeVisible()
+    // One request: the answer was not asked for again.
+    expect(chatCalls(backend)).toHaveLength(1)
+  })
+
+  test('once the answer has finished out of sight, the chat opens fresh and the request was not cut short', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('A late answer.'), delay: 1500 })
+    await openCopilot(page)
+    await ask(page, 'A slow question')
+    await page.getByRole('button', { name: 'Close RegWay AI' }).click()
+    await expect(page.locator('[aria-label="Message RegWay AI"]')).toHaveCount(0, { timeout: 15000 })
+
+    await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+    await expect(page.getByText('RegWay AI Copilot')).toBeVisible()
+    await expect(page.getByText('A slow question')).toHaveCount(0)
+  })
+})
+
 test.describe('suggested questions', () => {
   test('are about the company the chat is focused on', async ({ page }) => {
     await openCopilot(page)

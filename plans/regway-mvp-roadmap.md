@@ -335,6 +335,13 @@ Left open:
   the code by deploy time, not line by line.
 
 ### 11b. Move the site to regwayai.com (S)
+**Status 2026-10-08: the domain is live.** The owner added the DNS records
+at Squarespace; `https://www.regwayai.com` serves the current build, and
+`regwayai.com` and `reg-way.vercel.app` both redirect to it (308). Still to
+confirm by the owner: Supabase Auth Site URL and redirect allow-list
+include `https://www.regwayai.com/**` (and the bare domain), and a
+password-reset email opens the new address. `noindex` is still set.
+
 The site is on https://reg-way.vercel.app; the owner has bought
 `regwayai.com`.
 - Vercel: add `regwayai.com` (and `www`) to the project, set the DNS

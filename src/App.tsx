@@ -38,6 +38,9 @@ export default function App() {
     restoreTo.current = null
   }, [view, entity?.type, entity?.id])
   const [showAI, setShowAI] = useState(false)
+  // An answer still being written when the chat is closed carries on out of
+  // sight (and is saved when it finishes); reopening the chat returns to it.
+  const [aiBusy, setAiBusy] = useState(false)
   const [aiContext, setAiContext] = useState<AiContext | null>(null)
   // A password-recovery link signs the user in *and* asks for a new
   // password. While that's pending, the ordinary signed-in routing must not
@@ -90,6 +93,8 @@ export default function App() {
         return
       }
       if (!session) {
+        setShowAI(false)
+        setAiBusy(false)
         clearCache()
         if (authNoticeRef.current) setAuthMode('sign-in')
         setView(authNoticeRef.current ? 'auth' : 'landing')
@@ -227,8 +232,8 @@ export default function App() {
       </div>
 
       {/* RegWay AI drawer — rendered over any view */}
-      {showAI && (
-        <RegWayAICopilot context={aiContext} onClose={() => { setShowAI(false); setAiContext(null) }} />
+      {(showAI || aiBusy) && (
+        <RegWayAICopilot context={aiContext} hidden={!showAI} onBusyChange={setAiBusy} onClose={() => { setShowAI(false); setAiContext(null) }} />
       )}
     </div>
   )

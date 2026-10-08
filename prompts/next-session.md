@@ -7,7 +7,7 @@ merged into `main`. Read `DESIGN.md` before any UI work. Production
 (Supabase project `cfspwaqtidfliupmlfwz`) matches it on the server side:
 migrations 0024–0035 applied, every edge function deployed.
 
-**Frontend**: the site is https://reg-way.vercel.app. Check that its build
+**Frontend**: the site is https://www.regwayai.com (reg-way.vercel.app redirects to it). Check that its build
 is the latest `main` (the landing page's source list should include "UK
 FCA" and "EU sanctions"); if not, redeploy. Skipped for now by the owner:
 item 11b, the move to `regwayai.com`.
