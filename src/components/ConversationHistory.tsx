@@ -56,7 +56,7 @@ export default function ConversationHistory({
     <aside
       aria-label="Chats"
       className="absolute md:static inset-y-0 left-0 z-20 w-72 md:w-64 flex flex-col flex-shrink-0"
-      style={{ background: 'rgb(var(--canvas-rgb) / 0.98)', borderRight: '1px solid rgb(var(--line-rgb) / 0.30)' }}
+      style={{ paddingTop: 'var(--chat-top, 0px)', background: 'rgb(var(--canvas-rgb) / 0.98)', borderRight: '1px solid rgb(var(--line-rgb) / 0.30)' }}
     >
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <button onClick={onNewChat} disabled={disabled} className="btn-tool is-accent flex-1">

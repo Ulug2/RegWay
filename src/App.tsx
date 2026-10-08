@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
-import { getFirmId, getCachedFirmId } from './lib/data'
+import { getFirmId, getCachedFirmId, getCachedFirm, fetchFirm, fetchFunds, fetchPortfolioCompanies } from './lib/data'
 import { bindCacheToUser, clearCache } from './lib/cache'
 import LandingPage from './components/LandingPage'
 import ProfileScreen, { type ProfileTab } from './components/ProfileScreen'
@@ -51,6 +51,11 @@ export default function App() {
   const authNoticeRef = useRef<string | null>(null)
   const recovering = useRef(/[#&?]type=recovery\b/.test(window.location.hash + window.location.search))
 
+  // The dashboard greets the user by name and counts their funds and
+  // companies. Have those in hand before it shows, so nothing on it is seen
+  // changing from a placeholder. A failure here only means it fills in late.
+  const loadFirm = (firmId: string) => Promise.all([fetchFirm(firmId), fetchFunds(firmId), fetchPortfolioCompanies(firmId)]).catch(() => {})
+
   useEffect(() => {
     let mounted = true
 
@@ -69,8 +74,9 @@ export default function App() {
       }
       // A known firm means we can show the dashboard straight away and
       // confirm in the background, instead of a "Loading…" screen every visit.
-      if (getCachedFirmId() && mounted) setView('dashboard')
+      if (getCachedFirmId() && getCachedFirm() && mounted) setView('dashboard')
       const firmId = await getFirmId().catch(() => getCachedFirmId())
+      if (firmId && !getCachedFirm()) await loadFirm(firmId)
       if (mounted && !recovering.current) setView(firmId ? 'dashboard' : 'onboarding')
     }
     init()
@@ -141,6 +147,7 @@ export default function App() {
     } = await supabase.auth.getSession()
     if (session) bindCacheToUser(session.user.id)
     const firmId = await getFirmId().catch(() => null)
+    if (firmId) await loadFirm(firmId)
     setView(firmId ? 'dashboard' : 'onboarding')
   }
 
@@ -244,7 +251,7 @@ export default function App() {
                 </p>
               </div>
             </div>
-            <OnboardingModal onComplete={() => setView('dashboard')} />
+            <OnboardingModal onComplete={handleAuthenticated} />
           </>
         )}
 

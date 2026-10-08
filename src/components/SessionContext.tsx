@@ -49,7 +49,7 @@ export default function SessionContext({
     <aside
       aria-label="Session context"
       className="w-72 hidden xl:flex flex-col flex-shrink-0 overflow-y-auto scrollable"
-      style={{ borderLeft: '1px solid rgb(var(--line-rgb) / 0.30)', padding: '20px 20px' }}
+      style={{ borderLeft: '1px solid rgb(var(--line-rgb) / 0.30)', padding: '20px 20px', paddingTop: 'calc(20px + var(--chat-top, 0px))' }}
     >
       <div className="flex items-center justify-between mb-1">
         <div className="section-label">Session Context</div>

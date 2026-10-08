@@ -1,4 +1,4 @@
-import { FIRM_ID, REGS, daysAgoAt, expect, regulation, relevance, signIn, test } from './mockBackend'
+import { FIRM_ID, REGS, aiReply, daysAgoAt, expect, regulation, relevance, signIn, test } from './mockBackend'
 
 // Behaviour the redesign added or changed (prompts/redesign.md). How things
 // look is checked by eye, with `CAPTURE=screens` (see capture.spec.ts).
@@ -174,4 +174,38 @@ test('an answer that resumes after a search keeps a space between its sentences'
   await box.fill('When does it start?')
   await box.press('Enter')
   await expect(page.getByText('Let me check the latest rule. It takes effect in January.')).toBeVisible()
+})
+
+test('the dashboard never shows a placeholder name before the real one', async ({ page }) => {
+  await page.addInitScript(() => {
+    const seen: string[] = []
+    ;(window as unknown as { __greetings: string[] }).__greetings = seen
+    new MutationObserver(() => {
+      const text = document.querySelector('h1')?.textContent
+      if (text && seen.at(-1) !== text) seen.push(text)
+    }).observe(document, { childList: true, subtree: true, characterData: true })
+  })
+  await signIn(page)
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Dana')
+  await expect(page.getByRole('button', { name: 'Profile', exact: true })).toHaveText('DR')
+  const greetings = await page.evaluate(() => (window as unknown as { __greetings: string[] }).__greetings)
+  expect(greetings.filter(g => g.includes('there'))).toEqual([])
+})
+
+test('in the full-screen chat the header floats over the conversation', async ({ page, backend }) => {
+  backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('An answer.') })
+  await signIn(page)
+  await page.goto('/')
+  await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+  const header = page.getByRole('heading', { name: 'RegWay AI Copilot' }).locator('xpath=ancestor::div[contains(@class,"justify-between")][1]')
+  await expect(header).toHaveCSS('position', 'static')
+  const box = page.getByRole('textbox', { name: 'Message RegWay AI' })
+  await box.fill('When does it start?')
+  await box.press('Enter')
+  await expect(page.getByText('An answer.')).toBeVisible()
+  await expect(header).toHaveCSS('position', 'absolute')
+  // The first message starts below the header, not hidden under it.
+  const headerBottom = (await header.boundingBox())!.y + (await header.boundingBox())!.height
+  expect((await page.getByText('When does it start?').boundingBox())!.y).toBeGreaterThan(headerBottom)
 })

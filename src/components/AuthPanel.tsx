@@ -9,7 +9,7 @@ import { passwordErrorMessage, passwordProblem } from '../lib/password'
 // landing page (it slides out beside the hero), not as its own screen.
 
 interface AuthPanelProps {
-  onAuthenticated: () => void
+  onAuthenticated: () => void | Promise<void>
   initialMode?: 'sign-in' | 'sign-up'
   onClose: () => void
   // Why the user is seeing this form, when the app sent them here.
@@ -67,7 +67,7 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         if (signInError) throw signInError
       }
-      onAuthenticated()
+      await onAuthenticated()
     } catch (err) {
       setError(passwordErrorMessage(err, 'Something went wrong'))
     } finally {

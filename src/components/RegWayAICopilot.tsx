@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
 import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, type ConversationSummary } from '../lib/data'
@@ -52,8 +52,6 @@ const MAX_TEXT_BYTES = 150 * 1024
 // internally instead of pushing the rest of the drawer around.
 const MAX_INPUT_HEIGHT = 240
 
-// The drawer's header is a little see-through; its body is not.
-const HEADER_BG = 'rgb(var(--canvas-rgb) / 0.82)'
 
 // Shown in the empty AI bubble while waiting for the first token — cycles
 // every couple of seconds so a slow web-search phase (the model's tool-use
@@ -178,6 +176,11 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const [headerH, setHeaderH] = useState(68)
+  useLayoutEffect(() => {
+    if (headerRef.current) setHeaderH(headerRef.current.offsetHeight)
+  }, [hasStarted])
   const [visible, setVisible] = useState(false)
   const [firm, setFirm] = useState<Firm | null>(null)
   const [funds, setFunds] = useState<Fund[]>([])
@@ -493,14 +496,11 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
       {/* Drawer panel — expands to fill the screen like its own page once a
           real conversation starts, instead of staying a partial bottom sheet. */}
       <div
-        className="mt-auto flex flex-col"
+        className="mt-auto flex flex-col relative"
         style={{
           height: hasStarted ? '100dvh' : '90dvh',
-          // The header lets a little of the page show through; the rest is
-          // near-solid so the conversation stays readable.
-          overflow: 'hidden',
+          background: 'rgb(var(--canvas-rgb) / 0.96)',
           backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
           borderTop: hasStarted ? 'none' : '1px solid rgb(var(--line-rgb) / 0.50)',
           borderRadius: hasStarted ? 0 : '24px 24px 0 0',
           boxShadow: hasStarted ? 'none' : '0 -20px 60px rgba(0,0,0,0.14)',
@@ -510,15 +510,21 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
       >
         {/* Drag handle — only meaningful while this still reads as a sheet */}
         {!hasStarted && (
-          <div className="flex justify-center pt-4 pb-2 flex-shrink-0" style={{ background: HEADER_BG }}>
+          <div className="flex justify-center pt-4 pb-2 flex-shrink-0">
             <div className="w-10 h-1 rounded-full" style={{ background: 'rgb(var(--line-rgb) / 0.60)' }} />
           </div>
         )}
 
         {/* Header */}
         <div
-          className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 flex-shrink-0"
-          style={{ borderBottom: '1px solid rgb(var(--line-rgb) / 0.30)', background: HEADER_BG }}
+          ref={headerRef}
+          className={`flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 flex-shrink-0 ${hasStarted ? 'absolute top-0 inset-x-0 z-30' : ''}`}
+          // Full screen: the header floats over the conversation, which
+          // scrolls underneath and shows through it, blurred.
+          style={{
+            borderBottom: '1px solid rgb(var(--line-rgb) / 0.30)',
+            ...(hasStarted ? { background: 'rgb(var(--canvas-rgb) / 0.68)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' } : {}),
+          }}
         >
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -562,7 +568,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
         </div>
 
         {/* Content area: chats sidebar + conversation + session context */}
-        <div className="flex-1 flex overflow-hidden min-h-0 relative" style={{ background: 'rgb(var(--canvas-rgb) / 0.96)' }}>
+        <div className="flex-1 flex overflow-hidden min-h-0 relative" style={{ '--chat-top': hasStarted ? `${headerH}px` : '0px' } as React.CSSProperties}>
           {chatsOpen && (
             <ConversationHistory
               activeId={conversationId}
@@ -576,17 +582,15 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
 
           {/* Conversation */}
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 relative">
-            {resumeError && (
-              <div className="px-6 pt-3 text-xs" style={{ color: 'var(--warning)' }}>{resumeError}</div>
-            )}
             <div
               ref={scrollRef}
               onScroll={handleScroll}
               onWheel={handleUserScrollIntent}
               onTouchMove={handleUserScrollIntent}
               className="flex-1 overflow-y-auto scrollable min-h-0 px-4 sm:px-6 py-5 space-y-5"
-              style={{ overscrollBehavior: 'contain' }}
+              style={{ overscrollBehavior: 'contain', paddingTop: 'calc(20px + var(--chat-top, 0px))' }}
             >
+              {resumeError && <div className="text-xs" role="alert" style={{ color: 'var(--warning)' }}>{resumeError}</div>}
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {msg.role === 'ai' && (
