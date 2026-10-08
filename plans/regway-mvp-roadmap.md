@@ -543,21 +543,26 @@ Other:
   investigation matched to 3Pillar) is parked in item 17.
 
 #### Not verified
-- **Items 15 and 16 were never looked at with real data in a browser.**
-  The browser the assistant controls was signed out of localhost and it
-  may not type the password. Both were checked through browser tests on
-  mock data, screenshots of those, and the production database. To do:
-  the owner signs in on localhost, then open the firm page (two SEC
-  developments should each be one card with "Also published as" links)
-  and Settings → Firm (a line under each answer).
+- **UK / EU sanctions matching** against a firm it should match (see
+  Sources above).
 - **A re-check running to the end from the browser** after a profile
-  save (item 11a's fix) was not watched live; the owner's "Venture
-  Capital" removal did run, through scheduled matching and 14 analyses.
+  save (item 11a's fix) was not watched live.
 - **The "last confirmed over a year ago" marker to the AI** has unit
   tests only; nothing on H.I.G. is that old.
-- **Scheduled matching after the credit top-up**: the last recorded run
-  (01:10 UTC on 10-08) failed before the top-up took effect. Check
-  `select ran_at, ok, detail from sync_runs where source = 'matching' order by ran_at desc limit 3`.
+- **Saving a confirmation or a document on real data**: the assistant
+  only read H.I.G.'s Settings page; it does not save changes to a real
+  profile through the browser.
+
+Verified on 2026-10-08 with the owner signed in on localhost (H.I.G.):
+- Item 15: on the firm page the crypto custody proposal is one card with
+  "Also published as: Federal Register · Oct 6, 2026", the retailization
+  proposal one card with two Federal Register links, and the
+  development's page lists the document in its sidebar.
+- Item 16: Settings → Firm shows "Recorded on or before Oct 7, 2026 · not
+  confirmed since" with "Still correct" and "Add document" under each
+  answer, and "Unknown" on the four blank optional facts.
+- Scheduled matching recovered after the credit top-up (01:40 UTC run
+  succeeded).
 
 #### Inconsistencies found
 - **The AI account ran out of credit with no warning** (00:28 to about
@@ -598,39 +603,91 @@ Other:
 - **Test spending outside the app's records**: about $0.50 of direct API
   calls for the registry tests (item 14) used the key in `.env.local` and
   are not in `usage_events`.
+- **EUR-Lex is down on its side** (seen 2026-10-08): since 23:05 UTC on
+  10-07 the whole site, feeds included, redirects to a bare "today's
+  Official Journal" page, so `eur_lex` and `eu_sanctions` bring nothing in
+  and the dashboard shows the failing-source banner. Nothing to fix here
+  unless it lasts; check
+  `select ran_at, ok, detail from sync_runs where source = 'regulator_feeds' order by ran_at desc limit 3`.
+- **The failing-source banner is vague and ungrammatical**: "Regulator
+  feeds (U.S., UK and EU) hasn't updated…" when only the two EU feeds are
+  down and the other nine are fine. It should name the feed.
+- **Feed summaries show raw HTML entities**: the FCA card reads
+  "…These include:&nbsp;Guidance focused…" with sentences run together.
+- **Some enforcement cards repeat the title as the summary** ("Stephen
+  Kenneth Leech" twice).
+- **Items about a company are listed on the firm page**: the UK
+  Employment Rights Act and the EU Customs Code cards on H.I.G.'s firm
+  list both say "applies to A.L.A. S.p.A." in their reason. The verdict
+  was stored for the firm, not the company.
+- **A weak match**: an EPA approval of Florida's air-permit forms is on
+  the firm page because H.I.G. is headquartered in Florida ("any
+  portfolio companies with air emissions in Florida"). No recorded fact
+  supports it. For item 17's Skeptic.
 - **The owner's screenshot about the $100 credit could not be opened**
   (file permission), so the question "don't I have $100 in credit" was
   never answered from it.
 
-#### Questions for the owner
-1. **Credit**: which Anthropic organisation holds the server's key, and do
-   you want a low-balance or daily-spend alert (and where should it go)?
-2. **Email alerts**: which provider, and what counts as high priority (a
-   final rule? anything matched to the firm itself? a deadline inside N
-   days?)?
-3. **Domain**: when to move to regwayai.com, and should the new domain be
-   indexed by search engines (the page is `noindex` today)?
-4. **Footer pages**: who writes About Us, Sources, Legal Disclaimers and
-   Privacy Policy?
-5. **Duplicates**: when the official document arrives, should the card's
-   analysis be rewritten from it? Should the official document then
-   become the card, with the announcement as the link?
-6. **Provenance**: is a typed document name or link enough, or do you want
-   real upload? Is one year the right age to ask for re-confirmation?
-   Should RegWay record which user confirmed?
-7. **Profile edits that cost money**: show the user what a save will
-   re-check, cap it, or leave it silent?
-8. **Scheduled matching** runs for H.I.G. only. Which other firms, if
-   any, should be enrolled?
-9. **CFTC and OFAC**: is arriving through the Federal Register (days
-   later) acceptable, or worth a workaround?
-10. **Registry grounding (item 14 part 2)**: drop it, or try once more a
-    different way (for example, as a checklist after the scan rather than
-    inside the search prompt)?
-11. **Item 17**: which part first? The plan is in
-    `plans/regway-ai-multi-agent-architecture.md`; the firm-in-every-
-    analysis and holdings inconsistencies above would be natural first
-    fixes.
+#### Questions for the owner, with the answers given on 2026-10-08
+1. **Credit**: the server's key belongs to the "regpe" Anthropic
+   organisation. No low-balance alert wanted.
+2. **Email alerts**: skipped for now.
+3. **Domain**: unanswered (11b stays skipped).
+4. **Footer pages**: unanswered.
+5. **Duplicates**: yes to both. Now task 16b.1.
+6. **Provenance**: the owner asked for the options to be explained before
+   deciding. As put to them: today "Add document" stores only a label you
+   type (a name or a link); RegWay never sees the document. The
+   alternative is uploading the file, which lets RegWay keep it, show it
+   next to the answer and, if wanted, have the AI check that the document
+   really says what the answer says (and suggest answers from it). That is
+   a larger build (file storage, access rules, an AI reading step with its
+   own cost). Still open: which one; whether one year is the right age to
+   ask for re-confirmation; whether to record which user confirmed.
+7. **Profile edits that cost money**: wait about five minutes after the
+   last edit before spending AI credit, since a user often changes several
+   things in a row. Now task 16b.2.
+8. **Scheduled matching beyond H.I.G.**: unanswered.
+9. **CFTC and OFAC through the Federal Register only**: unanswered.
+10. **Registry grounding (item 14 part 2)**: unanswered.
+11. **Item 17**: on hold until the owner says.
+
+### 16b. Decided on 2026-10-08, ready to build
+
+**16b.1 The official document becomes the card (M).** When the Federal
+Register document for an announcement arrives, it replaces the
+announcement as the card, the announcement becomes its "also published
+as" link, and the analysis is written from the official text. Today the
+announcement stays the card (`_shared/duplicates.ts` always makes it the
+first version) and its analysis is never rewritten. To settle while
+building: an announcement that covers several documents (the SEC
+retailization release has two) would then show as several cards, one per
+rule, each linking the same announcement; what happens to the "New" badge,
+notes, flags and a dismissal made on the announcement; and that the
+official document is matched and analysed even when the announcement was
+(which the current "skip the analysis for a covered version" rule
+prevents).
+
+**16b.2 Hold AI work for about five minutes after a profile edit (M).**
+Today every save that changes a matching fact at once forgets rejections,
+re-judges a batch and rewrites the analyses of what the entity is matched
+to (`rediscoverMatches` and `refreshEntityImpacts` in `src/lib/data.ts`):
+three quick edits pay three times (the "Venture Capital" removal alone
+cost $0.83). Instead: a save records that the profile changed; the AI
+work runs once, five minutes after the last change. It has to run on the
+server (the user may close the tab), so a scheduled job picks up firms
+whose last profile change is over five minutes old, for every firm, not
+only those on scheduled matching. The Profile page should say that
+matches will update in a few minutes.
+
+**16b.3 Dark mode (M).** The app has one light theme, with colours
+written inline in most components (`#0F172A`, `rgba(255,255,255,0.88)`,
+the sky-blue gradients) rather than as theme tokens. Needs: colour tokens
+in `src/index.css` for both themes, the inline colours moved onto them, a
+switch (follow the system setting by default, with a manual override
+remembered per user), and a pass over every screen including the landing
+page, charts of badges and the glass cards, which rely on light
+backgrounds.
 
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out

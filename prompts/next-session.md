@@ -15,7 +15,10 @@ Done since the last note: item 15 (duplicate grouping,
 12 Phase 3 (email alerts, later). Next in the roadmap's order: item 17
 (the multi-role architecture, `plans/regway-ai-multi-agent-architecture.md`).
 Roadmap item 16a lists everything this session left open, the
-inconsistencies it found and the questions waiting on the owner.
+inconsistencies it found and the owner's answers; item 16b holds the three
+tasks decided from them (official document as the card, a five-minute
+wait before AI work after a profile edit, dark mode). Item 17 is on hold
+until the owner says.
 
 ## Setting up on the Mac
 
