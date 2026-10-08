@@ -23,7 +23,7 @@ export function getThemeChoice(): ThemeChoice {
 export const resolveTheme = (choice: ThemeChoice, prefersDark = systemDark()): 'light' | 'dark' => (choice === 'system' ? (prefersDark ? 'dark' : 'light') : choice)
 
 // The browser's own chrome (address bar on a phone) takes the page colour.
-export const CANVAS = { light: '#FDFBF7', dark: '#0B1220' } as const
+export const CANVAS = { light: '#FFFFFF', dark: '#0D0D0D' } as const
 
 export function applyTheme(choice: ThemeChoice = getThemeChoice()): void {
   const theme = resolveTheme(choice)

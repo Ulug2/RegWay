@@ -30,7 +30,7 @@ export default function AiAskBar({ placeholder, onOpen, style }: { placeholder: 
         <button
           onClick={onOpen}
           className="absolute right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-white transition-transform active:scale-95"
-          style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', borderRadius: 9999, boxShadow: '0 4px 12px rgb(var(--primary-rgb) / 0.30)' }}
+          style={{ background: 'var(--brand)', borderRadius: 9999 }}
           aria-label="Open RegWay AI"
         >
           <PaperPlaneRight size={17} weight="fill" aria-hidden="true" />

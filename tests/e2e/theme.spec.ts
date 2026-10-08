@@ -6,8 +6,8 @@ import { expect, signIn, test } from './mockBackend'
 
 const theme = (page: Page) => page.evaluate(() => document.documentElement.dataset.theme)
 const canvas = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
-const LIGHT = 'rgb(253, 251, 247)'
-const DARK = 'rgb(11, 18, 32)'
+const LIGHT = 'rgb(255, 255, 255)'
+const DARK = 'rgb(13, 13, 13)'
 
 async function openAccount(page: Page) {
   await signIn(page)
@@ -29,7 +29,7 @@ test.describe('on a device set to dark', () => {
     expect(await canvas(page)).toBe(DARK)
     // Text is light on the dark canvas.
     const heading = await page.getByRole('heading', { level: 1 }).evaluate(el => getComputedStyle(el).color)
-    expect(heading).toBe('rgb(241, 245, 249)')
+    expect(heading).toBe('rgb(255, 255, 255)')
   })
 
   test('choosing Light overrides the device, and is remembered', async ({ page }) => {

@@ -139,7 +139,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6"
-      style={{ background: 'rgb(var(--ink-rgb) / 0.35)', backdropFilter: 'blur(6px)' }}
+      style={{ background: 'rgb(var(--ink-rgb) / 0.5)' }}
     >
       <div className="glass-modal w-full max-w-2xl max-h-[92dvh] overflow-y-auto scrollable" role="dialog" aria-modal="true" aria-label="Set up RegWay" style={{ overscrollBehavior: 'contain' }}>
         <div className="p-5 sm:p-8">
@@ -161,10 +161,9 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   className="flex items-center gap-2 pl-2 pr-4 py-1.5 text-sm font-medium transition-ui"
                   style={{
                     borderRadius: 9999,
-                    background: step === s.n ? 'linear-gradient(135deg, var(--brand), var(--brand-light))' : step > s.n ? 'rgb(var(--primary-rgb) / 0.12)' : 'rgb(var(--line-rgb) / 0.25)',
+                    background: step === s.n ? 'var(--brand)' : step > s.n ? 'rgb(var(--primary-rgb) / 0.12)' : 'rgb(var(--line-rgb) / 0.25)',
                     color: step === s.n ? 'white' : step > s.n ? 'var(--primary)' : 'var(--text-400)',
-                    boxShadow: step === s.n ? '0 4px 12px rgb(var(--primary-rgb) / 0.25)' : 'none',
-                  }}
+                                      }}
                 >
                   <span
                     className="w-6 h-6 flex items-center justify-center text-xs font-semibold num"

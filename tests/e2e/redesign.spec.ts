@@ -220,13 +220,13 @@ test.describe('the chat', () => {
 
   test('every suggestion is fully on screen, and the note under the input goes once a message is sent', async ({ page, backend }) => {
     backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('An answer.') })
-    await page.setViewportSize({ width: 900, height: 800 })
+    await page.setViewportSize({ width: 1280, height: 800 })
     await openChat(page)
-    for (const name of ["Today's changes", 'Upcoming fund deadlines', 'New state rules for my companies']) {
+    for (const name of ["Summarize today's changes", 'What fund deadlines are coming up?', 'Any new state rules for my companies?']) {
       await expect(page.getByRole('button', { name })).toBeInViewport({ ratio: 1 })
     }
     // Short enough to sit on one line.
-    const tops = await Promise.all(["Today's changes", 'New state rules for my companies'].map(async name => (await page.getByRole('button', { name }).boundingBox())!.y))
+    const tops = await Promise.all(["Summarize today's changes", 'Any new state rules for my companies?'].map(async name => (await page.getByRole('button', { name }).boundingBox())!.y))
     expect(tops[0]).toBe(tops[1])
     await expect(page.getByText('Always verify with qualified legal counsel.')).toBeVisible()
     const box = page.getByRole('textbox', { name: 'Message RegWay AI' })
@@ -242,10 +242,10 @@ test.describe('the chat', () => {
   test('past conversations show at once when the sidebar is reopened', async ({ page }) => {
     await openChat(page)
     await page.getByRole('button', { name: 'Chats' }).click()
-    await expect(page.getByText('Past conversations')).toBeVisible()
+    await expect(page.getByRole('searchbox', { name: 'Search conversations' })).toBeVisible()
     await expect(page.getByRole('status', { name: 'Loading conversations' })).toHaveCount(0)
     await page.getByRole('button', { name: 'Chats' }).click()
-    await expect(page.getByText('Past conversations')).toHaveCount(0)
+    await expect(page.getByRole('searchbox', { name: 'Search conversations' })).toHaveCount(0)
     await page.evaluate(() => {
       ;(window as unknown as { __sawLoading: boolean }).__sawLoading = false
       new MutationObserver(() => {
@@ -253,7 +253,7 @@ test.describe('the chat', () => {
       }).observe(document, { childList: true, subtree: true })
     })
     await page.getByRole('button', { name: 'Chats' }).click()
-    await expect(page.getByText('Past conversations')).toBeVisible()
+    await expect(page.getByRole('searchbox', { name: 'Search conversations' })).toBeVisible()
     expect(await page.evaluate(() => (window as unknown as { __sawLoading: boolean }).__sawLoading)).toBe(false)
   })
 })

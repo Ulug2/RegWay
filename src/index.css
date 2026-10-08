@@ -3,15 +3,15 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-canvas: #FDFBF7;
-  --color-canvas-alt: #F8F6F0;
+  --color-canvas: #FFFFFF;
+  --color-canvas-alt: #F4F4F5;
   --color-primary: #0284C7;
   --color-primary-light: #38BDF8;
   --color-ice: #E0F2FE;
   --color-sky-sphere: #BAE6FD;
-  --color-text-900: #0F172A;
-  --color-text-600: #334155;
-  --color-text-400: #64748B;
+  --color-text-900: #0A0A0A;
+  --color-text-600: #3F3F46;
+  --color-text-400: #63636B;
   --color-amber: #F59E0B;
   --color-emerald: #10B981;
   --color-rose: #F43F5E;
@@ -35,53 +35,54 @@
    `--primary*` is for text, icons and links, and is lighter on dark. */
 :root {
   color-scheme: light;
-  --canvas: #FDFBF7;
-  --canvas-rgb: 253 251 247;
+  --canvas: #FFFFFF;
+  --canvas-rgb: 255 255 255;
   --surface-rgb: 255 255 255;
-  --ice-rgb: 224 242 254;
-  --line-rgb: 186 230 253;
-  --line-strong-rgb: 148 197 224;
-  --neutral-rgb: 100 116 139;
-  --ink-rgb: 15 23 42;
-  --text-900: #0F172A;
-  --text-600: #334155;
-  --text-500: #475569;
+  --ice-rgb: 240 240 242;
+  --line-rgb: 161 161 170;
+  --line-strong-rgb: 113 113 122;
+  --neutral-rgb: 113 113 122;
+  --ink-rgb: 0 0 0;
+  --text-900: #0A0A0A;
+  --text-600: #3F3F46;
+  --text-500: #52525B;
   /* Both pass 4.5:1 on the canvas: these carry helper text and dates. */
-  --text-400: #5A6B83;
-  --text-300: #6A788E;
-  --placeholder: #94A3B8;
+  --text-400: #63636B;
+  --text-300: #71717A;
+  --placeholder: #A1A1AA;
   --primary: #0284C7;
-  --primary-light: #38BDF8;
+  --primary-light: #0EA5E9;
   --primary-dark: #0369A1;
   --primary-rgb: 2 132 199;
-  --primary-light-rgb: 56 189 248;
+  --primary-light-rgb: 14 165 233;
   --brand: #0284C7;
-  --brand-light: #38BDF8;
+  --brand-light: #0284C7;
   --warning: #B45309;
   --violet: #7C3AED;
-  --code-block: #0F172A;
-  --hover-tint: #F0F9FF;
-  --shadow-card: 0 1px 2px rgb(var(--ink-rgb) / 0.03), 0 6px 20px rgb(var(--primary-rgb) / 0.05);
-  --shadow-lift: 0 2px 4px rgb(var(--ink-rgb) / 0.04), 0 14px 34px rgb(var(--primary-rgb) / 0.13);
-  --shadow-float: 0 10px 30px rgb(var(--ink-rgb) / 0.12);
+  --code-block: #18181B;
+  --hover-tint: #F4F4F5;
+  --sidebar: #F9F9F9;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.05), 0 8px 24px rgb(0 0 0 / 0.08);
+  --shadow-float: 0 4px 20px rgb(0 0 0 / 0.10);
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --canvas: #0B1220;
-  --canvas-rgb: 11 18 32;
-  --surface-rgb: 30 41 59;
-  --ice-rgb: 12 74 110;
-  --line-rgb: 71 105 148;
-  --line-strong-rgb: 90 126 170;
-  --neutral-rgb: 148 163 184;
+  --canvas: #0D0D0D;
+  --canvas-rgb: 13 13 13;
+  --surface-rgb: 38 38 38;
+  --ice-rgb: 46 46 46;
+  --line-rgb: 120 120 120;
+  --line-strong-rgb: 160 160 160;
+  --neutral-rgb: 163 163 163;
   --ink-rgb: 0 0 0;
-  --text-900: #F1F5F9;
-  --text-600: #CBD5E1;
-  --text-500: #B4C0D0;
-  --text-400: #94A3B8;
-  --text-300: #8493A8;
-  --placeholder: #64748B;
+  --text-900: #FFFFFF;
+  --text-600: #ECECEC;
+  --text-500: #D4D4D4;
+  --text-400: #A3A3A3;
+  --text-300: #8F8F8F;
+  --placeholder: #737373;
   --primary: #38BDF8;
   --primary-light: #7DD3FC;
   --primary-dark: #BAE6FD;
@@ -89,27 +90,24 @@
   --primary-light-rgb: 125 211 252;
   --warning: #FBBF24;
   --violet: #A78BFA;
-  --code-block: #020617;
-  --hover-tint: rgb(56 189 248 / 0.12);
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25);
-  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.3), 0 14px 34px rgb(0 0 0 / 0.35);
-  --shadow-float: 0 10px 30px rgb(0 0 0 / 0.45);
+  --code-block: #1A1A1A;
+  --hover-tint: rgb(255 255 255 / 0.08);
+  --sidebar: #171717;
+  --shadow-card: none;
+  --shadow-lift: 0 8px 24px rgb(0 0 0 / 0.5);
+  --shadow-float: 0 4px 20px rgb(0 0 0 / 0.5);
 }
 
-/* Tailwind's light hover tints, which components use by class name. */
-:root[data-theme='dark'] .hover\:bg-sky-50:hover,
-:root[data-theme='dark'] .hover\:bg-sky-100:hover,
-:root[data-theme='dark'] .hover\:bg-slate-100:hover {
+/* Tailwind's hover tints, which components use by class name: neutral in
+   both themes. */
+.hover\:bg-sky-50:hover,
+.hover\:bg-sky-100:hover,
+.hover\:bg-slate-100:hover {
   background-color: var(--hover-tint);
 }
 :root[data-theme='dark'] .hover\:text-sky-600:hover {
   color: var(--primary-light);
 }
-/* The ambient glows behind every page are tuned for a light canvas. */
-:root[data-theme='dark'] [data-ambient] {
-  opacity: 0.35;
-}
-
 /* Shape, motion and type (see DESIGN.md).
    Radius: pills for anything pressed (buttons, chips, tabs), 16px cards,
    12px tiles inside cards, 10px fields, 24px dialogs. */
@@ -232,9 +230,7 @@ select:focus-visible {
 
 .glass-card {
   position: relative;
-  background: rgb(var(--surface-rgb) / 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgb(var(--surface-rgb) / 0.9);
   border-radius: var(--r-card);
   box-shadow: var(--shadow-card);
 }
@@ -244,7 +240,7 @@ select:focus-visible {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgb(var(--surface-rgb) / 0.95), rgb(var(--line-rgb) / 0.35));
+  background: rgb(var(--line-rgb) / 0.4);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -255,9 +251,7 @@ select:focus-visible {
 
 .glass-card-light {
   position: relative;
-  background: rgb(var(--surface-rgb) / 0.55);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgb(var(--surface-rgb) / 0.7);
   border-radius: var(--r-card);
   box-shadow: var(--shadow-card);
 }
@@ -267,7 +261,7 @@ select:focus-visible {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgb(var(--surface-rgb) / 0.90), rgb(var(--line-rgb) / 0.25));
+  background: rgb(var(--line-rgb) / 0.4);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -278,9 +272,7 @@ select:focus-visible {
 
 .glass-modal {
   position: relative;
-  background: rgb(var(--surface-rgb) / 0.84);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgb(var(--surface-rgb));
   border-radius: var(--r-dialog);
   box-shadow: var(--shadow-lift);
 }
@@ -290,7 +282,7 @@ select:focus-visible {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgb(var(--surface-rgb) / 0.95), rgb(var(--line-rgb) / 0.40));
+  background: rgb(var(--line-rgb) / 0.45);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -302,7 +294,7 @@ select:focus-visible {
 /* No `position` here: every header using this is `sticky top-0`, and a
    position set in this class would override that utility. */
 .glass-nav {
-  background: rgb(var(--surface-rgb) / 0.82);
+  background: rgb(var(--canvas-rgb) / 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgb(var(--line-rgb) / 0.40);
@@ -310,8 +302,6 @@ select:focus-visible {
 
 .glass-input {
   background: rgb(var(--surface-rgb) / 0.70);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgb(var(--line-rgb) / 0.50);
   border-radius: 9999px;
   outline: none;
@@ -327,8 +317,6 @@ select:focus-visible {
 
 .glass-input-rect {
   background: rgb(var(--surface-rgb) / 0.70);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgb(var(--line-rgb) / 0.50);
   border-radius: var(--r-field);
   outline: none;
@@ -389,16 +377,14 @@ select:focus-visible {
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, var(--brand), var(--brand-light));
+    background: var(--brand);
     color: white;
     padding: 10px 22px;
     font-weight: 600;
     border: none;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 4px 14px rgb(var(--primary-rgb) / 0.28);
   }
   .btn-primary:hover:not(:disabled) {
-    filter: brightness(1.05);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 6px 20px rgb(var(--primary-rgb) / 0.36);
+    filter: brightness(0.92);
   }
   .btn-primary:focus-visible {
     outline-offset: 3px;
@@ -496,7 +482,7 @@ select:focus-visible {
     border-radius: 9999px;
     background: rgb(var(--surface-rgb));
     color: var(--primary);
-    box-shadow: 0 1px 3px rgb(15 23 42 / 0.25);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
     transition: transform 0.2s var(--ease-out);
   }
   .theme-toggle[aria-checked='true'] .theme-toggle-knob {
@@ -543,9 +529,8 @@ select:focus-visible {
     transform: scale(0.98);
   }
   .seg-item.is-on {
-    background: linear-gradient(135deg, var(--brand), var(--brand-light));
+    background: var(--brand);
     color: white;
-    box-shadow: 0 2px 8px rgb(var(--primary-rgb) / 0.25);
   }
   .seg-lg .seg-item {
     padding: 9px 20px;
@@ -579,9 +564,9 @@ select:focus-visible {
     transform: scale(0.985);
   }
   .level-tab[aria-pressed='true'] {
-    background: linear-gradient(135deg, rgb(var(--ice-rgb) / 0.95), rgb(var(--line-rgb) / 0.7));
+    background: rgb(var(--primary-rgb) / 0.1);
     color: var(--primary);
-    box-shadow: inset 0 0 0 1px rgb(var(--primary-light-rgb) / 0.5), 0 4px 14px rgb(var(--primary-rgb) / 0.14);
+    box-shadow: inset 0 0 0 1px rgb(var(--primary-rgb) / 0.35);
   }
   .level-count {
     font-size: 12px;
@@ -650,8 +635,8 @@ select:focus-visible {
     flex-shrink: 0;
     overflow: hidden;
     border-radius: var(--r-tile);
-    background: rgb(var(--ice-rgb) / 0.85);
-    color: var(--primary);
+    background: rgb(var(--ice-rgb));
+    color: var(--text-600);
     font-weight: 600;
     letter-spacing: -0.01em;
   }
@@ -691,9 +676,7 @@ select:focus-visible {
   }
 
   .site-footer {
-    background: rgb(var(--surface-rgb) / 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--canvas);
     border-top: 1px solid rgb(var(--line-rgb) / 0.3);
     padding-bottom: env(safe-area-inset-bottom);
   }

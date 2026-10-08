@@ -156,57 +156,6 @@ export default function App() {
       className="relative min-h-[100dvh] overflow-x-clip"
       style={{ background: 'var(--canvas)' }}
     >
-      {/* Ambient radial sphere 1 — sky blue */}
-      <div
-        aria-hidden="true"
-        data-ambient
-        style={{
-          position: 'fixed',
-          top: '-200px',
-          right: '-100px',
-          width: 700,
-          height: 700,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgb(var(--line-rgb) / 0.55) 0%, rgb(var(--ice-rgb) / 0.25) 50%, transparent 75%)',
-          filter: 'blur(60px)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-      {/* Ambient radial sphere 2 — ice blue */}
-      <div
-        aria-hidden="true"
-        data-ambient
-        style={{
-          position: 'fixed',
-          bottom: '-150px',
-          left: '-150px',
-          width: 800,
-          height: 800,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgb(var(--ice-rgb) / 0.60) 0%, rgb(var(--line-rgb) / 0.20) 50%, transparent 72%)',
-          filter: 'blur(80px)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-      {/* Ambient radial sphere 3 — warm center accent */}
-      <div
-        aria-hidden="true"
-        data-ambient
-        style={{
-          position: 'fixed',
-          top: '40%',
-          left: '35%',
-          width: 500,
-          height: 500,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgb(var(--line-rgb) / 0.20) 0%, transparent 70%)',
-          filter: 'blur(90px)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
 
       {/* Main content above spheres */}
       <div className="relative" style={{ zIndex: 1 }}>

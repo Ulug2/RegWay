@@ -26,9 +26,9 @@ interface Message {
   status?: string
 }
 
-// Suggested first questions, about whatever the chat is focused on. The
-// button shows a short label so all three fit on one line; the full
-// question is what gets sent.
+// Suggested first questions, about whatever the chat is focused on. Worded
+// so the three together fill one line of the conversation column. The
+// button shows `label`; `prompt` (which names the fund or company) is sent.
 interface Suggestion {
   label: string
   prompt: string
@@ -36,21 +36,17 @@ interface Suggestion {
 
 function suggestedQuestions(context?: AiContext | null): Suggestion[] {
   if (context?.type === 'regulation')
-    return [
-      { label: 'Plain-language summary', prompt: 'Summarize this in plain language' },
-      { label: 'Who does this apply to?', prompt: 'Who does this apply to?' },
-      { label: 'Key dates and deadlines', prompt: 'What are the key dates and deadlines?' },
-    ]
+    return ['Summarize this in plain language', 'Who does this apply to?', 'What are the key dates and deadlines?'].map(q => ({ label: q, prompt: q }))
   if (context)
     return [
-      { label: "What's new?", prompt: `Summarize what's new for ${context.name}` },
-      { label: 'Upcoming deadlines', prompt: `What deadlines are coming up for ${context.name}?` },
-      { label: 'What matters most?', prompt: `Which developments matter most for ${context.name}?` },
+      { label: "Summarize what's new here", prompt: `Summarize what's new for ${context.name}` },
+      { label: 'What deadlines are coming up?', prompt: `What deadlines are coming up for ${context.name}?` },
+      { label: 'Which developments matter most?', prompt: `Which developments matter most for ${context.name}?` },
     ]
   return [
-    { label: "Today's changes", prompt: "Summarize today's regulatory changes" },
-    { label: 'Upcoming fund deadlines', prompt: 'What deadlines are coming up for my funds?' },
-    { label: 'New state rules for my companies', prompt: 'Any new state-level rules affecting my portfolio companies?' },
+    { label: "Summarize today's changes", prompt: "Summarize today's regulatory changes" },
+    { label: 'What fund deadlines are coming up?', prompt: 'What deadlines are coming up for my funds?' },
+    { label: 'Any new state rules for my companies?', prompt: 'Any new state-level rules affecting my portfolio companies?' },
   ]
 }
 
@@ -535,9 +531,8 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
     <div
       className="fixed inset-0 z-50 flex flex-col"
       style={{
-        background: hasStarted ? 'transparent' : 'rgb(var(--ink-rgb) / 0.25)',
-        backdropFilter: hasStarted ? 'none' : 'blur(4px)',
-        transition: 'opacity 0.3s ease, background 0.4s ease',
+        background: hasStarted ? 'transparent' : 'rgb(var(--ink-rgb) / 0.45)',
+                transition: 'opacity 0.3s ease, background 0.4s ease',
         opacity: visible ? 1 : 0,
       }}
       onClick={e => !hasStarted && e.target === e.currentTarget && handleClose()}
@@ -548,8 +543,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
         className="mt-auto flex flex-col relative"
         style={{
           height: hasStarted ? '100dvh' : '90dvh',
-          background: 'rgb(var(--canvas-rgb) / 0.96)',
-          backdropFilter: 'blur(24px)',
+          background: 'var(--canvas)',
           borderTop: hasStarted ? 'none' : '1px solid rgb(var(--line-rgb) / 0.50)',
           borderRadius: hasStarted ? 0 : '24px 24px 0 0',
           boxShadow: hasStarted ? 'none' : '0 -20px 60px rgba(0,0,0,0.14)',
@@ -587,8 +581,8 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               <SidebarSimple size={19} aria-hidden="true" />
             </button>
             <div
-              className="w-9 h-9 hidden sm:flex items-center justify-center text-sm font-semibold text-white flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg,#0F172A,#334155)', borderRadius: 10 }}
+              className="w-9 h-9 hidden sm:flex items-center justify-center text-sm font-semibold flex-shrink-0"
+              style={{ background: 'var(--text-900)', color: 'var(--canvas)', borderRadius: 10 }}
               aria-hidden="true"
             >
               R
@@ -648,9 +642,8 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                   <div className={`min-w-0 space-y-2 group ${msg.role === 'ai' ? 'w-full' : 'max-w-[85%]'}`}>
                     <div
                       style={msg.role === 'user' ? {
-                        background: 'rgb(var(--primary-rgb) / 0.12)',
-                        border: '1px solid rgb(var(--primary-rgb) / 0.20)',
-                        borderRadius: '20px 20px 4px 20px',
+                        background: 'rgb(var(--neutral-rgb) / 0.14)',
+                        borderRadius: 20,
                         padding: '12px 16px',
                         color: 'var(--text-900)',
                       } : {}}
@@ -671,7 +664,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                       ) : (
                         <>
                           {msg.attachmentName && (
-                            <div className="text-xs mb-1.5 flex items-center gap-1" style={{ color: msg.role === 'user' ? 'var(--primary-dark)' : 'var(--text-400)' }}>
+                            <div className="text-xs mb-1.5 flex items-center gap-1" style={{ color: 'var(--text-400)' }}>
                               <Paperclip size={13} aria-hidden="true" />
                               {msg.attachmentName}
                             </div>
@@ -730,7 +723,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               <button
                 onClick={scrollToBottom}
                 className="absolute left-1/2 -translate-x-1/2 w-9 h-9 flex items-center justify-center rounded-full transition-ui hover:shadow-md"
-                style={{ bottom: floatH + 8, background: 'rgb(var(--surface-rgb) / 0.95)', border: '1px solid rgb(var(--line-rgb) / 0.60)', boxShadow: '0 4px 16px rgb(var(--primary-rgb) / 0.18)', color: 'var(--primary)' }}
+                style={{ bottom: floatH + 8, background: 'rgb(var(--surface-rgb) / 0.95)', border: '1px solid rgb(var(--line-rgb) / 0.60)', boxShadow: 'var(--shadow-float)', color: 'var(--primary)' }}
                 title="Scroll to latest"
                 aria-label="Scroll to latest"
               >
@@ -754,8 +747,8 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                     key={chip.prompt}
                     onClick={() => sendMessage(chip.prompt)}
                     title={chip.prompt}
-                    className="btn-tool"
-                    style={{ fontSize: 13, color: 'var(--primary)', background: 'rgb(var(--surface-rgb) / 0.94)' }}
+                    className="btn-tool flex-auto whitespace-nowrap"
+                    style={{ fontSize: 13, background: 'rgb(var(--surface-rgb))' }}
                   >
                     {chip.label}
                   </button>
@@ -814,7 +807,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                   <button
                     onClick={() => (isTyping ? stopGenerating() : sendMessage(input))}
                     className="absolute right-2 bottom-[9px] w-8 h-8 flex items-center justify-center text-white transition-ui active:scale-95"
-                    style={{ background: isTyping ? '#334155' : 'linear-gradient(135deg,var(--brand),var(--brand-light))', borderRadius: 9999 }}
+                    style={{ background: isTyping ? '#52525B' : 'var(--brand)', borderRadius: 9999 }}
                     title={isTyping ? 'Stop generating' : 'Send'}
                     aria-label={isTyping ? 'Stop generating' : 'Send'}
                   >

@@ -9,7 +9,7 @@
       name="description"
       content="RegWay reads new rules, enforcement actions and sanctions, and shows a private equity firm only what affects it, its funds and its portfolio companies."
     />
-    <meta name="theme-color" content="#FDFBF7" />
+    <meta name="theme-color" content="#FFFFFF" />
     <meta name="robots" content="noindex, nofollow" />
     <script>
       // The theme, before anything paints (see src/lib/theme.ts).
@@ -17,7 +17,7 @@
         var choice = localStorage.getItem('regway:theme')
         var dark = choice === 'dark' || (choice !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-        if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0B1220')
+        if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0D0D0D')
       } catch (e) {}
     </script>
   </head>

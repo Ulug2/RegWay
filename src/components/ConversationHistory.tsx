@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useCachedState } from '../lib/useCachedState'
 import { deleteConversation, fetchConversations, type ConversationSummary } from '../lib/data'
-import { Plus, Trash, X } from './icons'
+import { MagnifyingGlass, Plus, Trash, X } from './icons'
 
 // The chat's left sidebar: "New chat" and the signed-in user's saved RegWay
 // AI conversations, most recent first. Choosing one resumes it. Reloads
@@ -15,6 +15,17 @@ function formatWhen(iso: string) {
   return sameDay
     ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// Today / Yesterday / Previous 7 days / Older, in that order. The list
+// arrives newest first, so each group keeps that order.
+const GROUPS = ['Today', 'Yesterday', 'Previous 7 days', 'Older'] as const
+
+function groupOf(iso: string): (typeof GROUPS)[number] {
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+  const days = Math.ceil((startOfToday.getTime() - new Date(iso).getTime()) / 86_400_000)
+  return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days <= 7 ? 'Previous 7 days' : 'Older'
 }
 
 export default function ConversationHistory({
@@ -34,6 +45,9 @@ export default function ConversationHistory({
 }) {
   const [conversations, setConversations] = useCachedState<ConversationSummary[] | null>('conversations', null)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const needle = search.trim().toLowerCase()
+  const shown = conversations?.filter(c => !needle || c.title.toLowerCase().includes(needle) || c.context?.name.toLowerCase().includes(needle))
 
   useEffect(() => {
     let current = true
@@ -58,7 +72,7 @@ export default function ConversationHistory({
     <aside
       aria-label="Chats"
       className="absolute md:static inset-y-0 left-0 z-20 w-72 md:w-64 flex flex-col flex-shrink-0"
-      style={{ paddingTop: 'var(--chat-top, 0px)', background: 'rgb(var(--canvas-rgb) / 0.98)', borderRight: '1px solid rgb(var(--line-rgb) / 0.30)' }}
+      style={{ paddingTop: 'var(--chat-top, 0px)', background: 'var(--sidebar)', borderRight: '1px solid rgb(var(--line-rgb) / 0.30)' }}
     >
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <button onClick={onNewChat} disabled={disabled} className="btn-tool is-accent flex-1">
@@ -69,8 +83,21 @@ export default function ConversationHistory({
           <X size={14} weight="bold" aria-hidden="true" />
         </button>
       </div>
-      <div className="section-label px-4 pb-2">Past conversations</div>
-      <div className="flex-1 overflow-y-auto scrollable px-3 pb-4 space-y-1.5">
+      <div className="px-3 pb-3 relative">
+        <MagnifyingGlass size={15} aria-hidden="true" className="absolute left-6 top-[11px] pointer-events-none" style={{ color: 'var(--text-300)' }} />
+        <input
+          type="search"
+          name="conversation-search"
+          autoComplete="off"
+          aria-label="Search conversations"
+          placeholder="Search conversations…"
+          className="glass-input-rect"
+          style={{ paddingLeft: 34, fontSize: 13 }}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto scrollable px-3 pb-4 ">
         {error && <div className="text-xs px-1" style={{ color: 'var(--warning)' }}>{error}</div>}
         {conversations === null && !error && (
           <div className="space-y-3 px-1 pt-1" role="status" aria-label="Loading conversations">
@@ -78,13 +105,23 @@ export default function ConversationHistory({
           </div>
         )}
         {conversations?.length === 0 && <div className="text-[13px] px-1" style={{ color: 'var(--text-400)' }}>No saved conversations yet.</div>}
-        {conversations?.map(c => (
+        {!!conversations?.length && shown?.length === 0 && <div className="text-[13px] px-1" style={{ color: 'var(--text-400)' }}>No conversation matches “{search.trim()}”.</div>}
+        {GROUPS.map(group => {
+          const inGroup = shown?.filter(c => groupOf(c.updated_at) === group) ?? []
+          if (inGroup.length === 0) return null
+          return (
+            <section key={group} aria-label={group} className="mb-4">
+              <h3 className="text-xs font-medium px-3 pb-1.5" style={{ color: 'var(--text-300)' }}>{group}</h3>
+              <div className="space-y-0.5">
+        {inGroup.map(c => (
+
           <div key={c.id} className="group relative">
             <button
               onClick={() => onResume(c)}
               disabled={disabled}
-              className="w-full text-left px-3 py-2.5 rounded-xl transition-colors hover:bg-sky-50 disabled:cursor-not-allowed"
-              style={{ background: c.id === activeId ? 'rgb(var(--primary-rgb) / 0.08)' : undefined }}
+              className="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-sky-50 disabled:cursor-not-allowed"
+              aria-current={c.id === activeId ? 'true' : undefined}
+              style={{ background: c.id === activeId ? 'var(--hover-tint)' : undefined }}
             >
               <div className="text-sm font-medium pr-6 truncate" style={{ color: 'var(--text-900)' }}>{c.title}</div>
               <div className="text-xs mt-0.5 truncate num" style={{ color: 'var(--text-400)' }}>
@@ -103,6 +140,10 @@ export default function ConversationHistory({
             </button>
           </div>
         ))}
+              </div>
+            </section>
+          )
+        })}
       </div>
     </aside>
   )

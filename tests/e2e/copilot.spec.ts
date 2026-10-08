@@ -60,7 +60,7 @@ test.describe('RegWay AI chat', () => {
     backend.functions['regway-ai-chat'] = ({ message }) => ({ sse: aiReply(`Answer to: ${message}`) })
     await openCopilot(page)
 
-    const suggestion = page.getByRole('button', { name: "Today's changes" })
+    const suggestion = page.getByRole('button', { name: "Summarize today's changes" })
     await suggestion.click()
     await expect(page.getByText("Answer to: Summarize today's regulatory changes")).toBeVisible()
     await expect(suggestion).toHaveCount(0)
@@ -146,10 +146,10 @@ test.describe('a chat with no answer is not kept', () => {
 test.describe('suggested questions', () => {
   test('are about the company the chat is focused on', async ({ page }) => {
     await openCopilot(page)
-    await expect(page.getByRole('button', { name: 'Upcoming fund deadlines' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'What fund deadlines are coming up?' })).toBeVisible()
     await page.getByRole('complementary', { name: 'Session context' }).getByRole('button', { name: /GetixHealth/ }).click()
     await expect(page.getByTitle('What deadlines are coming up for GetixHealth?')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Upcoming fund deadlines' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'What fund deadlines are coming up?' })).toHaveCount(0)
   })
 })
 
@@ -171,9 +171,22 @@ test.describe('saved conversations', () => {
     await openCopilot(page)
     await page.getByRole('button', { name: 'Show chats' }).click()
 
-    await expect(page.getByText('Past conversations')).toBeVisible()
+    await expect(page.getByRole('searchbox', { name: 'Search conversations' })).toBeVisible()
     await expect(page.getByRole('complementary', { name: 'Chats' }).locator('.text-sm')).toHaveText(['Medicare rule for GetixHealth', 'Form PF deadlines'])
     await expect(page.getByText('· about GetixHealth')).toBeVisible()
+  })
+
+  test('search narrows the list, and conversations are grouped by when they were last used', async ({ page, backend }) => {
+    saved(backend)
+    await openCopilot(page)
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    const chats = page.getByRole('complementary', { name: 'Chats' })
+    await expect(chats.getByRole('heading', { level: 3 }).first()).toHaveText(/Today|Yesterday|Previous 7 days|Older/)
+
+    await chats.getByRole('searchbox', { name: 'Search conversations' }).fill('form pf')
+    await expect(chats.locator('.text-sm')).toHaveText(['Form PF deadlines'])
+    await chats.getByRole('searchbox', { name: 'Search conversations' }).fill('zzz')
+    await expect(chats.getByText('No conversation matches “zzz”.')).toBeVisible()
   })
 
   test('resuming shows the earlier messages and continues the same conversation and scope', async ({ page, backend }) => {

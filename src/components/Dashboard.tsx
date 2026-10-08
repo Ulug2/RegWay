@@ -199,7 +199,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         {/* Avatar: click for Profile */}
         <button
           className="relative w-9 h-9 flex items-center justify-center text-[13px] font-semibold text-white rounded-full transition-transform active:scale-95"
-          style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))' }}
+          style={{ background: 'var(--brand)' }}
           title="Profile"
           aria-label="Profile"
           onClick={() => onNavigate('profile')}
@@ -320,7 +320,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
         {/* RegWay AI, firm-wide (funds and companies have their own, on their pages). */}
         <AiAskBar
-          placeholder="Ask RegWay AI about today's regulatory impact across your funds and portfolio…"
+          placeholder="Ask RegWay AI about today's regulatory impact on your firm…"
           onOpen={() => onNavigate('ai')}
           style={{ marginTop: activeToggle ? 0 : 20, width: '100%' }}
         />

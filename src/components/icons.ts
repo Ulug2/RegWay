@@ -19,6 +19,7 @@ export {
   Flag,
   Funnel,
   GearSix,
+  MagnifyingGlass,
   Moon,
   NotePencil,
   PaperPlaneRight,

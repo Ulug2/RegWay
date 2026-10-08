@@ -11,39 +11,44 @@ what they are for. Written in the format of the DESIGN.md files collected in
 A working tool for compliance and deal people at a private equity firm.
 They come to read what changed today and decide whether it matters. So:
 calm, exact, quick to scan. Text does the work; decoration stays out of the
-way. One accent colour, soft glass surfaces on a warm canvas, generous line
-height in anything meant to be read.
+way. Black and white with one blue, flat surfaces, generous line height in
+anything meant to be read.
 
 Dials (the terms the Taste skill uses): variance 4, motion 3, density 5.
 
 ## Colors
 
-The palette was set before the redesign and is not to be changed without
-the owner's say. Every colour is a variable; components never hard-code
-one. Both themes define the same names (`:root` and
-`:root[data-theme='dark']`).
+Black, white, grey and one blue (set by the owner, 2026-10-08). Flat: no
+gradients, no glows, no frosted glass, no coloured shadows. Every colour is
+a variable; components never hard-code one. Both themes define the same
+names (`:root` and `:root[data-theme='dark']`).
 
 | Variable | Light | Dark | Use |
 |---|---|---|---|
-| `--canvas` | `#FDFBF7` | `#0B1220` | Page background |
-| `--surface-rgb` | white | `#1E293B` | Cards and fields, always with an alpha |
-| `--brand`, `--brand-light` | `#0284C7`, `#38BDF8` | same | Filled surfaces that carry white text (primary button, selected tab) |
-| `--primary` | `#0284C7` | `#38BDF8` | Text, icons and links in the accent colour |
-| `--text-900` | `#0F172A` | `#F1F5F9` | Headings, titles |
-| `--text-600` | `#334155` | `#CBD5E1` | Body text |
-| `--text-400`, `--text-300` | `#5A6B83`, `#6A788E` | `#94A3B8`, `#8493A8` | Helper text, dates. Both pass 4.5:1 on the canvas |
-| `--placeholder` | `#94A3B8` | `#64748B` | Placeholder text only |
-| `--line-rgb`, `--line-strong-rgb` | sky tints | slate-blue tints | Borders and rules, with an alpha |
-| `--warning` | `#B45309` | `#FBBF24` | Errors, flags, stale answers |
-| `--violet` | `#7C3AED` | `#A78BFA` | The "Geopolitical" label only |
+| `--canvas` | `#FFFFFF` | `#0D0D0D` | Page background |
+| `--surface-rgb` | white | `#262626` | Cards and fields, with an alpha |
+| `--sidebar` | `#F9F9F9` | `#171717` | The chat's conversation list |
+| `--brand` | `#0284C7` | same | Fills that carry white text (primary button, selected tab, avatar) |
+| `--primary` | `#0284C7` | `#38BDF8` | Text, icons and links in blue |
+| `--text-900` | `#0A0A0A` | `#FFFFFF` | Headings, titles |
+| `--text-600` | `#3F3F46` | `#ECECEC` | Body text |
+| `--text-400`, `--text-300` | `#63636B`, `#71717A` | `#A3A3A3`, `#8F8F8F` | Helper text, dates. Both pass 4.5:1 on the canvas |
+| `--placeholder` | `#A1A1AA` | `#737373` | Placeholder text only |
+| `--line-rgb`, `--line-strong-rgb` | greys | greys | Borders and rules, with an alpha |
+| `--hover-tint` | `#F4F4F5` | white at 8% | Hover and selected rows |
+| `--warning` | `#B45309` | `#FBBF24` | Errors, flags, stale answers only |
 
 Rules:
-- One accent (sky blue). Amber means "needs attention"; violet names one
-  category. Nothing else gets a colour.
-- `--brand*` for fills under white text; `--primary*` for coloured text.
-  They differ in dark mode on purpose.
-- Shadows are tinted with the accent (`--shadow-card`, `--shadow-lift`,
-  `--shadow-float`), never plain black on the light theme.
+- Blue is the only colour. It marks the action, the selection and links.
+  Amber appears only when something needs attention. Category labels other
+  than "Regulatory" are grey.
+- `--brand` for fills under white text; `--primary` for blue text. They
+  differ in dark mode on purpose.
+- Cards are separated from the page by a hairline border, not a shadow.
+  Shadows (`--shadow-lift`, `--shadow-float`) are neutral and only for
+  things that float: the AI bar, dialogs, a hovered tile.
+- The names `.glass-card`, `.glass-input` and so on are historical: they
+  are flat surfaces now.
 
 ## Typography
 
@@ -154,7 +159,7 @@ next), and filled.
 
 ## Don't
 
-- Add a second accent colour, a gradient headline, or a glow.
+- Add a second accent colour, a gradient, a glow or a blurred glass surface.
 - Ship a control that does nothing or a link to `#`.
 - Put a card inside a card inside a card.
 - Use small caps for labels, or text under 12px.
