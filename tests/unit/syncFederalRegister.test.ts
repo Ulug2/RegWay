@@ -34,6 +34,26 @@ const STATE = { name: 'State Department', slug: 'state-department', parent_id: n
 const itarRule = doc({ document_number: '2026-19008', title: 'International Traffic in Arms Regulations: Syria Country Policy Revision', agencies: [STATE] })
 const passportRule = doc({ document_number: '2026-19009', title: 'Passports: Expanding Online Passport Renewal Overseas', agencies: [STATE] })
 
+const FAA = { name: 'Federal Aviation Administration', slug: 'federal-aviation-administration', parent_id: 492 }
+const COAST_GUARD = { name: 'Coast Guard', slug: 'coast-guard', parent_id: 227 }
+const NOAA = { name: 'National Oceanic and Atmospheric Administration', slug: 'national-oceanic-and-atmospheric-administration', parent_id: 54 }
+const faaDocs = [
+  doc({ document_number: '2026-19020', title: 'Normalizing Unmanned Aircraft Systems Beyond Visual Line of Sight Operations', agencies: [FAA] }),
+  doc({ document_number: '2026-19021', title: 'Airworthiness Directives; Airbus SAS Airplanes', agencies: [FAA] }),
+  doc({ document_number: '2026-19022', title: 'Establishment of Class E Airspace; Selmer, TN', agencies: [FAA] }),
+  doc({ document_number: '2026-19023', title: 'Standard Instrument Approach Procedures, and Takeoff Minimums; Miscellaneous Amendments', agencies: [FAA] }),
+]
+const coastGuardDocs = [
+  doc({ document_number: '2026-19030', title: 'Cybersecurity in the Marine Transportation System', agencies: [COAST_GUARD] }),
+  doc({ document_number: '2026-19031', title: 'Safety Zone; Fireworks Display, San Francisco Bay, CA', agencies: [COAST_GUARD] }),
+  doc({ document_number: '2026-19032', title: 'Drawbridge Operation Regulation; Bay St. Louis, MS', agencies: [COAST_GUARD] }),
+]
+const noaaDocs = [
+  doc({ document_number: '2026-19040', title: 'Licensing of Private Remote Sensing Space Systems', agencies: [NOAA] }),
+  doc({ document_number: '2026-19041', title: 'Fisheries of the Exclusive Economic Zone Off Alaska; Pacific Cod', agencies: [NOAA] }),
+  doc({ document_number: '2026-19042', title: 'Takes of Marine Mammals Incidental to Specified Activities', agencies: [NOAA] }),
+]
+
 const SDN_TEXT = `<html><pre>DEPARTMENT OF THE TREASURY. Notice of OFAC Sanctions Actions. ${'The following persons are blocked. [GRAPHIC] [TIFF OMITTED] '.repeat(8)} (Authority: E.O. 13902.)</pre></html>`
 
 type Row = { external_id: string; category: string; countries: string[]; agency: string; jurisdiction: string; on_public_inspection: boolean; raw: { countries_from_full_text: boolean; raw_text_url: string } }
@@ -41,7 +61,7 @@ type Row = { external_id: string; category: string; countries: string[]; agency:
 // Routes the Federal Register API by which feed is asking (page 1 only),
 // and serves the SDN notice's text from GovInfo while Federal Register
 // itself answers with its CAPTCHA redirect.
-function federalRegister(opts: { readBefore?: boolean } = {}) {
+function federalRegister(opts: { readBefore?: boolean; heavy?: boolean } = {}) {
   const db = fakeClient(q => (q.table === 'regulations' && q.op === 'select' && opts.readBefore ? { data: [{ external_id: '2026-19005', countries: ['Iran'] }] } : undefined))
   setClient(db)
   const calls = stubFetch(url => {
@@ -51,6 +71,9 @@ function federalRegister(opts: { readBefore?: boolean } = {}) {
       const agencies = url.searchParams.getAll('conditions[agencies][]')
       if (types === 'PRESDOCU') return jsonResponse({ results: [tariffProclamation, heritageMonth] })
       if (agencies[0] === 'state-department') return jsonResponse({ results: [itarRule, passportRule] })
+      if (agencies[0] === 'federal-aviation-administration') return jsonResponse({ results: opts.heavy ? faaDocs : [] })
+      if (agencies[0] === 'coast-guard') return jsonResponse({ results: opts.heavy ? coastGuardDocs : [] })
+      if (agencies[0] === 'national-oceanic-and-atmospheric-administration') return jsonResponse({ results: opts.heavy ? noaaDocs : [] })
       if (types === 'RULE,PRORULE') return jsonResponse({ results: [medicareRule, scheduledRule, ofacRule] })
       if (agencies[0] === 'securities-and-exchange-commission') return jsonResponse({ results: [finraNotice, exchangeNotice] })
       if (agencies[0] === 'foreign-assets-control-office') return jsonResponse({ results: [sdnNotice] })
@@ -64,7 +87,7 @@ function federalRegister(opts: { readBefore?: boolean } = {}) {
   return { db, calls }
 }
 
-async function sync(opts: { readBefore?: boolean } = {}) {
+async function sync(opts: { readBefore?: boolean; heavy?: boolean } = {}) {
   const { db, calls } = federalRegister(opts)
   const { handler } = await loadHandler('sync-federal-register')
   const res = await handler(post('sync-federal-register'))
@@ -99,6 +122,25 @@ describe('sync-federal-register', () => {
     const { row, rows } = await sync()
     expect(row('2026-19008')).toMatchObject({ category: 'geopolitical', countries: ['Syria'], agency: 'State Department' })
     expect(rows.find(r => r.external_id === '2026-19009')).toBeUndefined()
+  })
+
+  it('asks for the registry agencies added on 2026-10-08, by bureau and not by parent department', async () => {
+    const { calls } = await sync()
+    const asked = calls.map(c => new URL(c.url)).filter(u => u.pathname === '/api/v1/documents.json').flatMap(u => u.searchParams.getAll('conditions[agencies][]'))
+    for (const slug of ['national-credit-union-administration', 'federal-communications-commission', 'pipeline-and-hazardous-materials-safety-administration', 'consumer-product-safety-commission', 'defense-department', 'investment-security-office']) {
+      expect(asked).toContain(slug)
+    }
+    for (const parent of ['transportation-department', 'homeland-security-department', 'commerce-department', 'treasury-department']) {
+      expect(asked).not.toContain(parent)
+    }
+  })
+
+  it('takes the general rules of the FAA, the Coast Guard and NOAA and leaves their routine, place-specific ones', async () => {
+    const { rows, row } = await sync({ heavy: true })
+    const ids = rows.map(r => r.external_id)
+    expect(ids).toEqual(expect.arrayContaining(['2026-19020', '2026-19030', '2026-19040']))
+    for (const routine of ['2026-19021', '2026-19022', '2026-19023', '2026-19031', '2026-19032', '2026-19041', '2026-19042']) expect(ids).not.toContain(routine)
+    expect(row('2026-19020')).toMatchObject({ category: 'regulatory', agency: 'Federal Aviation Administration' })
   })
 
   it('labels a document by the specific bureau, not its parent department', async () => {
@@ -176,7 +218,7 @@ describe('sync-federal-register', () => {
     expect(db.ran('sync_runs', 'insert')[0].payload).toMatchObject({
       source: 'federal_register',
       ok: true,
-      detail: '7 synced, 4 geopolitical (rules 3, finraNotices 1, ofacNotices 1, tradeActions 0, defenseTradeControls 1, presidentialDocuments 1); 1 not yet published',
+      detail: '7 synced, 4 geopolitical (rules 3, finraNotices 1, ofacNotices 1, tradeActions 0, defenseTradeControls 1, aviationRules 0, coastGuardRules 0, oceansAndAtmosphereRules 0, presidentialDocuments 1); 1 not yet published',
     })
   })
 

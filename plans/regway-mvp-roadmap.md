@@ -867,29 +867,45 @@ work through, most serious first.
     who did not build it, and a decision on SOC 2: buyers at PE firms will
     ask.
 
-### 16h. Source coverage against the registry document (2026-10-08 comparison) — not started
+### 16h. Source coverage against the registry document (2026-10-08) — Federal Register group done; the rest not started
 The owner asked whether every source in
 `docs/Regway_US_Regulatory_Source_Master_Registry_Comprehensive_V2 (1).docx`
 has been added. No. Compared by name on 2026-10-08:
 
-- **Read today**: the Federal Register for 21 agencies (SEC, CFTC, IRS,
-  Labor, EPA, FERC, HHS, FMCSA, CFPB, Federal Reserve, OCC, FDIC, FinCEN,
-  FTC, NLRB, FDA, CMS, DEA, OFAC, BIS, CBP) plus USTR, ITAR rules and
-  presidential documents; SEC, FTC and CFPB announcements; SEC litigation
-  releases and administrative proceedings; FINRA disciplinary actions;
-  State Department travel advisories; UK FCA, PRA, legislation and
-  sanctions; EU ESMA, EUR-Lex and sanctions. Because Labor and HHS are
+- **Read before this item**: the Federal Register for 21 agencies (SEC,
+  CFTC, IRS, Labor, EPA, FERC, HHS, FMCSA, CFPB, Federal Reserve, OCC,
+  FDIC, FinCEN, FTC, NLRB, FDA, CMS, DEA, OFAC, BIS, CBP) plus USTR, ITAR
+  rules and presidential documents; SEC, FTC and CFPB announcements; SEC
+  litigation releases and administrative proceedings; FINRA disciplinary
+  actions; State Department travel advisories; UK FCA, PRA, legislation
+  and sanctions; EU ESMA, EUR-Lex and sanctions. Because Labor and HHS are
   read as whole departments, their parts (OSHA, EBSA, Wage and Hour, MSHA,
   OFCCP; HHS OCR, OIG, CDC, SAMHSA) come with them.
-- **In the registry's sections 1–36 and not read at all** (federal bodies
-  that publish in the Federal Register, so adding them is a list change
-  plus a check of volume and matching cost): NCUA, FHFA, HUD, EEOC, CPSC,
-  FCC, NRC, Energy, FAA, NHTSA, FRA, PHMSA, FTA, FMC, STB, MARAD, TSA,
-  Coast Guard, USDA (FSIS, APHIS, AMS, FNS), TTB, ATF, Interior (BLM,
-  FWS, OSMRE, BSEE, BOEM), NOAA, Army Corps, USCIS, CISA, NIST, NTIA,
-  USPTO, Copyright Office, Education, Defense and the FAR Council, GSA,
-  SBA, PBGC, Treasury itself (CFIUS, outbound investment, FSOC, FIO),
-  USITC, Commerce ITA, NIGC, Postal Service, DOJ rules.
+- **Added 2026-10-08 (done, deployed)**: 43 more Federal Register
+  agencies, each checked for nine months of volume first: NCUA, FHFA, HUD,
+  Farm Credit, PBGC, FSOC, the Investment Security Office (CFIUS), EEOC,
+  CPSC, FCC, NIST, NTIA, USPTO, Copyright Office, Energy, NRC, BSEE, BOEM,
+  NHTSA, FRA, PHMSA, FTA, FMC, STB, MARAD, TSA, USITC, Defense and GSA
+  (which carry the FAR and DFARS), SBA, FSIS, APHIS, AMS, FNS, BLM, Fish
+  and Wildlife, Forest Service, OSMRE, Army Corps, TTB, ATF, Education,
+  Postal Service. About 940 documents in nine months, roughly 3.5 a day.
+  The FAA, the Coast Guard and NOAA have their own feeds that drop their
+  routine, place-specific rules (airworthiness directives and airspace
+  changes; safety zones and drawbridge schedules; fishery quotas): 783 →
+  59, 374 → 15 and 234 → 4 documents over the same nine months.
+- **Deliberately left out**: parent departments (Transportation, Homeland
+  Security, Commerce, Treasury, Agriculture, Interior, Justice), because
+  their bureaus are listed one by one; the Postal Regulatory Commission
+  and Veterans Affairs (no rules a portfolio company would be matched
+  to). USCIS, the FAR Council, the International Trade Administration and
+  the National Indian Gaming Commission publish nothing under their own
+  names; USCIS rules appear only under Homeland Security, so **immigration
+  and employment-eligibility rules are still not read**.
+- **To watch after this change**: the extra matching cost on H.I.G. (the
+  estimate is under $0.20 a month: about 100 more documents a month at
+  $0.05 per batch of 40) and whether the new agencies produce weak
+  matches. Notices from these agencies are still not read, only rules and
+  proposed rules.
 - **Not Federal Register, each needs its own feed**: NFA, MSRB, PCAOB,
   NERC, Fannie Mae / Freddie Mac / Ginnie Mae guides, NAIC, DOJ and U.S.
   Attorney press releases, HHS OIG and EPA enforcement, CFTC and CFPB
@@ -900,12 +916,10 @@ has been added. No. Compared by name on 2026-10-08:
   document itself says these cannot be listed in advance and must be
   resolved per company; today only the per-company web search reaches
   them, with no guarantee.
-- **Cheapest next step**: widen the Federal Register agency list to the
-  second group, measure how many more documents a day that brings and
-  what the matcher costs on H.I.G. with the jurisdiction pre-filter, then
-  decide. The registry's own routing rule (match on activity, not only
-  industry) argues for choosing which agencies each firm's matcher reads
-  from its recorded industries, which is free.
+- **Next, if wanted**: the bodies that need their own feed (above), then
+  choosing which agencies each firm's matcher reads from its recorded
+  industries (the registry's own routing rule: match on activity, not only
+  industry), which is free and would cut the noise the wider list adds.
 
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
@@ -1029,6 +1043,16 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### 16h, first part: 43 more Federal Register agencies (2026-10-08)
+`sync-federal-register` reads the federal bodies named in the registry
+document's sections 1–36 that it was not reading, 64 agencies in the main
+query in all, plus filtered feeds for the FAA, the Coast Guard and NOAA.
+The list, the volumes and what was left out and why are in the function's
+comments and in item 16h. Tried on live data before deploying: the widened
+query returned 63 rules for the last seven days. Two unit tests added (424
+in all). Deployed; the documents already in the last seven days come in on
+the first run after the deploy.
 
 ### 16e: after the redesign (2026-10-08)
 Asked for by the owner in one sitting after seeing the redesign; all live.

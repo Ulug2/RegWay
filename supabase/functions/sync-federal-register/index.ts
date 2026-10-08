@@ -74,6 +74,82 @@ const MAX_PAGES = 20
 //   this was reaching the feed before. All four volumes are in the same
 //   range as existing tracked agencies (e.g. SEC 25, FDIC 12, FTC 10 over
 //   the same window) — not noise.
+//
+// 2026-10-08 expansion: the rest of the federal bodies named in sections
+// 1–36 of the regulatory source registry (docs/) that publish rules here.
+// Volumes are RULE + PRORULE over nine months (2026-01-08 → 10-08), checked
+// the same way as above. Together about 940 documents, roughly 3.5 a day on
+// top of what was already read.
+// Left out, with the reason:
+// - parent departments (Transportation 1002, Homeland Security 436, Commerce
+//   296, Treasury 180, Agriculture 119, Interior 114, Justice 105): their
+//   bureaus are listed one by one instead, so a document is labelled by the
+//   bureau and the bulk the parents add stays out.
+// - FAA (783), Coast Guard (374) and NOAA (234) are nearly all routine,
+//   place-specific notices; they have their own filtered feeds below.
+// - Postal Regulatory Commission (11, all "Periodic Reporting"), Veterans
+//   Affairs (21, benefits rules).
+// - USCIS, the FAR Council, the International Trade Administration and the
+//   National Indian Gaming Commission returned 0 under their own names:
+//   USCIS publishes under Homeland Security, the FAR under Defense and GSA
+//   (both listed).
+const REGISTRY_AGENCY_SLUGS = [
+  // Banking, housing finance, pensions (registry §3, §4, §10)
+  'national-credit-union-administration', // 46
+  'federal-housing-finance-agency', // 9
+  'housing-and-urban-development-department', // 22
+  'farm-credit-administration', // 8
+  'pension-benefit-guaranty-corporation', // 7
+  'financial-stability-oversight-council', // 1
+  'investment-security-office', // 1 (CFIUS, outbound investment)
+  // Employment, consumer products, competition (§10, §11)
+  'equal-employment-opportunity-commission', // 5
+  'consumer-product-safety-commission', // 20
+  // Technology, telecoms, intellectual property (§13, §14, §29)
+  'federal-communications-commission', // 107
+  'national-institute-of-standards-and-technology', // 4
+  'national-telecommunications-and-information-administration', // 1
+  'patent-and-trademark-office', // 5
+  'copyright-office-library-of-congress', // 4
+  // Energy (§15)
+  'energy-department', // 58
+  'nuclear-regulatory-commission', // 68
+  'safety-and-environmental-enforcement-bureau', // 4
+  'ocean-energy-management-bureau', // 4
+  // Transportation (§16)
+  'national-highway-traffic-safety-administration', // 39
+  'federal-railroad-administration', // 31
+  'pipeline-and-hazardous-materials-safety-administration', // 88
+  'federal-transit-administration', // 9
+  'federal-maritime-commission', // 3
+  'surface-transportation-board', // 9
+  'maritime-administration', // 8
+  'transportation-security-administration', // 1
+  // Trade (§17)
+  'international-trade-commission', // 1
+  // Defense and government contracting (§18, §19): the FAR and DFARS
+  'defense-department', // 30
+  'general-services-administration', // 23
+  'small-business-administration', // 12
+  // Food and agriculture (§8)
+  'food-safety-and-inspection-service', // 5
+  'animal-and-plant-health-inspection-service', // 8
+  'agricultural-marketing-service', // 46
+  'food-and-nutrition-service', // 2
+  // Natural resources, mining (§9, §20)
+  'land-management-bureau', // 10
+  'fish-and-wildlife-service', // 52
+  'forest-service', // 13
+  'surface-mining-reclamation-and-enforcement-office', // 25
+  'engineers-corps', // 5
+  // Alcohol, tobacco, firearms (§21)
+  'alcohol-and-tobacco-tax-and-trade-bureau', // 9
+  'alcohol-tobacco-firearms-and-explosives-bureau', // 44
+  // Education (§24), postal (§35)
+  'education-department', // 33
+  'postal-service', // 20
+]
+
 const AGENCY_SLUGS = [
   'securities-and-exchange-commission',
   'commodity-futures-trading-commission',
@@ -96,6 +172,7 @@ const AGENCY_SLUGS = [
   'foreign-assets-control-office',
   'industry-and-security-bureau',
   'u-s-customs-and-border-protection',
+  ...REGISTRY_AGENCY_SLUGS,
 ]
 
 interface FederalRegisterDocument {
@@ -163,6 +240,19 @@ const GEOPOLITICAL_TOPIC_PATTERN =
 // hearing logistics; keep only actual trade actions.
 const TRADE_ACTION_PATTERN = /\b(tariffs?|duties|Section 301|Section 232|imports?|exports?|trade (action|agreement|preference)s?|exclusions?)\b/i
 
+// Three agencies publish mostly routine, place-specific notices that no
+// firm's profile could be matched to. Measured on nine months of titles
+// (2026-10-08): the FAA's 783 rules were 467 airworthiness directives (one
+// aircraft model each) and about 160 airspace and approach-procedure
+// changes; the Coast Guard's 374 were safety and security zones, boat-race
+// rules and drawbridge schedules for one stretch of water; NOAA's 234 were
+// fishery quotas and marine-mammal permits. What is left is the general
+// rulemaking: drones, commercial space, vessel and port security, remote
+// sensing.
+const FAA_ROUTINE_PATTERN = /^(Airworthiness Directives|Standard Instrument Approach Procedures|IFR Altitudes|Special Conditions)\b|\b(Class [A-E] Airspace|Area Navigation|Federal Airways?|Jet Routes?|Restricted Areas?|Special Use Airspace)\b/i
+const COAST_GUARD_ROUTINE_PATTERN = /^(Safety Zones?|Security Zones?|Special Local Regulations?|Drawbridge Operation Regulations?|Regulated Navigation Areas?|Anchorage (Grounds?|Regulations?)|Anchorages|\d{4} Quarterly Listings)\b/i
+const NOAA_ROUTINE_PATTERN = /\b(fisher(y|ies)|fishing|Magnuson-Stevens|halibut|tuna|snapper|grouper|salmon|groundfish|migratory species|marine mammals?|endangered and threatened|sea turtles?|whales?|coral)\b/i
+
 const ITAR_PATTERN = /\b(International Traffic in Arms Regulations|ITAR|U\.S\. Munitions List)\b/
 
 interface FederalRegisterQuery {
@@ -218,6 +308,9 @@ const FEEDS: Feed[] = [
     keep: doc => ITAR_PATTERN.test(docText(doc)),
     category: 'geopolitical',
   },
+  { name: 'aviationRules', query: { agencies: ['federal-aviation-administration'], types: ['RULE', 'PRORULE'] }, keep: doc => !FAA_ROUTINE_PATTERN.test(doc.title) },
+  { name: 'coastGuardRules', query: { agencies: ['coast-guard'], types: ['RULE', 'PRORULE'] }, keep: doc => !COAST_GUARD_ROUTINE_PATTERN.test(doc.title) },
+  { name: 'oceansAndAtmosphereRules', query: { agencies: ['national-oceanic-and-atmospheric-administration'], types: ['RULE', 'PRORULE'] }, keep: doc => !NOAA_ROUTINE_PATTERN.test(docText(doc)) },
   {
     name: 'presidentialDocuments',
     query: { agencies: [], types: ['PRESDOCU'] },

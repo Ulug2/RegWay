@@ -33,7 +33,7 @@ Playwright CLI). Item 16d is the redesign made with them
   `VITE_SUPABASE_ANON_KEY` (the publishable key); `pnpm dev`.
 - Deploys / SQL: `SUPABASE_ACCESS_TOKEN` set, `supabase` CLI, then
   `supabase functions deploy --project-ref cfspwaqtidfliupmlfwz --use-api`.
-- Checks: `pnpm test:all` (type-checks, 422 unit tests, 138 browser tests;
+- Checks: `pnpm test:all` (type-checks, 424 unit tests, 138 browser tests;
   first time `pnpm exec playwright install chromium`).
 
 ## State at hand-off
