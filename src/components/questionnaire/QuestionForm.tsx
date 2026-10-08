@@ -29,7 +29,7 @@ export default function QuestionForm({ questions, answers, onChange, flagMissing
       {groups.map(g => (
         <div key={g.title || 'all'}>
           {g.title && (
-            <div className="text-[11px] font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--text-400)' }}>{g.title}</div>
+            <h3 className="section-label pb-2.5 mb-4" style={{ borderBottom: '1px solid rgb(var(--line-rgb) / 0.4)' }}>{g.title}</h3>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-5">
             {g.items.map(q => (

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { X } from './icons'
 
 const SEARCH_THRESHOLD = 12
 
@@ -30,18 +31,24 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
   return (
     <div className="relative">
       <div
-        className="min-h-[44px] flex flex-wrap gap-2 p-2 cursor-text"
-        style={{
-          background: 'rgb(var(--surface-rgb) / 0.70)',
-          border: '1px solid rgb(var(--line-rgb) / 0.50)',
-          borderRadius: 10,
-        }}
+        className="field-box flex flex-wrap gap-2 p-2 cursor-pointer"
+        role="button"
+        tabIndex={0}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         onClick={() => setOpen(true)}
+        onKeyDown={e => {
+          if (e.target !== e.currentTarget) return
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+            e.preventDefault()
+            setOpen(true)
+          } else if (e.key === 'Escape') close()
+        }}
       >
         {tags.map(tag => (
           <span
             key={tag}
-            className="flex items-center gap-1 px-3 py-1 text-xs font-medium"
+            className="flex items-center gap-1 pl-3 pr-1.5 py-1 text-[13px] font-medium"
             style={{
               background: 'rgb(var(--primary-rgb) / 0.10)',
               color: 'var(--primary)',
@@ -51,16 +58,17 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
           >
             {tag}
             <button
+              type="button"
               onClick={e => { e.stopPropagation(); onRemove(tag) }}
-              className="ml-1 hover:opacity-60 transition-opacity"
-              style={{ lineHeight: 1 }}
+              aria-label={`Remove ${tag}`}
+              className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-[rgb(var(--primary-rgb)/0.15)] transition-colors"
             >
-              ×
+              <X size={11} weight="bold" aria-hidden="true" />
             </button>
           </span>
         ))}
         {tags.length === 0 && (
-          <span className="text-sm" style={{ color: 'var(--text-300)', padding: '4px 6px' }}>{placeholder}</span>
+          <span className="text-sm" style={{ color: 'var(--placeholder)', padding: '4px 6px' }}>{placeholder}</span>
         )}
       </div>
       {open && remaining.length > 0 && (
@@ -71,14 +79,18 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
             backdropFilter: 'blur(16px)',
             border: '1px solid rgb(var(--line-rgb) / 0.50)',
             borderRadius: 12,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+            boxShadow: 'var(--shadow-float)',
           }}
         >
           {searchable && (
             <div className="px-3 pb-2">
               <input
+                // Opened by the user a moment ago: typing should filter at once.
                 autoFocus
                 className="glass-input-rect w-full text-sm"
+                aria-label="Search options"
+                name="option-search"
+                autoComplete="off"
                 placeholder="Type to search…"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
@@ -93,10 +105,13 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
               />
             </div>
           )}
-          <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+          <div role="listbox" className="scrollable" style={{ maxHeight: 260, overflowY: 'auto', overscrollBehavior: 'contain' }}>
             {available.map(opt => (
               <button
                 key={opt}
+                type="button"
+                role="option"
+                aria-selected={false}
                 className="w-full text-left px-4 py-2 text-sm hover:bg-sky-50 transition-colors"
                 style={{ color: 'var(--text-600)' }}
                 onClick={() => pick(opt)}
@@ -105,12 +120,13 @@ export default function TagInput({ tags, onAdd, onRemove, placeholder, options }
               </button>
             ))}
             {available.length === 0 && (
-              <div className="px-4 py-2 text-sm" style={{ color: 'var(--text-300)' }}>No matches</div>
+              <div className="px-4 py-2 text-sm" style={{ color: 'var(--text-400)' }}>No matches</div>
             )}
           </div>
           <button
-            className="w-full text-left px-4 py-2 text-xs border-t"
-            style={{ color: 'var(--text-300)', borderColor: 'rgb(var(--line-rgb) / 0.30)' }}
+            type="button"
+            className="w-full text-left px-4 py-2 text-xs border-t hover:bg-sky-50 transition-colors"
+            style={{ color: 'var(--text-400)', borderColor: 'rgb(var(--line-rgb) / 0.30)' }}
             onClick={close}
           >
             Close

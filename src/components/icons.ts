@@ -1,0 +1,33 @@
+// The app's icons, all from one set (Phosphor) so stroke weight and
+// proportions match. Import from here, not from the package, so the list
+// of what is in use stays in one place.
+export {
+  ArrowLeft,
+  ArrowSquareOut,
+  ArrowUpRight,
+  ArrowDown,
+  CaretDown,
+  CaretLeft,
+  CaretRight,
+  ChatsCircle,
+  Check,
+  CheckCircle,
+  Copy,
+  Eye,
+  EyeSlash,
+  FileText,
+  Flag,
+  Funnel,
+  GearSix,
+  NotePencil,
+  PaperPlaneRight,
+  Paperclip,
+  Plus,
+  SidebarSimple,
+  Sparkle,
+  Stop,
+  Trash,
+  TreeStructure,
+  WarningCircle,
+  X,
+} from '@phosphor-icons/react'

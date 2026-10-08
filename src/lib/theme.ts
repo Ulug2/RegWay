@@ -22,8 +22,13 @@ export function getThemeChoice(): ThemeChoice {
 
 export const resolveTheme = (choice: ThemeChoice, prefersDark = systemDark()): 'light' | 'dark' => (choice === 'system' ? (prefersDark ? 'dark' : 'light') : choice)
 
+// The browser's own chrome (address bar on a phone) takes the page colour.
+export const CANVAS = { light: '#FDFBF7', dark: '#0B1220' } as const
+
 export function applyTheme(choice: ThemeChoice = getThemeChoice()): void {
-  document.documentElement.dataset.theme = resolveTheme(choice)
+  const theme = resolveTheme(choice)
+  document.documentElement.dataset.theme = theme
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', CANVAS[theme])
 }
 
 export function setThemeChoice(choice: ThemeChoice): void {

@@ -10,7 +10,7 @@ import type { DaySelection } from '../lib/feedDays'
 import { markVisit } from '../lib/lastVisit'
 import EntityFeed from './EntityFeed'
 import AiAskBar from './AiAskBar'
-import LogoMark from './LogoMark'
+import PageHeader from './PageHeader'
 
 // One fund's or one portfolio company's own page (roadmap item 9): who it is,
 // how it connects to the rest of the portfolio, every development RegWay has
@@ -139,45 +139,28 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
       : ''
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <header className="glass-nav sticky top-0 z-40">
-        <div className="max-w-[1440px] mx-auto px-8 h-20 flex items-center gap-4">
-          <button
-            onClick={() => onNavigate('dashboard')}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full transition-all hover:bg-sky-50"
-            style={{ background: 'rgb(var(--surface-rgb) / 0.60)', border: '1px solid rgb(var(--line-rgb) / 0.40)', color: 'var(--text-600)' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            Dashboard
-          </button>
-          <div className="flex items-center gap-2.5 ml-auto">
-            <LogoMark size={28} />
-            <span className="font-semibold text-base" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-[100dvh] flex flex-col">
+      <a href="#main" className="skip-link">Skip to content</a>
+      <PageHeader back={{ label: 'Dashboard', onClick: () => onNavigate('dashboard') }} />
 
-      <main className="flex-1 max-w-[1440px] mx-auto w-full px-8" style={{ paddingTop: 48, paddingBottom: 64 }}>
+      <main id="main" className="flex-1 w-full max-w-[1200px] mx-auto px-5 sm:px-8 pt-10 sm:pt-12 pb-16">
         {!name ? (
-          <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: 'var(--text-300)', padding: '24px 0' }}>
+          <div className="empty-state">
             This {isFund ? 'fund' : 'company'} isn't on file any more.
           </div>
         ) : (
           <>
-            <div className="max-w-2xl mx-auto flex items-start gap-4" style={{ marginBottom: 32 }}>
-              <div
-                className="w-14 h-14 flex items-center justify-center text-base font-bold overflow-hidden flex-shrink-0"
-                style={company?.logo_url ? { borderRadius: 14 } : { background: 'rgb(var(--ice-rgb) / 0.85)', color: 'var(--primary)', borderRadius: 14 }}
-              >
-                {company?.logo_url ? <img src={company.logo_url} alt="" className="w-full h-full block object-cover" /> : initialsOf(name)}
+            <div className="max-w-2xl mx-auto flex items-start gap-4 mb-10">
+              <div className="tile w-14 h-14 text-base" style={company?.logo_url ? { background: 'none', borderRadius: 14 } : { borderRadius: 14 }} aria-hidden="true">
+                {company?.logo_url ? <img src={company.logo_url} alt="" width={56} height={56} className="w-full h-full block object-cover" /> : initialsOf(name)}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-400)' }}>{isFund ? 'Fund' : 'Portfolio company'}</div>
-                <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>{name}</h1>
-                {subtitle && <div className="text-sm mt-0.5" style={{ color: 'var(--text-400)' }}>{subtitle}</div>}
-                <div className="text-xs mt-2" style={{ color: 'var(--text-600)' }}>
+                <div className="text-[13px] font-medium" style={{ color: 'var(--primary)' }}>{isFund ? 'Fund' : 'Portfolio company'}</div>
+                <h1 className="text-[28px] font-semibold break-words" style={{ color: 'var(--text-900)', letterSpacing: '-0.035em', lineHeight: 1.15 }}>{name}</h1>
+                {subtitle && <div className="text-[15px] mt-1" style={{ color: 'var(--text-400)' }}>{subtitle}</div>}
+                <div className="text-[13px] mt-2" style={{ color: 'var(--text-600)' }}>
                   {related === null
-                    ? ' '
+                    ? ' '
                     : related.length
                       ? `${isFund ? 'Holds' : 'Held by'}: ${related.join(', ')}`
                       : isFund
@@ -185,19 +168,16 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
                         : 'Held by: not recorded'}
                 </div>
               </div>
-              <button
-                onClick={() => onNavigate('profile', { tab: isFund ? 'funds' : 'portfolio', focusId: entity.id })}
-                className="text-xs underline flex-shrink-0 mt-1"
-                style={{ color: 'var(--primary)' }}
-              >
+              <button onClick={() => onNavigate('profile', { tab: isFund ? 'funds' : 'portfolio', focusId: entity.id })} className="link text-[13px] flex-shrink-0 mt-1">
                 Edit profile
               </button>
             </div>
 
-            <div style={{ marginBottom: 48 }}>
+            <div className="mb-12">
               {scanning ? (
-                <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: 'var(--text-300)', padding: '24px 0' }}>
-                  RegWay AI is researching regulations for this company. This can take a minute the first time — results are saved.
+                <div className="empty-state" role="status">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse mr-2 align-middle" style={{ background: 'var(--primary-light)' }} aria-hidden="true" />
+                  RegWay AI is researching regulations for this company. This can take a minute the first time, and the results are saved.
                 </div>
               ) : (
                 <EntityFeed
@@ -217,7 +197,7 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
               )}
             </div>
 
-            <AiAskBar placeholder={`Ask RegWay AI about ${name}...`} onOpen={() => onNavigate('ai', aiContext)} />
+            <AiAskBar placeholder={`Ask RegWay AI about ${name}…`} onOpen={() => onNavigate('ai', aiContext)} />
           </>
         )}
       </main>

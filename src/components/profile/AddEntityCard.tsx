@@ -28,12 +28,12 @@ export default function AddEntityCard({ scope, heading, cta, onAdd }: { scope: S
   }
 
   return (
-    <div className="glass-card" style={{ padding: 28 }}>
-      <div className="text-xs font-semibold uppercase tracking-wider mb-5" style={{ color: 'var(--text-400)' }}>{heading}</div>
+    <div className="glass-card p-6 sm:p-7">
+      <h3 className="text-base font-semibold mb-5" style={{ color: 'var(--text-900)' }}>{heading}</h3>
       <QuestionForm questions={questionsFor(scope, 'onboarding')} answers={answers} onChange={(id, v) => setAnswers(a => ({ ...a, [id]: v }))} />
-      <div className="flex items-center gap-4 mt-6">
+      <div className="flex items-center gap-4 flex-wrap mt-6">
         <button className="btn-primary" onClick={add} disabled={busy}>{busy ? 'Adding…' : cta}</button>
-        {error && <span className="text-xs" style={{ color: 'var(--text-600)' }}>{error}</span>}
+        {error && <span className="text-[13px]" role="alert" style={{ color: 'var(--warning)' }}>{error}</span>}
       </div>
     </div>
   )

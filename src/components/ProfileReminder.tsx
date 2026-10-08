@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ProgressRing from './ProgressRing'
+import { X } from './icons'
 import { readCache, writeCache } from '../lib/cache'
 import type { CompletionItem } from '../lib/questionnaire'
 import type { ProfileCompletion } from '../lib/useProfileCompletion'
@@ -34,40 +35,27 @@ export default function ProfileReminder({ completion, onOpen }: ProfileReminderP
   }
 
   return (
-    <div className="relative max-w-2xl mx-auto glass-card" style={{ padding: 24, marginBottom: 40 }}>
-      <button
-        onClick={dismiss}
-        aria-label="Dismiss reminder"
-        title="Dismiss until next login"
-        className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full hover:bg-sky-50 transition-colors"
-        style={{ color: 'var(--text-300)', zIndex: 1 }}
-      >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+    <div className="relative glass-card p-5 sm:p-6 mb-8">
+      <button onClick={dismiss} aria-label="Dismiss reminder" title="Dismiss until next login" className="btn-icon absolute top-2.5 right-2.5" style={{ width: 30, height: 30, zIndex: 2 }}>
+        <X size={14} weight="bold" aria-hidden="true" />
       </button>
-      <div className="flex items-center gap-5">
-        <ProgressRing percent={percent} size={60} />
-        <div className="flex-1 min-w-0">
-          <div className="text-base font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.01em' }}>
+      <div className="flex items-center gap-4 sm:gap-5 flex-wrap pr-8">
+        <ProgressRing percent={percent} size={56} />
+        <div className="flex-1 min-w-[12rem]">
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.01em' }}>
             Finish setting up RegWay
-          </div>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-400)' }}>
-            {left} quick {left === 1 ? 'answer' : 'answers'} left — the more RegWay knows, the sharper your alerts.
+          </h2>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-400)', lineHeight: 1.5 }}>
+            <span className="num">{left}</span> quick {left === 1 ? 'answer' : 'answers'} left. The more RegWay knows, the sharper your alerts.
           </p>
         </div>
-        <button className="btn-primary shrink-0" style={{ marginRight: 16 }} onClick={() => onOpen(tabFor(first), first.id)}>Continue</button>
+        <button className="btn-primary shrink-0" onClick={() => onOpen(tabFor(first), first.id)}>Continue</button>
       </div>
       <div className="flex flex-wrap gap-2 mt-5">
         {incomplete.slice(0, 4).map(i => (
-          <button
-            key={`${i.scope}-${i.id}`}
-            onClick={() => onOpen(tabFor(i), i.id)}
-            className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium transition-all hover:bg-sky-50"
-            style={{ borderRadius: 9999, background: 'rgb(var(--surface-rgb) / 0.75)', border: '1px solid rgb(var(--line-strong-rgb) / 0.55)', color: 'var(--text-600)' }}
-          >
+          <button key={`${i.scope}-${i.id}`} onClick={() => onOpen(tabFor(i), i.id)} className="btn-tool" style={{ padding: '5px 12px', fontSize: 12 }}>
             {i.label}
-            <span style={{ color: 'var(--primary)' }}>{i.total - i.answered} left</span>
+            <span className="num" style={{ color: 'var(--primary)' }}>{i.total - i.answered} left</span>
           </button>
         ))}
         {incomplete.length > 4 && (

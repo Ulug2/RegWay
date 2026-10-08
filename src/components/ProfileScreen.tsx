@@ -4,7 +4,8 @@ import { getFirmId, fetchFirm, updateFirm, getCachedFirmId, getCachedFirm } from
 import { readCache, writeCache } from '../lib/cache'
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from '../lib/theme'
 import Chip from './Chip'
-import LogoMark from './LogoMark'
+import PageHeader from './PageHeader'
+import { CheckCircle } from './icons'
 import PasswordInput from './PasswordInput'
 import FirmProfile from './profile/FirmProfile'
 import FundsProfile from './profile/FundsProfile'
@@ -151,51 +152,25 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ fontFamily: 'Inter, sans-serif' }}>
-      {/* Top Nav */}
-      <header className="glass-nav sticky top-0 z-40">
-        <div className="max-w-[900px] mx-auto px-8 h-20 flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl transition-all hover:bg-sky-50"
-            style={{ color: 'var(--text-600)', border: '1px solid rgb(var(--line-rgb) / 0.40)', background: 'rgb(var(--surface-rgb) / 0.60)' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {backLabel}
-          </button>
-          <div className="flex items-center gap-2">
-            <LogoMark size={24} />
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
+    <div className="min-h-[100dvh] flex flex-col">
+      <a href="#main" className="skip-link">Skip to content</a>
+      <PageHeader back={{ label: backLabel, onClick: onBack }} width="max-w-[900px]" />
+
+      <main id="main" className="flex-1 w-full max-w-[900px] mx-auto px-5 sm:px-8 pt-10 sm:pt-12 pb-16">
+        <div className="mb-8">
+          <h1 className="text-[28px] sm:text-[32px] font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.035em', lineHeight: 1.15 }}>Profile</h1>
+          <p className="text-[15px] mt-2" style={{ color: 'var(--text-400)' }}>Your account and your firm's workspace settings.</p>
+        </div>
+
+        {/* Scrolls sideways on a phone rather than wrapping into a block. */}
+        <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 mb-8">
+          <div className="seg seg-lg flex-nowrap">
+            {TABS.map(t => (
+              <button key={t.key} onClick={() => setTab(t.key)} aria-pressed={tab === t.key} className={`seg-item ${tab === t.key ? 'is-on' : ''}`}>
+                {t.label}
+              </button>
+            ))}
           </div>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-[900px] mx-auto w-full px-8" style={{ paddingTop: 56, paddingBottom: 64 }}>
-        <div style={{ marginBottom: 40 }}>
-          <h1 className="text-2xl font-semibold mb-2" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>Profile</h1>
-          <p className="text-sm" style={{ color: 'var(--text-400)' }}>Your account and your firm's workspace settings.</p>
-        </div>
-
-        <div
-          className="inline-flex flex-wrap gap-1 p-1.5"
-          style={{ marginBottom: 32, background: 'rgb(var(--surface-rgb) / 0.60)', border: '1px solid rgb(var(--line-rgb) / 0.40)', borderRadius: 9999 }}
-        >
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className="px-5 py-2 text-sm font-medium transition-all"
-              style={{
-                borderRadius: 9999,
-                background: tab === t.key ? 'linear-gradient(135deg,var(--brand),var(--brand-light))' : 'transparent',
-                color: tab === t.key ? 'white' : 'var(--text-400)',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
         </div>
 
         {tab === 'firm' && firmId && <FirmProfile firmId={firmId} />}
@@ -207,9 +182,9 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
         {tab === 'account' && (
         <div className="space-y-6">
           {/* Appearance */}
-          <div className="glass-card" style={{ padding: 28 }}>
+          <div className="glass-card p-6 sm:p-7">
             <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Appearance</h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--text-300)' }}>Light, dark, or whatever your device is set to. Remembered in this browser.</p>
+            <p className="text-[13px] mb-4" style={{ color: 'var(--text-400)' }}>Light, dark, or whatever your device is set to. Remembered in this browser.</p>
             <div className="flex gap-2" role="radiogroup" aria-label="Theme">
               {THEMES.map(t => (
                 <Chip key={t.key} selected={theme === t.key} onClick={() => { setThemeChoice(t.key); setTheme(t.key) }}>{t.label}</Chip>
@@ -218,12 +193,15 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
           </div>
 
           {/* Name */}
-          <div className="glass-card" style={{ padding: 28 }}>
-            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Your name</h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--text-300)' }}>Shown across the dashboard and in RegWay AI's context.</p>
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
+          <div className="glass-card p-6 sm:p-7">
+            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}><label htmlFor="account-name">Your name</label></h2>
+            <p className="text-[13px] mb-4" style={{ color: 'var(--text-400)' }}>Shown across the dashboard and in RegWay AI's context.</p>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div className="flex-1 min-w-[14rem]">
                 <input
+                  id="account-name"
+                  name="name"
+                  autoComplete="name"
                   className="glass-input-rect"
                   value={name}
                   onChange={e => { setName(e.target.value); setNameSaved(false) }}
@@ -234,23 +212,27 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
                 {nameLoading ? 'Saving…' : 'Save'}
               </button>
             </div>
-            {nameError && <div className="text-xs mt-3" style={{ color: 'var(--text-600)' }}>{nameError}</div>}
-            {nameSaved && <div className="text-xs mt-3" style={{ color: 'var(--primary)' }}>Saved.</div>}
+            {nameError && <div className="text-[13px] mt-3" role="alert" style={{ color: 'var(--warning)' }}>{nameError}</div>}
+            {nameSaved && <div className="text-[13px] mt-3 flex items-center gap-1.5 font-medium" aria-live="polite" style={{ color: 'var(--primary)' }}><CheckCircle size={15} weight="fill" aria-hidden="true" />Saved.</div>}
           </div>
 
           {/* Email */}
-          <div className="glass-card" style={{ padding: 28 }}>
-            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Email</h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--text-300)' }}>Used to sign in to your account.</p>
+          <div className="glass-card p-6 sm:p-7">
+            <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}><label htmlFor="account-email">Email</label></h2>
+            <p className="text-[13px] mb-4" style={{ color: 'var(--text-400)' }}>Used to sign in to your account.</p>
             {emailCheckInbox ? (
-              <div className="text-sm p-3 rounded-lg" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)' }}>
+              <div className="notice" aria-live="polite">
                 Check <strong>{email}</strong> for a confirmation link. The change won't take effect until you click it.
               </div>
             ) : (
-              <div className="flex items-end gap-3">
-                <div className="flex-1">
+              <div className="flex items-end gap-3 flex-wrap">
+                <div className="flex-1 min-w-[14rem]">
                   <input
+                    id="account-email"
+                    name="email"
                     type="email"
+                    autoComplete="email"
+                    spellCheck={false}
                     className="glass-input-rect"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -262,13 +244,13 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
                 </button>
               </div>
             )}
-            {emailError && <div className="text-xs mt-3" style={{ color: 'var(--text-600)' }}>{emailError}</div>}
+            {emailError && <div className="text-[13px] mt-3" role="alert" style={{ color: 'var(--warning)' }}>{emailError}</div>}
           </div>
 
           {/* Password */}
-          <div className="glass-card" style={{ padding: 28 }}>
+          <div className="glass-card p-6 sm:p-7">
             <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-900)' }}>Password</h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--text-300)' }}>
+            <p className="text-[13px] mb-4" style={{ color: 'var(--text-400)', lineHeight: 1.6 }}>
               Enter your current password and we'll email you a link to set a new one. After you set it, you'll sign in again.
             </p>
             <div className="mb-4 md:max-w-sm">
@@ -283,20 +265,20 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
               <button className="btn-primary" onClick={updatePassword} disabled={passwordLoading}>
                 {passwordLoading ? 'Please wait…' : 'Update Password'}
               </button>
-              <button type="button" className="text-xs font-medium" style={{ color: 'var(--primary)' }} onClick={forgotPassword} disabled={passwordLoading || !accountEmail}>
+              <button type="button" className="link text-[13px]" onClick={forgotPassword} disabled={passwordLoading || !accountEmail}>
                 Forgot password?
               </button>
             </div>
             {resetLinkSent && (
-              <div role="status" className="text-sm mt-4 p-3 rounded-lg" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)', lineHeight: 1.6 }}>
+              <div role="status" className="notice mt-4">
                 We sent a link to <strong>{accountEmail}</strong>. Open it to set your new password; you'll then be asked to sign in again.
               </div>
             )}
-            {passwordError && <div className="text-xs mt-3" style={{ color: 'var(--text-600)' }}>{passwordError}</div>}
+            {passwordError && <div className="text-[13px] mt-3" role="alert" style={{ color: 'var(--warning)' }}>{passwordError}</div>}
           </div>
 
           {/* Sign out */}
-          <div className="flex justify-center pt-2">
+          <div className="flex pt-2">
             <button className="btn-ghost" onClick={() => supabase.auth.signOut()}>
               Sign Out
             </button>

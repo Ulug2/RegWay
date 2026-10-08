@@ -18,7 +18,7 @@ test.describe('landing page', () => {
 
   test('switches between sign-in and sign-up, and closes with × or Escape', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: 'Get Started Free' }).first().click()
+    await page.getByRole('button', { name: 'Get Started' }).first().click()
     await expect(page.getByText('Create your account')).toBeVisible()
     await page.getByRole('banner').getByRole('button', { name: 'Sign In' }).click()
     await expect(page.getByText('Welcome back')).toBeVisible()
@@ -36,7 +36,7 @@ test.describe('landing page', () => {
   test('on a phone the form opens below the hero text', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/')
-    await page.getByRole('button', { name: 'Get Started Free' }).first().click()
+    await page.getByRole('button', { name: 'Get Started' }).first().click()
     const form = page.getByRole('region', { name: 'Create your account' })
     await expect(form).toBeInViewport()
     const formBox = (await form.boundingBox())!
@@ -66,7 +66,7 @@ test.describe('landing page', () => {
   test('the closing call to action opens sign-up at the top', async ({ page }) => {
     await page.goto('/')
     await page.getByText('See what affects your firm today.').scrollIntoViewIfNeeded()
-    await page.getByRole('button', { name: 'Get Started Free' }).last().click()
+    await page.getByRole('button', { name: 'Get Started' }).last().click()
     await expect(page.getByText('Create your account')).toBeInViewport()
   })
 })

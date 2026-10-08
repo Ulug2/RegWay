@@ -17,7 +17,7 @@ export default function RemoveButton({ onConfirm, disabled }: RemoveButtonProps)
     )
   }
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" role="group" aria-label="Confirm removal">
       <button className="btn-primary" onClick={onConfirm} disabled={disabled}>Confirm remove</button>
       <button className="btn-ghost" onClick={() => setArmed(false)}>Cancel</button>
     </div>

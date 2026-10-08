@@ -3,8 +3,8 @@
 export default function PrePublicationBadge() {
   return (
     <span
-      className="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
-      style={{ borderRadius: 9999, background: 'rgb(var(--neutral-rgb) / 0.12)', color: 'var(--text-500)' }}
+      className="badge"
+      style={{ background: 'rgb(var(--neutral-rgb) / 0.12)', color: 'var(--text-500)' }}
       title="Filed with the Federal Register and scheduled for publication; not yet published"
     >
       Pre-publication

@@ -4,7 +4,8 @@ export default function Chip({ selected, onClick, children }: { selected: boolea
     <button
       type="button"
       onClick={onClick}
-      className="px-3.5 py-1.5 text-xs font-medium transition-all"
+      aria-pressed={selected}
+      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[13px] font-medium transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97]"
       style={{
         borderRadius: 9999,
         background: selected ? 'linear-gradient(135deg,var(--brand),var(--brand-light))' : 'rgb(var(--surface-rgb) / 0.75)',

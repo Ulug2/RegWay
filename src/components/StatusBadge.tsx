@@ -21,10 +21,7 @@ export default function StatusBadge({ status }: { status: string | undefined }) 
   if (!label) return null
 
   return (
-    <span
-      className="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
-      style={{ borderRadius: 9999, background: 'rgb(var(--neutral-rgb) / 0.10)', color: 'var(--text-500)' }}
-    >
+    <span className="badge" style={{ background: 'rgb(var(--neutral-rgb) / 0.12)', color: 'var(--text-500)' }}>
       {label}
     </span>
   )

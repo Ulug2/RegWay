@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import LogoMark from './LogoMark'
+import { Wordmark } from './PageHeader'
 import PasswordInput from './PasswordInput'
 import PasswordRequirements from './PasswordRequirements'
 import { passwordErrorMessage, passwordProblem } from '../lib/password'
@@ -42,29 +42,28 @@ export default function ResetPasswordScreen({ onDone }: ResetPasswordScreenProps
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="glass-modal w-full max-w-sm" style={{ padding: 32 }}>
-        <div className="flex items-center gap-2 mb-8">
-          <LogoMark size={36} />
-          <span className="font-semibold text-lg" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
+    <main className="min-h-[100dvh] flex items-center justify-center p-5 sm:p-6">
+      <div className="glass-modal w-full max-w-sm p-7 sm:p-8">
+        <div className="mb-8">
+          <Wordmark size={32} />
         </div>
 
-        <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>Set a new password</h2>
+        <h1 className="text-[22px] font-semibold mb-1" style={{ color: 'var(--text-900)', letterSpacing: '-0.025em' }}>Set a new password</h1>
         <p className="text-sm mb-6" style={{ color: 'var(--text-400)' }}>Choose a new password for your account.</p>
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>New password</label>
-            <PasswordInput required value={password} onChange={setPassword} placeholder="Create a password" autoComplete="new-password" />
+            <label htmlFor="new-password" className="block text-[13px] font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>New password</label>
+            <PasswordInput id="new-password" name="new-password" required value={password} onChange={setPassword} placeholder="Create a password" autoComplete="new-password" />
             <PasswordRequirements password={password} />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>Confirm password</label>
-            <PasswordInput required value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" autoComplete="new-password" />
+            <label htmlFor="confirm-password" className="block text-[13px] font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>Confirm password</label>
+            <PasswordInput id="confirm-password" name="confirm-password" required value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" autoComplete="new-password" />
           </div>
 
           {error && (
-            <div className="text-xs p-3 rounded-lg" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)' }}>
+            <div className="notice" role="alert">
               {error}
             </div>
           )}
@@ -74,6 +73,6 @@ export default function ResetPasswordScreen({ onDone }: ResetPasswordScreenProps
           </button>
         </form>
       </div>
-    </div>
+    </main>
   )
 }

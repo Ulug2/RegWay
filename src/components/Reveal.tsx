@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 
-// Slides its content in (from the left, the right, or below) the first time
-// it scrolls into view. The motion is CSS (`.reveal` in index.css), so
+// Fades its content up the first time it scrolls into view. The motion is CSS (`.reveal` in index.css), so
 // `prefers-reduced-motion` turns it into a plain appearance. Without
 // IntersectionObserver the content simply shows.
 
 export default function Reveal({
-  from = 'up',
   delay = 0,
   className = '',
   children,
 }: {
-  from?: 'left' | 'right' | 'up'
   delay?: number
   className?: string
   children: React.ReactNode
@@ -36,7 +33,7 @@ export default function Reveal({
   }, [shown])
 
   return (
-    <div ref={ref} className={`reveal reveal-from-${from} ${shown ? 'is-visible' : ''} ${className}`} style={{ transitionDelay: shown ? `${delay}ms` : undefined }}>
+    <div ref={ref} className={`reveal ${shown ? 'is-visible' : ''} ${className}`} style={{ transitionDelay: shown ? `${delay}ms` : undefined }}>
       {children}
     </div>
   )

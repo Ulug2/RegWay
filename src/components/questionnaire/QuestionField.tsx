@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import TagInput from '../TagInput'
 import { COUNTRIES, RECOMMENDED, US_STATES, emptyLocation, isEmpty, isStale, type FactMeta, type LocationValue, type Question } from '../../lib/questionnaire'
 import Chip from '../Chip'
+import { X } from '../icons'
 
 const CHIP_LIMIT = 24
 
-function FreeTags({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
+function FreeTags({ id, value, onChange, placeholder }: { id: string; value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   const [draft, setDraft] = useState('')
   const commit = () => {
     const t = draft.trim()
@@ -13,21 +14,22 @@ function FreeTags({ value, onChange, placeholder }: { value: string[]; onChange:
     setDraft('')
   }
   return (
-    <div
-      className="flex flex-wrap gap-2 p-2"
-      style={{ background: 'rgb(var(--surface-rgb) / 0.70)', border: '1px solid rgb(var(--line-rgb) / 0.50)', borderRadius: 10, minHeight: 44 }}
-    >
+    <div className="field-box flex flex-wrap gap-2 p-2">
       {value.map(tag => (
         <span
           key={tag}
-          className="flex items-center gap-1 px-3 py-1 text-xs font-medium"
+          className="flex items-center gap-1 pl-3 pr-1.5 py-1 text-[13px] font-medium"
           style={{ background: 'rgb(var(--primary-rgb) / 0.10)', color: 'var(--primary)', borderRadius: 9999, border: '1px solid rgb(var(--primary-rgb) / 0.20)' }}
         >
           {tag}
-          <button type="button" className="ml-1 hover:opacity-60" onClick={() => onChange(value.filter(t => t !== tag))}>×</button>
+          <button type="button" className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-[rgb(var(--primary-rgb)/0.15)] transition-colors" aria-label={`Remove ${tag}`} onClick={() => onChange(value.filter(t => t !== tag))}>
+            <X size={11} weight="bold" aria-hidden="true" />
+          </button>
         </span>
       ))}
       <input
+        id={id}
+        autoComplete="off"
         value={draft}
         onChange={e => setDraft(e.target.value)}
         onKeyDown={e => {
@@ -45,7 +47,7 @@ function FreeTags({ value, onChange, placeholder }: { value: string[]; onChange:
   )
 }
 
-function LocationField({ question, value, onChange }: { question: Question; value: LocationValue; onChange: (v: LocationValue) => void }) {
+function LocationField({ id, question, value, onChange }: { id: string; question: Question; value: LocationValue; onChange: (v: LocationValue) => void }) {
   const isUS = value.country === 'United States'
   const askCity = question.id !== 'domicile'
   const listId = `countries-${question.scope}-${question.id}`
@@ -53,8 +55,10 @@ function LocationField({ question, value, onChange }: { question: Question; valu
     <div className={`grid gap-3 ${askCity ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
       <div>
         <input
+          id={id}
           className="glass-input-rect"
           list={listId}
+          autoComplete="off"
           placeholder="Country"
           value={value.country}
           onChange={e => onChange({ ...value, country: e.target.value, state: e.target.value === 'United States' ? value.state : '' })}
@@ -62,15 +66,15 @@ function LocationField({ question, value, onChange }: { question: Question; valu
         <datalist id={listId}>{COUNTRIES.map(c => <option key={c} value={c} />)}</datalist>
       </div>
       {isUS ? (
-        <select className="glass-input-rect" value={value.state} onChange={e => onChange({ ...value, state: e.target.value })}>
+        <select className="glass-input-rect" aria-label="State" value={value.state} onChange={e => onChange({ ...value, state: e.target.value })}>
           <option value="">State</option>
           {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       ) : (
-        <input className="glass-input-rect" placeholder="State / province" value={value.state} onChange={e => onChange({ ...value, state: e.target.value })} />
+        <input className="glass-input-rect" placeholder="State / province" aria-label="State or province" autoComplete="off" value={value.state} onChange={e => onChange({ ...value, state: e.target.value })} />
       )}
       {askCity && (
-        <input className="glass-input-rect" placeholder="City" value={value.city} onChange={e => onChange({ ...value, city: e.target.value })} />
+        <input className="glass-input-rect" placeholder="City" aria-label="City" autoComplete="off" value={value.city} onChange={e => onChange({ ...value, city: e.target.value })} />
       )}
     </div>
   )
@@ -91,7 +95,6 @@ export interface FactProvenance {
 }
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-const linkStyle = { color: 'var(--primary)' }
 
 function FactLine({ fact, label }: { fact: FactProvenance; label: string }) {
   const { meta } = fact
@@ -112,21 +115,23 @@ function FactLine({ fact, label }: { fact: FactProvenance; label: string }) {
   }
 
   return (
-    <div className="mt-1.5 text-[11px] flex flex-wrap items-baseline gap-x-2 gap-y-0.5" style={{ color: stale ? 'var(--warning)' : 'var(--text-300)' }} data-fact-line>
+    <div className="mt-1.5 text-xs flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 num" style={{ color: stale ? 'var(--warning)' : 'var(--text-400)' }} data-fact-line>
       <span>{origin}</span>
       {!fact.changed && (stale || !meta) && (
-        <button type="button" className="underline" style={linkStyle} onClick={fact.onConfirm} aria-label={`Confirm ${label} is still correct`}>
+        <button type="button" className="link" onClick={fact.onConfirm} aria-label={`Confirm ${label} is still correct`}>
           Still correct
         </button>
       )}
-      <button type="button" className="underline" style={linkStyle} onClick={() => setEditing(e => !e)} aria-label={`Supporting document for ${label}`}>
+      <button type="button" className="link" onClick={() => setEditing(e => !e)} aria-label={`Supporting document for ${label}`}>
         {meta?.document ? 'Change document' : 'Add document'}
       </button>
       {editing && (
         <div className="flex gap-2 mt-1.5 basis-full">
           <input
             className="glass-input-rect"
-            style={{ fontSize: 12 }}
+            style={{ fontSize: 13 }}
+            name="document"
+            autoComplete="off"
             placeholder="Supporting document: its name or a link (blank to remove)"
             aria-label={`Document name or link for ${label}`}
             value={draft}
@@ -138,7 +143,7 @@ function FactLine({ fact, label }: { fact: FactProvenance; label: string }) {
               }
             }}
           />
-          <button type="button" className="btn-ghost" onClick={apply}>Apply</button>
+          <button type="button" className="btn-ghost btn-sm" onClick={apply}>Apply</button>
         </div>
       )}
     </div>
@@ -157,6 +162,9 @@ interface QuestionFieldProps {
 export default function QuestionField({ question: q, value, onChange, flagMissing, fact }: QuestionFieldProps) {
   const shown = isEmpty(value) && q.defaultValue !== undefined ? q.defaultValue : value
   const missing = flagMissing && q.required && isEmpty(shown)
+  const id = useId()
+  // Choices are a group of buttons, named by the question; the rest are one field.
+  const grouped = q.type === 'yesno' || q.type === 'multi'
 
   let control: React.ReactNode = null
   switch (q.type) {
@@ -164,7 +172,10 @@ export default function QuestionField({ question: q, value, onChange, flagMissin
     case 'url':
       control = (
         <input
+          id={id}
           className="glass-input-rect"
+          autoComplete="off"
+          spellCheck={q.type === 'url' ? false : undefined}
           type={q.type === 'url' ? 'url' : 'text'}
           value={(shown as string) ?? ''}
           placeholder={q.placeholder}
@@ -176,7 +187,9 @@ export default function QuestionField({ question: q, value, onChange, flagMissin
     case 'year':
       control = (
         <input
-          className="glass-input-rect"
+          id={id}
+          className="glass-input-rect num"
+          autoComplete="off"
           inputMode="numeric"
           value={(shown as string) ?? ''}
           placeholder={q.placeholder}
@@ -186,7 +199,7 @@ export default function QuestionField({ question: q, value, onChange, flagMissin
       break
     case 'select':
       control = (
-        <select className="glass-input-rect" value={(shown as string) ?? ''} onChange={e => onChange(e.target.value)}>
+        <select id={id} className="glass-input-rect" value={(shown as string) ?? ''} onChange={e => onChange(e.target.value)}>
           <option value="">Select…</option>
           {q.options!.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
@@ -219,40 +232,41 @@ export default function QuestionField({ question: q, value, onChange, flagMissin
       break
     }
     case 'tags':
-      control = <FreeTags value={(shown as string[] | undefined) ?? []} onChange={onChange} placeholder={q.placeholder} />
+      control = <FreeTags id={id} value={(shown as string[] | undefined) ?? []} onChange={onChange} placeholder={q.placeholder} />
       break
     case 'location':
-      control = <LocationField question={q} value={(shown as LocationValue | undefined) ?? emptyLocation()} onChange={onChange} />
+      control = <LocationField id={id} question={q} value={(shown as LocationValue | undefined) ?? emptyLocation()} onChange={onChange} />
       break
   }
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-1.5 min-h-[20px]">
-        <label className="block text-xs font-medium" style={{ color: 'var(--text-600)' }}>{q.label}</label>
-        {!q.required && <span className="text-[10px]" style={{ color: 'var(--text-300)' }}>Optional</span>}
+        {grouped ? (
+          <span id={`${id}-label`} className="block text-[13px] font-medium" style={{ color: 'var(--text-600)' }}>{q.label}</span>
+        ) : (
+          <label htmlFor={id} className="block text-[13px] font-medium" style={{ color: 'var(--text-600)' }}>{q.label}</label>
+        )}
+        {!q.required && <span className="text-xs" style={{ color: 'var(--text-300)' }}>Optional</span>}
         {missing && (
-          <span
-            className="text-[10px] font-medium px-2 py-0.5"
-            style={{ borderRadius: 9999, background: 'rgb(var(--primary-rgb) / 0.10)', color: 'var(--primary)' }}
-          >
+          <span className="badge" style={{ background: 'rgb(var(--primary-rgb) / 0.10)', color: 'var(--primary)' }}>
             Needed
           </span>
         )}
         {fact && !missing && isEmpty(shown) && (
           // A blank answer is a gap in what RegWay knows, not a "no".
           <span
-            className="text-[10px] font-medium px-2 py-0.5"
-            style={{ borderRadius: 9999, background: 'rgb(var(--neutral-rgb) / 0.10)', color: 'var(--text-400)' }}
+            className="badge"
+            style={{ background: 'rgb(var(--neutral-rgb) / 0.12)', color: 'var(--text-400)' }}
             title="Not recorded. RegWay treats a blank answer as unknown, not as “no” or “none”."
           >
             Unknown
           </span>
         )}
       </div>
-      {control}
+      {grouped ? <div role="group" aria-labelledby={`${id}-label`}>{control}</div> : control}
       {fact && !isEmpty(shown) && <FactLine fact={fact} label={q.label} />}
-      {q.help && <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-300)' }}>{q.help}</p>}
+      {q.help && <p className="text-xs mt-1.5" style={{ color: 'var(--text-400)', lineHeight: 1.5 }}>{q.help}</p>}
     </div>
   )
 }

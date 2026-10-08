@@ -1,6 +1,9 @@
 # Next session — starting prompt
 
-Last updated 2026-10-07 (UTC). All work is on `main`, pushed. Production
+Last updated 2026-10-08 (UTC). `main` is pushed and deployed. **The
+redesign (roadmap 16d) is on the branch `redesign`, not merged**: the owner
+looks at it first (localhost, or the branch's Vercel preview), then it is
+merged into `main`. Read `DESIGN.md` before any UI work. Production
 (Supabase project `cfspwaqtidfliupmlfwz`) matches it on the server side:
 migrations 0024–0035 applied, every edge function deployed.
 
@@ -18,8 +21,9 @@ Roadmap item 16a lists everything this session left open, the
 inconsistencies it found and the owner's answers. Item 16b (official
 document as the card, a five-minute wait before AI work after a profile
 edit, dark mode) is done: `prompts/16b-decided-tasks.md`. Item 16c lists
-five frontend add-ons the owner sent, none installed. Item 17 is on hold
-until the owner says.
+five frontend add-ons the owner sent, now installed (`.claude/skills/`,
+Playwright CLI). Item 16d is the redesign made with them
+(`prompts/redesign.md`). Item 17 is on hold until the owner says.
 
 ## Setting up on the Mac
 
@@ -29,7 +33,7 @@ until the owner says.
   `VITE_SUPABASE_ANON_KEY` (the publishable key); `pnpm dev`.
 - Deploys / SQL: `SUPABASE_ACCESS_TOKEN` set, `supabase` CLI, then
   `supabase functions deploy --project-ref cfspwaqtidfliupmlfwz --use-api`.
-- Checks: `pnpm test:all` (type-checks, 416 unit tests, 106 browser tests;
+- Checks: `pnpm test:all` (type-checks, 416 unit tests, 116 browser tests;
   first time `pnpm exec playwright install chromium`).
 
 ## State at hand-off

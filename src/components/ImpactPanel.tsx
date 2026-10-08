@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchImpact, getCachedImpact, requestImpact } from '../lib/data'
 import type { ImpactContent, ImpactEntity } from '../lib/types'
+import { CaretDown } from './icons'
 
 type PanelView = 'summary' | 'cards'
 
 const TYPE_LABEL: Record<ImpactEntity['entity_type'], string> = { firm: 'Firm', fund: 'Fund', company: 'Portfolio company' }
 
+// The analysis gives dates as text; one that is a plain ISO day reads as a date.
+const displayDate = (value: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(value + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : value
+
 const paragraphs = (text: string) => text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-400)' }}>{children}</div>
+    <h3 className="section-label mb-2.5">{children}</h3>
   )
 }
 
@@ -18,8 +23,8 @@ function Bullets({ items }: { items: string[] }) {
   return (
     <ul className="space-y-2">
       {items.map((item, i) => (
-        <li key={i} className="flex gap-3 text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.7 }}>
-          <span className="mt-2.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--primary-light)' }} />
+        <li key={i} className="flex gap-3 text-[15px]" style={{ color: 'var(--text-600)', lineHeight: 1.65 }}>
+          <span className="mt-[10px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--primary-light)' }} aria-hidden="true" />
           <span>{item}</span>
         </li>
       ))}
@@ -32,20 +37,21 @@ function SummaryView({ impact }: { impact: ImpactContent }) {
     <div className="space-y-8">
       <div className="space-y-4">
         {paragraphs(impact.overview).map((p, i) => (
-          <p key={i} className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.8 }}>{p}</p>
+          <p key={i} className="text-base" style={{ color: 'var(--text-600)', lineHeight: 1.7, maxWidth: '68ch' }}>{p}</p>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="p-5 rounded-xl" style={{ background: 'rgb(var(--primary-rgb) / 0.05)', border: '1px solid rgb(var(--primary-rgb) / 0.12)' }}>
+      {/* Two facts side by side: no boxes, a rule above each. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+        <div className="pt-4" style={{ borderTop: '2px solid rgb(var(--primary-rgb) / 0.35)' }}>
           <Label>Scope</Label>
           <div className="space-y-2">
-            {paragraphs(impact.scope).map((p, i) => <p key={i} className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.7 }}>{p}</p>)}
+            {paragraphs(impact.scope).map((p, i) => <p key={i} className="text-[15px]" style={{ color: 'var(--text-600)', lineHeight: 1.65 }}>{p}</p>)}
           </div>
         </div>
-        <div className="p-5 rounded-xl" style={{ background: 'rgb(var(--primary-rgb) / 0.05)', border: '1px solid rgb(var(--primary-rgb) / 0.12)' }}>
+        <div className="pt-4" style={{ borderTop: '2px solid rgb(var(--primary-rgb) / 0.35)' }}>
           <Label>Status</Label>
-          <p className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.7 }}>{impact.status}</p>
+          <p className="text-[15px]" style={{ color: 'var(--text-600)', lineHeight: 1.65 }}>{impact.status}</p>
         </div>
       </div>
 
@@ -59,16 +65,16 @@ function SummaryView({ impact }: { impact: ImpactContent }) {
       {impact.key_dates.length > 0 && (
         <div>
           <Label>Key dates</Label>
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgb(var(--line-rgb) / 0.45)' }}>
+          <div className="overflow-hidden" style={{ borderRadius: 'var(--r-tile)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}>
             {impact.key_dates.map((d, i) => (
               <div
                 key={i}
-                className="grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[200px_160px_minmax(0,1fr)] gap-x-4 gap-y-1 px-4 py-3 text-sm"
-                style={{ background: i % 2 ? 'rgb(var(--surface-rgb) / 0.45)' : 'rgb(var(--surface-rgb) / 0.75)', borderTop: i ? '1px solid rgb(var(--line-rgb) / 0.30)' : 'none' }}
+                className="grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[150px_minmax(0,220px)_minmax(0,1fr)] gap-x-5 gap-y-1 px-4 py-3 text-sm"
+                style={{ background: 'rgb(var(--surface-rgb) / 0.6)', borderTop: i ? '1px solid rgb(var(--line-rgb) / 0.30)' : 'none' }}
               >
+                <span className="mono font-medium md:order-first order-2 text-right md:text-left" style={{ color: 'var(--primary)' }}>{displayDate(d.date)}</span>
                 <span className="font-medium" style={{ color: 'var(--text-900)' }}>{d.label}</span>
-                <span style={{ color: 'var(--primary)' }}>{d.date}</span>
-                <span className="col-span-2 md:col-span-1" style={{ color: 'var(--text-400)' }}>{d.note}</span>
+                <span className="col-span-2 md:col-span-1 order-3" style={{ color: 'var(--text-400)' }}>{d.note}</span>
               </div>
             ))}
           </div>
@@ -80,9 +86,9 @@ function SummaryView({ impact }: { impact: ImpactContent }) {
           <Label>How it relates to your firm</Label>
           <div className="space-y-3">
             {impact.impacts.map((e, i) => (
-              <div key={i} className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.7 }}>
+              <div key={i} className="text-[15px]" style={{ color: 'var(--text-600)', lineHeight: 1.65 }}>
                 <span className="font-semibold" style={{ color: 'var(--text-900)' }}>{e.entity_name}</span>
-                <span style={{ color: 'var(--text-300)' }}> · {TYPE_LABEL[e.entity_type]} — </span>
+                <span style={{ color: 'var(--text-400)' }}> ({TYPE_LABEL[e.entity_type].toLowerCase()}): </span>
                 {e.headline}
               </div>
             ))}
@@ -97,7 +103,7 @@ function SummaryView({ impact }: { impact: ImpactContent }) {
         </div>
       )}
 
-      <p className="text-xs pt-4" style={{ color: 'var(--text-300)', lineHeight: 1.7, borderTop: '1px solid rgb(var(--line-rgb) / 0.30)' }}>
+      <p className="text-[13px] pt-4" style={{ color: 'var(--text-400)', lineHeight: 1.65, borderTop: '1px solid rgb(var(--line-rgb) / 0.30)' }}>
         {impact.limitations}{impact.text_truncated ? ' Only the first portion of a long document was analysed.' : ''} This is an informational analysis
         prepared from the regulation text and your RegWay profile. It is not legal advice.
       </p>
@@ -109,28 +115,23 @@ function ImpactCard({ entity, open, onToggle, cardRef }: { entity: ImpactEntity;
   return (
     <div
       ref={cardRef}
-      className="glass-card-light overflow-hidden transition-all"
+      className="glass-card-light overflow-hidden transition-ui"
       style={{ boxShadow: open ? 'inset 0 0 0 1.5px rgb(var(--primary-light-rgb) / 0.45), 0 8px 24px rgb(var(--primary-rgb) / 0.10)' : undefined }}
     >
-      <button className="w-full text-left flex items-start gap-4 p-5" onClick={onToggle}>
-        <div
-          className="w-10 h-10 shrink-0 flex items-center justify-center text-sm font-bold"
-          style={{ background: 'rgb(var(--ice-rgb) / 0.85)', color: 'var(--primary)', borderRadius: 12 }}
-        >
+      <button className="w-full text-left flex items-start gap-4 p-5" onClick={onToggle} aria-expanded={open}>
+        <div className="tile w-10 h-10 text-sm" aria-hidden="true">
           {entity.entity_name.slice(0, 1).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="text-sm font-semibold" style={{ color: 'var(--text-900)' }}>{entity.entity_name}</span>
-            <span className="text-[10px] font-medium px-2 py-0.5" style={{ borderRadius: 9999, background: 'rgb(var(--primary-rgb) / 0.08)', color: 'var(--primary)' }}>
+            <span className="badge" style={{ background: 'rgb(var(--primary-rgb) / 0.08)', color: 'var(--primary)' }}>
               {TYPE_LABEL[entity.entity_type]}
             </span>
           </div>
           <p className="text-sm" style={{ color: 'var(--text-500)', lineHeight: 1.6 }}>{entity.headline}</p>
         </div>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-1 shrink-0" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: 'var(--text-300)' }}>
-          <path d="M3 6l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <CaretDown size={16} weight="bold" aria-hidden="true" className="mt-1 shrink-0" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: 'var(--text-400)' }} />
       </button>
 
       {open && (
@@ -138,7 +139,7 @@ function ImpactCard({ entity, open, onToggle, cardRef }: { entity: ImpactEntity;
           <div>
             <Label>How it applies</Label>
             <div className="space-y-3">
-              {paragraphs(entity.how_it_applies).map((p, i) => <p key={i} className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.75 }}>{p}</p>)}
+              {paragraphs(entity.how_it_applies).map((p, i) => <p key={i} className="text-[15px]" style={{ color: 'var(--text-600)', lineHeight: 1.65 }}>{p}</p>)}
             </div>
           </div>
           {entity.obligations.length > 0 && (
@@ -150,7 +151,7 @@ function ImpactCard({ entity, open, onToggle, cardRef }: { entity: ImpactEntity;
           {entity.timeline && (
             <div>
               <Label>Timeline</Label>
-              <p className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.7 }}>{entity.timeline}</p>
+              <p className="text-[15px]" style={{ color: 'var(--text-600)', lineHeight: 1.65 }}>{entity.timeline}</p>
             </div>
           )}
           {entity.operational_areas.length > 0 && (
@@ -158,7 +159,7 @@ function ImpactCard({ entity, open, onToggle, cardRef }: { entity: ImpactEntity;
               <Label>Areas touched</Label>
               <div className="flex flex-wrap gap-2">
                 {entity.operational_areas.map(a => (
-                  <span key={a} className="text-xs font-medium px-3 py-1" style={{ borderRadius: 9999, background: 'rgb(var(--surface-rgb) / 0.8)', border: '1px solid rgb(var(--line-strong-rgb) / 0.55)', color: 'var(--text-600)' }}>{a}</span>
+                  <span key={a} className="badge" style={{ padding: '4px 10px', fontSize: 12, fontWeight: 500, background: 'rgb(var(--surface-rgb) / 0.8)', border: '1px solid rgb(var(--line-strong-rgb) / 0.55)', color: 'var(--text-600)' }}>{a}</span>
                 ))}
               </div>
             </div>
@@ -234,17 +235,12 @@ export default function ImpactPanel({ regulationId, fallbackSummary, focusEntity
   }, [focusEntityName, focusToken, impact])
 
   return (
-    <div className="glass-card" style={{ padding: 32 }}>
+    <div className="glass-card p-6 sm:p-8">
       <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
-        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-900)' }}>Context & Overview</h2>
-        <div className="flex items-center gap-1 p-1" style={{ background: 'rgb(var(--surface-rgb) / 0.65)', border: '1px solid rgb(var(--line-rgb) / 0.45)', borderRadius: 9999 }}>
+        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>Context & Overview</h2>
+        <div className="seg">
           {([['summary', 'Summary'], ['cards', 'Impact Cards']] as const).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setView(key)}
-              className="px-4 py-1.5 text-xs font-medium rounded-full transition-all"
-              style={{ background: view === key ? 'linear-gradient(135deg,var(--brand),var(--brand-light))' : 'transparent', color: view === key ? 'white' : 'var(--text-400)' }}
-            >
+            <button key={key} onClick={() => setView(key)} aria-pressed={view === key} className={`seg-item ${view === key ? 'is-on' : ''}`}>
               {label}
             </button>
           ))}
@@ -254,32 +250,39 @@ export default function ImpactPanel({ regulationId, fallbackSummary, focusEntity
       {!impact ? (
         <div className="space-y-4">
           {state === 'loading' && (
-            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--primary)' }}>
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--primary-light)' }} />
-              Preparing a detailed analysis for your firm — this can take up to a minute the first time.
+            <div role="status">
+              <div className="flex items-center gap-2 text-[13px] font-medium mb-4" style={{ color: 'var(--primary)' }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--primary-light)' }} aria-hidden="true" />
+                Preparing a detailed analysis for your firm. This can take up to a minute the first time.
+              </div>
+              <div className="space-y-2.5" aria-hidden="true">
+                <div className="skeleton h-4 w-full" />
+                <div className="skeleton h-4 w-11/12" />
+                <div className="skeleton h-4 w-2/3" />
+              </div>
             </div>
           )}
           {state === 'awaiting' && (
-            <div className="text-xs" style={{ color: 'var(--text-400)', lineHeight: 1.6 }}>
+            <div className="notice">
               This document is on Federal Register public inspection
               {scheduledPublication ? `, scheduled for publication on ${new Date(scheduledPublication + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}.
               The detailed analysis will be written from its full text once it's published.
             </div>
           )}
           {state === 'error' && (
-            <div className="text-xs" style={{ color: 'var(--text-400)' }}>
+            <div className="notice" role="alert">
               The detailed analysis couldn't be prepared right now.{' '}
-              <button className="underline" style={{ color: 'var(--primary)' }} onClick={() => { setState('loading'); setAttempt(a => a + 1) }}>Try again</button>
+              <button className="link" onClick={() => { setState('loading'); setAttempt(a => a + 1) }}>Try again</button>
             </div>
           )}
-          <p className="text-sm" style={{ color: fallbackSummary ? 'var(--text-600)' : 'var(--text-300)', lineHeight: 1.75 }}>
+          <p className="text-base" style={{ color: fallbackSummary ? 'var(--text-600)' : 'var(--text-400)', lineHeight: 1.7, maxWidth: '68ch' }}>
             {fallbackSummary || 'No summary is available for this item yet.'}
           </p>
         </div>
       ) : view === 'summary' ? (
         <SummaryView impact={impact} />
       ) : impact.impacts.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--text-300)' }}>This regulation does not map to a specific entity in your firm.</p>
+        <p className="text-sm" style={{ color: 'var(--text-400)' }}>This regulation does not map to a specific entity in your firm.</p>
       ) : (
         <div className="space-y-4">
           {impact.impacts.map(e => (

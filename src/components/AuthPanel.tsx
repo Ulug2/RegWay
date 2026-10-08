@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import PasswordInput from './PasswordInput'
 import PasswordRequirements from './PasswordRequirements'
+import { X } from './icons'
 import { passwordErrorMessage, passwordProblem } from '../lib/password'
 
 // Sign in, create an account, or ask for a reset link. Shown inside the
@@ -23,6 +24,7 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
   const [error, setError] = useState<string | null>(null)
   const [checkEmail, setCheckEmail] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+  const id = useId()
 
   // Escape closes the form, as the × does.
   useEffect(() => {
@@ -80,16 +82,14 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
   }
 
   return (
-    <div className="glass-modal w-full relative" style={{ padding: 32 }} role="region" aria-label={mode === 'sign-up' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : 'Sign in'}>
+    <div className="glass-modal w-full relative p-7 sm:p-8" role="region" aria-label={mode === 'sign-up' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : 'Sign in'}>
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
-          style={{ color: 'var(--text-300)' }}
+          className="btn-icon absolute top-3.5 right-3.5"
+          style={{ zIndex: 2 }}
         >
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          <X size={15} weight="bold" aria-hidden="true" />
         </button>
         {checkEmail ? (
           <div className="text-center py-4">
@@ -116,7 +116,7 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
           </div>
         ) : (
           <>
-            <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>
+            <h2 className="text-[22px] font-semibold mb-1 pr-8" style={{ color: 'var(--text-900)', letterSpacing: '-0.025em' }}>
               {mode === 'sign-up' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}
             </h2>
             <p className="text-sm mb-6" style={{ color: 'var(--text-400)' }}>
@@ -128,17 +128,22 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
             </p>
 
             {notice && mode === 'sign-in' && (
-              <div role="status" className="text-xs p-3 rounded-lg mb-4" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)', lineHeight: 1.6 }}>
+              <div role="status" className="notice mb-4">
                 {notice}
               </div>
             )}
 
             <form onSubmit={submit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>Email</label>
+                <label htmlFor={`${id}-email`} className="block text-[13px] font-medium mb-1.5" style={{ color: 'var(--text-600)' }}>Email</label>
                 <input
+                  id={`${id}-email`}
+                  name="email"
                   type="email"
+                  autoComplete="email"
+                  spellCheck={false}
                   required
+                  // The form opens because the user asked for it: start in its first field.
                   autoFocus
                   className="glass-input-rect"
                   value={email}
@@ -149,12 +154,11 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
               {mode !== 'forgot' && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-medium" style={{ color: 'var(--text-600)' }}>Password</label>
+                    <label htmlFor={`${id}-password`} className="block text-[13px] font-medium" style={{ color: 'var(--text-600)' }}>Password</label>
                     {mode === 'sign-in' && (
                       <button
                         type="button"
-                        className="text-xs font-medium"
-                        style={{ color: 'var(--primary)' }}
+                        className="link text-[13px]"
                         onClick={() => { setMode('forgot'); setError(null) }}
                       >
                         Forgot password?
@@ -162,6 +166,7 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
                     )}
                   </div>
                   <PasswordInput
+                    id={`${id}-password`}
                     required
                     value={password}
                     onChange={setPassword}
@@ -173,7 +178,7 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
               )}
 
               {error && (
-                <div className="text-xs p-3 rounded-lg" style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)' }}>
+                <div className="notice" role="alert">
                   {error}
                 </div>
               )}
@@ -184,12 +189,12 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
             </form>
 
             {mode === 'forgot' ? (
-              <button className="text-xs mt-5 w-full text-center" style={{ color: 'var(--primary)' }} onClick={backToSignIn}>
+              <button className="text-[13px] font-medium mt-5 w-full text-center hover:underline underline-offset-4" style={{ color: 'var(--primary)' }} onClick={backToSignIn}>
                 Back to sign in
               </button>
             ) : (
               <button
-                className="text-xs mt-5 w-full text-center"
+                className="text-[13px] font-medium mt-5 w-full text-center hover:underline underline-offset-4"
                 style={{ color: 'var(--primary)' }}
                 onClick={() => { setMode(m => (m === 'sign-up' ? 'sign-in' : 'sign-up')); setError(null) }}
               >

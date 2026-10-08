@@ -8,7 +8,7 @@ import Chip from '../Chip'
 // `null` means still loading: nothing is claimed until the holdings arrive.
 
 const NotRecorded = () => (
-  <span className="text-[10px] font-medium px-2 py-0.5" style={{ borderRadius: 9999, background: 'rgb(var(--neutral-rgb) / 0.15)', color: 'var(--text-400)' }}>
+  <span className="text-[11px] font-medium px-2 py-0.5" style={{ borderRadius: 9999, background: 'rgb(var(--neutral-rgb) / 0.15)', color: 'var(--text-400)' }}>
     Not recorded
   </span>
 )
@@ -59,7 +59,7 @@ export function HeldByFundsField({
           ))}
         </div>
       )}
-      <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-300)' }}>
+      <p className="text-xs mt-1.5" style={{ color: 'var(--text-300)' }}>
         {error ?? 'Saved as you select. A fund is shown developments that reach the companies it holds; leave it unset if unsure.'}
       </p>
     </div>
@@ -75,7 +75,7 @@ export function HoldingsSummary({ companyNames }: { companyNames: string[] | nul
         {companyNames?.length === 0 && <NotRecorded />}
       </div>
       {!!companyNames?.length && <p className="text-sm" style={{ color: 'var(--text-900)' }}>{companyNames.join(', ')}</p>}
-      <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-300)' }}>Set on each company's card under Portfolio Companies.</p>
+      <p className="text-xs mt-1.5" style={{ color: 'var(--text-300)' }}>Set on each company's card under Portfolio Companies.</p>
     </div>
   )
 }

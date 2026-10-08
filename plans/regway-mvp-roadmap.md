@@ -163,9 +163,11 @@ See Completed, "Roadmap items 2–5".
 
 ### 3. Small fixes found by the 2026-10-04 test pass — done except the footer
 See Completed, "Roadmap items 2–5". Still open:
-- **Dashboard footer links go nowhere** ("About Us", "Sources", "Legal
-  Disclaimers", "Privacy Policy"). They need real pages or text to point
-  to, which is content to write, not a code fix.
+- **Footer pages** ("About Us", "Sources", "Legal Disclaimers", "Privacy
+  Policy"). The links that went nowhere were removed in the redesign
+  (2026-10-08); the footer now carries a copyright line and "Informational
+  only. Not legal advice." The pages themselves are still content to
+  write, and the links come back when they exist.
 
 Dropped: live removal of matches on an open dashboard. Supabase Realtime
 can't filter delete events by firm, so every open dashboard would refetch
@@ -538,7 +540,8 @@ From the 11a review, still open:
 
 Other:
 - **Footer pages** (About Us, Sources, Legal Disclaimers, Privacy Policy)
-  are `href="#"` on the dashboard and the development page.
+  do not exist. The `href="#"` links to them were removed in the redesign
+  (item 16d).
 - **The known false positive** (the Section 301 manufacturing
   investigation matched to 3Pillar) is parked in item 17.
 
@@ -588,12 +591,12 @@ Verified on 2026-10-08 with the owner signed in on localhost (H.I.G.):
   `parseLegacyLocation("Miami, Florida")` gives city Miami, *country*
   Florida (only two-letter state codes are recognised). Affects rows that
   have `hq_location` but no `profile.hq`; H.I.G. is not one.
-- **The development page's "History" control does nothing**: "Today's
-  Status / Custom Range" and its date picker set state that nothing
-  reads.
-- **The development page shows the raw source id** ("sec_news",
-  "federal_register") under Regulatory Metadata, while cards use readable
-  names. Source names now live in three places (`data.ts` SOURCE_LABELS,
+- ~~The development page's "History" control does nothing~~: removed in
+  the redesign (item 16d). If a real history of a development is wanted
+  (how its status changed over time), that is a feature to design.
+- ~~The development page shows the raw source id~~: fixed in the redesign;
+  it shows "Federal Register", "SEC announcement" and so on. Source names
+  still live in three places (`data.ts` SOURCE_LABELS,
   `duplicates.ts` SOURCE_NAMES, the landing page's list).
 - **"JWT issued at future"**: the database now and then refuses a newly
   started function's first query. Two functions retry it
@@ -670,10 +673,16 @@ Left open by these three:
   were not looked at in dark.
 - Onboarding still runs the matchers at once (not an edit).
 
-### 16c. Frontend tooling to look at (from the owner, 2026-10-08)
+### 16c. Frontend tooling (from the owner, 2026-10-08) — installed
 Five Claude Code add-ons for frontend work, sent by the owner as a list
-("5 Claude Code Plugins for Better Websites"). Each link was opened on
-2026-10-08; none is installed. Two links in the list had typos (the
+("5 Claude Code Plugins for Better Websites"). All five were installed on
+2026-10-08 and used for the redesign (item 16d): the Taste Skill set (14
+skills) and Web Design Guidelines in `.claude/skills/` (`skills-lock.json`
+records their versions), Playwright CLI globally (`npm i -g
+@playwright/cli`) with its skill in `.claude/skills/playwright-cli`, and
+Awesome Design as the model for RegWay's own `DESIGN.md` (its files
+describe other companies' sites, so none is kept in the repo; fetch one
+with `npx getdesign@latest add <site>`). Two links in the list had typos (the
 taste-skill owner is `Leonxlnx`, with a lowercase L; "SKILL.ma" is
 `SKILL.md`).
 
@@ -689,6 +698,38 @@ Suggested order if any are adopted: Playwright CLI (tooling only), then a
 `DESIGN.md` for RegWay, then one Web Design Guidelines audit. Questions for
 the owner: which of these do you want installed, and is the aim a redesign
 or an audit of what exists?
+
+### 16d. Redesign with the five add-ons (2026-10-08) — done, on branch `redesign`
+Owner: "install all of them. Then redesign our app from what you learned
+from those plugins. But keep the same colors and improve everything else."
+Notes: `prompts/redesign.md`. The rules the UI now follows: `DESIGN.md`.
+Not merged: the branch is for the owner to look at first.
+
+Left open by it:
+- **Merge** `redesign` into `main` (which deploys it) once the owner has
+  seen it.
+- **"Export Memo"** in the chat header was removed: it had no handler. A
+  real export (the conversation as a document) is a feature to build if
+  wanted.
+- **Footer pages** still don't exist (see item 3).
+- **Not looked at in a browser**: the fund and company Profile cards
+  opened in dark mode, the password-reset screen, the dismissed list with
+  items in it, tablet widths between 768 and 1024px, and Safari/Firefox.
+  All screens were checked in Chromium at 1440px and 390px, light and dark.
+- **Bundle**: the script is 647 kB (179 kB gzipped) in one file. Splitting
+  the chat drawer and the profile screens into their own chunks would cut
+  the first load.
+- **URLs**: the app still has one address for every screen, so a page
+  can't be bookmarked or opened in a new tab, and the browser's Back
+  button leaves the app. The interface guidelines flag this; it is a
+  routing change, not a visual one.
+- **Company logos** are loaded at whatever size was uploaded.
+- **Geopolitical violet and enforcement amber** are a second and third
+  colour beside the accent. Kept, because the owner asked for the colours
+  to stay.
+- **Image to Code and the image-generation skills** (`imagegen-*`,
+  `brandkit`) are installed and unused: they need an image generator,
+  which this setup doesn't have.
 
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
@@ -812,6 +853,30 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### 16d: redesign, same colours (2026-10-08, branch `redesign`)
+Notes: `prompts/redesign.md`; rules: `DESIGN.md`.
+- **Type**: Geist and Geist Mono, bundled; larger reading text; nothing
+  under 12px; small-caps labels became sentence-case headings.
+- **Landing**: copy on the left and a real picture of a company page on the
+  right (one per theme, regenerated by `CAPTURE=landing`); the sign-in form
+  takes the picture's place. Sections each have their own layout; sources
+  are grouped by region.
+- **App**: one header and footer on every page; the three big dashboard
+  buttons became one bar; feed cards set "Why it's here" apart; the
+  development page has one action row and one side card; loading shapes
+  and composed empty states.
+- **Controls**: one set of button, tab, field, label and icon styles
+  (`src/index.css`, `src/components/icons.ts`).
+- **Accessibility**: skip link, visible keyboard focus, labels tied to
+  fields, names on icon buttons, pressed/expanded states, reduced motion,
+  text contrast, phone layouts.
+- **Removed**: the "History" control and "Export Memo" (neither did
+  anything) and the footer links to pages that don't exist.
+- **Fixed on the way**: a page now opens at its top and Back returns to the
+  place in the list; the development page names its source in words and
+  formats dates.
+- Checks: type-checks, 416 unit tests, 116 browser tests (10 new).
 
 ### 16b: wait before AI work, official document as the card, dark mode (2026-10-08)
 Notes: `prompts/16b-decided-tasks.md`.

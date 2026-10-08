@@ -102,7 +102,7 @@ test.describe('firm page', () => {
   })
 
   test('dismissing still works after a fund page has been opened', async ({ page }) => {
-    await openFundPage(page, 'HF Harbor Fund I Delaware LP')
+    await openFundPage(page, 'Harbor Fund I Delaware LP')
     await expect(page.getByText(REGS.tariff.title)).toBeVisible()
 
     await page.getByRole('button', { name: 'Dashboard' }).click()
@@ -133,12 +133,12 @@ test.describe('firm page', () => {
 test.describe('fund and company pages', () => {
   test('a fund opens its own page: who it is, what it holds, and what reaches it through a company it holds', async ({ page, backend }) => {
     backend.tables.fund_holdings.push({ firm_id: FIRM_ID, fund_id: 'fund-1', portfolio_company_id: 'co-aero' })
-    await openFundPage(page, 'HF Harbor Fund I Delaware LP')
+    await openFundPage(page, 'Harbor Fund I Delaware LP')
 
     await expect(page.getByRole('heading', { name: 'Harbor Fund I' })).toBeVisible()
     await expect(page.getByText('Delaware LP · $1B · United States')).toBeVisible()
     await expect(page.getByText('Holds: Aero Logistics')).toBeVisible()
-    await expect(page.getByPlaceholder('Ask RegWay AI about Harbor Fund I...')).toBeVisible()
+    await expect(page.getByPlaceholder('Ask RegWay AI about Harbor Fund I…')).toBeVisible()
 
     await expect(titles(page)).toHaveText([REGS.tariff.title])
     await expect(page.getByText('Indirect: Harbor Fund I holds Aero Logistics, which has a direct connection')).toBeVisible()
@@ -147,13 +147,13 @@ test.describe('fund and company pages', () => {
   })
 
   test('a fund with no matches says so', async ({ page }) => {
-    await openFundPage(page, 'HF Harbor Fund II Cayman LP')
+    await openFundPage(page, 'Harbor Fund II Cayman LP')
     await expect(page.getByText('Portfolio companies held: not recorded')).toBeVisible()
     await expect(page.getByText('No developments have been confirmed relevant to this fund yet.')).toBeVisible()
   })
 
   test("a company shows its own matches with its own reason, without re-scanning a recently scanned company", async ({ page, backend }) => {
-    await openCompanyPage(page, 'G GetixHealth Healthcare')
+    await openCompanyPage(page, 'GetixHealth Healthcare')
 
     await expect(page.getByRole('heading', { name: 'GetixHealth' })).toBeVisible()
     await expect(page.getByText('Held by: not recorded')).toBeVisible()
@@ -169,7 +169,7 @@ test.describe('fund and company pages', () => {
       backend.tables.portfolio_companies.find(c => c.id === companyId)!.last_scanned_at = new Date().toISOString()
       return { json: { found: 1 } }
     }
-    await openCompanyPage(page, 'G GetixHealth Healthcare')
+    await openCompanyPage(page, 'GetixHealth Healthcare')
 
     await expect(titles(page)).toHaveText([REGS.medicare.title])
     const scans = backend.called('POST', 'functions/v1/company-regulations')
@@ -178,7 +178,7 @@ test.describe('fund and company pages', () => {
 })
 
 test('opening a development from a company page and going back returns to that page', async ({ page }) => {
-  await openCompanyPage(page, 'G GetixHealth Healthcare')
+  await openCompanyPage(page, 'GetixHealth Healthcare')
   await page.getByText(REGS.medicare.title).click()
   await page.getByRole('button', { name: /Back/ }).first().click()
   await expect(page.getByRole('heading', { name: 'GetixHealth' })).toBeVisible()
@@ -301,7 +301,7 @@ test.describe('profile opened from a company page', () => {
     await signIn(page)
     await page.goto('/')
     await page.getByRole('button', { name: 'Portfolio Companies' }).click()
-    await page.getByRole('button', { name: 'G GetixHealth Healthcare' }).click()
+    await page.getByRole('button', { name: 'GetixHealth Healthcare' }).click()
     await page.getByRole('button', { name: 'Edit profile' }).click()
 
     await expect(page.getByRole('button', { name: 'Back to Dashboard' })).toHaveCount(0)

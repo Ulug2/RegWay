@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 @import 'tailwindcss';
 
 @theme {
@@ -14,7 +15,8 @@
   --color-amber: #F59E0B;
   --color-emerald: #10B981;
   --color-rose: #F43F5E;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 * {
@@ -44,8 +46,10 @@
   --text-900: #0F172A;
   --text-600: #334155;
   --text-500: #475569;
-  --text-400: #64748B;
-  --text-300: #94A3B8;
+  /* Both pass 4.5:1 on the canvas: these carry helper text and dates. */
+  --text-400: #5A6B83;
+  --text-300: #6A788E;
+  --placeholder: #94A3B8;
   --primary: #0284C7;
   --primary-light: #38BDF8;
   --primary-dark: #0369A1;
@@ -54,8 +58,12 @@
   --brand: #0284C7;
   --brand-light: #38BDF8;
   --warning: #B45309;
+  --violet: #7C3AED;
   --code-block: #0F172A;
   --hover-tint: #F0F9FF;
+  --shadow-card: 0 1px 2px rgb(var(--ink-rgb) / 0.03), 0 6px 20px rgb(var(--primary-rgb) / 0.05);
+  --shadow-lift: 0 2px 4px rgb(var(--ink-rgb) / 0.04), 0 14px 34px rgb(var(--primary-rgb) / 0.13);
+  --shadow-float: 0 10px 30px rgb(var(--ink-rgb) / 0.12);
 }
 
 :root[data-theme='dark'] {
@@ -72,15 +80,20 @@
   --text-600: #CBD5E1;
   --text-500: #B4C0D0;
   --text-400: #94A3B8;
-  --text-300: #7C8BA1;
+  --text-300: #8493A8;
+  --placeholder: #64748B;
   --primary: #38BDF8;
   --primary-light: #7DD3FC;
   --primary-dark: #BAE6FD;
   --primary-rgb: 56 189 248;
   --primary-light-rgb: 125 211 252;
   --warning: #FBBF24;
+  --violet: #A78BFA;
   --code-block: #020617;
   --hover-tint: rgb(56 189 248 / 0.12);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.3), 0 14px 34px rgb(0 0 0 / 0.35);
+  --shadow-float: 0 10px 30px rgb(0 0 0 / 0.45);
 }
 
 /* Tailwind's light hover tints, which components use by class name. */
@@ -97,18 +110,111 @@
   opacity: 0.35;
 }
 
+/* Shape, motion and type (see DESIGN.md).
+   Radius: pills for anything pressed (buttons, chips, tabs), 16px cards,
+   12px tiles inside cards, 10px fields, 24px dialogs. */
+:root {
+  --r-card: 16px;
+  --r-tile: 12px;
+  --r-field: 10px;
+  --r-dialog: 24px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--line-strong-rgb) / 0.55) transparent;
+}
+
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--canvas);
   color: var(--text-900);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-* {
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: rgb(var(--primary-rgb) / 0.22);
+}
+
+button,
+a,
+select,
+summary,
+[role='button'] {
+  touch-action: manipulation;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* One focus ring everywhere, for the keyboard only. Fields draw their own. */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
+/* The properties interactive elements animate; never `transition: all`. */
+@utility transition-ui {
+  transition-property: background-color, border-color, color, box-shadow, transform, opacity;
+  transition-duration: 0.18s;
+  transition-timing-function: ease;
+}
+
+/* Dates, counts and amounts line up. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 9999px;
+  background: var(--brand);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* Inner scroll areas show a thin bar on hover; the page keeps its own. */
+*:not(html) {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-*::-webkit-scrollbar {
+*:not(html)::-webkit-scrollbar {
   display: none;
 }
 .scrollable:hover {
@@ -129,7 +235,8 @@ body {
   background: rgb(var(--surface-rgb) / 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-radius: 16px;
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
 }
 .glass-card::before {
   content: '';
@@ -151,7 +258,8 @@ body {
   background: rgb(var(--surface-rgb) / 0.55);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border-radius: 16px;
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
 }
 .glass-card-light::before {
   content: '';
@@ -173,7 +281,8 @@ body {
   background: rgb(var(--surface-rgb) / 0.84);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-radius: 24px;
+  border-radius: var(--r-dialog);
+  box-shadow: var(--shadow-lift);
 }
 .glass-modal::before {
   content: '';
@@ -209,8 +318,11 @@ body {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .glass-input:focus {
-  border-color: rgb(var(--primary-rgb) / 0.50);
-  box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / 0.08);
+  border-color: rgb(var(--primary-rgb) / 0.65);
+  box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / 0.16);
+}
+.glass-input::placeholder {
+  color: var(--placeholder);
 }
 
 .glass-input-rect {
@@ -218,68 +330,344 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgb(var(--line-rgb) / 0.50);
-  border-radius: 10px;
+  border-radius: var(--r-field);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   width: 100%;
   padding: 10px 14px;
   font-size: 14px;
   color: var(--text-900);
-  font-family: 'Inter', sans-serif;
+  font-family: inherit;
+}
+.glass-input-rect:hover {
+  border-color: rgb(var(--line-strong-rgb) / 0.85);
 }
 .glass-input-rect:focus {
-  border-color: rgb(var(--primary-rgb) / 0.50);
-  box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / 0.08);
+  border-color: rgb(var(--primary-rgb) / 0.65);
+  box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / 0.16);
 }
 .glass-input-rect::placeholder {
-  color: var(--text-300);
+  color: var(--placeholder);
+}
+.glass-input-rect:disabled {
+  opacity: 0.6;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--brand), var(--brand-light));
-  color: white;
-  border-radius: 9999px;
-  padding: 11px 24px;
-  font-weight: 600;
-  font-size: 14px;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
-  box-shadow: 0 4px 14px rgb(var(--primary-rgb) / 0.30);
-  font-family: 'Inter', sans-serif;
-}
-.btn-primary:hover {
-  opacity: 0.92;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgb(var(--primary-rgb) / 0.38);
-}
-.btn-primary:active {
-  transform: translateY(0);
-}
+/* In the components layer, so a utility class on the same element (hidden,
+   w-full, a breakpoint variant) still wins. */
+@layer components {
+  /* ── Buttons ───────────────────────────────────────────────────────────
+     Every button is a pill. Primary: the one action a screen is for.
+     Ghost: its alternative. Tool: an action in a row of several
+     (`aria-pressed="true"` or `.is-on` when it is switched on). */
+  .btn-primary,
+  .btn-ghost,
+  .btn-tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 9999px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 20px;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.2s ease, transform 0.15s var(--ease-out), filter 0.18s ease;
+  }
+  .btn-primary:active:not(:disabled),
+  .btn-ghost:active:not(:disabled),
+  .btn-tool:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn-primary:disabled,
+  .btn-ghost:disabled,
+  .btn-tool:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
 
-.btn-ghost {
-  background: rgb(var(--surface-rgb) / 0.50);
-  color: var(--text-600);
-  border-radius: 9999px;
-  padding: 11px 24px;
-  font-weight: 500;
-  font-size: 14px;
-  border: 1px solid rgb(var(--line-rgb) / 0.55);
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.15s ease;
-  font-family: 'Inter', sans-serif;
-}
-.btn-ghost:hover {
-  background: rgb(var(--surface-rgb) / 0.75);
-  transform: translateY(-1px);
-}
+  .btn-primary {
+    background: linear-gradient(135deg, var(--brand), var(--brand-light));
+    color: white;
+    padding: 10px 22px;
+    font-weight: 600;
+    border: none;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 4px 14px rgb(var(--primary-rgb) / 0.28);
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.05);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 6px 20px rgb(var(--primary-rgb) / 0.36);
+  }
+  .btn-primary:focus-visible {
+    outline-offset: 3px;
+  }
+  .btn-lg {
+    padding: 13px 28px;
+    font-size: 15px;
+  }
+  .btn-sm {
+    padding: 7px 16px;
+    font-size: 13px;
+  }
 
-.glass-lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.glass-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgb(var(--line-rgb) / 0.40), 0 2px 8px rgba(0,0,0,0.06);
+  .btn-ghost {
+    background: rgb(var(--surface-rgb) / 0.55);
+    color: var(--text-600);
+    padding: 10px 22px;
+    font-weight: 500;
+    border: 1px solid rgb(var(--line-strong-rgb) / 0.55);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: rgb(var(--surface-rgb) / 0.95);
+    border-color: rgb(var(--line-strong-rgb) / 0.9);
+    color: var(--text-900);
+  }
+
+  .btn-tool {
+    background: rgb(var(--surface-rgb) / 0.6);
+    color: var(--text-600);
+    padding: 8px 14px;
+    font-weight: 500;
+    border: 1px solid rgb(var(--line-rgb) / 0.55);
+  }
+  .btn-tool:hover:not(:disabled) {
+    background: var(--hover-tint);
+    border-color: rgb(var(--line-strong-rgb) / 0.8);
+    color: var(--text-900);
+  }
+  .btn-tool[aria-pressed='true'],
+  .btn-tool[aria-expanded='true'],
+  .btn-tool.is-on,
+  .btn-tool.is-accent {
+    background: rgb(var(--primary-rgb) / 0.1);
+    border-color: rgb(var(--primary-rgb) / 0.28);
+    color: var(--primary);
+  }
+  .btn-tool.is-warn {
+    background: rgb(245 158 11 / 0.12);
+    border-color: rgb(245 158 11 / 0.35);
+    color: var(--warning);
+  }
+
+  /* A round button holding only an icon. */
+  .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    color: var(--text-400);
+    transition: background-color 0.18s ease, color 0.18s ease, opacity 0.18s ease, transform 0.15s var(--ease-out);
+  }
+  .btn-icon:hover:not(:disabled) {
+    background: var(--hover-tint);
+    color: var(--text-900);
+  }
+  .btn-icon:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+  .btn-icon:disabled {
+    opacity: 0.3;
+  }
+
+  /* Inline text actions ("Edit profile", "Clear filters", "Try again"). */
+  .link {
+    color: var(--primary);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: rgb(var(--primary-rgb) / 0.35);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.18s ease, color 0.18s ease;
+  }
+  .link:hover {
+    text-decoration-color: currentColor;
+  }
+
+  /* ── Segmented control (tabs, view switches) ─────────────────────────── */
+  .seg {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 9999px;
+    background: rgb(var(--surface-rgb) / 0.6);
+    border: 1px solid rgb(var(--line-rgb) / 0.5);
+  }
+  .seg-item {
+    padding: 7px 16px;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+    color: var(--text-400);
+    white-space: nowrap;
+    transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.2s ease, transform 0.15s var(--ease-out);
+  }
+  .seg-item:hover {
+    color: var(--text-900);
+  }
+  .seg-item:active {
+    transform: scale(0.98);
+  }
+  .seg-item.is-on {
+    background: linear-gradient(135deg, var(--brand), var(--brand-light));
+    color: white;
+    box-shadow: 0 2px 8px rgb(var(--primary-rgb) / 0.25);
+  }
+  .seg-lg .seg-item {
+    padding: 9px 20px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* The dashboard's three levels (PE Firm / Fund Structure / Portfolio
+     Companies): one bar, the open level filled. */
+  .level-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 14px 10px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: -0.01em;
+    color: var(--text-600);
+    text-align: center;
+    transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.2s ease, transform 0.15s var(--ease-out);
+  }
+  .level-tab:hover {
+    background: var(--hover-tint);
+    color: var(--text-900);
+  }
+  .level-tab:active {
+    transform: scale(0.985);
+  }
+  .level-tab[aria-pressed='true'] {
+    background: linear-gradient(135deg, rgb(var(--ice-rgb) / 0.95), rgb(var(--line-rgb) / 0.7));
+    color: var(--primary);
+    box-shadow: inset 0 0 0 1px rgb(var(--primary-light-rgb) / 0.5), 0 4px 14px rgb(var(--primary-rgb) / 0.14);
+  }
+  .level-count {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-300);
+  }
+  .level-tab[aria-pressed='true'] .level-count {
+    color: inherit;
+    opacity: 0.75;
+  }
+  @media (max-width: 480px) {
+    .level-tab {
+      font-size: 13px;
+      padding: 12px 6px;
+    }
+    .level-count {
+      display: none;
+    }
+  }
+
+  /* A field that holds chips as well as its input (tags, pickers). */
+  .field-box {
+    min-height: 44px;
+    background: rgb(var(--surface-rgb) / 0.7);
+    border: 1px solid rgb(var(--line-rgb) / 0.5);
+    border-radius: var(--r-field);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .field-box:focus-within {
+    border-color: rgb(var(--primary-rgb) / 0.65);
+    box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / 0.16);
+  }
+
+  /* ── Small pieces ─────────────────────────────────────────────────────── */
+  /* The heading of a block inside a card: sentence case, not small caps. */
+  .section-label {
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 600;
+    color: var(--text-900);
+    letter-spacing: -0.005em;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .notice {
+    padding: 12px 14px;
+    border-radius: var(--r-tile);
+    background: rgb(var(--primary-rgb) / 0.06);
+    border: 1px solid rgb(var(--primary-rgb) / 0.16);
+    color: var(--text-600);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: var(--r-tile);
+    background: rgb(var(--ice-rgb) / 0.85);
+    color: var(--primary);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .empty-state {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 40px 24px;
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-400);
+    border: 1px dashed rgb(var(--line-strong-rgb) / 0.6);
+    border-radius: var(--r-card);
+  }
+
+  /* Placeholder shapes while a list loads. */
+  @keyframes skeleton-sweep {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  .skeleton {
+    border-radius: 6px;
+    background: linear-gradient(90deg, rgb(var(--line-rgb) / 0.22) 25%, rgb(var(--line-rgb) / 0.42) 37%, rgb(var(--line-rgb) / 0.22) 63%);
+    background-size: 400% 100%;
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
+  }
+
+  .glass-lift {
+    transition: transform 0.2s var(--ease-out), box-shadow 0.2s ease;
+  }
+  .glass-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
+  }
+  .glass-lift:active {
+    transform: translateY(0) scale(0.995);
+  }
+
+  .site-footer {
+    background: rgb(var(--surface-rgb) / 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgb(var(--line-rgb) / 0.3);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* RegWay AI "thinking" dots (shown next to the status phrase before the
@@ -350,7 +738,7 @@ body {
   border-radius: 4px;
   padding: 1px 5px;
   font-size: 0.9em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
 }
 .ai-markdown pre {
   background: var(--code-block);
@@ -392,96 +780,121 @@ select.glass-input-rect {
   padding-right: 32px;
 }
 
-/* ── Landing page motion ───────────────────────────────────────────────
-   Sign-in in place: the hero copy narrows to the left and the form slides
-   out from behind it (side by side from lg; stacked below on smaller
-   screens). Sections reveal as they scroll into view (Reveal.tsx). */
-
-.hero-row {
-  display: flex;
-  flex-direction: column;
+/* ── Landing page ──────────────────────────────────────────────────────
+   The hero is copy on the left and a picture of the product on the right
+   (stacked on small screens). Signing in happens in place: the form takes
+   the picture's spot. Sections fade up as they scroll into view
+   (Reveal.tsx). */
+.hero-grid {
+  display: grid;
+  gap: 40px;
   align-items: center;
 }
 .hero-copy {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 900px;
-  text-align: center;
-  transition: max-width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  min-width: 0;
+}
+.hero-side {
+  display: grid;
+  min-width: 0;
+}
+.hero-side > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.hero-shot {
+  align-self: center;
+  transition: opacity 0.35s ease, transform 0.6s var(--ease-out), visibility 0s linear 0s;
 }
 .hero-auth {
+  align-self: center;
+  justify-self: center;
   width: 100%;
-  max-width: 400px;
-  max-height: 0;
-  overflow: hidden;
+  max-width: 420px;
   opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), max-height 0.7s ease, margin 0.7s ease;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition: opacity 0.4s ease 0.08s, transform 0.6s var(--ease-out) 0.08s;
 }
-.hero-row.is-open .hero-auth {
-  max-height: 1200px;
-  overflow: visible;
+.hero-side.is-open .hero-shot {
+  opacity: 0;
+  transform: scale(0.97);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.6s var(--ease-out), visibility 0s linear 0.3s;
+}
+.hero-side.is-open .hero-auth {
   opacity: 1;
   transform: none;
-  margin-top: 40px;
+  pointer-events: auto;
+}
+@media (max-width: 1023px) {
+  /* Stacked: the form follows the text directly. */
+  .hero-side.is-open .hero-shot {
+    display: none;
+  }
 }
 @media (min-width: 1024px) {
-  .hero-row {
-    flex-direction: row;
-    justify-content: center;
+  .hero-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 64px;
   }
-  .hero-row.is-open .hero-copy {
-    max-width: 540px;
-  }
-  .hero-auth {
-    width: 0;
-    max-width: none;
-    max-height: none;
-    flex-shrink: 0;
-    transform: translateX(-80px) scale(0.97);
-    transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease 0.1s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), margin 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  .hero-row.is-open .hero-auth {
-    width: 400px;
-    margin-top: 0;
-    margin-left: 72px;
-  }
-  /* Laid out at full width while the column opens, so it slides rather than squeezes. */
-  .hero-auth > * {
-    width: 400px;
-  }
+}
+
+.shot-frame {
+  border-radius: 18px;
+  padding: 6px;
+  background: rgb(var(--surface-rgb) / 0.55);
+  border: 1px solid rgb(var(--line-rgb) / 0.55);
+  box-shadow: var(--shadow-lift);
+}
+.shot-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 13px;
+  /* The picture is cut mid-list: let it fade out rather than end on a cut line. */
+  -webkit-mask-image: linear-gradient(#000 80%, transparent);
+  mask-image: linear-gradient(#000 80%, transparent);
+}
+.shot-frame img.shot-dark,
+:root[data-theme='dark'] .shot-frame img.shot-light {
+  display: none;
+}
+:root[data-theme='dark'] .shot-frame img.shot-dark {
+  display: block;
 }
 
 .reveal {
   opacity: 0;
-  transition: opacity 0.8s ease, transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.reveal-from-left {
-  transform: translateX(-56px);
-}
-.reveal-from-right {
-  transform: translateX(56px);
-}
-.reveal-from-up {
-  transform: translateY(32px);
+  transform: translateY(18px);
+  transition: opacity 0.7s ease, transform 0.8s var(--ease-out);
 }
 .reveal.is-visible {
   opacity: 1;
   transform: none;
 }
 
+/* ── Reduced motion ────────────────────────────────────────────────────
+   Nothing slides, lifts or pulses; state changes are simply there. */
 @media (prefers-reduced-motion: reduce) {
-  .hero-copy,
-  .hero-auth,
-  .reveal {
-    transition: none !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
   }
-  .hero-auth,
-  .reveal {
+  .reveal,
+  .hero-auth {
+    transition: none !important;
     transform: none !important;
   }
   .reveal {
     opacity: 1;
+  }
+  .glass-lift:hover {
+    transform: none;
   }
 }

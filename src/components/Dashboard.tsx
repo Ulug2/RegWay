@@ -8,7 +8,9 @@ import type { MatchedRegulation, PortfolioCompany, Fund, Firm } from '../lib/typ
 import { DEFAULT_FILTER, type FeedFilter } from '../lib/feedFilter'
 import type { DaySelection } from '../lib/feedDays'
 import { markVisit } from '../lib/lastVisit'
-import LogoMark from './LogoMark'
+import PageHeader from './PageHeader'
+import SiteFooter from './SiteFooter'
+import { GearSix } from './icons'
 import EntityFeed from './EntityFeed'
 import AiAskBar from './AiAskBar'
 import { dayKey, type EntityRef } from './EntityPage'
@@ -22,11 +24,7 @@ interface DashboardProps {
 }
 
 function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="max-w-2xl mx-auto text-center text-sm" style={{ color: 'var(--text-300)', padding: '24px 0' }}>
-      {message}
-    </div>
-  )
+  return <div className="empty-state">{message}</div>
 }
 
 type Toggle = 'pe' | 'fund' | 'portfolio'
@@ -191,116 +189,77 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     .slice(0, 2)
     .toUpperCase()
 
+  const tabCounts: Record<Toggle, number | null> = { pe: null, fund: funds.length || null, portfolio: companies.length || null }
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-[100dvh] flex flex-col">
+      <a href="#main" className="skip-link">Skip to content</a>
+      <PageHeader width="max-w-[1200px]">
+        <button onClick={() => onNavigate('profile', { tab: 'firm' })} className="btn-tool relative">
+          <GearSix size={16} aria-hidden="true" />
+          Settings
+          {completion.ready && completion.incomplete.length > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+              style={{ background: 'var(--brand)', boxShadow: '0 0 0 2px var(--canvas)' }}
+              title="Profile incomplete"
+            />
+          )}
+        </button>
+        {/* Avatar: click for Profile */}
+        <button
+          className="w-9 h-9 flex items-center justify-center text-[13px] font-semibold text-white rounded-full transition-transform active:scale-95"
+          style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))' }}
+          title="Profile"
+          aria-label="Profile"
+          onClick={() => onNavigate('profile')}
+        >
+          {initials}
+        </button>
+      </PageHeader>
 
-      {/* Top Nav */}
-      <header className="glass-nav sticky top-0 z-40">
-        <div className="max-w-[1440px] mx-auto px-8 h-20 flex items-center">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <LogoMark size={32} />
-            <span className="font-semibold text-base" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
+      <main id="main" className="flex-1 w-full max-w-[1200px] mx-auto px-5 sm:px-8 pt-10 sm:pt-14 pb-16">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-9">
+            <h1 className="text-[28px] sm:text-[32px] font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.035em', lineHeight: 1.15 }}>
+              {greeting()}, {firstName}.
+            </h1>
+            <p className="text-[15px] mt-2" style={{ color: 'var(--text-400)' }}>
+              {firm ? `Here's what's moving across ${firm.name} today.` : "Here's what's moving across your firm today."}
+            </p>
           </div>
 
-          <div className="ml-auto flex items-center gap-3">
-            {/* Settings pill */}
-            <button
-              onClick={() => onNavigate('profile', { tab: 'firm' })}
-              className="relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:bg-sky-50"
-              style={{
-                background: 'rgb(var(--surface-rgb) / 0.60)',
-                border: '1px solid rgb(var(--line-rgb) / 0.40)',
-                color: 'var(--text-600)',
-                borderRadius: 9999,
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="2" stroke="var(--text-400)" strokeWidth="1.3"/>
-                <path d="M7 1v1.5M7 11.5V13M13 7h-1.5M2.5 7H1M11.1 2.9l-1.1 1.1M4 9l-1.1 1.1M11.1 11.1L10 10M4 5L2.9 3.9" stroke="var(--text-400)" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-              Settings
-              {completion.ready && completion.incomplete.length > 0 && (
-                <span
-                  className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
-                  style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', boxShadow: '0 0 0 2px var(--canvas)' }}
-                  title="Profile incomplete"
-                />
-              )}
-            </button>
+          {failingSources.length > 0 && (
+            <div className="notice mb-8" role="status">
+              {failingSources.length === 1
+                ? `${failingSources[0]} hasn't updated successfully recently. Recent items from this source may be missing.`
+                : `${failingSources.join(', ')} haven't updated successfully recently. Recent items from these sources may be missing.`}
+            </div>
+          )}
 
-            {/* Avatar — click for Profile */}
-            <button
-              className="w-9 h-9 flex items-center justify-center text-sm font-semibold text-white rounded-full"
-              style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))' }}
-              title="Profile"
-              onClick={() => onNavigate('profile')}
-            >
-              {initials}
-            </button>
+          <ProfileReminder completion={completion} onOpen={(tab, focusId) => onNavigate('profile', { tab, focusId })} />
+
+          {/* The three levels of the firm. Pressing the open one closes it. */}
+          <div className="grid grid-cols-3 gap-1 p-1" style={{ borderRadius: 'var(--r-card)', background: 'rgb(var(--surface-rgb) / 0.6)', border: '1px solid rgb(var(--line-strong-rgb) / 0.5)', boxShadow: 'var(--shadow-card)' }}>
+            {toggles.map(t => {
+              const active = activeToggle === t.key
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => selectToggle(t.key)}
+                  aria-pressed={active}
+                  className="level-tab"
+                >
+                  {t.label}
+                  {tabCounts[t.key] !== null && <span className="level-count num" aria-hidden="true">{tabCounts[t.key]}</span>}
+                </button>
+              )
+            })}
           </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-[1440px] mx-auto w-full px-8" style={{ paddingTop: 56, paddingBottom: 64 }}>
-
-        {/* Greeting */}
-        <div className="text-center" style={{ marginBottom: 48 }}>
-          <h1 className="text-2xl font-semibold mb-2" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>
-            {greeting()}, {firstName}.
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--text-400)' }}>
-            {firm ? `Here's what's moving across ${firm.name} today.` : "Here's what's moving across your firm today."}
-          </p>
-        </div>
-
-        {failingSources.length > 0 && (
-          <div
-            className="max-w-2xl mx-auto text-xs text-center"
-            style={{ marginBottom: 32, padding: '10px 16px', borderRadius: 12, background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)', color: 'var(--text-600)' }}
-          >
-            {failingSources.length === 1
-              ? `${failingSources[0]} hasn't updated successfully recently — recent items from this source may be missing.`
-              : `${failingSources.join(', ')} haven't updated successfully recently — recent items from these sources may be missing.`}
-          </div>
-        )}
-
-        <ProfileReminder completion={completion} onOpen={(tab, focusId) => onNavigate('profile', { tab, focusId })} />
-
-        {/* 3-Button Toggle Bar */}
-        <div className="max-w-2xl mx-auto grid grid-cols-3 gap-4">
-          {toggles.map(t => {
-            const active = activeToggle === t.key
-            return (
-              <button
-                key={t.key}
-                onClick={() => selectToggle(t.key)}
-                className="glass-lift text-center font-semibold transition-all"
-                style={{
-                  borderRadius: 16,
-                  padding: '28px 16px',
-                  fontSize: 16,
-                  background: active
-                    ? 'linear-gradient(135deg, rgb(var(--ice-rgb) / 0.95), rgb(var(--line-rgb) / 0.70))'
-                    : 'rgb(var(--surface-rgb) / 0.88)',
-                  backdropFilter: 'blur(20px) saturate(160%)',
-                  WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-                  border: active ? '1.5px solid rgb(var(--primary-light-rgb) / 0.55)' : '1px solid rgb(var(--line-strong-rgb) / 0.55)',
-                  color: active ? 'var(--primary)' : 'var(--text-600)',
-                  boxShadow: active
-                    ? 'inset 0 0 0 1.5px rgb(var(--primary-light-rgb) / 0.35), 0 8px 24px rgb(var(--primary-rgb) / 0.18)'
-                    : '0 4px 16px rgb(var(--ink-rgb) / 0.08)',
-                }}
-              >
-                {t.label}
-              </button>
-            )
-          })}
         </div>
 
         {/* State-driven content */}
-        <div style={{ marginTop: activeToggle ? 40 : 0, marginBottom: activeToggle ? 48 : 0 }}>
+        <div style={{ marginTop: activeToggle ? 32 : 0, marginBottom: activeToggle ? 48 : 0 }}>
           {activeToggle === 'pe' && (
             <EntityFeed
               items={peRegs ?? undefined}
@@ -313,112 +272,61 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           )}
 
           {activeToggle === 'fund' && (
-            <div className="space-y-8">
-              {funds.length === 0 ? (
-                <EmptyState message="No funds on file yet." />
-              ) : (
-                <div className="flex gap-4 overflow-x-auto scrollable justify-center flex-wrap pb-2">
-                  {funds.map(f => {
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => openEntity({ type: 'fund', id: f.id })}
-                        className="glass-card-light glass-lift flex-shrink-0 w-44 text-left p-5"
-                      >
-                        <div
-                          className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4"
-                          style={{ background: 'rgb(var(--ice-rgb) / 0.85)', color: 'var(--primary)', borderRadius: 12 }}
-                        >
-                          {f.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="text-sm font-semibold" style={{ color: 'var(--text-900)' }}>{f.name}</div>
-                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>{f.structure ?? 'Structure n/a'}</div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-
-            </div>
+            funds.length === 0 ? (
+              <EmptyState message="No funds on file yet." />
+            ) : (
+              <div className="max-w-2xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {funds.map(f => (
+                  <button key={f.id} onClick={() => openEntity({ type: 'fund', id: f.id })} className="glass-card-light glass-lift text-left p-5 min-w-0">
+                    <div className="tile w-11 h-11 text-sm mb-4" aria-hidden="true">
+                      {f.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="text-sm font-semibold break-words" style={{ color: 'var(--text-900)' }}>{f.name}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>{f.structure ?? 'Structure n/a'}</div>
+                  </button>
+                ))}
+              </div>
+            )
           )}
 
           {activeToggle === 'portfolio' && (
-            <div className="space-y-8">
-              {companies.length === 0 ? (
-                <EmptyState message="No portfolio companies on file yet." />
-              ) : (
-                <div className="flex gap-4 overflow-x-auto scrollable justify-center flex-wrap pb-2">
-                  {companies.map(co => {
-                    return (
-                      <button
-                        key={co.id}
-                        onClick={() => openEntity({ type: 'company', id: co.id })}
-                        className="glass-card-light glass-lift flex-shrink-0 w-44 text-left p-5"
-                      >
-                        <div
-                          className="w-11 h-11 flex items-center justify-center text-sm font-bold mb-4 overflow-hidden"
-                          style={co.logo_url ? { borderRadius: 12 } : { background: 'rgb(var(--ice-rgb) / 0.85)', color: 'var(--primary)', borderRadius: 12 }}
-                        >
-                          {co.logo_url ? (
-                            <img src={co.logo_url} alt="" className="w-full h-full block object-cover" />
-                          ) : (
-                            co.name.split(' ').map(w => w[0]).join('').slice(0, 2)
-                          )}
-                        </div>
-                        <div className="text-sm font-semibold" style={{ color: 'var(--text-900)' }}>{co.name}</div>
-                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>{(co.sectors ?? []).join(', ')}</div>
-                        {(isScanning(co.id) || needsScan(co)) && (
-                          <div className="flex items-center gap-1.5 mt-3 text-[11px]" style={{ color: 'var(--primary)' }}>
-                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--primary-light)' }} />
-                            Researching…
-                          </div>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-
-            </div>
+            companies.length === 0 ? (
+              <EmptyState message="No portfolio companies on file yet." />
+            ) : (
+              <div className="max-w-2xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {companies.map(co => (
+                  <button key={co.id} onClick={() => openEntity({ type: 'company', id: co.id })} className="glass-card-light glass-lift text-left p-5 min-w-0">
+                    <div className="tile w-11 h-11 text-sm mb-4" style={co.logo_url ? { background: 'none' } : undefined} aria-hidden="true">
+                      {co.logo_url ? (
+                        <img src={co.logo_url} alt="" width={44} height={44} loading="lazy" className="w-full h-full block object-cover" />
+                      ) : (
+                        co.name.split(' ').map(w => w[0]).join('').slice(0, 2)
+                      )}
+                    </div>
+                    <div className="text-sm font-semibold break-words" style={{ color: 'var(--text-900)' }}>{co.name}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>{(co.sectors ?? []).join(', ')}</div>
+                    {(isScanning(co.id) || needsScan(co)) && (
+                      <div className="flex items-center gap-1.5 mt-3 text-xs font-medium" style={{ color: 'var(--primary)' }}>
+                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--primary-light)' }} />
+                        Researching…
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )
           )}
         </div>
 
         {/* RegWay AI, firm-wide (funds and companies have their own, on their pages). */}
         <AiAskBar
-          placeholder="Ask RegWay AI about today's regulatory impact across your funds and portfolio..."
+          placeholder="Ask RegWay AI about today's regulatory impact across your funds and portfolio…"
           onOpen={() => onNavigate('ai')}
-          style={{ marginTop: activeToggle ? 0 : 48 }}
+          style={{ marginTop: activeToggle ? 0 : 32 }}
         />
       </main>
 
-      {/* Footer */}
-      <footer
-        style={{
-          background: 'rgb(var(--surface-rgb) / 0.60)',
-          backdropFilter: 'blur(12px)',
-          borderTop: '1px solid rgb(var(--line-rgb) / 0.30)',
-        }}
-      >
-        <div className="max-w-[1440px] mx-auto px-8 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <LogoMark size={24} />
-            <span className="text-sm font-semibold" style={{ color: 'var(--text-600)' }}>RegWay</span>
-            <span className="text-xs ml-2" style={{ color: 'var(--text-300)' }}>© 2026 · Regulatory intelligence for private markets</span>
-          </div>
-          <div className="flex items-center gap-6">
-            {['About Us', 'Landing Page', 'Sources', 'Legal Disclaimers', 'Privacy Policy'].map(link => (
-              <a
-                key={link}
-                href="#"
-                className="text-xs hover:text-sky-600 transition-colors"
-                style={{ color: 'var(--text-400)' }}
-              >
-                {link}
-              </a>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

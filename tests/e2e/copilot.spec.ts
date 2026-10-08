@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { aiReply, expect, signIn, test, USER, FIRM_ID, type MockBackend } from './mockBackend'
 
-const ASK = 'Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure...'
+const ASK = 'Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure…'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 const chatCalls = (backend: MockBackend) => backend.called('POST', 'functions/v1/regway-ai-chat').map(c => c.body)
@@ -72,8 +72,8 @@ test.describe('RegWay AI chat', () => {
     await signIn(page)
     await page.goto('/')
     await page.getByRole('button', { name: 'Portfolio Companies' }).click()
-    await page.getByRole('button', { name: 'G GetixHealth Healthcare' }).click()
-    await page.getByPlaceholder('Ask RegWay AI about GetixHealth...').click()
+    await page.getByRole('button', { name: 'GetixHealth Healthcare' }).click()
+    await page.getByPlaceholder('Ask RegWay AI about GetixHealth…').click()
 
     await expect(page.getByText('Focused on GetixHealth')).toBeVisible()
     await ask(page, "What's relevant to this company?")

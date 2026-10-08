@@ -1,4 +1,5 @@
 import type { AiContext, Firm, Fund, PortfolioCompany } from '../lib/types'
+import { X } from './icons'
 
 // The chat's right-hand panel: what RegWay AI is focused on, and the firm,
 // funds and portfolio companies it can be switched to; plus the files
@@ -14,11 +15,11 @@ function Option({ selected, disabled, onClick, children }: { selected: boolean; 
       onClick={onClick}
       disabled={disabled}
       aria-pressed={selected}
-      className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-sky-50 disabled:cursor-not-allowed"
+      className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-sky-50 disabled:cursor-not-allowed min-w-0"
       style={{ background: selected ? 'rgb(var(--primary-rgb) / 0.10)' : undefined, color: selected ? 'var(--primary-dark)' : 'var(--text-600)' }}
     >
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: selected ? 'var(--primary)' : 'rgb(var(--line-rgb))' }} />
-      <span className="text-xs truncate">{children}</span>
+      <span className="text-[13px] truncate">{children}</span>
     </button>
   )
 }
@@ -51,14 +52,12 @@ export default function SessionContext({
       style={{ borderLeft: '1px solid rgb(var(--line-rgb) / 0.30)', padding: '20px 20px' }}
     >
       <div className="flex items-center justify-between mb-1">
-        <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-400)' }}>Session Context</div>
-        <button onClick={onClose} aria-label="Close session context" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100" style={{ color: 'var(--text-300)' }}>
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+        <div className="section-label">Session Context</div>
+        <button onClick={onClose} aria-label="Close session context" className="btn-icon" style={{ width: 28, height: 28 }}>
+          <X size={13} weight="bold" aria-hidden="true" />
         </button>
       </div>
-      <p className="text-[11px] mb-4" style={{ color: 'var(--text-300)' }}>Choose what RegWay AI focuses on.</p>
+      <p className="text-xs mb-4" style={{ color: 'var(--text-400)' }}>Choose what RegWay AI focuses on.</p>
 
       <div className="space-y-3">
         {focus?.type === 'regulation' && (
@@ -120,7 +119,7 @@ export default function SessionContext({
               ))}
             </ul>
           )}
-          <p className="text-[11px] mt-1.5 px-2" style={{ color: 'var(--text-300)' }}>Each file is read with the message it was sent with; it isn't stored.</p>
+          <p className="text-xs mt-1.5 px-2" style={{ color: 'var(--text-300)' }}>Each file is read with the message it was sent with; it isn't stored.</p>
         </div>
       </div>
     </aside>

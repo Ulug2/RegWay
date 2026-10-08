@@ -1,4 +1,5 @@
 import { PASSWORD_RULES } from '../lib/password'
+import { Check } from './icons'
 
 // The rules for a new password, each ticked off as it's met.
 export default function PasswordRequirements({ password }: { password: string }) {
@@ -7,14 +8,8 @@ export default function PasswordRequirements({ password }: { password: string })
       {PASSWORD_RULES.map(rule => {
         const met = rule.test(password)
         return (
-          <li key={rule.key} className="flex items-center gap-2 text-xs" style={{ color: met ? 'var(--primary)' : 'var(--text-300)' }} data-met={met}>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              {met ? (
-                <path d="M2.5 6.2l2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              ) : (
-                <circle cx="6" cy="6" r="2" fill="currentColor" />
-              )}
-            </svg>
+          <li key={rule.key} className="flex items-center gap-2 text-xs transition-colors" style={{ color: met ? 'var(--primary)' : 'var(--text-400)' }} data-met={met}>
+            {met ? <Check size={13} weight="bold" aria-hidden="true" /> : <span className="w-[13px] flex justify-center" aria-hidden="true"><span className="w-1 h-1 rounded-full" style={{ background: 'currentColor' }} /></span>}
             {rule.label}
           </li>
         )

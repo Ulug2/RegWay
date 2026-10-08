@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import QuestionForm from '../questionnaire/QuestionForm'
+import { CaretDown } from '../icons'
 import RemoveButton from './RemoveButton'
 import ProgressRing from '../ProgressRing'
 import { fromRow, isEmpty, isFact, isStale, metaOf, missingRequired, questionsFor, requiredCount, sameAnswer, type Answers, type ProfileMeta, type Question, type Scope } from '../../lib/questionnaire'
@@ -55,17 +56,19 @@ function LogoUpload({ title, logoUrl, onUpload }: { title: string; logoUrl: stri
   return (
     <div className="flex items-center gap-4 mb-6">
       <div
-        className="w-14 h-14 shrink-0 flex items-center justify-center text-base font-bold overflow-hidden"
-        style={logoUrl ? { borderRadius: 12 } : { background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', borderRadius: 12, color: 'white' }}
+        className="tile w-14 h-14 text-base"
+        style={logoUrl ? { background: 'none' } : undefined}
+        aria-hidden="true"
       >
-        {logoUrl ? <img src={logoUrl} alt="" className="w-full h-full block object-cover" /> : (title || '?').slice(0, 1).toUpperCase()}
+        {logoUrl ? <img src={logoUrl} alt="" width={56} height={56} className="w-full h-full block object-cover" /> : (title || '?').slice(0, 1).toUpperCase()}
       </div>
       <div>
-        <label className="text-xs font-medium px-3 py-1.5 inline-block cursor-pointer" style={{ borderRadius: 9999, border: '1px solid rgb(var(--line-rgb) / 0.50)', color: 'var(--primary)', background: 'rgb(var(--surface-rgb) / 0.6)' }}>
+        {/* The input stays in the tab order (visually hidden), so the keyboard reaches it. */}
+        <label className="btn-tool cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--primary)]" style={{ fontSize: 13, color: 'var(--primary)' }}>
           {busy ? 'Uploading…' : logoUrl ? 'Change logo' : 'Upload logo'}
-          <input type="file" accept="image/*" onChange={pick} disabled={busy} style={{ display: 'none' }} />
+          <input type="file" accept="image/*" onChange={pick} disabled={busy} className="sr-only" />
         </label>
-        {error && <div className="text-xs mt-1" style={{ color: 'var(--text-600)' }}>{error}</div>}
+        {error && <div className="text-xs mt-1.5" role="alert" style={{ color: 'var(--warning)' }}>{error}</div>}
       </div>
     </div>
   )
@@ -168,11 +171,11 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
 
   return (
     <div className="glass-card" style={{ padding: 0 }}>
-      <button className="w-full flex items-center gap-4 text-left" style={{ padding: 24 }} onClick={() => setOpen(o => !o)}>
+      <button className="w-full flex items-center gap-4 text-left p-5 sm:p-6 rounded-[inherit]" aria-expanded={open} onClick={() => setOpen(o => !o)}>
         <ProgressRing percent={percent} size={44} label={left === 0 ? '✓' : undefined} />
         <div className="flex-1 min-w-0">
           <div className="text-base font-semibold truncate" style={{ color: 'var(--text-900)' }}>{title || 'Untitled'}</div>
-          <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>
+          <div className="text-[13px] mt-0.5 num" style={{ color: 'var(--text-400)', lineHeight: 1.5 }}>
             {left === 0 ? 'Profile complete' : `${left} required ${left === 1 ? 'question' : 'questions'} left`}
             {subtitle ? ` · ${subtitle}` : ''}
             {(() => {
@@ -182,20 +185,18 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
             {due > 0 ? ` · ${due} ${due === 1 ? 'answer' : 'answers'} not confirmed in over a year` : ''}
           </div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: 'var(--text-300)' }}>
-          <path d="M3 6l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <CaretDown size={16} weight="bold" aria-hidden="true" className="shrink-0" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: 'var(--text-400)' }} />
       </button>
 
       {open && (
-        <div style={{ padding: '4px 28px 28px' }}>
+        <div className="px-5 sm:px-7 pt-1 pb-6 sm:pb-7">
           {onUploadLogo && <LogoUpload title={title} logoUrl={logoUrl} onUpload={onUploadLogo} />}
           {extra && <div className="mb-7">{extra}</div>}
           <p className="text-xs mb-6" style={{ color: 'var(--text-400)', lineHeight: 1.6 }}>
             Each answer shows where it came from and when it was last confirmed. A blank answer is treated as unknown, never as “no”.
           </p>
           <QuestionForm questions={questionsFor(scope)} answers={answers} onChange={change} flagMissing sections provenance={provenance} />
-          <div className="flex items-center gap-4 mt-7 pt-5" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)' }}>
+          <div className="flex items-center gap-x-3 gap-y-3 flex-wrap mt-7 pt-5" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)' }}>
             <button className="btn-primary" onClick={save} disabled={busy || !dirty}>{busy ? 'Saving…' : 'Save changes'}</button>
             {answered.length > 0 && (
               <button className="btn-ghost" onClick={confirmAll} disabled={busy} title="Marks every answer above as confirmed today; applied when you save.">
@@ -203,9 +204,9 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
               </button>
             )}
             {onRemove && <RemoveButton onConfirm={onRemove} disabled={busy} />}
-            {error && <span className="text-xs" style={{ color: 'var(--text-600)' }}>{error}</span>}
+            {error && <span className="text-[13px]" role="alert" style={{ color: 'var(--warning)' }}>{error}</span>}
             {savedAt && !error && (
-              <span className="text-xs" style={{ color: 'var(--primary)' }}>
+              <span className="text-[13px] font-medium" aria-live="polite" style={{ color: 'var(--primary)' }}>
                 Saved. Matches and analyses update a few minutes after your last change.
               </span>
             )}

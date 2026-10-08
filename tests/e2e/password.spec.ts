@@ -76,7 +76,7 @@ test.describe('password reset link', () => {
 test.describe('creating an account', () => {
   async function openSignUp(page: Page) {
     await page.goto('/')
-    await page.getByRole('button', { name: 'Get Started', exact: true }).click()
+    await page.getByRole('banner').getByRole('button', { name: 'Get Started', exact: true }).click()
     await expect(page.getByText('Create your account')).toBeVisible()
   }
 

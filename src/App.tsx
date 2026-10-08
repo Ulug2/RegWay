@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { getFirmId, getCachedFirmId } from './lib/data'
 import { bindCacheToUser, clearCache } from './lib/cache'
@@ -25,7 +25,18 @@ export default function App() {
   // profile views go back to: the page they were opened from.
   const [entity, setEntity] = useState<EntityRef | null>(null)
   const [returnTo, setReturnTo] = useState<'dashboard' | 'entity'>('dashboard')
-  const goBack = () => setView(returnTo === 'entity' && entity ? 'entity' : 'dashboard')
+  // A page opens at its top. Going back to a list returns to where the
+  // list was left, not to wherever the page in between was scrolled.
+  const leftAt = useRef(0)
+  const restoreTo = useRef<number | null>(null)
+  const goBack = () => {
+    restoreTo.current = leftAt.current
+    setView(returnTo === 'entity' && entity ? 'entity' : 'dashboard')
+  }
+  useLayoutEffect(() => {
+    window.scrollTo(0, restoreTo.current ?? 0)
+    restoreTo.current = null
+  }, [view, entity?.type, entity?.id])
   const [showAI, setShowAI] = useState(false)
   const [aiContext, setAiContext] = useState<AiContext | null>(null)
   // A password-recovery link signs the user in *and* asks for a new
@@ -116,7 +127,10 @@ export default function App() {
     }
     else if (newView === 'entity') setEntity(payload as EntityRef)
     else if (payload) setDetailPayload(payload)
-    if (newView === 'detail' || newView === 'profile') setReturnTo(view === 'entity' ? 'entity' : 'dashboard')
+    if (newView === 'detail' || newView === 'profile') {
+      setReturnTo(view === 'entity' ? 'entity' : 'dashboard')
+      leftAt.current = window.scrollY
+    }
     setView(newView)
   }
 
@@ -132,8 +146,8 @@ export default function App() {
 
   return (
     <div
-      className="relative min-h-screen overflow-x-clip"
-      style={{ background: 'var(--canvas)', fontFamily: 'Inter, system-ui, sans-serif' }}
+      className="relative min-h-[100dvh] overflow-x-clip"
+      style={{ background: 'var(--canvas)' }}
     >
       {/* Ambient radial sphere 1 — sky blue */}
       <div
@@ -190,8 +204,11 @@ export default function App() {
       {/* Main content above spheres */}
       <div className="relative" style={{ zIndex: 1 }}>
         {view === 'loading' && (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-sm" style={{ color: 'var(--text-400)' }}>Loading…</div>
+          <div className="min-h-[100dvh] flex items-center justify-center" role="status">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-pulse"><LogoMark size={40} /></div>
+              <div className="text-sm" style={{ color: 'var(--text-400)' }}>Loading…</div>
+            </div>
           </div>
         )}
 
@@ -213,9 +230,9 @@ export default function App() {
         {view === 'onboarding' && (
           <>
             {/* Landing behind modal */}
-            <div className="min-h-screen flex items-center justify-center" style={{ padding: 24 }}>
+            <div className="min-h-[100dvh] flex items-center justify-center" style={{ padding: 24 }}>
               <div className="text-center max-w-md">
-                <LogoMark size={64} />
+                <div className="flex justify-center mb-4"><LogoMark size={64} /></div>
                 <h1
                   className="text-3xl font-semibold mb-2"
                   style={{ color: 'var(--text-900)', letterSpacing: '-0.03em' }}
@@ -223,7 +240,7 @@ export default function App() {
                   RegWay
                 </h1>
                 <p className="text-base" style={{ color: 'var(--text-400)' }}>
-                  AI-powered regulatory intelligence for private equity and general partners.
+                  Regulatory intelligence for private equity firms and their portfolios.
                 </p>
               </div>
             </div>

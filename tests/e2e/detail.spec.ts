@@ -16,7 +16,7 @@ async function openCompanyItem(page: Page) {
   await signIn(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Portfolio Companies' }).click()
-  await page.getByRole('button', { name: 'G GetixHealth Healthcare' }).click()
+  await page.getByRole('button', { name: 'GetixHealth Healthcare' }).click()
   await page.getByText(REGS.medicare.title).click()
 }
 
@@ -72,7 +72,7 @@ test.describe('a development’s page', () => {
     await page.getByPlaceholder(/what's wrong with this match/).fill('We stopped billing Medicare in 2025.')
     await page.getByRole('button', { name: 'Re-check this match' }).click()
 
-    await expect(page.getByText('Re-checked — no longer considered relevant.')).toBeVisible()
+    await expect(page.getByText('Re-checked: no longer considered relevant.')).toBeVisible()
     await expect(page.getByText('GetixHealth no longer bills Medicare, so the rule creates no obligation.')).toBeVisible()
     expect(backend.called('POST', 'functions/v1/rematch-regulation')[0].body).toEqual({ regulationId: REGS.medicare.id, note: 'We stopped billing Medicare in 2025.' })
   })
@@ -96,7 +96,7 @@ test.describe('a development’s page', () => {
 
     await page.getByRole('button', { name: 'This match looks wrong?' }).click()
     await page.getByRole('button', { name: 'Re-check this match' }).click()
-    await expect(page.getByText('Re-checked — still considered relevant.')).toBeVisible()
+    await expect(page.getByText('Re-checked: still considered relevant.')).toBeVisible()
     await expect(page.getByText('Aero Logistics · relevant')).toBeVisible()
     await expect(page.getByText('Harbor Capital · not relevant')).toBeVisible()
   })

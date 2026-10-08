@@ -21,9 +21,15 @@ This is the canonical project structure. Start with task-relevant files below. O
 - `vite.config.ts` - Vite configuration with React, Tailwind CSS v4, and Figma Make plugins plus the `@` alias for `src`
 - `.mise.toml` - Toolchain versions for Node.js and pnpm
 
+## Design
+
+`DESIGN.md` at the repo root says how the UI looks and which shared classes
+(`src/index.css`) and icons (`src/components/icons.ts`) to use. Read it
+before changing any screen, and check both themes and a phone width.
+
 ## Dependencies
 
-- Runtime: React 19 and React DOM 19
+- Runtime: React 19 and React DOM 19; Phosphor icons; Geist fonts (bundled)
 - Styling: Tailwind CSS v4 with the `@tailwindcss/vite` plugin
 - Build tooling: Vite 8, TypeScript 5.7, and `@vitejs/plugin-react`
 - Formatting: oxfmt

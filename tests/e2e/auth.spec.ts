@@ -3,7 +3,7 @@ import { expect, signIn, test } from './mockBackend'
 test.describe('signing in', () => {
   test('a visitor sees the landing page and can reach sign-in', async ({ page, backend }) => {
     await page.goto('/')
-    await expect(page.getByRole('button', { name: 'Get Started', exact: true })).toBeVisible()
+    await expect(page.getByRole('banner').getByRole('button', { name: 'Get Started', exact: true })).toBeVisible()
     await page.getByRole('banner').getByRole('button', { name: 'Sign In' }).click()
     await expect(page.getByText('Welcome back')).toBeVisible()
     // Nothing firm-specific is requested before sign-in.

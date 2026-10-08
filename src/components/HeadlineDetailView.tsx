@@ -3,7 +3,9 @@ import { getFirmId, getCachedFirmId, getCachedFirm, dismissRegulation, isFlagged
 import { readCache, writeCache } from '../lib/cache'
 import type { MatchedRegulation, PublishedVersion, Regulation, RegulationNote, AiContext } from '../lib/types'
 import { publisherName } from '../lib/duplicates'
-import LogoMark from './LogoMark'
+import PageHeader from './PageHeader'
+import SiteFooter from './SiteFooter'
+import { ArrowSquareOut, ArrowUpRight, Flag, NotePencil, Sparkle, WarningCircle, X } from './icons'
 import CategoryBadge from './CategoryBadge'
 import PrePublicationBadge from './PrePublicationBadge'
 import ImpactPanel from './ImpactPanel'
@@ -15,8 +17,6 @@ interface HeadlineDetailViewProps {
   headline?: Partial<Regulation> & Pick<MatchedRegulation, 'also_published_as'>
   onAskAI: (context: AiContext) => void
 }
-
-const DATE_MODES = ["Today's Status", 'Custom Range'] as const
 
 function formatDate(iso?: string | null) {
   if (!iso) return null
@@ -39,8 +39,6 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
   const [dismissing, setDismissing] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
   const [notes, setNotes] = useState<RegulationNote[]>(() => readCache<RegulationNote[]>(`notes:${headline?.id}`) ?? [])
-  const [dateMode, setDateMode] = useState<typeof DATE_MODES[number]>("Today's Status")
-  const [customDate, setCustomDate] = useState('')
   const [firmId, setFirmId] = useState<string | null>(getCachedFirmId)
   const [relatedMatches, setRelatedMatches] = useState<RelatedEntityMatch[]>([])
   const [focusEntity, setFocusEntity] = useState<string | null>(null)
@@ -128,7 +126,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
       setDisputeResult(result)
       setRefreshToken(t => t + 1)
     } catch (err) {
-      setDisputeError((err as Error).message || 'Something went wrong — try again.')
+      setDisputeError((err as Error).message || 'Something went wrong. Try again.')
     } finally {
       setDisputing(false)
     }
@@ -143,61 +141,58 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
     writeCache(`notes:${regulationId}`, updated)
   }
 
+  const askAI = () =>
+    regulationId &&
+    onAskAI({
+      type: 'regulation',
+      id: regulationId,
+      name: title,
+      regulation: {
+        agency: headline?.agency,
+        jurisdiction: headline?.jurisdiction,
+        summary: headline?.summary,
+        published_date: headline?.published_date,
+        effective_date: headline?.effective_date,
+      },
+    })
+
+  const facts = [
+    { label: 'Agency', value: headline?.agency },
+    { label: 'Jurisdiction', value: headline?.jurisdiction },
+    { label: prePublication ? 'Scheduled publication' : 'Published', value: formatDate(headline?.published_date) },
+    { label: 'Effective', value: formatDate(headline?.effective_date) },
+    { label: 'Source', value: headline?.source && headline.source_url ? publisherName({ source: headline.source, source_url: headline.source_url }) : null },
+  ].filter(item => item.value)
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-[100dvh] flex flex-col">
+      <a href="#main" className="skip-link">Skip to content</a>
+      <PageHeader back={{ label: backLabel, onClick: onBack }} />
 
-      {/* Top Nav */}
-      <header className="glass-nav sticky top-0 z-40">
-        <div className="max-w-[1200px] mx-auto px-8 h-20 flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl transition-all hover:bg-sky-50"
-            style={{ color: 'var(--text-600)', border: '1px solid rgb(var(--line-rgb) / 0.40)', background: 'rgb(var(--surface-rgb) / 0.60)' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {backLabel}
-          </button>
-          <div className="flex items-center gap-2">
-            <LogoMark size={24} />
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-900)', letterSpacing: '-0.02em' }}>RegWay</span>
-          </div>
-        </div>
-      </header>
+      <main id="main" className="flex-1 w-full max-w-[1200px] mx-auto px-5 sm:px-8 pt-8 sm:pt-10 pb-16">
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-8" style={{ paddingTop: 48, paddingBottom: 64 }}>
-
-        {/* Article Header */}
-        <div className="glass-card" style={{ padding: 40, marginBottom: 32 }}>
-          <div className="flex items-center gap-3 mb-4 flex-wrap">
+        {/* Article header */}
+        <div className="glass-card p-6 sm:p-9 mb-6 sm:mb-8">
+          <div className="flex items-center gap-x-3 gap-y-2 mb-4 flex-wrap">
             {headline?.category && <CategoryBadge category={headline.category} />}
             {prePublication && <PrePublicationBadge />}
-            <span
-              className="text-xs font-medium px-3 py-1"
-              style={{ background: 'rgb(var(--primary-rgb) / 0.08)', color: 'var(--primary)', borderRadius: 9999 }}
-            >
-              {jurisdiction}
-            </span>
-            {dateLabel && <span className="text-xs" style={{ color: 'var(--text-400)' }}>{dateLabel}</span>}
+            <span className="text-[13px] font-medium" style={{ color: 'var(--text-600)' }}>{jurisdiction}</span>
+            {dateLabel && <span className="text-[13px] num" style={{ color: 'var(--text-400)' }}>{dateLabel}</span>}
           </div>
-          <h1
-            className="text-2xl font-semibold mb-3"
-            style={{ color: 'var(--text-900)', lineHeight: 1.35, letterSpacing: '-0.025em' }}
-          >
+          <h1 className="text-2xl sm:text-[30px] font-semibold break-words" style={{ color: 'var(--text-900)', lineHeight: 1.2, letterSpacing: '-0.03em', maxWidth: '26em' }}>
             {title}
           </h1>
 
           {relatedMatches.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap mt-2">
-              <span className="text-xs" style={{ color: 'var(--text-400)' }}>Also relevant to:</span>
+            <div className="flex items-center gap-2 flex-wrap mt-4">
+              <span className="text-[13px]" style={{ color: 'var(--text-400)' }}>Also relevant to:</span>
               {relatedMatches.map(m => (
                 <button
                   key={`${m.entity_type}-${m.entity_name}`}
                   onClick={() => { setFocusEntity(m.entity_name); setFocusToken(t => t + 1) }}
                   title={m.relevance_reason ?? undefined}
-                  className="text-xs font-medium px-3 py-1 transition-colors hover:bg-sky-50"
-                  style={{ borderRadius: 9999, border: '1px solid rgb(var(--line-rgb) / 0.50)', color: 'var(--primary)', background: 'rgb(var(--surface-rgb) / 0.6)' }}
+                  className="btn-tool"
+                  style={{ padding: '4px 12px', fontSize: 13, color: 'var(--primary)' }}
                 >
                   {m.entity_name}
                 </button>
@@ -205,165 +200,60 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
             </div>
           )}
 
-          {/* Contextual Date Filter */}
-          <div className="flex items-center gap-3 flex-wrap mt-6 pt-5" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.30)' }}>
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-400)' }}>History</span>
-            <div className="flex items-center gap-1 p-1" style={{ background: 'rgb(var(--surface-rgb) / 0.55)', border: '1px solid rgb(var(--line-rgb) / 0.35)', borderRadius: 9999 }}>
-              {DATE_MODES.map(mode => (
-                <button
-                  key={mode}
-                  onClick={() => setDateMode(mode)}
-                  className="px-3.5 py-1.5 text-xs font-medium rounded-full transition-all"
-                  style={{
-                    background: dateMode === mode ? 'linear-gradient(135deg,var(--brand),var(--brand-light))' : 'transparent',
-                    color: dateMode === mode ? 'white' : 'var(--text-400)',
-                  }}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-            {dateMode === 'Custom Range' && (
-              <input
-                type="date"
-                className="glass-input-rect"
-                style={{ width: 170, borderRadius: 9999 }}
-                value={customDate}
-                onChange={e => setCustomDate(e.target.value)}
-              />
-            )}
-          </div>
-
-          {/* Action Toolbar */}
-          <div
-            className="flex items-center gap-3 flex-wrap mt-5 pt-5"
-            style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.30)' }}
-          >
+          {/* Actions: the source on the right, everything else in one row */}
+          <div className="flex items-center gap-2 flex-wrap mt-7 pt-5" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)' }}>
             {regulationId && (
-              <button
-                onClick={() =>
-                  onAskAI({
-                    type: 'regulation',
-                    id: regulationId,
-                    name: title,
-                    regulation: {
-                      agency: headline?.agency,
-                      jurisdiction: headline?.jurisdiction,
-                      summary: headline?.summary,
-                      published_date: headline?.published_date,
-                      effective_date: headline?.effective_date,
-                    },
-                  })
-                }
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:bg-sky-50"
-                style={{ background: 'rgb(var(--primary-rgb) / 0.08)', color: 'var(--primary)', border: '1px solid rgb(var(--primary-rgb) / 0.20)' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1.5l1.2 3 3 1.2-3 1.2L7 10l-1.2-3-3-1.2 3-1.2L7 1.5z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
-                </svg>
+              <button onClick={askAI} className="btn-tool is-accent">
+                <Sparkle size={16} aria-hidden="true" />
                 Ask RegWay AI about this
               </button>
             )}
 
-            <button
-              onClick={toggleFlag}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"
-              style={{
-                background: flagged ? 'rgba(245,158,11,0.12)' : 'rgb(var(--surface-rgb) / 0.60)',
-                color: flagged ? 'var(--warning)' : 'var(--text-600)',
-                border: flagged ? '1px solid rgba(245,158,11,0.35)' : '1px solid rgb(var(--line-rgb) / 0.50)',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill={flagged ? '#F59E0B' : 'none'}>
-                <path d="M2 2h8l-2 4 2 4H2V2z" stroke={flagged ? 'var(--warning)' : 'var(--text-400)'} strokeWidth="1.3" strokeLinejoin="round"/>
-                <path d="M2 2v10" stroke={flagged ? 'var(--warning)' : 'var(--text-400)'} strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
+            <button onClick={toggleFlag} aria-pressed={flagged} className={`btn-tool ${flagged ? 'is-warn' : ''}`}>
+              <Flag size={16} weight={flagged ? 'fill' : 'regular'} aria-hidden="true" />
               {flagged ? 'Flagged for Review' : 'Flag for Review'}
             </button>
 
             {regulationId && (headline?.category === 'regulatory' || headline?.category === 'geopolitical') && (
-              <button
-                onClick={() => setDisputeOpen(o => !o)}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"
-                style={{
-                  background: disputeOpen ? 'rgb(var(--primary-rgb) / 0.10)' : 'rgb(var(--surface-rgb) / 0.60)',
-                  color: disputeOpen ? 'var(--primary)' : 'var(--text-600)',
-                  border: disputeOpen ? '1px solid rgb(var(--primary-rgb) / 0.25)' : '1px solid rgb(var(--line-rgb) / 0.50)',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
-                  <path d="M7 4.5v3M7 9.5h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
+              <button onClick={() => setDisputeOpen(o => !o)} aria-expanded={disputeOpen} className="btn-tool">
+                <WarningCircle size={16} aria-hidden="true" />
                 This match looks wrong?
               </button>
             )}
 
-            <button
-              onClick={() => setNoteOpen(o => !o)}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all"
-              style={{
-                background: noteOpen ? 'rgb(var(--primary-rgb) / 0.10)' : 'rgb(var(--surface-rgb) / 0.60)',
-                color: noteOpen ? 'var(--primary)' : 'var(--text-600)',
-                border: noteOpen ? '1px solid rgb(var(--primary-rgb) / 0.25)' : '1px solid rgb(var(--line-rgb) / 0.50)',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="2" y="2" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M5 5h4M5 7h4M5 9h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
+            <button onClick={() => setNoteOpen(o => !o)} aria-expanded={noteOpen} className="btn-tool">
+              <NotePencil size={16} aria-hidden="true" />
               {notes.length > 0 ? `Notes (${notes.length})` : 'Add Note'}
             </button>
 
             {confirmDismiss ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: 'var(--text-400)' }}>Remove from your dashboard? Restore any time in Profile → Dismissed.</span>
-                <button className="btn-primary" onClick={dismiss} disabled={dismissing}>{dismissing ? 'Dismissing…' : 'Dismiss'}</button>
-                <button className="btn-ghost" onClick={() => setConfirmDismiss(false)}>Cancel</button>
+              <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Confirm dismissal">
+                <span className="text-[13px]" style={{ color: 'var(--text-400)' }}>Remove from your dashboard? Restore any time in Profile → Dismissed.</span>
+                <button className="btn-primary btn-sm" onClick={dismiss} disabled={dismissing}>{dismissing ? 'Dismissing…' : 'Dismiss'}</button>
+                <button className="btn-ghost btn-sm" onClick={() => setConfirmDismiss(false)}>Cancel</button>
               </div>
             ) : (
-              <button
-                onClick={() => setConfirmDismiss(true)}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:bg-sky-50"
-                style={{ background: 'rgb(var(--surface-rgb) / 0.60)', color: 'var(--text-600)', border: '1px solid rgb(var(--line-rgb) / 0.50)' }}
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
-                Not relevant — dismiss
+              <button onClick={() => setConfirmDismiss(true)} className="btn-tool" title="Not relevant: remove it from your dashboard">
+                <X size={15} weight="bold" aria-hidden="true" />
+                Dismiss
               </button>
             )}
 
             {headline?.source_url && (
-              <a
-                href={headline.source_url}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all ml-auto"
-                style={{
-                  background: 'linear-gradient(135deg,var(--brand),var(--brand-light))',
-                  color: 'white',
-                  boxShadow: '0 4px 12px rgb(var(--primary-rgb) / 0.25)',
-                }}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M5 2H3a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V9M8 2h4m0 0v4m0-4L6 8" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                View Official Source Documentation
+              <a href={headline.source_url} className="btn-primary sm:ml-auto" target="_blank" rel="noreferrer">
+                <ArrowSquareOut size={16} weight="bold" aria-hidden="true" />
+                View Official Source
               </a>
             )}
           </div>
 
           {/* Dispute drawer */}
           {disputeOpen && (
-            <div
-              className="mt-4 p-5 rounded-xl space-y-4"
-              style={{ background: 'rgb(var(--surface-rgb) / 0.70)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}
-            >
+            <div className="mt-4 p-5 space-y-4" style={{ borderRadius: 'var(--r-tile)', background: 'rgb(var(--surface-rgb) / 0.70)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}>
               {disputeResult ? (
-                <div className="space-y-3">
+                <div className="space-y-3" role="status">
                   <div className="text-sm font-semibold" style={{ color: disputeResult.relevant ? 'var(--primary)' : 'var(--warning)' }}>
-                    {disputeResult.relevant ? 'Re-checked — still considered relevant.' : 'Re-checked — no longer considered relevant.'}
+                    {disputeResult.relevant ? 'Re-checked: still considered relevant.' : 'Re-checked: no longer considered relevant.'}
                   </div>
                   {disputeResult.verdicts && disputeResult.verdicts.length > 1 ? (
                     <ul className="space-y-2">
@@ -371,7 +261,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                         <li key={`${v.entity}-${i}`} className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.6 }}>
                           <span className="font-semibold">{v.entity}</span>
                           <span style={{ color: v.relevant ? 'var(--primary)' : 'var(--warning)' }}>{v.relevant ? ' · relevant' : ' · not relevant'}</span>
-                          {' — '}{v.reason}
+                          {': '}{v.reason}
                         </li>
                       ))}
                     </ul>
@@ -379,38 +269,27 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                     <p className="text-sm" style={{ color: 'var(--text-600)', lineHeight: 1.6 }}>{disputeResult.reason}</p>
                   )}
                   {!disputeResult.relevant && (
-                    <p className="text-xs" style={{ color: 'var(--text-300)' }}>This will stop appearing on your dashboard the next time it loads.</p>
+                    <p className="text-[13px]" style={{ color: 'var(--text-400)' }}>This will stop appearing on your dashboard the next time it loads.</p>
                   )}
                 </div>
               ) : (
                 <>
-                  <p className="text-xs" style={{ color: 'var(--text-400)' }}>
-                    RegWay AI will re-check this match against your firm, fund, and company profiles as they stand right now. If a profile fact was wrong, correct it in Settings first — or describe what's off below and submit anyway.
-                  </p>
+                  <label htmlFor="dispute-note" className="block text-[13px]" style={{ color: 'var(--text-500)', lineHeight: 1.6 }}>
+                    RegWay AI will re-check this match against your firm, fund, and company profiles as they stand right now. If a profile fact was wrong, correct it in Settings first, or describe what's off below and submit anyway.
+                  </label>
                   <textarea
-                    className="w-full text-sm resize-none"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      outline: 'none',
-                      color: 'var(--text-900)',
-                      lineHeight: 1.6,
-                      minHeight: 64,
-                      fontFamily: 'Inter, sans-serif',
-                    }}
+                    id="dispute-note"
+                    name="dispute-note"
+                    className="glass-input-rect resize-y"
+                    style={{ lineHeight: 1.6, minHeight: 80 }}
                     placeholder={`Optional: what's wrong with this match? (e.g. "we don't actually operate in Texas")`}
                     value={disputeNote}
                     onChange={e => setDisputeNote(e.target.value)}
                     disabled={disputing}
                   />
-                  {disputeError && <p className="text-xs" style={{ color: 'var(--warning)' }}>{disputeError}</p>}
+                  {disputeError && <p className="text-[13px]" role="alert" style={{ color: 'var(--warning)' }}>{disputeError}</p>}
                   <div className="flex justify-end">
-                    <button
-                      className="text-xs px-4 py-2 rounded-full disabled:opacity-60"
-                      style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', color: 'white' }}
-                      onClick={submitDispute}
-                      disabled={disputing}
-                    >
+                    <button className="btn-primary btn-sm" onClick={submitDispute} disabled={disputing}>
                       {disputing ? 'Re-checking…' : 'Re-check this match'}
                     </button>
                   </div>
@@ -421,40 +300,27 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
 
           {/* Notes drawer */}
           {noteOpen && (
-            <div
-              className="mt-4 p-5 rounded-xl space-y-4"
-              style={{ background: 'rgb(var(--surface-rgb) / 0.70)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}
-            >
+            <div className="mt-4 p-5 space-y-4" style={{ borderRadius: 'var(--r-tile)', background: 'rgb(var(--surface-rgb) / 0.70)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}>
               {notes.map(n => (
                 <div key={n.id} className="pb-3" style={{ borderBottom: '1px solid rgb(var(--line-rgb) / 0.30)' }}>
-                  <div className="text-xs font-medium mb-1" style={{ color: 'var(--text-300)' }}>
+                  <div className="text-xs font-medium mb-1 num" style={{ color: 'var(--text-400)' }}>
                     {new Date(n.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                   </div>
-                  <div className="text-sm" style={{ color: 'var(--text-900)', lineHeight: 1.6 }}>{n.body}</div>
+                  <div className="text-sm whitespace-pre-line break-words" style={{ color: 'var(--text-900)', lineHeight: 1.6 }}>{n.body}</div>
                 </div>
               ))}
               <div>
                 <textarea
-                  className="w-full text-sm resize-none"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    color: 'var(--text-900)',
-                    lineHeight: 1.6,
-                    minHeight: 80,
-                    fontFamily: 'Inter, sans-serif',
-                  }}
-                  placeholder="Log a firm-specific observation tied to this regulation..."
+                  name="note"
+                  aria-label="New note"
+                  className="glass-input-rect resize-y"
+                  style={{ lineHeight: 1.6, minHeight: 88 }}
+                  placeholder="Log a firm-specific observation tied to this regulation…"
                   value={noteDraft}
                   onChange={e => setNoteDraft(e.target.value)}
                 />
-                <div className="flex justify-end mt-2">
-                  <button
-                    className="text-xs px-4 py-2 rounded-full"
-                    style={{ background: 'linear-gradient(135deg,var(--brand),var(--brand-light))', color: 'white' }}
-                    onClick={saveNote}
-                  >
+                <div className="flex justify-end mt-3">
+                  <button className="btn-primary btn-sm" onClick={saveNote} disabled={!noteDraft.trim()}>
                     Save Note
                   </button>
                 </div>
@@ -464,9 +330,8 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
         </div>
 
         {/* Main deep-dive layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
+          <div className="lg:col-span-2 min-w-0">
             <ImpactPanel
               regulationId={regulationId}
               fallbackSummary={headline?.summary}
@@ -477,109 +342,74 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
             />
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
+          {/* Sidebar: one card, three blocks */}
+          <aside className="glass-card p-6 space-y-7 lg:sticky lg:top-24 min-w-0">
             {headline?.source_url && (
-              <div className="glass-card" style={{ padding: 24 }}>
-                <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-400)' }}>
-                  Primary Source
-                </div>
+              <div>
+                <h2 className="section-label mb-3">Primary source</h2>
                 <a
                   href={headline.source_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="block p-4 rounded-xl transition-all hover:shadow-md"
-                  style={{ background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.15)' }}
+                  className="block p-4 transition-[background-color,border-color] duration-200 hover:bg-[rgb(var(--primary-rgb)/0.1)]"
+                  style={{ borderRadius: 'var(--r-tile)', background: 'rgb(var(--primary-rgb) / 0.06)', border: '1px solid rgb(var(--primary-rgb) / 0.16)' }}
                 >
                   {sourceDomain(headline.source_url) && (
                     <div className="text-xs font-medium mb-1" style={{ color: 'var(--primary)' }}>{sourceDomain(headline.source_url)}</div>
                   )}
-                  <div className="text-sm font-semibold" style={{ color: 'var(--text-900)', lineHeight: 1.4 }}>
+                  <div className="text-sm font-semibold break-words" style={{ color: 'var(--text-900)', lineHeight: 1.4 }}>
                     {title}
                   </div>
-                  <div className="flex items-center gap-1 mt-3 text-xs" style={{ color: 'var(--primary)' }}>
+                  <div className="flex items-center gap-1 mt-3 text-[13px] font-medium" style={{ color: 'var(--primary)' }}>
                     View source
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <path d="M1 9L9 1M9 1H4M9 1v5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                    </svg>
+                    <ArrowUpRight size={13} weight="bold" aria-hidden="true" />
                   </div>
                 </a>
               </div>
             )}
 
             {versions.length > 0 && (
-              <div className="glass-card" style={{ padding: 24 }}>
-                <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-400)' }}>
-                  Also published as
-                </div>
-                <div className="space-y-3">
+              <div>
+                <h2 className="section-label mb-3">Also published as</h2>
+                <div className="space-y-2.5">
                   {versions.map(v => (
                     <a
                       key={v.id}
                       href={v.source_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="block p-4 rounded-xl transition-all hover:shadow-md"
-                      style={{ background: 'rgb(var(--surface-rgb) / 0.60)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}
+                      className="block p-4 transition-colors duration-200 hover:bg-[var(--hover-tint)]"
+                      style={{ borderRadius: 'var(--r-tile)', background: 'rgb(var(--surface-rgb) / 0.60)', border: '1px solid rgb(var(--line-rgb) / 0.45)' }}
                     >
                       <div className="text-xs font-medium mb-1" style={{ color: 'var(--primary)' }}>
                         {publisherName(v)}
-                        {formatDate(v.published_date) && <span style={{ color: 'var(--text-400)' }}> · {formatDate(v.published_date)}</span>}
+                        {formatDate(v.published_date) && <span className="num" style={{ color: 'var(--text-400)' }}> · {formatDate(v.published_date)}</span>}
                       </div>
-                      <div className="text-sm" style={{ color: 'var(--text-900)', lineHeight: 1.4 }}>{v.title}</div>
+                      <div className="text-sm break-words" style={{ color: 'var(--text-900)', lineHeight: 1.4 }}>{v.title}</div>
                     </a>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="glass-card" style={{ padding: 24 }}>
-              <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-400)' }}>
-                Regulatory Metadata
-              </div>
-              <div className="space-y-2.5">
-                {[
-                  { label: 'Agency', value: headline?.agency },
-                  { label: 'Jurisdiction', value: headline?.jurisdiction },
-                  { label: prePublication ? 'Scheduled publication' : 'Published', value: formatDate(headline?.published_date) },
-                  { label: 'Effective', value: formatDate(headline?.effective_date) },
-                  { label: 'Source', value: headline?.source },
-                ]
-                  .filter(item => item.value)
-                  .map(item => (
-                    <div key={item.label} className="flex justify-between text-xs gap-3">
-                      <span style={{ color: 'var(--text-300)' }}>{item.label}</span>
-                      <span className="font-medium text-right" style={{ color: 'var(--text-600)' }}>{item.value}</span>
+            {facts.length > 0 && (
+              <div>
+                <h2 className="section-label mb-3">Details</h2>
+                <dl className="space-y-2.5">
+                  {facts.map(item => (
+                    <div key={item.label} className="flex justify-between text-[13px] gap-4">
+                      <dt style={{ color: 'var(--text-400)' }}>{item.label}</dt>
+                      <dd className="font-medium text-right num break-words min-w-0" style={{ color: 'var(--text-600)' }}>{item.value}</dd>
                     </div>
                   ))}
+                </dl>
               </div>
-            </div>
-          </div>
+            )}
+          </aside>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer
-        className="mt-8"
-        style={{
-          background: 'rgb(var(--surface-rgb) / 0.60)',
-          backdropFilter: 'blur(12px)',
-          borderTop: '1px solid rgb(var(--line-rgb) / 0.30)',
-        }}
-      >
-        <div className="max-w-[1200px] mx-auto px-8 py-5 flex items-center justify-between">
-          <div className="text-xs" style={{ color: 'var(--text-300)' }}>
-            RegWay · Regulatory intelligence for private markets · © 2026
-          </div>
-          <div className="flex items-center gap-6">
-            {['About Us', 'Sources', 'Legal Disclaimers'].map(link => (
-              <a key={link} href="#" className="text-xs hover:text-sky-600 transition-colors" style={{ color: 'var(--text-400)' }}>
-                {link}
-              </a>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }
