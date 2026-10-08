@@ -777,6 +777,32 @@ Left open by it:
   Console and requested indexing on 2026-10-08. Whether it is listed has
   not been checked since.
 
+### Test data on H.I.G. (added 2026-10-08 at the owner's request)
+Written straight to the database, to give the app more to show. Every
+added name ends in "(test)" so it can be told apart and removed.
+- **Funds added (3)**: H.I.G. Europe Partners (test), Luxembourg SCSp;
+  H.I.G. Growth Fund (test), Delaware LP; H.I.G. Infrastructure Fund
+  (test), Cayman LP.
+- **Companies added (4)**: Meridian Pay (test), a New York consumer
+  payments and lending app; Brightwell Wealth (test), a London
+  FCA-authorised wealth manager; Rheintal Batterie GmbH (test), a
+  Stuttgart battery maker with Chinese and Korean suppliers; Cascade
+  Pipeline Services (test), a Houston pipeline-services company with
+  government contracts. All four are invented.
+- **Holdings recorded (8)**: 3Pillar Global → Advantage Buyout Fund;
+  GetixHealth → Capital Partners VII; A.L.A. → Europe Partners (test);
+  Brightwell and Rheintal → Europe Partners (test); Meridian Pay → Growth
+  Fund (test); Cascade → Infrastructure Fund (test) and Capital Partners
+  VII (one company in two funds, on purpose). **The three real companies'
+  funds are the assistant's assignment for testing, not checked against
+  H.I.G.'s actual holdings.**
+- **Cost it sets off**: each new company is researched the first time the
+  dashboard is opened (about $0.20 a scan plus about $0.06 for each
+  analysis written), and one geopolitical re-check was queued. Expect
+  roughly $2 to $3 in total.
+- **To remove**: delete the funds and companies whose names end in
+  "(test)" in Profile; their holdings go with them.
+
 ### 16f. Asked for by the owner on 2026-10-08, not started
 - **FAQ page** (S–M). A fifth public page at `/faq`, linked from the footer
   and the page nav (`PAGES` in `src/lib/router.ts`, `InfoPage.tsx`). Needs
@@ -787,6 +813,99 @@ Left open by it:
   Partners", "Fund Structure" → "Funds". Also the same words wherever they
   label the same thing (the chat's session context, Profile tabs already
   say "Funds"), and the tests that click them by name.
+
+### 16g. Security verification audit (L) — asked for by the owner 2026-10-08, not started
+RegWay holds what a firm would not want seen: which companies each fund
+holds, where they operate, what regulators they answer to, and the
+questions people ask about them. The owner wants this checked properly
+before more firms use it. Nothing below has been done; it is the list to
+work through, most serious first.
+
+1. **Who can read what (row-level security).** Every table, one by one:
+   can a signed-in user of firm A read or change firm B's rows? Includes
+   `firms`, `funds`, `portfolio_companies`, `fund_holdings`,
+   `regulation_relevance`, `regulation_impacts`, notes, flags, dismissals,
+   `regway_ai_conversations` / `regway_ai_messages`, `profile_changes`,
+   `usage_events`, storage buckets (logos). Test with two real accounts,
+   not by reading the policies. Run Supabase's security advisors.
+2. **Edge functions.** Each one: does it check the caller's session, take
+   the firm from the session and never from the request body, and refuse a
+   company or conversation id that belongs to another firm? Which ones can
+   be called with no session (the scheduled ones) and what stops a
+   stranger calling them? CORS allows any origin (`_shared/cors.ts`).
+3. **Secrets.** What is in the browser bundle (only the publishable key
+   should be), what is in the repository's history, where the AI key and
+   the service-role key live and who can read them. `.env.local` holds an
+   AI key used for direct test calls.
+4. **Sign-in.** Password rules and the breached-password check (done),
+   rate limits on sign-in, sign-up and reset (none of our own today, see
+   Future), session length, email-change and reset-link handling, whether
+   two-factor sign-in is needed for this kind of customer.
+5. **What goes to the AI provider.** Exactly which profile facts, chat
+   text and attached files are sent, the provider's retention terms, and
+   whether a firm can be promised its data is not used for training.
+   Prompt injection: a published document or an attached file that tells
+   the model to do something (the chat has web search and reads files).
+6. **The browser.** The chat renders model output as HTML through our own
+   Markdown renderer (escaped, unit-tested, one e2e test for script
+   injection): review it again now that tables, links and code blocks were
+   added. Cached firm data sits in `localStorage` until sign-out. No
+   Content-Security-Policy or other security headers are set
+   (`vercel.json` has only the rewrite).
+7. **Addresses.** `/developments/:id` shows any public document to any
+   signed-in user (fine: the documents are public) but must never show
+   another firm's reason or analysis. Check `regulation_impacts` access by
+   id.
+8. **Dependencies and platform.** `pnpm audit`, the three add-on skill
+   packs in `.claude/skills/` (third-party instructions run with the
+   agent's permissions), Supabase and Vercel account access (who has it,
+   two-factor on those accounts), database backups and whether a restore
+   has ever been tried.
+9. **Records.** No audit log of who read or changed what. Whether one is
+   needed for the customers this is sold to.
+10. **An outside test.** After the above, a penetration test by someone
+    who did not build it, and a decision on SOC 2: buyers at PE firms will
+    ask.
+
+### 16h. Source coverage against the registry document (2026-10-08 comparison) — not started
+The owner asked whether every source in
+`docs/Regway_US_Regulatory_Source_Master_Registry_Comprehensive_V2 (1).docx`
+has been added. No. Compared by name on 2026-10-08:
+
+- **Read today**: the Federal Register for 21 agencies (SEC, CFTC, IRS,
+  Labor, EPA, FERC, HHS, FMCSA, CFPB, Federal Reserve, OCC, FDIC, FinCEN,
+  FTC, NLRB, FDA, CMS, DEA, OFAC, BIS, CBP) plus USTR, ITAR rules and
+  presidential documents; SEC, FTC and CFPB announcements; SEC litigation
+  releases and administrative proceedings; FINRA disciplinary actions;
+  State Department travel advisories; UK FCA, PRA, legislation and
+  sanctions; EU ESMA, EUR-Lex and sanctions. Because Labor and HHS are
+  read as whole departments, their parts (OSHA, EBSA, Wage and Hour, MSHA,
+  OFCCP; HHS OCR, OIG, CDC, SAMHSA) come with them.
+- **In the registry's sections 1–36 and not read at all** (federal bodies
+  that publish in the Federal Register, so adding them is a list change
+  plus a check of volume and matching cost): NCUA, FHFA, HUD, EEOC, CPSC,
+  FCC, NRC, Energy, FAA, NHTSA, FRA, PHMSA, FTA, FMC, STB, MARAD, TSA,
+  Coast Guard, USDA (FSIS, APHIS, AMS, FNS), TTB, ATF, Interior (BLM,
+  FWS, OSMRE, BSEE, BOEM), NOAA, Army Corps, USCIS, CISA, NIST, NTIA,
+  USPTO, Copyright Office, Education, Defense and the FAR Council, GSA,
+  SBA, PBGC, Treasury itself (CFIUS, outbound investment, FSOC, FIO),
+  USITC, Commerce ITA, NIGC, Postal Service, DOJ rules.
+- **Not Federal Register, each needs its own feed**: NFA, MSRB, PCAOB,
+  NERC, Fannie Mae / Freddie Mac / Ginnie Mae guides, NAIC, DOJ and U.S.
+  Attorney press releases, HHS OIG and EPA enforcement, CFTC and CFPB
+  enforcement pages, court decisions, Congress.gov, Regulations.gov
+  dockets, the Unified Agenda.
+- **Sections 37 and 39–52 (state, territory, county, city, tribal,
+  licensing boards, state privacy and AI laws)**: none read directly. The
+  document itself says these cannot be listed in advance and must be
+  resolved per company; today only the per-company web search reaches
+  them, with no guarantee.
+- **Cheapest next step**: widen the Federal Register agency list to the
+  second group, measure how many more documents a day that brings and
+  what the matcher costs on H.I.G. with the jurisdiction pre-filter, then
+  decide. The registry's own routing rule (match on activity, not only
+  industry) argues for choosing which agencies each firm's matcher reads
+  from its recorded industries, which is free.
 
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
