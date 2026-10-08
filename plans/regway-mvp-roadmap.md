@@ -466,27 +466,11 @@ resolved per entity). Notes: `prompts/source-registry-grounding.md`.
 One card per development, with its other versions as "also published as"
 links (owner's choice). See Completed and `prompts/duplicate-grouping.md`.
 
-### 16. Fact provenance and "last confirmed" dates (L)
-On every profile fact. Doc requires every matching fact to show its origin
-(user-entered vs. document) and a last-confirmed date, and for missing facts
-to render as visibly unknown rather than assumed-absent. Audited: today
-`profile` jsonb is a **bare key→value map** — `toRow()` writes
-`profile[q.id] = value` directly, `fromRow()` does `Object.assign(answers,
-profile)` directly, and `Answers = Record<string, unknown>`
-(`questionnaire.ts`). No column, key, or field anywhere is named
-`source`/`origin`/`confirmed_at`/`provenance` (checked all migrations and
-`types.ts`). The only existing per-answer state is a `missing` boolean
-(`QuestionField.tsx`, a "Needed" badge shown only when `required`) — a
-non-required empty field renders with no marker at all, indistinguishable
-from "confirmed N/A." `_shared/impact.ts`'s `facts()` helper flattens
-everything to plain `key: value` strings for the AI prompt, so even if
-provenance existed on the row it isn't threaded through to the analysis
-today. Needs: each `profile` value becomes `{ value, source, confirmed_at }`
-instead of a bare value (touches `toRow`/`fromRow`, every profile display
-component, and `facts()`), plus a real "unknown" UI state distinct from
-"empty and not required." (`profile_updated_at`, a whole-entity timestamp,
-already exists — see Completed — but that's a coarser signal than per-fact
-provenance.)
+### 16. Fact provenance and "last confirmed" dates — done
+Every profile fact shows where it came from and when it was last
+confirmed; blanks show as unknown, in the forms and to the AI. See
+Completed and `prompts/fact-provenance.md` (including what was left open:
+no document upload, no record of which user confirmed).
 
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
@@ -610,6 +594,23 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Fact provenance and "last confirmed" dates (2026-10-08)
+Roadmap item 16. Notes: `prompts/fact-provenance.md`.
+- **Storage**: `profile_meta` beside `profile` on firms, funds and
+  companies (migration 0034): per answer, `source` (user or a named
+  document) and `confirmed_at`. `profile` and everything that reads it are
+  unchanged.
+- **Stamping** in `toRow`: an entered or changed answer is dated now; a
+  save does not date answers the user didn't touch.
+- **Profile forms**: origin and date under each answer, "Still correct",
+  "Add document", "Confirm all answers are current", an "Unknown" badge on
+  blank optional facts, a count of answers over a year old.
+- **AI**: analyses and chat are told which decisive facts are not recorded
+  and which were last confirmed over a year ago.
+- **Live**: the regenerated ITAR analysis for A.L.A. now says its supplier
+  locations are not recorded and what that leaves unassessed.
+- Tests: 396 unit, 96 browser.
 
 ### Duplicate-coverage grouping (2026-10-07)
 Roadmap item 15. Notes: `prompts/duplicate-grouping.md`.

@@ -6,7 +6,7 @@
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { withoutCoveredDuplicates } from './duplicates.ts'
-import { COMPANY_FACTS, FIRM_FACTS, FUND_FACTS, facts } from './entityFacts.ts'
+import { COMPANY_FACTS, COMPANY_UNKNOWNS, FACT_MARKERS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from './entityFacts.ts'
 import { federalRegisterTextUrls, type FederalRegisterDocumentRef } from './federalRegister.ts'
 import { fetchPlainText } from './text.ts'
 import { recordUsage } from './usage.ts'
@@ -102,9 +102,9 @@ export async function generateImpact(
 
   const [{ data: reg }, { data: firm }, { data: funds }, { data: companies }, { data: links }, { data: holdings }] = await Promise.all([
     admin.from('regulations').select('id, source, title, agency, jurisdiction, summary, published_date, effective_date, source_url, raw, category, on_public_inspection').eq('id', regulationId).single(),
-    admin.from('firms').select('name, hq_location, jurisdictions, profile').eq('id', firmId).single(),
-    admin.from('funds').select('id, name, structure, size, jurisdictions, profile').eq('firm_id', firmId),
-    admin.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile').eq('firm_id', firmId),
+    admin.from('firms').select('name, hq_location, jurisdictions, profile, profile_meta').eq('id', firmId).single(),
+    admin.from('funds').select('id, name, structure, size, jurisdictions, profile, profile_meta').eq('firm_id', firmId),
+    admin.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile, profile_meta').eq('firm_id', firmId),
     admin.from('regulation_relevance').select('fund_id, portfolio_company_id, relevance_reason').eq('regulation_id', regulationId).eq('firm_id', firmId),
     admin.from('fund_holdings').select('fund_id, portfolio_company_id').eq('firm_id', firmId),
   ])
@@ -115,20 +115,20 @@ export async function generateImpact(
   const reasons = (links ?? []).map(l => l.relevance_reason).filter((r): r is string => !!r && !r.startsWith('NOT_RELEVANT'))
 
   const entities = [
-    `FIRM — ${firm.name}: ${facts(firm as Record<string, unknown>, FIRM_FACTS)}`,
+    `FIRM — ${firm.name}: ${facts(firm as Record<string, unknown>, FIRM_FACTS, FIRM_UNKNOWNS)}`,
     ...(funds ?? [])
       .filter(f => linkedFunds.has(f.id))
       .map(f => {
         // The companies a fund holds (fund_holdings), so an indirect match
         // can be written as a path: fund → company → location.
         const holds = (holdings ?? []).filter(h => h.fund_id === f.id).map(h => companies?.find(c => c.id === h.portfolio_company_id)?.name).filter(Boolean)
-        return `FUND — ${f.name}: ${facts({ ...f, holds } as Record<string, unknown>, FUND_FACTS)}`
+        return `FUND — ${f.name}: ${facts({ ...f, holds } as Record<string, unknown>, FUND_FACTS, FUND_UNKNOWNS)}`
       }),
     ...(companies ?? [])
       .filter(c => linkedCompanies.has(c.id))
       .map(
         c =>
-          `COMPANY — ${c.name}: ${facts(c as Record<string, unknown>, COMPANY_FACTS)}`,
+          `COMPANY — ${c.name}: ${facts(c as Record<string, unknown>, COMPANY_FACTS, COMPANY_UNKNOWNS)}`,
       ),
   ]
 
@@ -220,7 +220,7 @@ ${text}`,
           {
             type: 'text',
             text: `${reasons.length ? `Why it was matched to this firm: ${reasons.join(' | ')}\n` : ''}
-ENTITIES (use only these facts)
+ENTITIES (use only these facts. ${FACT_MARKERS})
 ${entities.join('\n')}`,
           },
         ],

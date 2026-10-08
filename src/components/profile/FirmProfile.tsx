@@ -13,7 +13,11 @@ export default function FirmProfile({ firmId }: { firmId: string }) {
       subtitle="Firm profile"
       row={firm as unknown as Record<string, unknown>}
       defaultOpen
-      onSave={a => saveFirmAnswers(firmId, a)}
+      onSave={async (a, meta) => {
+        await saveFirmAnswers(firmId, a, meta)
+        // The saved row carries the new confirmation dates.
+        setFirm(await fetchFirm(firmId))
+      }}
     />
   )
 }

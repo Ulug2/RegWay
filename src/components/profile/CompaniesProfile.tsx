@@ -31,7 +31,7 @@ export default function CompaniesProfile({ firmId, focusId }: { firmId: string; 
           subtitle={co.hq_location ?? undefined}
           row={co as unknown as Record<string, unknown>}
           defaultOpen={co.id === focusId || (!focusId && companies.length === 1)}
-          onSave={async a => { await saveCompanyAnswers(firmId, co, a); await reload(); prewarmCompanies(firmId) }}
+          onSave={async (a, meta) => { await saveCompanyAnswers(firmId, co, a, meta); await reload(); prewarmCompanies(firmId) }}
           onRemove={async () => { await removePortfolioCompany(co.id); await reload() }}
           logoUrl={co.logo_url}
           onUploadLogo={async file => { await uploadCompanyLogo(co.id, file); await reload() }}

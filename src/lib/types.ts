@@ -1,3 +1,5 @@
+import type { ProfileMeta } from './questionnaire'
+
 export interface Firm {
   id: string
   name: string
@@ -6,6 +8,8 @@ export interface Firm {
   jurisdictions: string[]
   website: string | null
   profile: Record<string, unknown>
+  // Where each answer came from and when it was last confirmed.
+  profile_meta?: ProfileMeta | null
   profile_updated_at: string | null
   // When the firm signed up: the first day its pages can step back to.
   created_at?: string
@@ -19,6 +23,8 @@ export interface Fund {
   structure: string | null
   jurisdictions: string[]
   profile: Record<string, unknown>
+  // Where each answer came from and when it was last confirmed.
+  profile_meta?: ProfileMeta | null
   profile_updated_at: string | null
 }
 
@@ -39,6 +45,8 @@ export interface PortfolioCompany {
   offerings: string | null
   website: string | null
   profile: Record<string, unknown>
+  // Where each answer came from and when it was last confirmed.
+  profile_meta?: ProfileMeta | null
   last_scanned_at: string | null
   profile_updated_at: string | null
   logo_url: string | null

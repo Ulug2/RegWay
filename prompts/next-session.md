@@ -2,18 +2,18 @@
 
 Last updated 2026-10-07 (UTC). All work is on `main`, pushed. Production
 (Supabase project `cfspwaqtidfliupmlfwz`) matches it on the server side:
-migrations 0024–0033 applied, every edge function deployed.
+migrations 0024–0034 applied, every edge function deployed.
 
 **Frontend**: the site is https://reg-way.vercel.app. Check that its build
 is the latest `main` (the landing page's source list should include "UK
 FCA" and "EU sanctions"); if not, redeploy. Skipped for now by the owner:
 item 11b, the move to `regwayai.com`.
 
-Done since the last note: item 15 (duplicate grouping: one card per
-development with "also published as" links; `prompts/duplicate-grouping.md`).
-Skipped by the owner: 11b (domain) and item 12
-Phase 3 (email alerts, later). Next in the roadmap's order: item 16 (fact
-provenance), then 17.
+Done since the last note: item 15 (duplicate grouping,
+`prompts/duplicate-grouping.md`) and item 16 (fact provenance,
+`prompts/fact-provenance.md`). Skipped by the owner: 11b (domain) and item
+12 Phase 3 (email alerts, later). Next in the roadmap's order: item 17
+(the multi-role architecture, `plans/regway-ai-multi-agent-architecture.md`).
 
 ## Setting up on the Mac
 
@@ -23,7 +23,7 @@ provenance), then 17.
   `VITE_SUPABASE_ANON_KEY` (the publishable key); `pnpm dev`.
 - Deploys / SQL: `SUPABASE_ACCESS_TOKEN` set, `supabase` CLI, then
   `supabase functions deploy --project-ref cfspwaqtidfliupmlfwz --use-api`.
-- Checks: `pnpm test:all` (type-checks, 383 unit tests, 90 browser tests;
+- Checks: `pnpm test:all` (type-checks, 396 unit tests, 96 browser tests;
   first time `pnpm exec playwright install chromium`).
 
 ## State at hand-off

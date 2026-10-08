@@ -27,7 +27,7 @@
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
-import { COMPANY_FACTS, FIRM_FACTS, FUND_FACTS, facts } from '../_shared/entityFacts.ts'
+import { COMPANY_FACTS, COMPANY_UNKNOWNS, FACT_MARKERS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from '../_shared/entityFacts.ts'
 import { loadMatchedDevelopments, type MatchedDevelopments, type MatchScope } from '../_shared/matchedDevelopments.ts'
 import { mergeUsage, recordUsage, type UsageTotals } from '../_shared/usage.ts'
 
@@ -67,14 +67,14 @@ function profileContext(firm: Record<string, unknown> | null, funds: EntityRow[]
 
   const fundLines = funds.map(f => {
     const holds = names(companies, holdings.filter(h => h.fund_id === f.id).map(h => h.portfolio_company_id))
-    return line(f.name, facts({ ...f, holds }, FUND_FACTS))
+    return line(f.name, facts({ ...f, holds }, FUND_FACTS, FUND_UNKNOWNS))
   })
   const companyLines = companies.map(c => {
     const heldBy = names(funds, holdings.filter(h => h.portfolio_company_id === c.id).map(h => h.fund_id))
-    return line(c.name, [facts(c, COMPANY_FACTS), heldBy.length ? `held by: ${heldBy.join(', ')}` : ''].filter(Boolean).join('; '))
+    return line(c.name, [facts(c, COMPANY_FACTS, COMPANY_UNKNOWNS), heldBy.length ? `held by: ${heldBy.join(', ')}` : ''].filter(Boolean).join('; '))
   })
 
-  return `Firm profile: ${facts(firm, FIRM_FACTS) || 'nothing recorded'}.
+  return `Firm profile: ${facts(firm, FIRM_FACTS, FIRM_UNKNOWNS) || 'nothing recorded'}.
 
 Funds:
 ${fundLines.join('\n') || 'none on file'}
@@ -82,7 +82,7 @@ ${fundLines.join('\n') || 'none on file'}
 Portfolio companies:
 ${companyLines.join('\n') || 'none on file'}
 
-These are the facts the firm has recorded. A fact that isn't listed is not recorded, which is different from "no": say so rather than assuming. Which fund holds which company is listed only where the firm recorded it.`
+These are the facts the firm has recorded. A fact that isn't listed is not recorded, which is different from "no": say so rather than assuming. ${FACT_MARKERS} Which fund holds which company is listed only where the firm recorded it.`
 }
 
 interface Attachment {
@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
 
     const { data: membership } = await supabase
       .from('firm_members')
-      .select('firm_id, firms(name, hq_location, jurisdictions, profile)')
+      .select('firm_id, firms(name, hq_location, jurisdictions, profile, profile_meta)')
       .eq('user_id', user.id)
       .single()
 
@@ -298,8 +298,8 @@ Deno.serve(async (req) => {
     // opened from (a fund, a company, one regulation), else firm-wide.
     const scope: MatchScope = context ? { type: context.type, id: context.id } : { type: 'firm' }
     const [{ data: funds }, { data: companies }, { data: holdings }, matched] = await Promise.all([
-      supabase.from('funds').select('id, name, size, structure, jurisdictions, profile').eq('firm_id', membership.firm_id).order('name'),
-      supabase.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile').eq('firm_id', membership.firm_id).order('name'),
+      supabase.from('funds').select('id, name, size, structure, jurisdictions, profile, profile_meta').eq('firm_id', membership.firm_id).order('name'),
+      supabase.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile, profile_meta').eq('firm_id', membership.firm_id).order('name'),
       supabase.from('fund_holdings').select('fund_id, portfolio_company_id').eq('firm_id', membership.firm_id),
       loadMatchedDevelopments(supabase, membership.firm_id, firm?.name ?? 'the firm', scope),
     ])

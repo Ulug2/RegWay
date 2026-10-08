@@ -328,8 +328,71 @@ export function fromRow(scope: Scope, row: Row | null | undefined): Answers {
 
 const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))]
 
-export function toRow(scope: Scope, answers: Answers): Record<string, unknown> {
-  const row: Record<string, unknown> = {}
+// ---------------------------------------------------------------------------
+// Fact provenance (roadmap item 16): where each answer came from and when it
+// was last confirmed, stored beside the answers in `profile_meta`.
+// ---------------------------------------------------------------------------
+
+export interface FactMeta {
+  // Typed into RegWay, or taken from a supporting document the user names.
+  source: 'user' | 'document'
+  // The document's name or link, when there is one.
+  document?: string
+  // When the answer was last entered, changed, or confirmed as still correct.
+  confirmed_at: string
+}
+
+export type ProfileMeta = Record<string, FactMeta>
+
+// A fact not confirmed for this long is shown as due for a look.
+export const STALE_AFTER_DAYS = 365
+
+// Preferences and feature switches are settings, not facts about the entity.
+const SETTINGS_SECTIONS = new Set(['Monitoring preferences', 'Optional extras', 'Using RegWay'])
+export const isFact = (q: Question) => !SETTINGS_SECTIONS.has(q.section)
+
+export const isStale = (meta: FactMeta | undefined, now = Date.now()) =>
+  !!meta && now - Date.parse(meta.confirmed_at) > STALE_AFTER_DAYS * 86_400_000
+
+export const metaOf = (row: object | null | undefined): ProfileMeta => (((row as Row | null | undefined)?.profile_meta ?? {}) as ProfileMeta)
+
+const stamp = (document: string | undefined, at: string): FactMeta => (document ? { source: 'document', document, confirmed_at: at } : { source: 'user', confirmed_at: at })
+
+export const sameAnswer = (a: unknown, b: unknown) => JSON.stringify(isEmpty(a) ? null : a) === JSON.stringify(isEmpty(b) ? null : b)
+
+// What `profile_meta` should hold after a save. An answer that was entered
+// or changed is stamped now: as typed by the user, or from the document the
+// form names for it (the form drops a document when its answer is edited,
+// since what backed the old value says nothing about the new one). An
+// unchanged answer keeps its entry as the form left it (confirmed, or given
+// a document). An unchanged answer from before provenance was kept stays
+// without one: when it was entered isn't known, and saving something else
+// doesn't confirm it. A cleared answer loses its entry.
+function metaAfterSave(scope: Scope, answers: Answers, opts: SaveContext): ProfileMeta {
+  const at = opts.now ?? new Date().toISOString()
+  const before = opts.previous ? fromRow(scope, opts.previous as Row) : null
+  const edited = opts.meta ?? metaOf(opts.previous)
+  const meta: ProfileMeta = {}
+  for (const q of questionsFor(scope)) {
+    if (!isFact(q) || isEmpty(answers[q.id])) continue
+    const document = edited[q.id]?.document?.trim() || undefined
+    if (!before || !sameAnswer(before[q.id], answers[q.id])) meta[q.id] = stamp(opts.meta ? document : undefined, at)
+    else if (edited[q.id]) meta[q.id] = stamp(document, edited[q.id].confirmed_at)
+  }
+  return meta
+}
+
+export interface SaveContext {
+  // The row as stored before this save; omitted when creating the entity.
+  previous?: object | null
+  // The form's provenance edits (confirmations, documents); defaults to
+  // what is stored.
+  meta?: ProfileMeta
+  now?: string
+}
+
+export function toRow(scope: Scope, answers: Answers, context: SaveContext = {}): Record<string, unknown> {
+  const row: Record<string, unknown> = { profile_meta: metaAfterSave(scope, answers, context) }
   const profile: Record<string, unknown> = {}
   const columnIds = COLUMN_ANSWERS[scope]
 

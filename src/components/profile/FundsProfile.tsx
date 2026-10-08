@@ -33,7 +33,7 @@ export default function FundsProfile({ firmId, focusId }: { firmId: string; focu
           subtitle={f.structure ?? undefined}
           row={f as unknown as Record<string, unknown>}
           defaultOpen={focusId ? f.id === focusId : f.id === firstIncomplete?.id && funds.length === 1}
-          onSave={async a => { await saveFundAnswers(f.id, a); await reload() }}
+          onSave={async (a, meta) => { await saveFundAnswers(f.id, a, meta); await reload() }}
           onRemove={async () => { await removeFund(f.id); await reload() }}
           extra={<HoldingsSummary companyNames={heldCompanyNames(f.id)} />}
         />

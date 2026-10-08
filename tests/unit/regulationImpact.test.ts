@@ -100,6 +100,9 @@ describe('regulation-impact, opened by a user', () => {
     const entities = body.messages[0].content[1].text as string
     expect(entities).toContain('Why it was matched to this firm: GetixHealth bills Medicare.')
     expect(entities).toContain('COMPANY — GetixHealth')
+    // Blank facts that could decide applicability are named as unknown.
+    expect(entities).toContain('not recorded: regions, supplier_locations, customers, consumer_facing, sensitive_data, regulated, gov_contracts, trade, outside_us')
+    expect(entities).toContain('A fact listed under "not recorded" is unknown')
     expect(entities).toContain('FIRM — H.I.G. Capital')
 
     expect(db.ran('regulation_impacts', 'upsert')[0].payload).toMatchObject({ regulation_id: REG, firm_id: FIRM, content: { text_truncated: false } })

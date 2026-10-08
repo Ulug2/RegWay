@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
-import { toRow, type Answers } from './questionnaire'
+import { toRow, type Answers, type ProfileMeta } from './questionnaire'
 import { firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
 import { collapseDuplicates, versionsOf } from './duplicates'
 import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, PublishedVersion, Regulation, RegulationNote } from './types'
@@ -323,9 +323,11 @@ const LOCATION_FIELDS = ['supplier_locations', 'facility_locations', 'operating_
 // isn't a location change worth a re-evaluation (which costs an AI call).
 const recorded = (v: unknown) => (v == null || v === '' || (Array.isArray(v) && v.length === 0) ? null : v)
 
-export async function saveFirmAnswers(firmId: string, answers: Answers): Promise<void> {
+// `meta`: the form's provenance edits (a fact confirmed, a supporting
+// document named); see questionnaire.ts.
+export async function saveFirmAnswers(firmId: string, answers: Answers, meta?: ProfileMeta): Promise<void> {
   const before = getCachedFirm()
-  const row = toRow('firm', answers)
+  const row = toRow('firm', answers, { previous: before, meta })
   const { error } = await supabase.from('firms').update(row).eq('id', firmId)
   if (error) throw error
   patchCache<Firm>('firm', prev => ({ ...prev, ...row }) as Firm)
@@ -342,9 +344,9 @@ export async function addFund(firmId: string, answers: Answers): Promise<void> {
   if (hasMatchingFacts('fund', row)) rediscoverMatches()
 }
 
-export async function saveFundAnswers(fundId: string, answers: Answers): Promise<void> {
+export async function saveFundAnswers(fundId: string, answers: Answers, meta?: ProfileMeta): Promise<void> {
   const before = getCachedFunds()?.find(f => f.id === fundId)
-  const row = toRow('fund', answers)
+  const row = toRow('fund', answers, { previous: before, meta })
   const { error } = await supabase.from('funds').update(row).eq('id', fundId)
   if (error) throw error
   refreshEntityImpacts('fund', fundId)
@@ -387,8 +389,8 @@ export async function addPortfolioCompany(firmId: string, answers: Answers): Pro
 // Cached company-regulations results were computed from the company's old
 // location/industry/operating footprint, so if any of those changed, drop
 // them — the dashboard re-scans on the next click when nothing is cached.
-export async function saveCompanyAnswers(firmId: string, previous: PortfolioCompany, answers: Answers): Promise<void> {
-  const row = toRow('company', answers)
+export async function saveCompanyAnswers(firmId: string, previous: PortfolioCompany, answers: Answers, meta?: ProfileMeta): Promise<void> {
+  const row = toRow('company', answers, { previous, meta })
   const { error } = await supabase.from('portfolio_companies').update(row).eq('id', previous.id)
   if (error) throw error
 

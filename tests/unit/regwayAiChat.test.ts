@@ -133,15 +133,18 @@ describe('regway-ai-chat', () => {
       },
       { message: 'What licences does GetixHealth hold?' },
     )
-    expect(system).toContain('Firm profile: hq_location: Miami, Florida; jurisdictions: United States; firm_type: Private equity; adviser_registration: SEC-registered investment adviser; strategies: Buyout, Growth.')
+    expect(system).toContain('Firm profile: hq_location: Miami, Florida; jurisdictions: United States; firm_type: Private equity; adviser_registration: SEC-registered investment adviser; strategies: Buyout, Growth; not recorded: legal_domicile.')
     expect(system).toContain('- Fund I: structure: Delaware LP; size: $1B; jurisdictions: United States; status: Investing; strategy: Buyout; holds: GetixHealth')
-    expect(system).toContain('- Fund II: structure: Cayman LP')
+    // A blank fact that would change a conclusion is named, not left out.
+    expect(system).toContain('- Fund I: structure: Delaware LP; size: $1B; jurisdictions: United States; status: Investing; strategy: Buyout; holds: GetixHealth; not recorded: ownership')
+    expect(system).toContain('- Fund II: structure: Cayman LP; not recorded: status, strategy, ownership')
     expect(system).not.toMatch(/- Fund II:.*holds/)
-    expect(system).toContain('- GetixHealth: hq_location: Houston, Texas; sectors: Healthcare; regions: United States; offerings: Revenue cycle management; sensitive_data: yes; license_types: Collection agency; held by: Fund I')
-    expect(system).toContain('- Aero Logistics: sectors: Aerospace; supplier_locations: Vietnam')
+    expect(system).toContain('- GetixHealth: hq_location: Houston, Texas; sectors: Healthcare; regions: United States; offerings: Revenue cycle management; sensitive_data: yes; license_types: Collection agency; not recorded: supplier_locations, customers, consumer_facing, regulated, gov_contracts, trade, outside_us; held by: Fund I')
+    expect(system).toContain('- Aero Logistics: sectors: Aerospace; supplier_locations: Vietnam; not recorded: regions, customers,')
     expect(system).not.toMatch(/- Aero Logistics:.*held by/)
     // Missing is not "no".
     expect(system).toContain('A fact that isn\'t listed is not recorded, which is different from "no"')
+    expect(system).toContain('A fact listed under "not recorded" is unknown: never treat it as a "no" or as absent')
   })
 
   it("reads profiles through the user's own access, limited to their firm", async () => {

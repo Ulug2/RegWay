@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import TagInput from '../TagInput'
-import { COUNTRIES, RECOMMENDED, US_STATES, emptyLocation, isEmpty, type LocationValue, type Question } from '../../lib/questionnaire'
+import { COUNTRIES, RECOMMENDED, US_STATES, emptyLocation, isEmpty, isStale, type FactMeta, type LocationValue, type Question } from '../../lib/questionnaire'
 import Chip from '../Chip'
 
 const CHIP_LIMIT = 24
@@ -76,15 +76,85 @@ function LocationField({ question, value, onChange }: { question: Question; valu
   )
 }
 
+// Where one answer came from and when it was last confirmed (roadmap item
+// 16), with the two things a user can do about it. Given on the Profile
+// forms only; signup and "add" forms have nothing recorded yet.
+export interface FactProvenance {
+  meta?: FactMeta
+  // For an answer from before provenance was kept: the latest it can have
+  // been entered (the profile's last save).
+  recordedBy?: string | null
+  // The answer in the form differs from the saved one.
+  changed: boolean
+  onConfirm: () => void
+  onDocument: (document: string) => void
+}
+
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+const linkStyle = { color: '#0284C7' }
+
+function FactLine({ fact, label }: { fact: FactProvenance; label: string }) {
+  const { meta } = fact
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(meta?.document ?? '')
+  const stale = isStale(meta)
+  const validDate = (iso: string | null | undefined): iso is string => !!iso && !Number.isNaN(Date.parse(iso))
+
+  const origin = fact.changed
+    ? `Edited: recorded ${meta?.document ? `from “${meta.document}”` : 'as entered by you'} today when you save`
+    : meta
+      ? `${meta.source === 'document' ? `From a document: ${meta.document}` : 'Entered by you'} · ${stale ? `last confirmed ${shortDate(meta.confirmed_at)}, over a year ago` : `confirmed ${shortDate(meta.confirmed_at)}`}`
+      : `Recorded ${validDate(fact.recordedBy) ? `on or before ${shortDate(fact.recordedBy)}` : 'earlier'} · not confirmed since`
+
+  const apply = () => {
+    fact.onDocument(draft.trim())
+    setEditing(false)
+  }
+
+  return (
+    <div className="mt-1.5 text-[11px] flex flex-wrap items-baseline gap-x-2 gap-y-0.5" style={{ color: stale ? '#B45309' : '#94a3b8' }} data-fact-line>
+      <span>{origin}</span>
+      {!fact.changed && (stale || !meta) && (
+        <button type="button" className="underline" style={linkStyle} onClick={fact.onConfirm} aria-label={`Confirm ${label} is still correct`}>
+          Still correct
+        </button>
+      )}
+      <button type="button" className="underline" style={linkStyle} onClick={() => setEditing(e => !e)} aria-label={`Supporting document for ${label}`}>
+        {meta?.document ? 'Change document' : 'Add document'}
+      </button>
+      {editing && (
+        <div className="flex gap-2 mt-1.5 basis-full">
+          <input
+            className="glass-input-rect"
+            style={{ fontSize: 12 }}
+            placeholder="Supporting document: its name or a link (blank to remove)"
+            aria-label={`Document name or link for ${label}`}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                apply()
+              }
+            }}
+          />
+          <button type="button" className="btn-ghost" onClick={apply}>Apply</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface QuestionFieldProps {
   question: Question
   value: unknown
   onChange: (value: unknown) => void
   // Marks a still-unanswered required question with a soft "Needed" hint.
   flagMissing?: boolean
+  fact?: FactProvenance
 }
 
-export default function QuestionField({ question: q, value, onChange, flagMissing }: QuestionFieldProps) {
+export default function QuestionField({ question: q, value, onChange, flagMissing, fact }: QuestionFieldProps) {
   const shown = isEmpty(value) && q.defaultValue !== undefined ? q.defaultValue : value
   const missing = flagMissing && q.required && isEmpty(shown)
 
@@ -169,8 +239,19 @@ export default function QuestionField({ question: q, value, onChange, flagMissin
             Needed
           </span>
         )}
+        {fact && !missing && isEmpty(shown) && (
+          // A blank answer is a gap in what RegWay knows, not a "no".
+          <span
+            className="text-[10px] font-medium px-2 py-0.5"
+            style={{ borderRadius: 9999, background: 'rgba(100,116,139,0.10)', color: '#64748B' }}
+            title="Not recorded. RegWay treats a blank answer as unknown, not as “no” or “none”."
+          >
+            Unknown
+          </span>
+        )}
       </div>
       {control}
+      {fact && !isEmpty(shown) && <FactLine fact={fact} label={q.label} />}
       {q.help && <p className="text-[11px] mt-1.5" style={{ color: '#94a3b8' }}>{q.help}</p>}
     </div>
   )
