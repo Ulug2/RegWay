@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  announcementBody,
   announcementsFor,
   federalRegisterNumber,
   linkDuplicate,
@@ -171,6 +172,28 @@ describe("a Federal Register document and the agency's announcement of it", () =
     // Billed to no firm: the link is the same for everyone.
     const [usage] = db.ran('usage_events', 'insert')
     expect(usage.payload).toMatchObject({ function_name: 'group-duplicates', firm_id: null, model: 'claude-haiku-4-5' })
+  })
+
+  it("reads a press release's body from its page, starting where the release itself starts", () => {
+    const release = { title: 'SEC Proposes Amendments', summary: 'The Securities and Exchange Commission today voted to propose rule amendments that would…' }
+    const page = `Skip to main content SEC homepage Newsroom Press Releases The Securities and Exchange Commission today voted to propose rule amendments that would facilitate capital formation. The proposals would: Modernize the interval fund framework. ${'x'.repeat(5000)}`
+    const body = announcementBody(page, release)
+    expect(body.startsWith('The Securities and Exchange Commission today voted')).toBe(true)
+    expect(body).toContain('Modernize the interval fund framework')
+    expect(body).toHaveLength(3000)
+    // No summary in the feed: from the headline. Neither found: nothing, and the summary is used.
+    expect(announcementBody('Menu SEC Proposes Amendments Washington D.C.', { ...release, summary: null })).toBe('SEC Proposes Amendments Washington D.C.')
+    expect(announcementBody('Request blocked', release)).toBe('')
+  })
+
+  it('gives the model the body where it has one, and the summary otherwise', async () => {
+    const { model } = stubModel({ submit_match: { reason: 'x', press_release: 1 } })
+    const announcements = [announcement('a', { summary: 'Short summary A…' }), announcement('b', { summary: 'Short summary B…' })]
+    await matchAnnouncement(fakeClient(), document, announcements, new Map([['a', 'Full body of release A, naming the custody rules.'], ['b', '']]))
+    const prompt = promptText(model[0])
+    expect(prompt).toContain('Full body of release A, naming the custody rules.')
+    expect(prompt).not.toContain('Short summary A')
+    expect(prompt).toContain('Short summary B…')
   })
 
   it.each([

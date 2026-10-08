@@ -34,6 +34,10 @@ export const ANNOUNCEMENT_LAG_DAYS = 3
 // away than this is more likely an earlier stage of the rulemaking.
 const SCAN_TITLE_DAYS = 120
 const SUMMARY_CHARS = 900
+// A press release names every rule in its package only in the body, well
+// past what the feed gives as its summary.
+export const ANNOUNCEMENT_CHARS = 3000
+const ANCHOR_CHARS = 60
 const MIN_TITLE_CHARS = 12
 
 export interface Version {
@@ -170,6 +174,17 @@ export function announcementsFor(document: Version, announcements: Version[]): V
   })
 }
 
+// The body of a press release, from its page's text: from where the feed's
+// summary (the release's opening words) starts, so the site's navigation is
+// left out. Empty when the opening can't be found; the summary is used then.
+export function announcementBody(pageText: string, announcement: Pick<Version, 'summary' | 'title'>): string {
+  for (const anchor of [announcement.summary, announcement.title]) {
+    const start = anchor ? pageText.indexOf(anchor.slice(0, ANCHOR_CHARS)) : -1
+    if (start >= 0) return pageText.slice(start, start + ANNOUNCEMENT_CHARS)
+  }
+  return ''
+}
+
 // Notices of exchanges' and FINRA's own rule filings: the SEC never
 // announces these in a press release.
 export const neverAnnounced = (document: Version) => /^Self-Regulatory Organizations\b/i.test(document.title)
@@ -178,11 +193,12 @@ const INSTRUCTIONS = `A U.S. regulator announces a rulemaking in a press release
 
 Below is one Federal Register document, then the same agency's recent press releases, numbered from 1.
 
-Decide which press release, if any, announced this exact document: the same rule, proposal, order, exemption or request for comment. One press release can announce a package of several documents voted on together, so it is fine if other documents belong to the same press release. A press release about the same general subject that announces a different action is not a match. Most documents were never announced in a press release: if none clearly announced this one, answer 0.`
+Decide which press release, if any, announced this exact document: the same rule, proposal, order, exemption or request for comment. One press release can announce a package of several documents voted on together, each described in a sentence or a bullet of its text, so it is fine if other documents belong to the same press release. A press release about the same general subject that announces a different action is not a match. Most documents were never announced in a press release: if none clearly announced this one, answer 0.`
 
 // Which of `announcements` announced `document`: its index, or null. One
 // model call; the caller has already checked there is something to compare.
-export async function matchAnnouncement(admin: SupabaseClient, document: Version, announcements: Version[]): Promise<number | null> {
+// `bodies`: each press release's fuller text by id, where it could be read.
+export async function matchAnnouncement(admin: SupabaseClient, document: Version, announcements: Version[], bodies: Map<string, string> = new Map()): Promise<number | null> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -220,7 +236,7 @@ Title: ${document.title}
 Summary: ${(document.summary ?? 'none').slice(0, SUMMARY_CHARS)}
 
 PRESS RELEASES
-${announcements.map((a, i) => `${i + 1}. [${a.published_date ?? 'date n/a'}] ${a.title}\n   ${(a.summary ?? 'no summary').slice(0, SUMMARY_CHARS)}`).join('\n')}`,
+${announcements.map((a, i) => `${i + 1}. [${a.published_date ?? 'date n/a'}] ${a.title}\n   ${bodies.get(a.id) || (a.summary ?? 'no summary').slice(0, SUMMARY_CHARS)}`).join('\n')}`,
         },
       ],
     }),

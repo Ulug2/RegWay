@@ -462,11 +462,9 @@ resolved per entity). Notes: `prompts/source-registry-grounding.md`.
    search; give the scan more searches first; use it to choose which
    agencies' Federal Register documents each firm's matcher reads.
 
-### 15. Duplicate-coverage grouping — done; the announcement rule waits for AI credit
+### 15. Duplicate-coverage grouping — done
 One card per development, with its other versions as "also published as"
 links (owner's choice). See Completed and `prompts/duplicate-grouping.md`.
-Still to do once the AI provider accepts calls again: read the links the
-announcement rule makes on its first run (the query is in the notes).
 
 ### 16. Fact provenance and "last confirmed" dates (L)
 On every profile fact. Doc requires every matching fact to show its origin
@@ -627,10 +625,11 @@ Roadmap item 15. Notes: `prompts/duplicate-grouping.md`.
   Dismiss and restore cover every version. RegWay AI's context names a
   development once. An analysis is not prepared ahead for a later version
   the firm already sees under its first version.
-- **Live**: 222 rows checked, 20 linked, all correct. The announcement
-  rule made no call that succeeded: the AI provider has refused calls
-  since 00:40 UTC on 2026-10-08 (credit balance too low).
-- Tests: 380 unit, 90 browser.
+- **Live**: 28 links, all read and correct: 5 EU pairs, 1 FCA bulletin,
+  14 scan results, and 8 documents under 5 SEC / FTC announcements. The
+  announcement rule first missed one of two documents in a package, so it
+  now reads the press release's page rather than the feed's summary.
+- Tests: 383 unit, 90 browser.
 
 ### Defense trade controls (ITAR) from the Federal Register (2026-10-07)
 Roadmap item 14, part 1. `sync-federal-register` gained a

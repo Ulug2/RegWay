@@ -9,16 +9,9 @@ is the latest `main` (the landing page's source list should include "UK
 FCA" and "EU sanctions"); if not, redeploy. Skipped for now by the owner:
 item 11b, the move to `regwayai.com`.
 
-**The AI provider is refusing calls** ("credit balance is too low") since
-00:40 UTC on 2026-10-08: scheduled matching, analyses, chat and the
-announcement rule of duplicate grouping all fail until the owner tops up
-the Anthropic account whose key is in the Supabase secrets. The dashboard
-shows the "Automatic matching" banner for it.
-
 Done since the last note: item 15 (duplicate grouping: one card per
 development with "also published as" links; `prompts/duplicate-grouping.md`).
-Once AI calls work again, read the links its announcement rule makes (the
-query is in those notes). Skipped by the owner: 11b (domain) and item 12
+Skipped by the owner: 11b (domain) and item 12
 Phase 3 (email alerts, later). Next in the roadmap's order: item 16 (fact
 provenance), then 17.
 
@@ -30,7 +23,7 @@ provenance), then 17.
   `VITE_SUPABASE_ANON_KEY` (the publishable key); `pnpm dev`.
 - Deploys / SQL: `SUPABASE_ACCESS_TOKEN` set, `supabase` CLI, then
   `supabase functions deploy --project-ref cfspwaqtidfliupmlfwz --use-api`.
-- Checks: `pnpm test:all` (type-checks, 380 unit tests, 90 browser tests;
+- Checks: `pnpm test:all` (type-checks, 383 unit tests, 90 browser tests;
   first time `pnpm exec playwright install chromium`).
 
 ## State at hand-off
@@ -52,7 +45,6 @@ provenance), then 17.
   verdict call at temperature 0. `usage.ts` prices per model.
 - **AI spend**: check `select sum(estimated_cost_usd) from usage_events` (about $15 all time on 2026-10-07).
 - **Waiting on the owner:**
-  - Top up the Anthropic account (see the top of this note).
   - Footer links (About Us, Sources, Legal, Privacy) need page content.
 - **Live AI tests still owed:** see that table in
   `plans/regway-mvp-roadmap.md` (pre-publication analysis; fund-level

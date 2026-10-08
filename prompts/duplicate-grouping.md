@@ -53,16 +53,29 @@ First run: 222 rows checked, 20 linked (5 EU pairs, the FCA bulletin, 14
 scan results), all read and correct. On H.I.G.: three scan results on the
 GetixHealth and A.L.A. pages now link to their Federal Register documents.
 
-**Not run live: the announcement rule.** The AI provider refused every call
-("credit balance is too low") from 00:40 UTC on 2026-10-08; scheduled
-matching fails for the same reason. The documents stay unchecked and are
-retried on every run, so the SEC pairs (crypto custody; the proxy and
-shareholder-proposal package; the retailization package) should link on
-the first run after the balance is topped up. Check then:
+**The announcement rule** ran on 2026-10-08 once the AI provider accepted
+calls again (it had refused every call for about an hour: "credit balance
+is too low"). 11 SEC and FTC documents had an announcement to compare with.
+
+- First attempt, with the feed's summary of each press release: 7 linked,
+  all correct, 1 missed. The SEC's "retailization" release announced two
+  proposals; the summary (cut at 600 characters) mentions neither by name,
+  and the performance-based compensation proposal was left unlinked.
+- The press release's own page is now read (first 3,000 characters of the
+  body, once per run) and given to the model instead of the summary: 8
+  linked, all correct, none missed. The 3 left alone (Commission quorum
+  rule, EDGAR Filer Manual, a petition for rulemaking) have no press
+  release.
+- Links: SEC crypto custody (1 document), SEC proxy and shareholder
+  proposals (2), SEC retailization (2), FTC Rules of Practice (2), FTC
+  impersonation rule (1).
+- Cost: about $0.003 a call; $0.11 for the three passes (two dry runs).
+- On H.I.G.'s firm page two developments went from two cards to one: the
+  crypto custody proposal and the retailization package.
+
+To read the links again later:
 
     select s.title, p.title from regulations s join regulations p on p.id = s.duplicate_of where p.source like '%_news';
-
-and read each pair: this rule is the only one that can link wrongly.
 
 ## Left open
 

@@ -26,6 +26,7 @@ import {
   PAIR_DAYS,
   SAME_TITLE_SOURCES,
   VERSION_COLUMNS,
+  announcementBody,
   announcementsFor,
   federalRegisterNumber,
   linkDuplicate,
@@ -38,6 +39,7 @@ import {
   type Version,
 } from '../_shared/duplicates.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
+import { fetchPlainText } from '../_shared/text.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
@@ -163,6 +165,16 @@ async function run(admin: SupabaseClient, dryRun: boolean): Promise<RunStats> {
     else stats.backlog = true
   }
 
+  // Each press release's page is read once per run, and only when a
+  // document is about to be compared with it. A page that can't be read
+  // (sec.gov turns cloud addresses away now and then) leaves the summary.
+  const pages = new Map<string, Promise<string>>()
+  const body = (a: Version) => {
+    if (!pages.has(a.id)) pages.set(a.id, fetchPlainText([a.source_url]).then(text => announcementBody(text, a)).catch(() => ''))
+    return pages.get(a.id)!
+  }
+  const bodies = async (candidates: Version[]) => new Map(await Promise.all(candidates.map(async a => [a.id, await body(a)] as const)))
+
   let next = 0
   let failed = false
   const worker = async () => {
@@ -170,7 +182,7 @@ async function run(admin: SupabaseClient, dryRun: boolean): Promise<RunStats> {
       const { document, candidates } = toCompare[next++]
       try {
         stats.aiCalls++
-        const index = await matchAnnouncement(admin, document, candidates)
+        const index = await matchAnnouncement(admin, document, candidates, await bodies(candidates))
         // The announcement is the card whichever came first by a day or two.
         if (index !== null) add('announcement', [{ secondary: document.id, primary: candidates[index].id }])
         checked.add(document.id)

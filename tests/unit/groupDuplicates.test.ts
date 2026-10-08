@@ -119,6 +119,20 @@ describe('group-duplicates', () => {
     expect(checked.sort()).toEqual(['doc', 'ftc-doc', 'sro'])
   })
 
+  it("reads the press release's page once however many documents are compared with it", async () => {
+    const pages: string[] = []
+    const release = { ...ANNOUNCEMENT, summary: 'The SEC today proposed', source_url: 'https://www.sec.test/press/2026-100' }
+    const { model } = stubModel({ submit_match: { reason: 'x', press_release: 1 } }, url => {
+      pages.push(url.href)
+      return new Response(`<html><nav>Menu</nav><p>The SEC today proposed custody rules and recordkeeping amendments. ${'Detail. '.repeat(80)}</p></html>`)
+    })
+    await run({ documents: [DOCUMENT, row('doc-2', { title: 'Custody Recordkeeping Amendments' })], stored: [release] })
+    expect(pages).toEqual(['https://www.sec.test/press/2026-100'])
+    expect(model).toHaveLength(2)
+    for (const call of model) expect(promptText(call)).toContain('The SEC today proposed custody rules and recordkeeping amendments.')
+    expect(promptText(model[0])).not.toContain('Menu')
+  })
+
   it('links nothing when the model says no announcement fits', async () => {
     stubModel({ submit_match: { reason: 'Different subject.', press_release: 0 } })
     const { links, checked } = await run({ documents: [DOCUMENT], stored: [ANNOUNCEMENT, DOCUMENT] })
