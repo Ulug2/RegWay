@@ -14,6 +14,13 @@ export async function getFirmId(): Promise<string | null> {
   return id
 }
 
+// One development by its id, for a page opened from its address.
+export async function fetchRegulation(id: string): Promise<Regulation | null> {
+  const { data, error } = await supabase.from('regulations').select('*').eq('id', id).maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export async function fetchFirm(firmId: string): Promise<Firm> {
   const { data, error } = await supabase.from('firms').select('*').eq('id', firmId).single()
   if (error) throw error

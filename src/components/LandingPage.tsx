@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import AuthPanel from './AuthPanel'
 import Reveal from './Reveal'
+import { SOURCES } from '../lib/sourceList'
 import SiteFooter from './SiteFooter'
 import { Wordmark } from './PageHeader'
 import { FileText, Funnel, TreeStructure } from './icons'
@@ -53,15 +54,6 @@ const STEPS = [
     title: 'Open what was found today',
     body: "Each page opens on today's findings with why each one applies, a plain-language analysis, and RegWay AI to ask follow-up questions.",
   },
-]
-
-const SOURCES = [
-  {
-    region: 'United States',
-    names: ['Federal Register', 'SEC announcements', 'SEC litigation releases', 'SEC administrative proceedings', 'FINRA disciplinary actions', 'FTC', 'CFPB', 'OFAC sanctions', 'BIS export controls', 'USTR trade actions', 'State Department travel advisories'],
-  },
-  { region: 'United Kingdom', names: ['UK FCA', 'UK PRA', 'UK legislation', 'UK sanctions (OFSI)'] },
-  { region: 'European Union', names: ['EU ESMA', 'EUR-Lex', 'EU sanctions'] },
 ]
 
 const SECTION = 'max-w-[1200px] mx-auto px-5 sm:px-8'

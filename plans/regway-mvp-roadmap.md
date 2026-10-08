@@ -161,7 +161,7 @@ Both checks settled 2026-10-05:
 ### 2. Move the RegWay AI input so it's always in reach — done
 See Completed, "Roadmap items 2–5".
 
-### 3. Small fixes found by the 2026-10-04 test pass — done except the footer
+### 3. Small fixes found by the 2026-10-04 test pass — done (footer pages built 2026-10-08)
 See Completed, "Roadmap items 2–5". Still open:
 - **Footer pages** ("About Us", "Sources", "Legal Disclaimers", "Privacy
   Policy"). The links that went nowhere were removed in the redesign
@@ -334,7 +334,7 @@ Left open:
 - Deployed edge functions other than the three above were compared with
   the code by deploy time, not line by line.
 
-### 11b. Move the site to regwayai.com (S)
+### 11b. Move the site to regwayai.com (S) — done 2026-10-08, one check left for the owner
 **Status 2026-10-08: the domain is live.** The owner added the DNS records
 at Squarespace; `https://www.regwayai.com` serves the current build, and
 `regwayai.com` and `reg-way.vercel.app` both redirect to it (308). Still to
@@ -490,7 +490,7 @@ without the owner. Nothing here is started. Sizes are rough.
 #### Not built, or left for later
 
 Skipped by the owner's call:
-- **11b, move to regwayai.com** (S). Steps are in item 11b.
+- ~~11b, move to regwayai.com~~: done 2026-10-08 (item 11b).
 - **12 Phase 3, email alerts** (M). Needs an email provider and a
   definition of "high priority" (see Questions).
 
@@ -548,9 +548,8 @@ From the 11a review, still open:
   compared with the code by deploy time, not line by line.
 
 Other:
-- **Footer pages** (About Us, Sources, Legal Disclaimers, Privacy Policy)
-  do not exist. The `href="#"` links to them were removed in the redesign
-  (item 16d).
+- ~~Footer pages do not exist~~: built 2026-10-08 (item 16e): About,
+  Sources, Legal disclaimers, Privacy.
 - **The known false positive** (the Section 301 manufacturing
   investigation matched to 3Pillar) is parked in item 17.
 
@@ -644,8 +643,9 @@ Verified on 2026-10-08 with the owner signed in on localhost (H.I.G.):
 1. **Credit**: the server's key belongs to the "regpe" Anthropic
    organisation. No low-balance alert wanted.
 2. **Email alerts**: skipped for now.
-3. **Domain**: unanswered (11b stays skipped).
-4. **Footer pages**: unanswered.
+3. **Domain**: done 2026-10-08. The site is https://www.regwayai.com.
+4. **Footer pages**: built 2026-10-08 (item 16e). The owner has not yet
+   read the wording, and they need a contact address (see 16e).
 5. **Duplicates**: yes to both. Done as 16b.1.
 6. **Provenance**: the owner asked for the options to be explained before
    deciding. As put to them: today "Add document" stores only a label you
@@ -654,12 +654,20 @@ Verified on 2026-10-08 with the owner signed in on localhost (H.I.G.):
    next to the answer and, if wanted, have the AI check that the document
    really says what the answer says (and suggest answers from it). That is
    a larger build (file storage, access rules, an AI reading step with its
-   own cost). Still open: which one; whether one year is the right age to
-   ask for re-confirmation; whether to record which user confirmed.
+   own cost). **Decided 2026-10-08: keep the typed label.** Why the field
+   exists at all, as explained to the owner: the product's promise is that
+   every match can be traced to a fact someone stands behind. The label
+   records what that fact rests on ("Form ADV, March 2026") beside who
+   entered it and when it was last confirmed, so a colleague or an auditor
+   can ask "says who?" and get an answer, and so the AI is told which
+   facts are documented and which are only asserted. It costs one optional
+   field. Still open: whether one year is the right age to ask for
+   re-confirmation; whether to record which user confirmed.
 7. **Profile edits that cost money**: wait about five minutes after the
    last edit before spending AI credit, since a user often changes several
    things in a row. Done as 16b.2.
-8. **Scheduled matching beyond H.I.G.**: unanswered.
+8. **Scheduled matching beyond H.I.G.**: for now H.I.G. only (owner,
+   2026-10-08). Other firms are matched at onboarding and on profile edits.
 9. **CFTC and OFAC through the Federal Register only**: unanswered.
 10. **Registry grounding (item 14 part 2)**: unanswered.
 11. **Item 17**: on hold until the owner says.
@@ -708,19 +716,17 @@ Suggested order if any are adopted: Playwright CLI (tooling only), then a
 the owner: which of these do you want installed, and is the aim a redesign
 or an audit of what exists?
 
-### 16d. Redesign with the five add-ons (2026-10-08) — done, on branch `redesign`
+### 16d. Redesign with the five add-ons (2026-10-08) — done and merged
 Owner: "install all of them. Then redesign our app from what you learned
 from those plugins. But keep the same colors and improve everything else."
 Notes: `prompts/redesign.md`. The rules the UI now follows: `DESIGN.md`.
-Not merged: the branch is for the owner to look at first.
+Merged into `main` and live the same day, after the owner's changes in
+item 16e (which replaced the colours this item had kept).
 
 Left open by it:
-- **Merge** `redesign` into `main` (which deploys it) once the owner has
-  seen it.
 - **"Export Memo"** in the chat header was removed: it had no handler. A
   real export (the conversation as a document) is a feature to build if
   wanted.
-- **Footer pages** still don't exist (see item 3).
 - **Not looked at in a browser**: the fund and company Profile cards
   opened in dark mode, the password-reset screen, the dismissed list with
   items in it, tablet widths between 768 and 1024px, and Safari/Firefox.
@@ -728,17 +734,59 @@ Left open by it:
 - **Bundle**: the script is 647 kB (179 kB gzipped) in one file. Splitting
   the chat drawer and the profile screens into their own chunks would cut
   the first load.
-- **URLs**: the app still has one address for every screen, so a page
-  can't be bookmarked or opened in a new tab, and the browser's Back
-  button leaves the app. The interface guidelines flag this; it is a
-  routing change, not a visual one.
+- ~~URLs: one address for every screen~~: done in item 16e.
 - **Company logos** are loaded at whatever size was uploaded.
-- **Geopolitical violet and enforcement amber** are a second and third
-  colour beside the accent. Kept, because the owner asked for the colours
-  to stay.
+- ~~Geopolitical violet and enforcement amber beside the accent~~: both
+  labels are grey since the palette change in item 16e.
 - **Image to Code and the image-generation skills** (`imagegen-*`,
   `brandkit`) are installed and unused: they need an image generator,
   which this setup doesn't have.
+
+### 16e. After the redesign: the owner's changes, the domain, pages and addresses (2026-10-08) — done
+Everything asked for after the redesign was first shown, all on `main` and
+live at https://www.regwayai.com. Summary in Completed ("16e").
+
+Left open by it:
+- **Public pages need the owner's read, and two facts.** About, Sources,
+  Legal disclaimers and Privacy describe only what the product does today.
+  They were written by the assistant, not a lawyer. They show no contact
+  address (`CONTACT_EMAIL` in `InfoPage.tsx` is unset) and do not name the
+  company behind RegWay or a governing law, because neither was given.
+- **Privacy names its service providers by kind, not by name** (hosting,
+  database and sign-in, AI model provider), because the owner asked for
+  the AI vendor's name to be taken out of the site. A privacy page usually
+  names them; the owner's call.
+- **Supabase Auth settings for the new domain** are the owner's to
+  confirm (item 11b).
+- **The dashboard's three levels have no address of their own**: `/` is
+  the dashboard whichever level is open.
+- **A development opened from its address alone** (a pasted link, a
+  reload) shows the document and its analysis but not the "Also published
+  as" links until they load, and nothing checks that it was ever matched
+  to the viewer's firm (any signed-in user can read any public document).
+- **Closing the browser tab mid-answer** still loses the answer; only
+  closing the chat panel is covered. Needs the server to finish on its own
+  and a way for "Stop generating" to reach it.
+- **Chat items from the owner's pasted instructions, not built**: rename,
+  pin and archive conversations; thumbs up/down and share on answers;
+  citations attached to sentences; saving an answer as a note or flag; an
+  "Analyzed N sources" line.
+- **Not looked at in the new colours**: Profile, the development page,
+  tablet widths, Safari and Firefox.
+- **Search listing**: the owner verified the domain in Google Search
+  Console and requested indexing on 2026-10-08. Whether it is listed has
+  not been checked since.
+
+### 16f. Asked for by the owner on 2026-10-08, not started
+- **FAQ page** (S–M). A fifth public page at `/faq`, linked from the footer
+  and the page nav (`PAGES` in `src/lib/router.ts`, `InfoPage.tsx`). Needs
+  the questions: suggested set is what RegWay is, who it is for, where the
+  data comes from, how matching works and how wrong it can be, what the AI
+  sees, what it costs, how to get access.
+- **Rename the dashboard's level buttons** (S): "PE Firm" → "General
+  Partners", "Fund Structure" → "Funds". Also the same words wherever they
+  label the same thing (the chat's session context, Profile tabs already
+  say "Funds"), and the tests that click them by name.
 
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
@@ -862,6 +910,40 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### 16e: after the redesign (2026-10-08)
+Asked for by the owner in one sitting after seeing the redesign; all live.
+- **Colours**: flat black, white, grey and one blue in both themes. The
+  gradients, blurred glows, frosted glass and tinted shadows are gone;
+  "Enforcement" and "Geopolitical" labels are grey. `DESIGN.md` has the
+  new table.
+- **Dashboard**: the Settings button gave way to a light/dark switch
+  (follows the device until used); greeting, level bar and AI bar sit
+  centred in the window when no level is open; name, initials and counts
+  are loaded before the dashboard shows; fund holdings are cached.
+- **Chat**: answers set on the page without a bubble, with tables, code
+  blocks (with Copy), nested lists and named links; a floating input; the
+  header see-through in full screen; suggestions that fill one line; the
+  disclaimer only before the first message; a space no longer goes missing
+  after a search pause; past conversations cached, searchable and grouped
+  by day; an answer still being written when the chat is closed finishes
+  out of sight, and reopening returns to it. The model is told its answer
+  is rendered Markdown (`regway-ai-chat`, deployed).
+- **Account settings** lost the grey explanatory lines; profile cards lost
+  the "each answer shows where it came from" line.
+- **Domain**: https://www.regwayai.com (item 11b). Search engines may list
+  it: `noindex` and the `robots.txt` block were removed, a canonical
+  address, a descriptive title and link-preview tags (`public/og.jpg`)
+  were added.
+- **Public pages**: About, Sources, Legal disclaimers, Privacy
+  (`InfoPage.tsx`), linked from the footer on every page.
+- **An address per screen** (`src/lib/router.ts`, History API, no
+  library): `/sign-in`, `/sign-up`, `/about` `/sources` `/legal`
+  `/privacy`, `/profile/:tab`, `/funds/:id`, `/companies/:id`,
+  `/developments/:id`. Reload, bookmarks, new tabs and the browser's Back
+  and Forward work; a signed-in address asked for while signed out leads
+  there after sign-in. `vercel.json` sends every path to the app.
+- Tests: 422 unit, 138 browser (`tests/e2e/routes.spec.ts` is new).
 
 ### 16d: redesign, same colours (2026-10-08, branch `redesign`)
 Notes: `prompts/redesign.md`; rules: `DESIGN.md`.

@@ -675,6 +675,50 @@ select:focus-visible {
     transform: translateY(0) scale(0.995);
   }
 
+  .footer-link {
+    color: var(--text-400);
+    transition: color 0.18s ease;
+  }
+  .footer-link:hover {
+    color: var(--text-900);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Long-form text on the public pages (About, Sources, Legal, Privacy). */
+  .info-lead {
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--text-600);
+  }
+  .info-prose {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-600);
+  }
+  .info-prose p + p,
+  .info-prose p + ul,
+  .info-prose ul + p {
+    margin-top: 12px;
+  }
+  .info-prose ul,
+  .info-prose ol {
+    padding-left: 20px;
+  }
+  .info-prose ul {
+    list-style: disc;
+  }
+  .info-prose ol {
+    list-style: decimal;
+  }
+  .info-prose li + li {
+    margin-top: 8px;
+  }
+  .info-prose strong {
+    font-weight: 600;
+    color: var(--text-900);
+  }
+
   .site-footer {
     background: var(--canvas);
     border-top: 1px solid rgb(var(--line-rgb) / 0.3);

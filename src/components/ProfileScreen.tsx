@@ -33,12 +33,18 @@ interface ProfileScreenProps {
   // Where "back" goes: the dashboard, or the fund / company page it was opened from.
   backLabel?: string
   initialTab?: ProfileTab
+  // Told when the user changes tab, so the address can follow.
+  onTabChange?: (tab: ProfileTab) => void
   // A fund/company to open straight away (from a completion reminder).
   focusId?: string | null
 }
 
-export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard', initialTab = 'account', focusId }: ProfileScreenProps) {
-  const [tab, setTab] = useState<ProfileTab>(initialTab)
+export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard', initialTab = 'account', focusId, onTabChange }: ProfileScreenProps) {
+  const [tab, setTabState] = useState<ProfileTab>(initialTab)
+  const setTab = (next: ProfileTab) => {
+    setTabState(next)
+    onTabChange?.(next)
+  }
   const [theme, setTheme] = useState<ThemeChoice>(getThemeChoice)
   const [firmId, setFirmId] = useState<string | null>(getCachedFirmId)
 

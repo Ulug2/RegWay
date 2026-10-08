@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
-import { getFirmId, getCachedFirmId, getCachedFirm, fetchFirm, fetchFunds, fetchPortfolioCompanies, fetchHoldings } from './lib/data'
-import { bindCacheToUser, clearCache } from './lib/cache'
+import { getFirmId, getCachedFirmId, getCachedFirm, fetchFirm, fetchFunds, fetchPortfolioCompanies, fetchHoldings, fetchRegulation } from './lib/data'
+import { bindCacheToUser, clearCache, readCache, writeCache } from './lib/cache'
+import { detailPath, entityPath, historyIndex, onGo, parsePath, profilePath, pushPath, replacePath, type PageSlug } from './lib/router'
+import InfoPage from './components/InfoPage'
 import LandingPage from './components/LandingPage'
 import ProfileScreen, { type ProfileTab } from './components/ProfileScreen'
 import OnboardingModal from './components/OnboardingModal'
@@ -13,7 +15,7 @@ import HeadlineDetailView from './components/HeadlineDetailView'
 import type { Regulation, AiContext } from './lib/types'
 import LogoMark from './components/LogoMark'
 
-type View = 'loading' | 'landing' | 'auth' | 'reset-password' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai' | 'entity'
+type View = 'loading' | 'landing' | 'auth' | 'reset-password' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai' | 'entity' | 'page'
 
 export default function App() {
   const [view, setView] = useState<View>('loading')
@@ -27,16 +29,21 @@ export default function App() {
   const [returnTo, setReturnTo] = useState<'dashboard' | 'entity'>('dashboard')
   // A page opens at its top. Going back to a list returns to where the
   // list was left, not to wherever the page in between was scrolled.
-  const leftAt = useRef(0)
+  // The browser's Back does the same (see the popstate handler below): each
+  // history entry remembers its scroll position when it is left.
   const restoreTo = useRef<number | null>(null)
-  const goBack = () => {
-    restoreTo.current = leftAt.current
-    setView(returnTo === 'entity' && entity ? 'entity' : 'dashboard')
-  }
+  const [page, setPage] = useState<PageSlug>('about')
   useLayoutEffect(() => {
     window.scrollTo(0, restoreTo.current ?? 0)
     restoreTo.current = null
-  }, [view, entity?.type, entity?.id])
+  }, [view, entity?.type, entity?.id, page])
+  // Whether anyone is signed in, and with a firm: decides what an address
+  // shows. A ref, because the listeners below are created once.
+  const auth = useRef<'unknown' | 'out' | 'in' | 'onboarding'>('unknown')
+  // A signed-in page asked for while signed out: shown after signing in.
+  const pendingPath = useRef<string | null>(null)
+  // Whether this visit has had a session at all (a reset link has one too).
+  const hadSession = useRef(false)
   const [showAI, setShowAI] = useState(false)
   // An answer still being written when the chat is closed carries on out of
   // sight (and is saved when it finishes); reopening the chat returns to it.
@@ -54,6 +61,96 @@ export default function App() {
   const authNoticeRef = useRef<string | null>(null)
   const recovering = useRef(/[#&?]type=recovery\b/.test(window.location.hash + window.location.search))
 
+  // Shows the screen an address stands for (src/lib/router.ts).
+  const showRoute = (path: string) => {
+    if (recovering.current || auth.current === 'unknown') return
+    const route = parsePath(path)
+    // The public pages are for everyone, signed in or not.
+    if (route.name === 'page') {
+      setPage(route.slug)
+      setView('page')
+      return
+    }
+    if (auth.current === 'onboarding') return setView('onboarding')
+    if (auth.current === 'out') {
+      if (route.name === 'auth') {
+        setAuthMode(route.mode)
+        return setView('auth')
+      }
+      if (route.name === 'home' || route.name === 'unknown') {
+        if (route.name === 'unknown') replacePath('/')
+        return setView(authNoticeRef.current ? 'auth' : 'landing')
+      }
+      // A signed-in page: sign in first, then go there.
+      pendingPath.current = path
+      setAuthMode('sign-in')
+      return setView('auth')
+    }
+    if (route.name === 'profile') {
+      setProfileTab(route.tab)
+      setProfileFocus(null)
+      return setView('profile')
+    }
+    if (route.name === 'entity') {
+      setEntity({ type: route.type, id: route.id })
+      return setView('entity')
+    }
+    if (route.name === 'detail') {
+      const known = readCache<Partial<Regulation>>(`ui:detail:${route.id}`)
+      if (known) {
+        setDetailPayload(known)
+        return setView('detail')
+      }
+      // Opened from a link or after a reload: fetch the development itself.
+      setView('loading')
+      fetchRegulation(route.id)
+        .then(found => {
+          if (window.location.pathname !== path) return
+          if (!found) throw new Error('not found')
+          setDetailPayload(found)
+          setView('detail')
+        })
+        .catch(() => {
+          if (window.location.pathname !== path) return
+          replacePath('/')
+          setView('dashboard')
+        })
+      return
+    }
+    if (route.name !== 'home') replacePath('/')
+    setView('dashboard')
+  }
+
+  // Back, as a button in the app: the browser's own Back when the previous
+  // screen was this app's, otherwise up to the page this one belongs under
+  // (a development opened from a link has no previous screen).
+  const goBack = () => {
+    if (historyIndex() > 0) return window.history.back()
+    const parent = returnTo === 'entity' && entity ? entityPath(entity) : '/'
+    replacePath(parent)
+    showRoute(parent)
+  }
+
+  useEffect(() => {
+    window.history.scrollRestoration = 'manual'
+    const onPop = (e: PopStateEvent) => {
+      restoreTo.current = (e.state as { scroll?: number } | null)?.scroll ?? null
+      showRoute(window.location.pathname)
+    }
+    window.addEventListener('popstate', onPop)
+    const offGo = onGo(path => {
+      pushPath(path)
+      window.scrollTo(0, 0)
+      showRoute(path)
+    })
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      offGo()
+    }
+    // showRoute reads only refs and setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // The dashboard greets the user by name and counts their funds and
   // companies. Have those in hand before it shows, so nothing on it is seen
   // changing from a placeholder. A failure here only means it fills in late.
@@ -67,9 +164,11 @@ export default function App() {
         data: { session },
       } = await supabase.auth.getSession()
       if (!session) {
-        if (mounted) setView('landing')
+        auth.current = 'out'
+        if (mounted) showRoute(window.location.pathname)
         return
       }
+      hadSession.current = true
       bindCacheToUser(session.user.id)
       if (recovering.current) {
         if (mounted) setView('reset-password')
@@ -77,12 +176,18 @@ export default function App() {
       }
       // A known firm means we can show the dashboard straight away and
       // confirm in the background, instead of a "Loading…" screen every visit.
-      if (getCachedFirmId() && getCachedFirm() && mounted) setView('dashboard')
+      const shownFromCache = !!getCachedFirmId() && !!getCachedFirm()
+      if (shownFromCache && mounted) {
+        auth.current = 'in'
+        showRoute(window.location.pathname)
+      }
       const firmId = await getFirmId().catch(() => getCachedFirmId())
       if (firmId && !getCachedFirm()) await loadFirm(firmId)
       // Already showing from the cache: bring the holdings in behind it.
       else if (firmId) fetchHoldings(firmId).catch(() => {})
-      if (mounted && !recovering.current) setView(firmId ? 'dashboard' : 'onboarding')
+      if (!mounted || recovering.current) return
+      auth.current = firmId ? 'in' : 'onboarding'
+      if (!firmId || !shownFromCache) showRoute(window.location.pathname)
     }
     init()
 
@@ -90,15 +195,23 @@ export default function App() {
       // Fires when the client parses a password-recovery link's token from
       // the URL — takes priority over the normal signed-in routing below.
       if (event === 'PASSWORD_RECOVERY') {
+        hadSession.current = true
         recovering.current = true
         if (mounted) setView('reset-password')
         return
       }
       if (!session) {
+        // Fires on load too when nobody is signed in; only a real sign-out
+        // (or an expired session) sends the address back to the start.
+        const wasSignedIn = hadSession.current
+        hadSession.current = false
+        auth.current = 'out'
         setShowAI(false)
         setAiBusy(false)
         clearCache()
+        if (!wasSignedIn) return
         if (authNoticeRef.current) setAuthMode('sign-in')
+        replacePath(authNoticeRef.current ? '/sign-in' : '/')
         setView(authNoticeRef.current ? 'auth' : 'landing')
       }
     })
@@ -123,6 +236,7 @@ export default function App() {
   }
 
   const goToAuth = (mode: 'sign-in' | 'sign-up') => {
+    pushPath(`/${mode}`)
     setAuthMode(mode)
     setView('auth')
   }
@@ -133,17 +247,25 @@ export default function App() {
       setAiContext((payload as AiContext | undefined) ?? null)
       return
     }
+    if (newView === 'detail' || newView === 'profile') setReturnTo(view === 'entity' ? 'entity' : 'dashboard')
     if (newView === 'profile') {
       const p = payload as { tab?: ProfileTab; focusId?: string | null } | undefined
+      pushPath(profilePath(p?.tab))
       setProfileTab(p?.tab ?? 'account')
       setProfileFocus(p?.focusId ?? null)
-    }
-    else if (newView === 'entity') setEntity(payload as EntityRef)
-    else if (payload) setDetailPayload(payload)
-    if (newView === 'detail' || newView === 'profile') {
-      setReturnTo(view === 'entity' ? 'entity' : 'dashboard')
-      leftAt.current = window.scrollY
-    }
+    } else if (newView === 'entity') {
+      pushPath(entityPath(payload as EntityRef))
+      setEntity(payload as EntityRef)
+    } else if (newView === 'detail') {
+      // Kept for this visit, so Back and Forward return to it at once; a
+      // reload or a shared link fetches it by the id in the address.
+      const id = (payload as Partial<Regulation> | undefined)?.id
+      if (id) {
+        writeCache(`ui:detail:${id}`, payload)
+        pushPath(detailPath(id))
+      }
+      setDetailPayload(payload)
+    } else if (newView === 'dashboard') pushPath('/')
     setView(newView)
   }
 
@@ -153,9 +275,15 @@ export default function App() {
       data: { session },
     } = await supabase.auth.getSession()
     if (session) bindCacheToUser(session.user.id)
+    hadSession.current = !!session
     const firmId = await getFirmId().catch(() => null)
     if (firmId) await loadFirm(firmId)
-    setView(firmId ? 'dashboard' : 'onboarding')
+    auth.current = firmId ? 'in' : 'onboarding'
+    // On to the page that was asked for before signing in, if there was one.
+    const next = firmId ? (pendingPath.current ?? '/') : window.location.pathname
+    pendingPath.current = null
+    if (firmId) replacePath(next)
+    showRoute(next)
   }
 
   return (
@@ -181,7 +309,7 @@ export default function App() {
             authMode={view === 'auth' ? authMode : null}
             notice={authNotice}
             onOpenAuth={goToAuth}
-            onCloseAuth={() => { clearAuthNotice(); setView('landing') }}
+            onCloseAuth={() => { clearAuthNotice(); pendingPath.current = null; pushPath('/'); setView('landing') }}
             onAuthenticated={handleAuthenticated}
           />
         )}
@@ -228,8 +356,10 @@ export default function App() {
           />
         )}
 
+        {view === 'page' && <InfoPage slug={page} signedIn={auth.current === 'in'} />}
+
         {view === 'profile' && (
-          <ProfileScreen onBack={goBack} backLabel={returnTo === 'entity' && entity ? 'Back' : 'Back to Dashboard'} initialTab={profileTab} focusId={profileFocus} />
+          <ProfileScreen key={profileTab} onBack={goBack} backLabel={returnTo === 'entity' && entity ? 'Back' : 'Back to Dashboard'} initialTab={profileTab} focusId={profileFocus} onTabChange={tab => replacePath(profilePath(tab))} />
         )}
       </div>
 

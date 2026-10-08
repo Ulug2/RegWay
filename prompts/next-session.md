@@ -1,21 +1,21 @@
 # Next session — starting prompt
 
-Last updated 2026-10-08 (UTC). `main` is pushed and deployed. **The
-redesign (roadmap 16d) is on the branch `redesign`, not merged**: the owner
-looks at it first (localhost, or the branch's Vercel preview), then it is
-merged into `main`. Read `DESIGN.md` before any UI work. Production
+Last updated 2026-10-08 (UTC). `main` is pushed and deployed; everything
+is on `main` (the `redesign` branch is merged). Read `DESIGN.md` before any
+UI work: the palette is flat black, white and one blue. Production
 (Supabase project `cfspwaqtidfliupmlfwz`) matches it on the server side:
 migrations 0024–0035 applied, every edge function deployed.
 
-**Frontend**: the site is https://www.regwayai.com (reg-way.vercel.app redirects to it). Check that its build
-is the latest `main` (the landing page's source list should include "UK
-FCA" and "EU sanctions"); if not, redeploy. Skipped for now by the owner:
-item 11b, the move to `regwayai.com`.
+**Frontend**: the site is https://www.regwayai.com (the bare domain and
+reg-way.vercel.app redirect to it). Every screen has its own address
+(`src/lib/router.ts`). Roadmap item 16e says what the last sitting changed
+and what it left open; item 16f has two small things the owner asked for
+and that are not started (an FAQ page; renaming the dashboard's level
+buttons to "General Partners" and "Funds").
 
 Done since the last note: item 15 (duplicate grouping,
 `prompts/duplicate-grouping.md`) and item 16 (fact provenance,
-`prompts/fact-provenance.md`). Skipped by the owner: 11b (domain) and item
-12 Phase 3 (email alerts, later). Next in the roadmap's order: item 17
+`prompts/fact-provenance.md`). Skipped by the owner: item 12 Phase 3 (email alerts, later). Next in the roadmap's order: item 17
 (the multi-role architecture, `plans/regway-ai-multi-agent-architecture.md`).
 Roadmap item 16a lists everything this session left open, the
 inconsistencies it found and the owner's answers. Item 16b (official
@@ -33,7 +33,7 @@ Playwright CLI). Item 16d is the redesign made with them
   `VITE_SUPABASE_ANON_KEY` (the publishable key); `pnpm dev`.
 - Deploys / SQL: `SUPABASE_ACCESS_TOKEN` set, `supabase` CLI, then
   `supabase functions deploy --project-ref cfspwaqtidfliupmlfwz --use-api`.
-- Checks: `pnpm test:all` (type-checks, 416 unit tests, 116 browser tests;
+- Checks: `pnpm test:all` (type-checks, 422 unit tests, 138 browser tests;
   first time `pnpm exec playwright install chromium`).
 
 ## State at hand-off
