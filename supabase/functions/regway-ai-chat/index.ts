@@ -315,7 +315,9 @@ ${profileContext(firm, (funds ?? []) as EntityRow[], (companies ?? []) as Entity
 
 ${matchedInstruction(matched, scope)}
 
-Use web search to ground every regulatory claim in a real, current source. Always cite the primary source (agency or publisher name, document title, URL, and date). If you are not confident a rule applies to this firm, say so plainly instead of guessing. Never assign an unprompted urgency label such as "critical" or "low impact" — describe obligations and deadlines factually and let the user judge priority themselves.${contextInstruction(context)}${ambiguityInstruction}`
+Use web search to ground every regulatory claim in a real, current source. Always cite the primary source (agency or publisher name, document title, URL, and date). If you are not confident a rule applies to this firm, say so plainly instead of guessing. Never assign an unprompted urgency label such as "critical" or "low impact" — describe obligations and deadlines factually and let the user judge priority themselves.
+
+Your answer is shown as rendered Markdown. Use it where it helps the reader: short headings for a long answer, bullet or numbered lists, **bold** for the key term or date, a table when comparing several items across the same attributes (rules, funds, companies, deadlines), and a fenced code block for anything to be copied exactly. Keep a short answer as plain paragraphs.${contextInstruction(context)}${ambiguityInstruction}`
 
     // Text attachments (.txt/.md) are inlined into the message; a .pdf is
     // sent as a native Anthropic `document` content block — no separate

@@ -38,3 +38,42 @@ describe('renderMarkdown', () => {
     expect(html).toContain('<pre')
   })
 })
+
+describe('renderMarkdown: tables, code and nested lists', () => {
+  it('renders a table with its alignment, inside a wrapper that scrolls', () => {
+    const html = renderMarkdown('| Rule | Deadline |\n| :--- | ---: |\n| Form PF | **Mar 12** |\n| AIFMD II | Apr 16 |')
+    expect(html).toContain('<div class="table-wrap"><table>')
+    expect(html).toContain('<th style="text-align:left">Rule</th>')
+    expect(html).toContain('<td style="text-align:right"><strong>Mar 12</strong></td>')
+    expect(html.match(/<tr>/g)).toHaveLength(3)
+  })
+
+  it('leaves a line with a pipe alone when no table follows', () => {
+    expect(renderMarkdown('A | B')).toBe('<p>A | B</p>')
+  })
+
+  it('escapes HTML inside table cells and code', () => {
+    const html = renderMarkdown('| a |\n|---|\n| <img src=x> |\n\n```html\n<script>x</script>\n```')
+    expect(html).not.toContain('<img')
+    expect(html).not.toContain('<script')
+  })
+
+  it('labels a code block with its language and gives it a copy button', () => {
+    const html = renderMarkdown('```sql\nselect 1\n```')
+    expect(html).toContain('<span>sql</span>')
+    expect(html).toContain('data-copy-code')
+    expect(html).toContain('<pre><code>select 1</code></pre>')
+  })
+
+  it('nests indented items, and keeps a numbered list numbered across a break', () => {
+    expect(renderMarkdown('- one\n  - inner\n- two')).toBe('<ul><li>one<ul><li>inner</li></ul></li><li>two</li></ul>')
+    expect(renderMarkdown('1. a\n\n2. b')).toBe('<ol><li>a</li></ol><ol start="2"><li>b</li></ol>')
+  })
+
+  it('renders named links, rules and strikethrough', () => {
+    const html = renderMarkdown('See [the rule](https://www.sec.gov/a_b).\n\n---\n\n~~old~~')
+    expect(html).toContain('<a href="https://www.sec.gov/a_b" target="_blank" rel="noreferrer">the rule</a>')
+    expect(html).toContain('<hr/>')
+    expect(html).toContain('<del>old</del>')
+  })
+})

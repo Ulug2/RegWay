@@ -120,6 +120,21 @@ async function consumeSse(body: ReadableStream<Uint8Array>, onEvent: (evt: SseEv
   }
 }
 
+// The Copy button on a code block is plain HTML from renderMarkdown, so the
+// click is caught on the conversation and the code beside it is copied.
+async function copyCode(e: React.MouseEvent) {
+  const button = (e.target as HTMLElement).closest('[data-copy-code]')
+  const code = button?.closest('.code-block')?.querySelector('pre')?.textContent
+  if (!button || code == null) return
+  try {
+    await navigator.clipboard.writeText(code)
+  } catch {
+    return
+  }
+  button.textContent = 'Copied'
+  setTimeout(() => (button.textContent = 'Copy'), 1500)
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
@@ -591,20 +606,13 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               style={{ overscrollBehavior: 'contain', paddingTop: 'calc(20px + var(--chat-top, 0px))' }}
             >
               {resumeError && <div className="text-xs" role="alert" style={{ color: 'var(--warning)' }}>{resumeError}</div>}
+              <div className="max-w-3xl mx-auto space-y-7" onClick={copyCode}>
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {msg.role === 'ai' && (
+                  {/* An answer is set straight on the page, full width; only the
+                      user's own message sits in a bubble. */}
+                  <div className={`min-w-0 space-y-2 group ${msg.role === 'ai' ? 'w-full' : 'max-w-[85%]'}`}>
                     <div
-                      className="w-7 h-7 flex items-center justify-center text-xs font-semibold text-white mr-3 mt-1 flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#0F172A,#334155)', borderRadius: 8 }}
-                      aria-hidden="true"
-                    >
-                      R
-                    </div>
-                  )}
-                  <div className="max-w-[88%] sm:max-w-[72%] min-w-0 space-y-2 group">
-                    <div
-                      className={msg.role === 'ai' ? 'glass-card p-4' : ''}
                       style={msg.role === 'user' ? {
                         background: 'rgb(var(--primary-rgb) / 0.12)',
                         border: '1px solid rgb(var(--primary-rgb) / 0.20)',
@@ -635,7 +643,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                             </div>
                           )}
                           <div
-                            className={msg.role === 'ai' ? 'ai-markdown text-[15px] leading-relaxed break-words' : 'text-[15px] leading-relaxed whitespace-pre-line break-words'}
+                            className={msg.role === 'ai' ? 'ai-markdown text-[15.5px] leading-[1.7] break-words' : 'text-[15px] leading-relaxed whitespace-pre-line break-words'}
                             style={{ color: 'var(--text-900)' }}
                             dangerouslySetInnerHTML={{
                               __html:
@@ -679,6 +687,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                   </div>
                 </div>
               ))}
+              </div>
 
               <div ref={bottomRef} />
             </div>
@@ -698,9 +707,10 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
             {/* Suggested questions — only until the first message is sent */}
             {!hasStarted && (
               <div
-                className="px-6 py-3 flex gap-2 overflow-x-auto flex-shrink-0"
+                className="px-4 sm:px-6 py-3 flex-shrink-0"
                 style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.25)' }}
               >
+                <div className="max-w-3xl mx-auto flex gap-2 overflow-x-auto">
                 {chips.map(chip => (
                   <button
                     key={chip}
@@ -711,11 +721,13 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
                     {chip}
                   </button>
                 ))}
+                </div>
               </div>
             )}
 
             {/* Input */}
-            <div className="px-6 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.25)' }}>
+            <div className="px-4 sm:px-6 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.25)' }}>
+              <div className="max-w-3xl mx-auto">
               {pendingRefocus && (
                 <div className="mb-2 text-xs" style={{ color: 'var(--primary)' }}>
                   Focus switched to {activeContext ? activeContext.name : 'the whole firm'}. Your next message will be answered about it.
@@ -778,6 +790,7 @@ export default function RegWayAICopilot({ onClose, context }: RegWayAICopilotPro
               </div>
               <div className="text-[11px] mt-2 text-center" style={{ color: 'var(--text-300)' }}>
                 RegWay AI references primary regulatory sources only. Always verify with qualified legal counsel.
+              </div>
               </div>
             </div>
           </div>
