@@ -175,6 +175,27 @@ describe('regway-ai-chat', () => {
     expect(system.indexOf('Form PF amendments')).toBeLessThan(system.indexOf('Older Medicare rule'))
   })
 
+  it('lists a development once when it was published twice, keeping every entity matched to either version', async () => {
+    const announcement = { id: 'news', title: 'SEC Proposes Crypto Custody Rules', category: 'regulatory', agency: 'SEC', jurisdiction: null, published_date: '2026-10-01', on_public_inspection: false, duplicate_of: null }
+    const document = { id: 'doc', title: 'Adviser and Regulated Fund Custody Rules', category: 'regulatory', agency: 'SEC', jurisdiction: null, published_date: '2026-10-06', on_public_inspection: false, duplicate_of: 'news' }
+    const firmLevel = { portfolio_company_id: null, portfolio_companies: null }
+    const { system } = await chat(
+      {
+        matches: [
+          match('doc', document.title, '2026-10-06', 'The firm is a registered adviser (document).', { ...firmLevel, regulations: document }),
+          match('doc', document.title, '2026-10-06', 'GetixHealth holds client assets.', { regulations: document }),
+          match('news', announcement.title, '2026-10-01', 'The firm is a registered adviser.', { ...firmLevel, regulations: announcement }),
+        ],
+      },
+      { message: "What's relevant to us right now?" },
+    )
+    expect(system).toContain(
+      '- [regulatory] SEC Proposes Crypto Custody Rules (SEC, published 2026-10-01)\n   - Firm H.I.G. Capital: The firm is a registered adviser.\n   - Company GetixHealth: GetixHealth holds client assets.\n   - Also published as: Adviser and Regulated Fund Custody Rules',
+    )
+    expect(system).not.toContain('- [regulatory] Adviser and Regulated Fund Custody Rules')
+    expect(system).not.toContain('(document)')
+  })
+
   it('says so when nothing has been matched, without claiming nothing applies', async () => {
     const { system } = await chat({}, { message: 'Anything new?' })
     expect(system).toContain('RegWay has not matched any developments')

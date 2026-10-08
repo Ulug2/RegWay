@@ -93,6 +93,20 @@ export interface Regulation {
   effective_date: string | null
   source_url: string
   on_public_inspection?: boolean
+  // The first version of the same development, when this row is a later
+  // one (see lib/duplicates.ts).
+  duplicate_of?: string | null
+}
+
+// Another version of a development: enough to link to it.
+export interface PublishedVersion {
+  id: string
+  source: Regulation['source']
+  title: string
+  agency: string | null
+  published_date: string | null
+  source_url: string
+  duplicate_of: string | null
 }
 
 // A regulation as listed on one entity's page, with that entity's own
@@ -102,6 +116,8 @@ export interface MatchedRegulation extends Regulation {
   match_reason: string | null
   // When it was matched to this entity (for the "New" badge).
   matched_at: string | null
+  // The same development's other versions, shown as links on its card.
+  also_published_as?: PublishedVersion[]
 }
 
 export interface RegulationNote {

@@ -3,7 +3,8 @@ import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
 import { toRow, type Answers } from './questionnaire'
 import { firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
-import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, Regulation, RegulationNote } from './types'
+import { collapseDuplicates, versionsOf } from './duplicates'
+import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, PublishedVersion, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
   const { data, error } = await supabase.from('firm_members').select('firm_id').maybeSingle()
@@ -60,10 +61,68 @@ async function fetchRelevantRegulations(filters: {
   const { data, error } = await query
   if (error) throw error
 
-  return (data as unknown as RelevanceRow[])
+  const matched = (data as unknown as RelevanceRow[])
     .filter(r => r.regulations && !r.relevance_reason?.startsWith('NOT_RELEVANT:'))
     .map(r => ({ ...(r.regulations as Regulation), match_reason: r.relevance_reason, matched_at: r.created_at }))
     .sort((a, b) => (b.published_date ?? '').localeCompare(a.published_date ?? ''))
+
+  // One card per development: later versions go under the first one.
+  const [versions, dismissed] = await Promise.all([fetchVersions(matched), fetchDismissedIds(filters.firmId, firstVersionIds(matched))])
+  return collapseDuplicates(matched, versions, dismissed)
+}
+
+// ---------------------------------------------------------------------------
+// Duplicate coverage: other versions of the same development (lib/duplicates.ts)
+// ---------------------------------------------------------------------------
+
+const VERSION_COLUMNS = 'id, source, title, agency, published_date, source_url, duplicate_of'
+// Ids travel in the query string.
+const ID_CHUNK = 80
+
+const firstVersionIds = (items: Pick<Regulation, 'duplicate_of'>[]) => [...new Set(items.map(i => i.duplicate_of).filter((id): id is string => !!id))]
+
+async function versionRows(column: 'id' | 'duplicate_of', ids: string[]): Promise<PublishedVersion[]> {
+  const found: PublishedVersion[] = []
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    const { data, error } = await supabase.from('regulations').select(VERSION_COLUMNS).in(column, ids.slice(i, i + ID_CHUNK))
+    if (error) throw error
+    found.push(...((data ?? []) as PublishedVersion[]))
+  }
+  return found
+}
+
+// Every other version of these items: the ones published after them, and
+// the first version of any that is itself a later one. Whether or not they
+// were matched to the firm: the link is to the document.
+async function fetchVersions(items: Pick<Regulation, 'id' | 'duplicate_of'>[]): Promise<PublishedVersion[]> {
+  if (items.length === 0) return []
+  const [later, first] = await Promise.all([versionRows('duplicate_of', items.map(i => i.id)), versionRows('id', firstVersionIds(items))])
+  return [...later, ...first]
+}
+
+export async function fetchPublishedVersions(regulation: Pick<Regulation, 'id' | 'duplicate_of'>): Promise<PublishedVersion[]> {
+  return versionsOf(regulation, await fetchVersions([regulation]))
+}
+
+// Which of these the firm has dismissed. Dismissing a development covers its
+// later versions too, including ones that arrive afterwards.
+async function fetchDismissedIds(firmId: string, regulationIds: string[]): Promise<Set<string>> {
+  if (regulationIds.length === 0) return new Set()
+  const { data, error } = await supabase
+    .from('regulation_relevance')
+    .select('regulation_id, relevance_reason')
+    .eq('firm_id', firmId)
+    .in('regulation_id', regulationIds)
+    .not('dismissed_at', 'is', null)
+  if (error) throw error
+  return new Set((data ?? []).filter(r => !r.relevance_reason?.startsWith('NOT_RELEVANT:')).map(r => r.regulation_id as string))
+}
+
+// A development's own id with every version of it, for actions that apply
+// to the development as a whole (dismiss, restore).
+async function developmentIds(regulationId: string): Promise<string[]> {
+  const [own, later] = await Promise.all([versionRows('id', [regulationId]), versionRows('duplicate_of', [regulationId])])
+  return [...new Set([regulationId, ...own.map(v => v.duplicate_of).filter((id): id is string => !!id), ...later.map(v => v.id)])]
 }
 
 export interface RelatedEntityMatch {
@@ -469,11 +528,12 @@ export async function rematchRegulation(regulationId: string, note?: string): Pr
 // the matcher and company scans treat it as handled and never bring it back;
 // restoring clears the mark.
 export async function dismissRegulation(firmId: string, regulationId: string): Promise<void> {
+  // The card stands for every version of the development.
   const { error } = await supabase
     .from('regulation_relevance')
     .update({ dismissed_at: new Date().toISOString() })
     .eq('firm_id', firmId)
-    .eq('regulation_id', regulationId)
+    .in('regulation_id', await developmentIds(regulationId))
   if (error) throw error
   const without = (list: Regulation[] | null) => list && list.filter(r => r.id !== regulationId)
   // The fund and company caches hold one list per fund / company.
@@ -489,7 +549,7 @@ export async function restoreRegulation(firmId: string, regulationId: string): P
     .from('regulation_relevance')
     .update({ dismissed_at: null })
     .eq('firm_id', firmId)
-    .eq('regulation_id', regulationId)
+    .in('regulation_id', await developmentIds(regulationId))
   if (error) throw error
   dropCache('regs:pe', 'regs:fund', 'regs:company')
 }
@@ -502,11 +562,13 @@ export async function fetchDismissed(firmId: string): Promise<Regulation[]> {
     .not('dismissed_at', 'is', null)
   if (error) throw error
   const seen = new Set<string>()
-  return (data as unknown as { relevance_reason: string | null; dismissed_at: string; regulations: Regulation | null }[])
+  const dismissed = (data as unknown as { relevance_reason: string | null; dismissed_at: string; regulations: Regulation | null }[])
     .filter(r => r.regulations && !r.relevance_reason?.startsWith('NOT_RELEVANT:'))
     .sort((a, b) => b.dismissed_at.localeCompare(a.dismissed_at))
     .map(r => r.regulations as Regulation)
     .filter(r => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+  // One entry per development: restoring it brings back every version.
+  return dismissed.filter(r => !r.duplicate_of || !seen.has(r.duplicate_of))
 }
 
 // ---------------------------------------------------------------------------
@@ -525,6 +587,10 @@ const SOURCE_LABELS: Record<string, string> = {
   matching: 'Automatic matching',
 }
 
+// Recorded in sync_runs but not a data source: a failed run delays the
+// grouping of duplicates, it doesn't leave anything missing.
+const NOT_DATA_SOURCES = new Set(['duplicates'])
+
 // A source is "failing" when its most recent recorded sync run didn't
 // succeed — shown so an empty or stale-looking dashboard reads as a stated
 // limitation rather than silently implying nothing is relevant. Platform-
@@ -536,7 +602,7 @@ export async function fetchFailingSources(): Promise<string[]> {
   for (const row of data as { source: string; ok: boolean }[]) {
     if (!latestBySource.has(row.source)) latestBySource.set(row.source, row.ok)
   }
-  return [...latestBySource.entries()].filter(([, ok]) => !ok).map(([source]) => SOURCE_LABELS[source] ?? source)
+  return [...latestBySource.entries()].filter(([source, ok]) => !ok && !NOT_DATA_SOURCES.has(source)).map(([source]) => SOURCE_LABELS[source] ?? source)
 }
 
 // ---------------------------------------------------------------------------

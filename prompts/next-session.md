@@ -2,21 +2,25 @@
 
 Last updated 2026-10-07 (UTC). All work is on `main`, pushed. Production
 (Supabase project `cfspwaqtidfliupmlfwz`) matches it on the server side:
-migrations 0024–0032 applied, every edge function deployed.
+migrations 0024–0033 applied, every edge function deployed.
 
 **Frontend**: the site is https://reg-way.vercel.app. Check that its build
 is the latest `main` (the landing page's source list should include "UK
 FCA" and "EU sanctions"); if not, redeploy. Skipped for now by the owner:
 item 11b, the move to `regwayai.com`.
 
-Done since the last note: item 11a (review fixes), item 12 Phase 2
-(regulator feeds: SEC, FTC, CFPB, UK, EU, with a jurisdiction pre-filter)
-item 13's UK / EU sanctions, and item 14's defense trade (ITAR) feed.
-Item 14's other half (registry-grounded scan prompts) was tested live and
-not shipped: see `prompts/source-registry-grounding.md`. Next in the
-roadmap's order: item 15 (duplicate-coverage grouping), which the new
-feeds make more visible; or item 12 Phase 3 (alerts), which needs an
-email provider.
+**The AI provider is refusing calls** ("credit balance is too low") since
+00:40 UTC on 2026-10-08: scheduled matching, analyses, chat and the
+announcement rule of duplicate grouping all fail until the owner tops up
+the Anthropic account whose key is in the Supabase secrets. The dashboard
+shows the "Automatic matching" banner for it.
+
+Done since the last note: item 15 (duplicate grouping: one card per
+development with "also published as" links; `prompts/duplicate-grouping.md`).
+Once AI calls work again, read the links its announcement rule makes (the
+query is in those notes). Skipped by the owner: 11b (domain) and item 12
+Phase 3 (email alerts, later). Next in the roadmap's order: item 16 (fact
+provenance), then 17.
 
 ## Setting up on the Mac
 
@@ -26,7 +30,7 @@ email provider.
   `VITE_SUPABASE_ANON_KEY` (the publishable key); `pnpm dev`.
 - Deploys / SQL: `SUPABASE_ACCESS_TOKEN` set, `supabase` CLI, then
   `supabase functions deploy --project-ref cfspwaqtidfliupmlfwz --use-api`.
-- Checks: `pnpm test:all` (type-checks, 337 unit tests, 84 browser tests;
+- Checks: `pnpm test:all` (type-checks, 380 unit tests, 90 browser tests;
   first time `pnpm exec playwright install chromium`).
 
 ## State at hand-off
@@ -37,6 +41,9 @@ email provider.
   `sync_runs` row per run (`regulator_feeds`, per-feed results in `stats`).
   sec.gov answers 429 about 1 run in 10; a feed must fail three runs in a
   row before the run counts as failed.
+- **Duplicate grouping**: `group-duplicates` every 30 minutes (:08 / :38);
+  runs that looked at something are in `sync_runs` as `duplicates` (not
+  shown in the dashboard banner).
 - **Scheduled matching** runs for H.I.G. only (`scheduled_matching_firms`,
   cron `run-matching-30min`); H.I.G.'s backlog is clear and runs since are
   no-ops. Check: `select * from sync_runs where source = 'matching' order by ran_at desc`.
@@ -45,10 +52,7 @@ email provider.
   verdict call at temperature 0. `usage.ts` prices per model.
 - **AI spend**: check `select sum(estimated_cost_usd) from usage_events` (about $15 all time on 2026-10-07).
 - **Waiting on the owner:**
-  - H.I.G.'s firm strategies still include "Venture Capital", added for
-    the live re-discovery test on 2026-10-05 (it worked; see roadmap item
-    11a). The owner removes it in Settings → Firm; that save runs one more
-    re-check.
+  - Top up the Anthropic account (see the top of this note).
   - Footer links (About Us, Sources, Legal, Privacy) need page content.
 - **Live AI tests still owed:** see that table in
   `plans/regway-mvp-roadmap.md` (pre-publication analysis; fund-level

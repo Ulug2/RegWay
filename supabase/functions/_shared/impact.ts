@@ -4,7 +4,8 @@
 // background for newly relevant regulations so it's ready before anyone opens
 // the regulation.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { withoutCoveredDuplicates } from './duplicates.ts'
 import { COMPANY_FACTS, FIRM_FACTS, FUND_FACTS, facts } from './entityFacts.ts'
 import { federalRegisterTextUrls, type FederalRegisterDocumentRef } from './federalRegister.ts'
 import { fetchPlainText } from './text.ts'
@@ -258,10 +259,18 @@ ${entities.join('\n')}`,
 // possibly stale) analysis already exists — used after a profile edit so the
 // explanation for already-matched regulations catches up to the corrected
 // facts instead of silently keeping the old text.
+//
+// A later version of a development the firm is already matched to (an
+// announcement's Federal Register document, say) is listed under the first
+// version, so its analysis isn't prepared ahead; opening it where it stands
+// alone writes it then.
 export async function generateImpacts(regulationIds: string[], firmId: string, max = 8, opts: { force?: boolean } = {}): Promise<void> {
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const wanted = opts.force
+    ? regulationIds
+    : await withoutCoveredDuplicates(createClient(Deno.env.get('SUPABASE_URL')!, key), firmId, regulationIds).catch(() => regulationIds)
   await Promise.all(
-    regulationIds.slice(0, max).map(async regulationId => {
+    wanted.slice(0, max).map(async regulationId => {
       try {
         const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/regulation-impact`, {
           method: 'POST',

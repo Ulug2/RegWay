@@ -462,13 +462,11 @@ resolved per entity). Notes: `prompts/source-registry-grounding.md`.
    search; give the scan more searches first; use it to choose which
    agencies' Federal Register documents each firm's matcher reads.
 
-### 15. Duplicate-coverage grouping (L)
-The doc wants multiple articles about the same underlying event merged into
-one feed entry. Today's dedup is exact-document-only (`upsert` on `source,
-external_id`); grouping near-duplicate coverage across sources is a new,
-fuzzier matching step — lowest priority of the product-realignment items,
-since it only matters once multiple sources cover the same event (i.e.
-mainly after geopolitical monitoring adds more source diversity).
+### 15. Duplicate-coverage grouping — done; the announcement rule waits for AI credit
+One card per development, with its other versions as "also published as"
+links (owner's choice). See Completed and `prompts/duplicate-grouping.md`.
+Still to do once the AI provider accepts calls again: read the links the
+announcement rule makes on its first run (the query is in the notes).
 
 ### 16. Fact provenance and "last confirmed" dates (L)
 On every profile fact. Doc requires every matching fact to show its origin
@@ -614,6 +612,25 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Duplicate-coverage grouping (2026-10-07)
+Roadmap item 15. Notes: `prompts/duplicate-grouping.md`.
+- **Model**: `regulations.duplicate_of` points a later version of a
+  development at the first (migration 0033); nothing is merged or deleted.
+- **Rules** (`_shared/duplicates.ts`, run by `group-duplicates` at :08 /
+  :38): EU sanctions Decision + Regulation; one publication listed twice
+  by a feed; a company scan's result that is a Federal Register document;
+  and, by one small Haiku call per new document, an SEC / FTC / CFPB
+  announcement and the Federal Register documents published for it.
+- **Lists**: one card per development with the other versions as links,
+  on the firm, fund and company pages and on the development's page.
+  Dismiss and restore cover every version. RegWay AI's context names a
+  development once. An analysis is not prepared ahead for a later version
+  the firm already sees under its first version.
+- **Live**: 222 rows checked, 20 linked, all correct. The announcement
+  rule made no call that succeeded: the AI provider has refused calls
+  since 00:40 UTC on 2026-10-08 (credit balance too low).
+- Tests: 380 unit, 90 browser.
 
 ### Defense trade controls (ITAR) from the Federal Register (2026-10-07)
 Roadmap item 14, part 1. `sync-federal-register` gained a

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { getFirmId, getCachedFirmId, getCachedFirm, dismissRegulation, isFlagged, setFlagged as persistFlag, fetchNotes, addNote, fetchRelatedEntityMatches, rematchRegulation, type RelatedEntityMatch, type RematchResult } from '../lib/data'
+import { getFirmId, getCachedFirmId, getCachedFirm, dismissRegulation, isFlagged, setFlagged as persistFlag, fetchNotes, addNote, fetchPublishedVersions, fetchRelatedEntityMatches, rematchRegulation, type RelatedEntityMatch, type RematchResult } from '../lib/data'
 import { readCache, writeCache } from '../lib/cache'
-import type { Regulation, RegulationNote, AiContext } from '../lib/types'
+import type { MatchedRegulation, PublishedVersion, Regulation, RegulationNote, AiContext } from '../lib/types'
+import { publisherName } from '../lib/duplicates'
 import LogoMark from './LogoMark'
 import CategoryBadge from './CategoryBadge'
 import PrePublicationBadge from './PrePublicationBadge'
@@ -11,7 +12,7 @@ interface HeadlineDetailViewProps {
   onBack: () => void
   // Where Back goes, as the button says it.
   backLabel?: string
-  headline?: Partial<Regulation>
+  headline?: Partial<Regulation> & Pick<MatchedRegulation, 'also_published_as'>
   onAskAI: (context: AiContext) => void
 }
 
@@ -50,6 +51,9 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
   const [disputeResult, setDisputeResult] = useState<RematchResult | null>(null)
   const [disputeError, setDisputeError] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
+  // The same development's other versions (lib/duplicates.ts): what the
+  // list already knew, then refreshed.
+  const [versions, setVersions] = useState<PublishedVersion[]>(headline?.also_published_as ?? [])
 
   const regulationId = headline?.id
   const title = headline?.title || 'Untitled regulation'
@@ -77,6 +81,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
       setNotes(n)
       writeCache(`notes:${regulationId}`, n)
     })
+    fetchPublishedVersions({ id: regulationId, duplicate_of: headline?.duplicate_of }).then(setVersions).catch(() => {})
     setDisputeOpen(false)
     setDisputeNote('')
     setDisputeResult(null)
@@ -499,6 +504,32 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                     </svg>
                   </div>
                 </a>
+              </div>
+            )}
+
+            {versions.length > 0 && (
+              <div className="glass-card" style={{ padding: 24 }}>
+                <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#64748B' }}>
+                  Also published as
+                </div>
+                <div className="space-y-3">
+                  {versions.map(v => (
+                    <a
+                      key={v.id}
+                      href={v.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block p-4 rounded-xl transition-all hover:shadow-md"
+                      style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(186,230,253,0.45)' }}
+                    >
+                      <div className="text-xs font-medium mb-1" style={{ color: '#0284C7' }}>
+                        {publisherName(v)}
+                        {formatDate(v.published_date) && <span style={{ color: '#64748B' }}> · {formatDate(v.published_date)}</span>}
+                      </div>
+                      <div className="text-sm" style={{ color: '#0F172A', lineHeight: 1.4 }}>{v.title}</div>
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
 

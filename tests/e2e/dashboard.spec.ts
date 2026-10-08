@@ -96,7 +96,7 @@ test.describe('firm page', () => {
 
     await expect(titles(page)).toHaveText([REGS.formPf.title, REGS.tariff.title])
     const [patch] = backend.called('PATCH', 'rest/v1/regulation_relevance')
-    expect(patch.query.get('regulation_id')).toBe(`eq.${REGS.adviserCase.id}`)
+    expect(patch.query.get('regulation_id')).toBe(`in.(${REGS.adviserCase.id})`)
     expect(patch.query.get('firm_id')).toBe(`eq.${FIRM_ID}`)
     expect(patch.body.dismissed_at).toBeTruthy()
   })

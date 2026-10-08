@@ -3,6 +3,7 @@ import CategoryBadge from './CategoryBadge'
 import StatusBadge from './StatusBadge'
 import PrePublicationBadge from './PrePublicationBadge'
 import type { MatchedRegulation } from '../lib/types'
+import { publisherName } from '../lib/duplicates'
 import { isNewSince } from '../lib/lastVisit'
 import {
   CATEGORIES,
@@ -69,6 +70,26 @@ function FeedItem({ item, status, isNew, onOpen, onDismiss }: { item: MatchedReg
           </p>
         )}
       </button>
+      {!!item.also_published_as?.length && (
+        // Outside the card's button: these are links of their own.
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-6 pt-2 text-xs" style={{ color: '#64748B' }}>
+          <span>Also published as:</span>
+          {item.also_published_as.map(v => (
+            <a
+              key={v.id}
+              href={v.source_url}
+              target="_blank"
+              rel="noreferrer"
+              title={v.title}
+              className="underline hover:text-sky-600"
+              style={{ color: '#0284C7' }}
+            >
+              {publisherName(v)}
+              {v.published_date ? ` · ${formatDate(v.published_date)}` : ''}
+            </a>
+          ))}
+        </div>
+      )}
       <button
         onClick={onDismiss}
         aria-label="Dismiss"

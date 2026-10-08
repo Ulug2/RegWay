@@ -25,7 +25,7 @@ const session = () => ({
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
 
-const regulation = (id: string, over: Row): Row => ({
+export const regulation = (id: string, over: Row): Row => ({
   id,
   source: 'federal_register',
   category: 'regulatory',
@@ -63,7 +63,7 @@ export const daysAgoAt = (days: number, hours = 12) => {
   return d.toISOString()
 }
 
-const relevance = (id: string, reg: Row, over: Row): Row => ({
+export const relevance = (id: string, reg: Row, over: Row): Row => ({
   id,
   firm_id: FIRM_ID,
   regulation_id: reg.id,
@@ -103,6 +103,9 @@ function seed(): Record<string, Row[]> {
       relevance('rel-6', REGS.tariff, { portfolio_company_id: 'co-aero', portfolio_companies: { name: 'Aero Logistics' }, relevance_reason: 'Direct: Aero Logistics is headquartered in Italy.' }),
       relevance('rel-7', REGS.tariff, { fund_id: 'fund-1', funds: { name: 'Harbor Fund I' }, via_holdings: true, relevance_reason: 'Indirect: Harbor Fund I holds Aero Logistics, which has a direct connection: Aero Logistics is headquartered in Italy.' }),
     ],
+    // Developments no one is matched to; matched ones are read from
+    // regulation_relevance (see `select`).
+    regulations: [],
     regulation_impacts: [],
     regulation_flags: [],
     regulation_notes: [],
@@ -158,8 +161,14 @@ export class MockBackend {
     return this.calls.filter(c => c.method === method && c.path === path)
   }
 
+  // Every development once: the ones matched to someone and the rest.
+  private regulations(): Row[] {
+    const all = [...this.tables.regulation_relevance.map(r => r.regulations as Row), ...this.tables.regulations]
+    return [...new Map(all.map(r => [r.id, r])).values()]
+  }
+
   private select(table: string, query: URLSearchParams): Row[] {
-    const rows = this.tables[table]
+    const rows = table === 'regulations' ? this.regulations() : this.tables[table]
     if (!rows) throw new Error(`mockBackend: no table "${table}"; add it to seed()`)
     let out = rows.filter(row => [...query].every(([k, v]) => RESERVED.has(k) || matches(row, k, v)))
     const order = query.get('order')

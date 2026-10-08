@@ -33,6 +33,7 @@ interface Row {
     jurisdiction: string | null
     published_date: string | null
     on_public_inspection: boolean | null
+    duplicate_of: string | null
   } | null
 }
 
@@ -47,7 +48,7 @@ export async function loadMatchedDevelopments(client: SupabaseClient, firmId: st
   let query = client
     .from('regulation_relevance')
     .select(
-      'relevance_reason, fund_id, portfolio_company_id, funds(name), portfolio_companies(name), regulations(id, title, category, agency, jurisdiction, published_date, on_public_inspection)',
+      'relevance_reason, fund_id, portfolio_company_id, funds(name), portfolio_companies(name), regulations(id, title, category, agency, jurisdiction, published_date, on_public_inspection, duplicate_of)',
     )
     .eq('firm_id', firmId)
     .is('dismissed_at', null)
@@ -69,6 +70,22 @@ export async function loadMatchedDevelopments(client: SupabaseClient, firmId: st
     entry.lines.push(`   - ${entity.trim()}: ${reason}`)
     byRegulation.set(row.regulations.id, entry)
   }
+
+  // One entry per development (roadmap item 15): a later version of one
+  // already listed (the Federal Register document for an announcement) is
+  // named on the first version's line instead of being listed again.
+  // An entity matched only to the later version keeps its line.
+  const entityOf = (line: string) => line.slice(0, line.indexOf(':'))
+  const published = new Map<string, string[]>()
+  for (const [id, { reg, lines }] of byRegulation) {
+    const first = reg.duplicate_of ? byRegulation.get(reg.duplicate_of) : undefined
+    if (!first) continue
+    const named = new Set(first.lines.map(entityOf))
+    first.lines.push(...lines.filter(l => !named.has(entityOf(l))))
+    published.set(reg.duplicate_of!, [...(published.get(reg.duplicate_of!) ?? []), reg.title])
+    byRegulation.delete(id)
+  }
+  for (const [id, titles] of published) byRegulation.get(id)!.lines.push(`   - Also published as: ${titles.join('; ')}`)
 
   const all = [...byRegulation.values()].sort((a, b) => (b.reg.published_date ?? '').localeCompare(a.reg.published_date ?? ''))
   const shown = all.slice(0, MAX_DEVELOPMENTS)
