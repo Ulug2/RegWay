@@ -686,7 +686,7 @@ the sky-blue gradients) rather than as theme tokens. Needs: colour tokens
 in `src/index.css` for both themes, the inline colours moved onto them, a
 switch (follow the system setting by default, with a manual override
 remembered per user), and a pass over every screen including the landing
-page, charts of badges and the glass cards, which rely on light
+page, the badges and the glass cards, which rely on light
 backgrounds.
 
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
