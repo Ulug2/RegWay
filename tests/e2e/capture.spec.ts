@@ -6,6 +6,7 @@ import { FIRM_ID, REGS, aiReply, regulation, relevance, signIn, test, todayAt } 
 //
 //   CAPTURE=landing pnpm exec playwright test capture   the product picture on the landing page (public/landing/)
 //   CAPTURE=screens pnpm exec playwright test capture   every screen, light and dark, into test-results/screens/
+//   CAPTURE=og pnpm exec playwright test capture        the picture shown when a link to the site is shared (public/og.jpg)
 //
 // Run the first one again whenever the company page changes how it looks.
 
@@ -25,6 +26,20 @@ const ANALYSIS = {
   considerations: ['Ask counsel whether existing contracts reprice.'],
   limitations: 'Based on the published text.',
 }
+
+test.describe('link preview picture', () => {
+  test.skip(MODE !== 'og', 'CAPTURE=og only')
+  // 1200x630 is the size link previews expect.
+  test.use({ colorScheme: 'light', viewport: { width: 1200, height: 630 } })
+
+  test('landing page', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('heading', { level: 1 }).waitFor()
+    await page.locator('.hero-shot img').first().evaluate((img: HTMLImageElement) => img.decode())
+    await settle(page)
+    await page.screenshot({ path: 'public/og.jpg', type: 'jpeg', quality: 88 })
+  })
+})
 
 for (const scheme of ['light', 'dark'] as const) {
   test.describe(`landing picture, ${scheme}`, () => {
