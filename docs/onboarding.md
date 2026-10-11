@@ -73,19 +73,25 @@ pnpm dev
 ```
 
 - [ ] Open http://localhost:8443 and see the landing page.
-- [ ] Sign up with any email and a password (a made-up address is fine: the
-      local database sends no real email; mail it would have sent is at
-      http://127.0.0.1:54324).
+- [ ] Sign in as `demo@regway.local` with the password `regway-demo-local`
+      and see the H.I.G. test firm's dashboard. That account and its data
+      are loaded into every local database
+      ([`local-demo-data.md`](local-demo-data.md)). If sign-in fails, the
+      demo data has not been committed yet: sign up instead, with any
+      made-up email (the local database sends no real email; mail it would
+      have sent is at http://127.0.0.1:54324).
 
 Useful while developing:
 
 - The database, as tables you can browse and edit: http://127.0.0.1:54323
-- Start over with an empty database: `supabase db reset`
+- Rebuild your database from scratch (migrations, then the demo firm):
+  `supabase db reset`
 - Stop the database when you are done for the day: `supabase stop`
 
-### Getting data into your local database (optional)
+### Running the server functions locally (optional)
 
-A fresh local database has no regulations in it. The server functions run
+The demo firm comes with its matched documents. To pull fresh documents
+from the public sources into your local database, run the functions
 locally too:
 
 ```bash

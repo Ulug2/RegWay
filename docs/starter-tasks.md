@@ -127,17 +127,15 @@ at a time: `src/components/Dashboard.tsx` (tasks 2, 3), `src/lib/data.ts`
 - **Depends on:** coordinate with anyone else changing `src/App.tsx`.
 - **Difficulty:** medium. **New contributor:** after one merged task.
 
-### 11. Demo data for local development
-- **Problem:** Checked: a fresh local database is empty, and matching needs
-  an AI key, so a new contributor sees an empty dashboard.
-- **Expected result:** an optional script that creates a demo user, firm,
-  funds, companies, a few dozen regulations and matches, all invented.
-- **Done when:** after `supabase db reset` and one documented command,
-  signing in as the demo user shows a populated dashboard, fund page,
-  company page and development page; `docs/onboarding.md` updated.
-- **Depends on:** the lead (it shapes everyone's setup); owner's review.
-- **Difficulty:** medium. **New contributor:** no; lead or a strong
-  contributor paired with the lead. **Do this first: it unblocks the others.**
+### 11. Demo data for local development (mostly done 2026-10-11)
+- **Done:** `scripts/export-demo-firm.sh` copies the H.I.G. test firm into
+  `supabase/seeds/demo-firm.sql`, loaded by every `supabase db reset`
+  (`docs/local-demo-data.md`). Tested with an invented firm, local to local.
+- **Left for the owner:** run it once against the hosted project and commit
+  the file. **Do this before the team starts: it unblocks everyone.**
+- **Left as a task (easy, after that):** a browser walk-through of a local
+  database loaded with the real copy, noting anything that looks wrong
+  (missing logos are expected), filed as issues.
 
 ### 12. One new regulator feed each (NFA, MSRB, PCAOB, …)
 - **Problem:** roadmap 16h lists bodies that are not in the Federal Register

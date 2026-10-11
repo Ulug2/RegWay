@@ -1,5 +1,55 @@
 # RegWay MVP roadmap
 
+## Start here (for the team, added 2026-10-11)
+
+This file is the project's memory: what was built, what is open, and what
+the owner decided and when. It is long because nothing is deleted from it.
+You do not need to read it top to bottom.
+
+**How it is laid out**
+- **Context**: dated notes, oldest first. History; skim it.
+- **Priority order**: numbered items. A heading that ends in "done" is
+  finished and kept only as a pointer. The open ones are in the table below.
+- **Completed**: one entry per finished piece of work, with what was
+  verified and how. Read the entry for an area before changing that area.
+- `prompts/` holds the investigation and implementation notes each entry
+  refers to.
+
+**How to use it day to day**
+- Work is tracked in **GitHub Issues**, not here. An issue that comes from
+  this file says which item ("roadmap 16f").
+- When your pull request finishes an item or part of one, update this file
+  in the same pull request: mark the item, and add a short Completed entry
+  (what changed, how it was checked, what is still not verified).
+- Found something wrong or unfinished that is not your task? Add a line
+  under 16a and open an issue. Do not fix it in passing.
+- Wording: "verified" means someone watched it work; "built" means the code
+  and its tests exist. Keep that distinction.
+- New to the code: `docs/onboarding.md`, then `docs/architecture.md`, then
+  `CONTRIBUTING.md`. Ready-to-take tasks with acceptance criteria:
+  `docs/starter-tasks.md`.
+
+**What is open now** (everything else under Priority order is done)
+
+| Item | What | Size | Who |
+|---|---|---|---|
+| 16f | FAQ page; rename the dashboard's level buttons | S | Any contributor (starter tasks 1, 2) |
+| 16a | Small defects: failing-source banner wording, source names in three places, legacy locations, feed summaries, empty chat bubble | S each | Any contributor (starter tasks 3–7) |
+| 16i | Team setup: demo data for local databases, formatting pass, bundle size, dependency advisories | S–M | Lead and contributors (see 16i) |
+| 16h | Sources that need their own feed (NFA, MSRB, PCAOB, …) | M each | Contributor, one feed per issue; owner approves each feed |
+| 16g | Security verification audit | L | Owner and lead; part 1 (two-firm access tests on a local database) can be a supervised contributor task |
+| 6 | Cost optimization, remaining levers | S–M each | Owner: changes what the AI is asked and how often |
+| 12, Phase 3 | Email alerts | M | Owner: skipped for now, needs an email provider |
+| 14, part 2 | Registry grounding in the company scan | — | Owner: tested twice, worse both times, undecided |
+| 17 | Multi-role AI architecture (Orchestrator + Skeptic) | XL | Owner: on hold |
+| Live AI tests still owed | See the table under Priority order | — | Owner: needs the H.I.G. sign-in and AI credit |
+
+**What contributors do not have, on purpose:** the hosted Supabase project's
+keys, the production AI key, and the real H.I.G. sign-in. Anything in this
+file that says "live", "deployed" or "on H.I.G." was done by the owner.
+Contributors work on a local database (`docs/onboarding.md`), which can be
+loaded with a copy of the H.I.G. test firm (`docs/local-demo-data.md`).
+
 ## Context
 
 Two backlogs were merged into one prioritized plan: gaps flagged after
@@ -921,6 +971,30 @@ has been added. No. Compared by name on 2026-10-08:
   industries (the registry's own routing rule: match on activity, not only
   industry), which is free and would cut the noise the wider list adds.
 
+### 16i. Team setup (2026-10-11) — repository part done; four follow-ups open
+Eight student contributors and a lead are joining. Done on 2026-10-11 (see
+Completed, "Team onboarding"): CI, CODEOWNERS, templates, contributing and
+onboarding guides, a local database that does not call production, and a
+script that copies the H.I.G. test firm into local databases. Open:
+
+- **Owner, on GitHub**: turn on branch protection for `main`, invite the
+  contributors, name the lead in `.github/CODEOWNERS` (steps at the end of
+  `CONTRIBUTING.md`).
+- **Owner, once**: run `scripts/export-demo-firm.sh` against the hosted
+  project and commit `supabase/seeds/demo-firm.sql`
+  (`docs/local-demo-data.md`). Until then local dashboards are empty. The
+  script was tested against a local database only.
+- **Formatting** (S, one person, when no branches are open): `oxfmt --check`
+  fails on about 157 files, so formatting is not a required check. Format
+  everything once, then add the check to CI.
+- **Bundle size** (M): `pnpm build` warns of a chunk over 500 kB; the
+  landing page loads the whole signed-in app.
+- **Dependency advisories** (M): `pnpm audit` reported 10 (7 high, 3
+  moderate) on 2026-10-11; not yet sorted into shipped and build-only.
+- **Vercel previews** (owner, to check): every pull request gets a preview
+  deployment; which Supabase address previews are built with was not checked.
+- **CI minutes**: the browser tests take 6 to 8 minutes per push on GitHub.
+
 ### 17. RegWay AI: multi-role agentic architecture (Orchestrator + Skeptic) (XL)
 Full plan: `plans/regway-ai-multi-agent-architecture.md` — linked out
 rather than inlined here because the brief is long (architecture, 7
@@ -980,9 +1054,8 @@ specific country — don't build ahead of an actual problem.
   RLS-isolated, just tidiness — lowest priority item in the whole list).
 
 ### Future (no timeline yet)
-- **Continuous integration**: the test suite (see Completed, "Automated
-  tests") runs only when someone runs it. A GitHub Actions workflow running
-  `pnpm test:all` on every push would make it a real guard.
+- ~~Continuous integration~~: done 2026-10-11 (`.github/workflows/ci.yml`;
+  see Completed, "Team onboarding").
 - **Per-firm scheduled relevance checks, timezone-aware**: today
   `match-relevance` only ever runs once at onboarding or when manually
   triggered — there's no recurring "check what's newly relevant to my firm"
@@ -1043,6 +1116,41 @@ specific country — don't build ahead of an actual problem.
   Federal Register exists per state.
 
 ## Completed
+
+### Team onboarding (2026-10-11, PR #6)
+Prepared the repository for eight contributors and a lead. No application
+code changed.
+- **CI** (`.github/workflows/ci.yml`): type checks, unit tests, build and
+  browser tests on every pull request and push to `main`; a pull request
+  that edits an existing migration fails. No secrets. Verified: both jobs
+  green on PR #6.
+- **Review rules**: `.github/CODEOWNERS` (everything under `supabase/`,
+  sign-in files, dependencies, deployment, agent configuration need the
+  owner), a pull request template, bug and task issue forms. They take
+  effect once branch protection is on (not yet: 16i).
+- **Guides**: `CONTRIBUTING.md`, `docs/onboarding.md`,
+  `docs/architecture.md`, `docs/starter-tasks.md`,
+  `docs/local-demo-data.md`; README setup rewritten.
+- **Local databases no longer call production.** The migrations write the
+  hosted project's address into nine scheduled jobs, so a database built
+  from them called the production sync functions (seen: one real
+  `sync-federal-register` run from a laptop). `supabase/seed.sql` removes
+  the jobs on local databases; it does nothing where the Vault secret
+  `service_role_key` exists. Verified: `cron.job` is empty after
+  `supabase db reset`.
+- **Unit tests no longer need `.env.local`** (`vitest.config.ts` sets fake
+  Supabase settings). Before, one suite failed without the file and loaded
+  the real project's address with it.
+- **Demo firm for local databases**: `scripts/export-demo-firm.sh` copies
+  one firm's profile, shown matches, their documents and analyses into
+  `supabase/seeds/demo-firm.sql`, with a local-only sign-in
+  (`demo@regway.local`). No accounts, chat or usage records are copied.
+  Verified local to local with an invented firm (export, reset, sign in,
+  rows visible through the access rules). **Not run against the hosted
+  project**: that is the owner's step.
+- **Verified locally**: all 35 migrations apply to an empty database; a
+  local sign-up; a local `sync-federal-register` run (78 documents). **Not
+  verified**: sign-up and onboarding in the browser against a local database.
 
 ### 16h, first part: 43 more Federal Register agencies (2026-10-08)
 `sync-federal-register` reads the federal bodies named in the registry

@@ -61,6 +61,8 @@ supabase/
   migrations/        Database structure and access rules, in numbered order
   functions/         Edge Functions; _shared/ is code they have in common
   seed.sql           Local databases only: switches off the scheduled jobs
+  seeds/             Local databases only: the demo firm (docs/local-demo-data.md)
+scripts/             Owner's export script for the demo firm
   README.md          Setting up a hosted Supabase project (owner only)
 tests/
   unit/              Vitest: src/lib and the functions' logic
@@ -81,7 +83,7 @@ The short version:
 
 ```bash
 pnpm install
-supabase start               # your own local database, all migrations applied
+supabase start               # your own local database: all tables, plus the demo firm
 cp .env.example .env.local   # then paste the anon key from `supabase status`
 pnpm dev                     # http://localhost:8443
 ```
