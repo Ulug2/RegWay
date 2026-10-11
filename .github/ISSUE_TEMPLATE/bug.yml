@@ -1,0 +1,44 @@
+name: Bug
+description: Something works differently from how it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste keys, passwords, or a real firm's data. A security problem does not go here: tell the owner privately (CONTRIBUTING.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to see it
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Local (my own machine)
+        - The live site (regwayai.com)
+        - A test (unit or browser)
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshot, error text, or failing test
+  - type: input
+    id: files
+    attributes:
+      label: Files involved, if known
+      placeholder: src/components/Dashboard.tsx

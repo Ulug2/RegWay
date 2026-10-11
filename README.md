@@ -13,9 +13,10 @@ sources and citations.
 
 ## What it does
 
-- **Real regulatory data** — a Supabase Edge Function pulls new/proposed
-  federal rules from the free, official [Federal Register API](https://www.federalregister.gov/developers/documentation/api/v1)
-  (SEC, CFTC, IRS, DOL, EPA, FERC, HHS, FMCSA, CFPB).
+- **Real regulatory data** — Edge Functions pull new and proposed federal
+  rules from the free, official [Federal Register API](https://www.federalregister.gov/developers/documentation/api/v1),
+  plus regulator announcements, enforcement actions, sanctions and travel
+  advisories from the feeds listed on the site's Sources page.
 - **Relevance filtering, not a firehose** — every synced rule is evaluated by
   Claude against the firm's actual jurisdictions, funds, and portfolio
   companies. Only rules with a genuine, explainable connection are ever shown;
@@ -33,40 +34,60 @@ sources and citations.
 
 ## Tech stack
 
-- **Frontend**: React 19 + Vite + Tailwind CSS v4, running inside the Figma
-  Make dev environment (see `AGENTS.md`)
-- **Backend**: [Supabase](https://supabase.com) — Postgres with Row Level
-  Security scoping every firm to its own data, Auth for sign-up/sign-in, and
-  Edge Functions (Deno) for anything that needs to call an external API
-- **AI**: [Anthropic Claude API](https://docs.anthropic.com), called only
-  from Edge Functions — the API key never reaches the browser
+- **Frontend**: React 19, Vite and Tailwind CSS v4, in TypeScript. Hosted on
+  Vercel at https://www.regwayai.com.
+- **Backend**: [Supabase](https://supabase.com). Postgres holds the data,
+  with Row Level Security (database rules that let a signed-in user read
+  only their own firm's rows). Supabase Auth handles sign-up and sign-in.
+  Edge Functions (small server programs, written for Deno) do everything
+  that needs a secret key or an outside service.
+- **AI**: the [Anthropic Claude API](https://docs.anthropic.com), called only
+  from Edge Functions. The API key never reaches the browser.
+- **Scheduled jobs**: `pg_cron` inside the database calls the sync and
+  matching functions on a timer.
+
+How the parts fit together: [`docs/architecture.md`](docs/architecture.md).
 
 ## Project structure
 
 ```
 src/
-  components/       React UI components (Dashboard, HeadlineDetailView,
-                     OnboardingModal, AuthScreen, RegWayAICopilot)
-  lib/               Supabase client, typed data-access helpers, edge
-                     function caller
+  App.tsx            Decides which screen shows (src/lib/router.ts)
+  components/        Screens and UI parts
+  lib/               Supabase client, data access (data.ts), function
+                     caller (functions.ts), pure logic
+  index.css          Tailwind import, colours, shared classes (see DESIGN.md)
 supabase/
-  migrations/        Postgres schema + RLS policies
-  functions/         Edge Functions (Deno) — see supabase/README.md
-  README.md          Backend setup steps (Supabase project, secrets, deploy)
+  migrations/        Database structure and access rules, in numbered order
+  functions/         Edge Functions; _shared/ is code they have in common
+  seed.sql           Local databases only: switches off the scheduled jobs
+  README.md          Setting up a hosted Supabase project (owner only)
+tests/
+  unit/              Vitest: src/lib and the functions' logic
+  e2e/               Playwright: the app in a browser against a mock backend
+plans/               The roadmap (regway-mvp-roadmap.md)
+prompts/             Investigation and implementation notes per feature
+docs/                Onboarding, architecture, product documents
 ```
 
 ## Getting started
 
+New here? Follow [`docs/onboarding.md`](docs/onboarding.md) step by step, then
+read [`CONTRIBUTING.md`](CONTRIBUTING.md) before your first change.
+
+You need Node 22, pnpm 10 (versions in `.mise.toml`), Docker Desktop and the
+[Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started).
+The short version:
+
 ```bash
 pnpm install
-cp .env.example .env.local   # fill in your Supabase project URL + anon key
-pnpm dev
+supabase start               # your own local database, all migrations applied
+cp .env.example .env.local   # then paste the anon key from `supabase status`
+pnpm dev                     # http://localhost:8443
 ```
 
-The frontend alone won't have live data without a connected Supabase backend.
-Follow **`supabase/README.md`** for the full backend setup: creating the
-Supabase project, applying the schema, setting the Anthropic API key as a
-function secret, and deploying the Edge Functions.
+Everyone develops against their **own local database**. Nobody but the owner
+has the hosted project's keys, and nothing in day-to-day work needs them.
 
 ## Tests
 
@@ -83,20 +104,27 @@ tests run the edge functions' code against a fake database client and a
 stubbed `fetch` (`tests/unit/helpers`). Browser tests start their own dev
 server on port 8444 pointed at a mock Supabase (`tests/e2e/mockBackend.ts`).
 
-## Current status
+## Checks
 
-**Working:** authentication, onboarding (persists real firm/fund/portfolio
-data), the three-tab dashboard reading real relevance-filtered regulations,
-per-company AI web search, flags and notes, and the RegWay AI chat with live
-citations.
+```bash
+pnpm test:all   # types, function types, unit tests, browser tests
+pnpm build      # production build
+```
 
-**Not yet built:**
-- The Headline Detail View's deeper "regulatory diff" and "operational
-  implications" sections are still placeholder content, not per-regulation
-  AI analysis.
-- Relevance matching can occasionally be too permissive on speculative
-  connections and needs a stricter pass.
-- Coverage is US federal only — no state law (e.g. Delaware) or non-US
-  jurisdictions (EU, Cayman, etc.) yet.
-- The per-company AI scan is synchronous and can take 30+ seconds on first
-  click; no background pre-warming yet.
+GitHub runs the same checks on every pull request
+(`.github/workflows/ci.yml`). `pnpm format` (oxfmt) exists, but the code has
+not been formatted with it as a whole, so it is not a required check: do not
+run it across the repository in a feature branch.
+
+## Deployment
+
+Done by the owner only. The frontend is on Vercel. Database migrations
+(`supabase db push`) and Edge Functions (`supabase functions deploy`) are
+applied to the hosted Supabase project by hand with the Supabase CLI; merging
+a pull request does not deploy them.
+
+## Status and roadmap
+
+What is built, what is open and what was decided, with dates:
+[`plans/regway-mvp-roadmap.md`](plans/regway-mvp-roadmap.md). Tasks being
+worked on are GitHub Issues.

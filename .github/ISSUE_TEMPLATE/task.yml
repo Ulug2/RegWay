@@ -1,0 +1,57 @@
+name: Feature or task
+description: A piece of work someone can pick up
+labels: [task]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is wrong or missing today, and for whom.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected result
+      description: What is true when this is finished.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Checks a reviewer can tick off.
+      value: |
+        - [ ]
+        - [ ] `pnpm test:all` passes
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      options:
+        - Easy (hours)
+        - Medium (a day or two)
+        - Hard (several days)
+    validations:
+      required: true
+  - type: input
+    id: files
+    attributes:
+      label: Files or area
+      placeholder: src/components/InfoPage.tsx, src/lib/router.ts
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Depends on
+      description: Other issues, a decision from the owner, access to something.
+  - type: checkboxes
+    id: sensitive
+    attributes:
+      label: Needs the owner
+      options:
+        - label: Database migration
+        - label: Sign-in, access rules, or server functions
+        - label: AI prompts or AI spending
+        - label: Deployment or production
