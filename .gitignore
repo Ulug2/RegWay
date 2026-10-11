@@ -26,6 +26,7 @@ playwright-report/
 
 # Supabase CLI local link state/cache — machine-specific, not project source.
 supabase/.temp/
+supabase/.branches/
 
 # Claude Code per-machine local settings (e.g. which project MCP servers this
 # machine has approved) — not shared project config, unlike .mcp.json.
