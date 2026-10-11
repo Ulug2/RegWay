@@ -15,6 +15,9 @@ export default defineConfig({
   test: {
     include: ['tests/unit/**/*.test.ts'],
     environment: 'node',
+    // Fake values, so the suite neither needs a .env.local nor reads a real
+    // project's address from one.
+    env: { VITE_SUPABASE_URL: 'http://localhost:54399', VITE_SUPABASE_ANON_KEY: 'test-anon-key' },
     setupFiles: ['tests/unit/helpers/setup.ts'],
     restoreMocks: true,
     unstubGlobals: true,

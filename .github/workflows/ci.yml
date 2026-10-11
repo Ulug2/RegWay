@@ -1,0 +1,79 @@
+name: CI
+
+# Runs on every pull request and on every push to main. None of these steps
+# reaches a real Supabase project or makes an AI call: unit tests use a fake
+# database client, browser tests use a mock backend (see README, "Tests").
+# No secrets are needed, and none should be added to this workflow.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Types, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A migration that has been applied to a database must never change:
+      # the database would no longer match the files. Fix a mistake with a
+      # new, higher-numbered migration (CONTRIBUTING.md, "Database changes").
+      - name: Existing migrations are not edited
+        if: github.event_name == 'pull_request'
+        run: |
+          changed=$(git diff --name-status "origin/${{ github.base_ref }}...HEAD" -- supabase/migrations | grep -v '^A' || true)
+          if [ -n "$changed" ]; then
+            echo "These existing migrations were edited, renamed or deleted:"
+            echo "$changed"
+            echo "Add a new migration instead."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm typecheck:functions
+      - run: pnpm test
+      - run: pnpm build
+
+  e2e:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - name: Keep traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

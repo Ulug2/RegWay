@@ -1,0 +1,37 @@
+# Who must approve a change to which files. With "Require review from Code
+# Owners" switched on for main (CONTRIBUTING.md, "Branch protection"), a pull
+# request touching a path below cannot merge without that person's approval.
+# The last matching line wins. Owners need write access to the repository.
+#
+# Everything not listed here needs one approval from any reviewer (normally
+# the team lead). When the lead is chosen, add their handle where marked.
+
+# Database structure, access rules, scheduled jobs, and the server functions
+# (they hold the service key, which bypasses access rules, and spend AI credit).
+/supabase/                      @Ulug2
+
+# Sign-in, sign-up, password reset, and the Supabase client.
+/src/lib/supabase.ts            @Ulug2
+/src/lib/functions.ts           @Ulug2
+/src/lib/password.ts            @Ulug2
+/src/components/AuthPanel.tsx   @Ulug2
+/src/components/ResetPasswordScreen.tsx @Ulug2
+
+# Deployment, CI, and who owns what.
+/vercel.json                    @Ulug2
+/.github/                       @Ulug2
+/.env.example                   @Ulug2
+
+# Dependencies: every new package is code we run and ship.
+/package.json                   @Ulug2
+/pnpm-lock.yaml                 @Ulug2
+/.mise.toml                     @Ulug2
+
+# Instructions and tools that AI coding agents load with the developer's
+# permissions.
+/AGENTS.md                      @Ulug2
+/CLAUDE.md                      @Ulug2
+/.mcp.json                      @Ulug2
+/.claude/                       @Ulug2
+/.agents/                       @Ulug2
+/skills-lock.json               @Ulug2
