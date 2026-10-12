@@ -19,7 +19,7 @@ the top of `docs/archive/roadmap-history.md`.
 
 ## Who does what
 
-- **Owner (Ulug, @Ulug2)**: decides what the product does and picks each
+- **Owner (Ulugbek, @Ulug2)**: decides what the product does and picks each
   week's tasks from the roadmap; has the final say on architecture,
   security, the database, releases and anything that touches production.
   The only person with production keys.
@@ -132,7 +132,7 @@ one of these, not after:
 | `supabase/functions/` | Server code that holds the service key (which bypasses the access rules) and spends AI credit on every call. |
 | Sign-in, sign-up, password reset | Account security. |
 | AI prompts, models, or how often the AI is called | Cost and answer quality; both are measured against a real firm. The owner is rebuilding the chat and the matchers' judges (roadmap item 17): do not change `regway-ai-chat`, `_shared/regulatoryJudge.ts`, `_shared/geopoliticalJudge.ts`, `_shared/impact.ts` or `rematch-regulation` without asking. |
-| `package.json` | Every new dependency is someone else's code running in our product. Say why it is needed. |
+| `package.json` | Every new dependency is someone else's code running in our product. Say why it is needed. The lead may approve these. |
 | `.github/`, `vercel.json`, agent instructions (`AGENTS.md`, `.claude/`, `.mcp.json`) | CI, deployment, and tools that run with a developer's permissions. |
 
 ### Database changes

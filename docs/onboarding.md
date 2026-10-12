@@ -41,18 +41,18 @@ and companies whose names end in "(test)".
 
 | Who | Does what |
 |---|---|
-| **Ulug** (owner, `@Ulug2`) | Decides what gets built. Each week picks the team's tasks from the roadmap. Reviews anything touching the database, sign-in, server functions or AI. The only person with production access; does all deployments. Currently building the multi-role AI (roadmap item 17). |
+| **Ulugbek** (owner, `@Ulug2`) | Decides what gets built. Each week picks the team's tasks from the roadmap. Reviews anything touching the database, sign-in, server functions or AI. The only person with production access; does all deployments. Currently building the multi-role AI (roadmap item 17). |
 | **Aadit** (team lead) | Turns the week's tasks into GitHub Issues, assigns each to one person, answers questions, reviews pull requests and merges them. Your first contact for everything. |
 | **You** (contributor) | Own the issues assigned to you from start to merge. Keep pull requests small. Say early when you are stuck. |
 
 **The weekly cycle**
 
-1. Ulug chooses the week's tasks from `plans/regway-mvp-roadmap.md`.
+1. Ulugbek chooses the week's tasks from `plans/regway-mvp-roadmap.md`.
 2. Aadit writes each as a GitHub Issue with a "Done when" list and assigns it.
 3. You do the work on a branch on your laptop and open a pull request.
 4. GitHub runs the automatic checks. Aadit reviews. If your change touches
-   a sensitive area, GitHub also asks Ulug.
-5. Aadit merges. Ulug deploys.
+   a sensitive area, GitHub also asks Ulugbek.
+5. Aadit merges. Ulugbek deploys.
 
 **Where things are said**
 
@@ -110,7 +110,7 @@ means) → *show*.
 | Colours, spacing, shared styles | `src/index.css`, after reading `DESIGN.md` |
 | A source we pull documents from | `supabase/functions/sync-*`, `_shared/regulatorFeeds.ts` |
 | A table or an access rule | a **new** file in `supabase/migrations/` (ask first) |
-| What the AI is asked | Ask Ulug first. He is rebuilding this (item 17). |
+| What the AI is asked | Ask Ulugbek first. He is rebuilding this (item 17). |
 
 ## 4. Set up your laptop
 
@@ -120,7 +120,7 @@ yet, so note what you had to change.
 
 ### 4.1 GitHub
 
-- [ ] Send Ulug your GitHub username.
+- [ ] Send Ulugbek your GitHub username.
 - [ ] Accept the invitation: https://github.com/Ulug2/RegWay/invitations
 - [ ] Turn on two-factor sign-in: GitHub → Settings → Password and
       authentication.
@@ -188,7 +188,7 @@ The first run downloads Docker images and takes a few minutes. What it does:
 - [ ] `supabase start` finished without an error.
 
 **Do not run `supabase login`, `supabase link` or `supabase db push`.**
-Those connect the tool to the production project. Only Ulug does that.
+Those connect the tool to the production project. Only Ulugbek does that.
 
 Things you will use:
 
@@ -253,7 +253,7 @@ company scan or a chat reply.
 
 **Getting a key**
 
-1. Ask Ulug (through Aadit) and say which issue needs it. He creates a
+1. Ask Ulugbek (through Aadit) and say which issue needs it. He creates a
    development key with a spending limit and sends it to you privately.
 2. It is yours alone. Do not pass it on; if a teammate needs one, they ask.
 
@@ -290,9 +290,9 @@ file, that is the expected local behaviour.
   look at the result, then decide.
 - A company scan runs by itself when a company is new or its details
   change. With a key in place, adding five companies costs a dollar.
-- Finished the task? Delete the file and tell Ulug so he can switch the key
+- Finished the task? Delete the file and tell Ulugbek so he can switch the key
   off.
-- Leaked it (pushed it, pasted it somewhere)? Tell Ulug immediately. It
+- Leaked it (pushed it, pasted it somewhere)? Tell Ulugbek immediately. It
   takes him one minute to replace it and it is not a big deal if you say
   so at once.
 
@@ -379,7 +379,7 @@ git push -u origin HEAD
 8. **Aadit merges.** Delete your branch. Pull `main` before the next task.
 
 The full rules (branch names, commit messages, database changes, what needs
-Ulug's review) are in [`CONTRIBUTING.md`](../CONTRIBUTING.md). Read it
+Ulugbek's review) are in [`CONTRIBUTING.md`](../CONTRIBUTING.md). Read it
 before your second pull request.
 
 Using an AI coding assistant is fine. You answer for every line you
@@ -391,14 +391,14 @@ submit: read it, run it, and be able to explain it in review.
 - **Never commit a key, password, token or `.env` file.**
 - **Never ask for or use production credentials.** Not the Supabase service
   key, not the database password, not the production AI key, not the real
-  H.I.G. sign-in. If a task seems to need them, it is Ulug's task.
+  H.I.G. sign-in. If a task seems to need them, it is Ulugbek's task.
 - **Never edit an existing migration.** Add a new numbered one, and talk to
   Aadit first. The automatic checks reject an edited migration.
 - **Never run `supabase link`, `supabase login` or `supabase db push`.**
 - **No test may call a real service.**
 - **Do not change the AI's prompts, models or the chat function** without
-  Ulug's say-so: he is rebuilding them.
-- **Found a security problem?** Tell Ulug privately. Do not open an issue.
+  Ulugbek's say-so: he is rebuilding them.
+- **Found a security problem?** Tell Ulugbek privately. Do not open an issue.
 
 ## 12. When something goes wrong
 
