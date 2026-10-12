@@ -93,6 +93,28 @@ Ready-to-take versions of these, with acceptance criteria, are in
   (the chat's session context, the landing page) and in the tests that
   click them by name.
 
+- **Filter portfolio companies by fund** (M). On the dashboard's Portfolio
+  Companies level, choosing a fund shows only the companies that fund
+  holds. The data is already there: `fund_holdings` records which fund
+  holds which company (`fetchHoldings` in `src/lib/data.ts`), and a company
+  can sit in more than one fund.
+  - **To design first** (a sketch on the issue before code): where the
+    control goes and what it looks like. Options: a row of fund chips above
+    the company list ("All funds" first); a dropdown beside the level
+    buttons; or grouping the list under fund headings with no control at
+    all. Follow `DESIGN.md`; check phone width, where a row of chips for
+    many funds must scroll or wrap.
+  - **To decide**: where companies with no fund recorded appear (suggested:
+    under "All funds" and under their own "No fund recorded" choice, so
+    they are never hidden); whether the choice is kept in the address so a
+    reload and a shared link keep it; whether opening a fund's page should
+    offer "see this fund's companies" as a way in.
+  - **Done when**: choosing a fund narrows the list, "All funds" restores
+    it, a company in two funds shows under both, companies without a fund
+    stay reachable, and browser tests cover each.
+  - Files: `src/components/Dashboard.tsx` (one person at a time in this
+    file), `src/lib/data.ts`, `tests/e2e/dashboard.spec.ts`.
+
 ### Known defects (S each unless marked)
 - **Failing-source banner is vague and ungrammatical**: "Regulator feeds
   (U.S., UK and EU) hasn't updated…" when one feed of eleven is down. It
@@ -217,6 +239,39 @@ through before more firms use it, most serious first:
 9. **Records.** No audit log of who read or changed what.
 10. **An outside test**, then a decision on SOC 2: buyers at PE firms will ask.
 
+### 18. Research the firm on the web after onboarding (M–L) — owner
+Asked for by the owner on 2026-10-12. Today the AI knows only what the user
+typed during onboarding. After onboarding finishes, the AI should take
+those answers, search the web for more about the firm, and keep what it
+finds so that matching, analyses and the chat have more to go on.
+
+- **What to look for**: what the firm says about itself (strategy,
+  sectors, regions, size), its funds, its portfolio companies and what
+  each does, regulatory registrations and filings (for example Form ADV),
+  offices, recent deals and news.
+- **Where it is kept** (to decide): "memory" has no home yet. Suggested:
+  a research record per firm (what was found, the source link for each
+  fact, when), kept apart from the answers the user gave, and passed to
+  the AI as background. Facts the user never confirmed must not be mixed
+  into the profile as if they had: the product's promise is that a match
+  traces to a fact someone stands behind (fact provenance,
+  `profile_meta`).
+- **Confirm step** (to decide): show the user what was found and let them
+  Confirm / Edit / Not sure, so researched facts can become profile
+  answers. This is the "company enrichment and a confirm screen" idea from
+  the onboarding document, applied to the firm first.
+- **How it runs**: in the background after onboarding, like a company scan
+  (Claude with web search). Expect about the cost of a scan, $0.20 or more
+  per firm; measure it. It must not delay the first dashboard.
+- **Risks to design for**: the wrong firm with a similar name; stale or
+  wrong pages taken as fact; a web page that carries instructions for the
+  model (prompt injection, see 16g.5); researched facts producing the
+  speculative matches item 17 is meant to stop.
+- **Fits with item 17**: the Context Analyst role is the natural reader of
+  this record. Decide whether this is built as part of 17 or before it.
+- Needs a migration (the research record), a server function, and a
+  change to what the matchers, analyses and chat are given.
+
 ### 6. Cost optimization, remaining levers (S–M each) — owner
 1. **Stop pre-writing analyses nobody opens.** Matchers and scans write up
    to 8 in the background per new match. The on-demand path exists; the
@@ -270,9 +325,6 @@ spend, and the owner has said no alert is wanted for now.
   owner, not written by a lawyer. No contact address (`CONTACT_EMAIL` in
   `InfoPage.tsx` is unset), no company name or governing law. Privacy names
   its providers by kind, not by name.
-- **Supabase Auth settings for regwayai.com**: confirm the Site URL and the
-  redirect allow-list include `https://www.regwayai.com/**`, and that a
-  password-reset email opens the new address.
 - **Search listing**: indexing was requested on 2026-10-08; check
   `site:regwayai.com`.
 - **Fact provenance**: is one year the right age to ask for
@@ -287,7 +339,8 @@ spend, and the owner has said no alert is wanted for now.
 - **Multi-user firms**: one user per firm today. Blocks "investment owner
   per company" and brief recipients.
 - **Company enrichment and a confirm screen** after a company is added
-  (research public facts, let the user Confirm / Edit / Not sure).
+  (research public facts, let the user Confirm / Edit / Not sure). Item 18
+  does this for the firm first.
 - **A real history of a development** (how its status changed).
 - **Vercel previews**: every pull request gets a preview deployment; which
   Supabase address previews are built with was not checked.
