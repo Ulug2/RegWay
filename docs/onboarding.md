@@ -290,6 +290,10 @@ file, that is the expected local behaviour.
   look at the result, then decide.
 - A company scan runs by itself when a company is new or its details
   change. With a key in place, adding five companies costs a dollar.
+- Opening the dashboard asks the geopolitical matcher to check for new
+  items. Without a key you will see that request fail (a 500 from
+  `match-geopolitical-relevance` in the browser's network tab); ignore it.
+  With a key it can spend a few cents when there is something new to judge.
 - Finished the task? Delete the file and tell Ulugbek so he can switch the key
   off.
 - Leaked it (pushed it, pasted it somewhere)? Tell Ulugbek immediately. It
