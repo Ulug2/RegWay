@@ -26,7 +26,6 @@
 - `docs/onboarding.md` rewritten as the team's starting document. Verified
   for it: a key in `supabase/functions/.env` reaches the chat function
   under `supabase functions serve` (a fake key got Anthropic's 401).
-- Merged branches deleted.
 
 ---
 
