@@ -11,7 +11,7 @@
 // own sync functions (`sync-sec-admin-proceedings`, `sync-finra-enforcement`)
 // — different feed shapes (PDF-linked, and a general news feed needing
 // title filtering, respectively) that don't fit this function's plain-HTML-
-// release pattern. See prompts/23-enforcement-monitoring-investigate.md for
+// release pattern. See docs/notes/23-enforcement-monitoring-investigate.md for
 // the original SEC/FINRA feed investigation.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'

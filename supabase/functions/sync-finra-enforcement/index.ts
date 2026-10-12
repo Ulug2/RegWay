@@ -6,7 +6,7 @@
 // was a dead end: `feeds.finra.org` is a dead FeedBurner alias (TLS handshake
 // fails), a guessed disciplinary-actions RSS path 404s, and the site's
 // generic `rss.xml` is unrelated page-update content, not enforcement (see
-// prompts/23-enforcement-monitoring-investigate.md). What *does* work is
+// docs/notes/23-enforcement-monitoring-investigate.md). What *does* work is
 // FINRA's own newsreleases RSS feed
 // (finra.org/media-center/newsreleases/rss) — a real, official feed that
 // happens to mix genuine enforcement outcomes ("FINRA Bars...", "FINRA

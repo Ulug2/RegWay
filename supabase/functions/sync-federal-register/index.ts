@@ -44,7 +44,7 @@ const MAX_PAGES = 20
 // sector-specific bodies (energy, healthcare, transportation, environment).
 // Extend this list as new portfolio-company sectors are added.
 //
-// Evaluated but deliberately excluded (see prompts/09-agency-list-investigate.md
+// Evaluated but deliberately excluded (see docs/notes/09-agency-list-investigate.md
 // for the volume data behind these calls):
 // - 'treasury-department' (the generic parent department): 157 RULE/PRORULE
 //   items in a 9-month sample, almost entirely duplicate tagging of the same

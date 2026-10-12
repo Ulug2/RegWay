@@ -120,7 +120,9 @@ call production; do not remove that file.
 
 ## Where decisions are recorded
 
-`plans/regway-mvp-roadmap.md` (what was built, what is open, what the owner
-decided and when), `plans/regway-ai-multi-agent-architecture.md` (the
-planned AI redesign), and `prompts/` (investigation and implementation
-notes, one pair per feature).
+`plans/regway-mvp-roadmap.md` (what is open and who it waits on),
+`docs/archive/roadmap-history.md` (what was built, what the owner decided
+and when, and how each piece was verified),
+`plans/regway-ai-multi-agent-architecture.md` (the AI redesign in
+progress), and `docs/notes/` (investigation and implementation notes, one
+pair per feature).

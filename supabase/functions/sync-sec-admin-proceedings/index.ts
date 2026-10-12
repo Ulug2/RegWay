@@ -15,7 +15,7 @@
 // upserts them into `regulations` with category 'enforcement'.
 //
 // Unlike litigation releases, every item here links to a PDF, not an HTML
-// page (see prompts/23-enforcement-monitoring-investigate.md) — there's no
+// page (see docs/notes/23-enforcement-monitoring-investigate.md) — there's no
 // cheap regex-based text extraction path for a PDF, so this function sends
 // the PDF directly to Claude (native PDF document support) to extract a
 // clean plain-text narrative and one-line headline. That's a real API cost

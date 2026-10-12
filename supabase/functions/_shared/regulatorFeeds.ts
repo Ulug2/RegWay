@@ -2,7 +2,7 @@
 // 12, Phase 2): U.S. agencies' own announcements, which run days or weeks
 // ahead of Federal Register publication, and the first non-U.S. sources (UK
 // and EU). Each feed was fetched and read before it was added (2026-10-06,
-// prompts/live-monitoring-phase-2.md); the ones that turned out dead or
+// docs/notes/live-monitoring-phase-2.md); the ones that turned out dead or
 // unusable are listed there.
 //
 // A feed is a news stream, not a rule list, so each one says which entries
