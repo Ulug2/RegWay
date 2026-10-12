@@ -13,14 +13,20 @@ with [`docs/onboarding.md`](docs/onboarding.md).
 
 Nobody pushes to `main` directly, the owner and the lead included.
 
+The roadmap (`plans/regway-mvp-roadmap.md`) lists what is open. A pull
+request that finishes an item removes it there and adds a short entry at
+the top of `docs/archive/roadmap-history.md`.
+
 ## Who does what
 
-- **Owner (@Ulug2)**: decides what the product does; has the final say on
-  architecture, security, the database, releases and anything that touches
-  production. The only person with production keys.
-- **Team lead**: breaks features into issues, assigns them, reviews pull
-  requests (or names a reviewer), unblocks people, and tells the owner each
-  week what moved and what is at risk.
+- **Owner (Ulug, @Ulug2)**: decides what the product does and picks each
+  week's tasks from the roadmap; has the final say on architecture,
+  security, the database, releases and anything that touches production.
+  The only person with production keys.
+- **Team lead (Aadit)**: turns the week's tasks into issues, assigns each
+  to one person, reviews pull requests (or names a reviewer) and merges
+  them, unblocks people, and tells the owner each week what moved and what
+  is at risk.
 - **Contributors**: own the issues assigned to them from start to merge,
   keep pull requests small, say early when stuck, and write down anything
   the next person needs to know.
@@ -125,7 +131,7 @@ one of these, not after:
 | `supabase/migrations/` | The database structure and the rules for who can read what. A mistake can expose one firm's data to another or lose data. |
 | `supabase/functions/` | Server code that holds the service key (which bypasses the access rules) and spends AI credit on every call. |
 | Sign-in, sign-up, password reset | Account security. |
-| AI prompts, models, or how often the AI is called | Cost and answer quality; both are measured against a real firm. |
+| AI prompts, models, or how often the AI is called | Cost and answer quality; both are measured against a real firm. The owner is rebuilding the chat and the matchers' judges (roadmap item 17): do not change `regway-ai-chat`, `_shared/regulatoryJudge.ts`, `_shared/geopoliticalJudge.ts`, `_shared/impact.ts` or `rematch-regulation` without asking. |
 | `package.json` | Every new dependency is someone else's code running in our product. Say why it is needed. |
 | `.github/`, `vercel.json`, agent instructions (`AGENTS.md`, `.claude/`, `.mcp.json`) | CI, deployment, and tools that run with a developer's permissions. |
 
@@ -150,6 +156,9 @@ one of these, not after:
 - Never commit keys, passwords, tokens, `.env` files, or a URL with a
   secret in it. `.env*` is ignored by git; keep it that way.
 - Only two values belong in `.env.local`, both for your local database.
+- A development AI key, if the owner gave you one, goes in
+  `supabase/functions/.env` and nowhere else (`docs/onboarding.md`,
+  "Using the AI").
 - Do not paste secrets or real firm data into issues, pull requests, chat,
   or an AI tool.
 - Committed a secret by accident? Tell the owner at once, even if you

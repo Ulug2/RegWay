@@ -13,7 +13,7 @@ main roadmap if inlined there. This file holds the complete plan; the
 roadmap carries a priority-ordered summary and links here.
 
 **Explicit non-goal, preserved from the brief:** this stays on Anthropic
-Claude only. "Multi-role" means several specialized *prompts/instructions*
+Claude only. "Multi-role" means several specialized *docs/notes/instructions*
 executed by the same model/provider, orchestrated server-side — not
 multiple AI vendors, and not a rewrite of the security model (Supabase
 Edge Functions, API key server-side only, RLS-derived firm context).

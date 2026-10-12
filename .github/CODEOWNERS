@@ -4,7 +4,8 @@
 # The last matching line wins. Owners need write access to the repository.
 #
 # Everything not listed here needs one approval from any reviewer (normally
-# the team lead). When the lead is chosen, add their handle where marked.
+# the team lead, Aadit). To let the lead approve a path below as well, add
+# his GitHub handle after @Ulug2 on that line.
 
 # Database structure, access rules, scheduled jobs, and the server functions
 # (they hold the service key, which bypasses access rules, and spend AI credit).
@@ -16,6 +17,9 @@
 /src/lib/password.ts            @Ulug2
 /src/components/AuthPanel.tsx   @Ulug2
 /src/components/ResetPasswordScreen.tsx @Ulug2
+
+# The script that reads from the hosted database.
+/scripts/                       @Ulug2
 
 # Deployment, CI, and who owns what.
 /vercel.json                    @Ulug2

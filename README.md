@@ -67,9 +67,12 @@ scripts/             Owner's export script for the demo firm
 tests/
   unit/              Vitest: src/lib and the functions' logic
   e2e/               Playwright: the app in a browser against a mock backend
-plans/               The roadmap (regway-mvp-roadmap.md)
-prompts/             Investigation and implementation notes per feature
-docs/                Onboarding, architecture, product documents
+plans/               The roadmap: what is still to do
+docs/                onboarding.md (start here), architecture.md, guides
+  product/           Product documents (features, onboarding questions)
+  notes/             Investigation and implementation notes per feature
+  archive/           Finished roadmap entries, with how each was verified
+  brand/             Logo source files
 ```
 
 ## Getting started
@@ -127,6 +130,7 @@ a pull request does not deploy them.
 
 ## Status and roadmap
 
-What is built, what is open and what was decided, with dates:
-[`plans/regway-mvp-roadmap.md`](plans/regway-mvp-roadmap.md). Tasks being
-worked on are GitHub Issues.
+What is still to do: [`plans/regway-mvp-roadmap.md`](plans/regway-mvp-roadmap.md).
+What was built and how it was verified:
+[`docs/archive/roadmap-history.md`](docs/archive/roadmap-history.md). Tasks
+being worked on are GitHub Issues.

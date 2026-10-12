@@ -1,7 +1,8 @@
 # Starter backlog for the new team
 
-Proposed on 2026-10-11 from `plans/regway-mvp-roadmap.md` and a read of the
-code. Each one becomes a GitHub Issue ("Feature or task" template) when the
+Proposed on 2026-10-11 from the roadmap and a read of the code. Where a
+task says "roadmap 16a", that section is now "Known defects" in the
+roadmap; the original text is in `docs/archive/roadmap-history.md`. Each one becomes a GitHub Issue ("Feature or task" template) when the
 owner and lead agree to it; this file can be deleted once they are filed.
 
 **Checked** means the problem was confirmed in the code on 2026-10-11.
@@ -92,7 +93,8 @@ at a time: `src/components/Dashboard.tsx` (tasks 2, 3), `src/lib/data.ts`
 - **Expected result:** a stopped answer with no text leaves no bubble; one
   with partial text keeps it.
 - **Done when:** a browser test in `tests/e2e/copilot.spec.ts` covers both.
-- **Depends on:** nothing; only one person in `RegWayAICopilot.tsx` at a time.
+- **Depends on:** the owner's go-ahead (he is rebuilding the chat, roadmap
+  item 17); only one person in `RegWayAICopilot.tsx` at a time.
 - **Difficulty:** easy to medium. **New contributor:** yes.
 
 ### 8. Bring `supabase/README.md` up to date
@@ -186,6 +188,6 @@ at a time: `src/components/Dashboard.tsx` (tasks 2, 3), `src/lib/data.ts`
 | Server refuses a second analysis request while one is running | Server function + AI spend | roadmap 16a |
 | What is sent to the AI provider; prompt injection | Security and contracts | roadmap 16g.5 |
 | Email alerts | Needs an email provider and product decisions | roadmap 12, Phase 3 |
-| Multi-role AI architecture (Orchestrator + Skeptic) | Largest item; on hold until the owner says | roadmap 17 |
+| Multi-role AI architecture (Orchestrator + Skeptic) | The owner is building it | roadmap 17 |
 | Any prompt or model change | Cost and quality, measured on a real firm | — |
 | Deploying migrations and functions | Production | — |

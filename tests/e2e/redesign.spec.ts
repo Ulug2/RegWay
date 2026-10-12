@@ -1,6 +1,6 @@
 import { FIRM_ID, REGS, aiReply, daysAgoAt, expect, regulation, relevance, signIn, test } from './mockBackend'
 
-// Behaviour the redesign added or changed (prompts/redesign.md). How things
+// Behaviour the redesign added or changed (docs/notes/redesign.md). How things
 // look is checked by eye, with `CAPTURE=screens` (see capture.spec.ts).
 
 test.describe('landing page', () => {

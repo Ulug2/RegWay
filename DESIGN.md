@@ -4,7 +4,7 @@ How RegWay looks and behaves, for anyone (or any agent) changing the UI.
 Read it before UI work. The values live in `src/index.css`; this file says
 what they are for. Written in the format of the DESIGN.md files collected in
 `VoltAgent/awesome-design-md`, after the redesign of 2026-10-08
-(`prompts/redesign.md`).
+(`docs/notes/redesign.md`).
 
 ## Overview
 
