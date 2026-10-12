@@ -3,13 +3,14 @@
 # request touching a path below cannot merge without that person's approval.
 # The last matching line wins. Owners need write access to the repository.
 #
-# Everything not listed here needs one approval from any reviewer (normally
-# the team lead, Aadit). To let the lead approve a path below as well, add
-# his GitHub handle after @Ulug2 on that line.
+# Everything not listed below: the team lead (Aadit) reviews, or the owner.
+*                               @Aaditabhi @Ulug2
 
 # Database structure, access rules, scheduled jobs, and the server functions
-# (they hold the service key, which bypasses access rules, and spend AI credit).
+# (they hold the service key, which bypasses access rules, and spend AI
+# credit): the owner only. The backend's own guide is documentation.
 /supabase/                      @Ulug2
+/supabase/README.md             @Ulug2 @Aaditabhi
 
 # Sign-in, sign-up, password reset, and the Supabase client.
 /src/lib/supabase.ts            @Ulug2
@@ -24,12 +25,13 @@
 # Deployment, CI, and who owns what.
 /vercel.json                    @Ulug2
 /.github/                       @Ulug2
-/.env.example                   @Ulug2
+/.env.example                   @Ulug2 @Aaditabhi
 
-# Dependencies: every new package is code we run and ship.
-/package.json                   @Ulug2
-/pnpm-lock.yaml                 @Ulug2
-/.mise.toml                     @Ulug2
+# Dependencies: every new package is code we run and ship. Either the owner
+# or the lead may approve.
+/package.json                   @Ulug2 @Aaditabhi
+/pnpm-lock.yaml                 @Ulug2 @Aaditabhi
+/.mise.toml                     @Ulug2 @Aaditabhi
 
 # Instructions and tools that AI coding agents load with the developer's
 # permissions.

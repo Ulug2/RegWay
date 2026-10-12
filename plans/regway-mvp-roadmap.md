@@ -8,7 +8,7 @@ history; the open items below keep their old numbers.
 
 ## How this file is used
 
-- **The owner** (Ulug) decides what is on this list and each week picks the
+- **The owner** (Ulugbek) decides what is on this list and each week picks the
   tasks for the team from it.
 - **The lead** (Aadit) turns those into GitHub Issues, assigns each to one
   person, reviews and merges the pull requests.
