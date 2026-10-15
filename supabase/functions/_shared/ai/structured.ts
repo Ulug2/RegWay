@@ -13,7 +13,12 @@ export interface ToolSpec {
   input_schema: { type: 'object'; properties: Record<string, unknown>; required?: string[] }
 }
 
-export interface ToolCall<T> extends Omit<ClaudeRequest, 'tools' | 'tool_choice'> {
+export interface ToolCall<T> {
+  model: string
+  max_tokens: number
+  messages: unknown[]
+  system?: unknown
+  temperature?: number
   tool: ToolSpec
   // Mark the tool definition for prompt caching (it repeats across calls).
   cacheTool?: boolean
