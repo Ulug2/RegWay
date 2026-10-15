@@ -359,8 +359,10 @@ git push -u origin HEAD
 ```
 
 - [ ] Open the link git prints. Fill in the pull request template.
-- [ ] Wait for the two checks to go green ("Types, unit tests, build" and
-      "Browser tests", about eight minutes).
+- [ ] Wait for the checks to go green: "Types, unit tests, build" (about
+      a minute) and "Browser tests" (a few minutes; it shows as skipped when
+      the pull request changes nothing that runs in the browser, such as
+      this one).
 - [ ] Ask Aadit for a review in the team chat.
 - [ ] If GitHub says your branch has conflicts (several people edit this
       file in the same week), see "Keeping your branch up to date" in
