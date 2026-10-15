@@ -21,9 +21,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { generateImpacts } from '../_shared/impact.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { resolveFirmContext, loadFirmEntities, describe, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, type Verdict, forgetRejections, requestScheduledRematch } from '../_shared/relevance.ts'
-import { recordUsage } from '../_shared/usage.ts'
+import { callClaude, toolInput } from '../_shared/ai/client.ts'
+import { MODEL_FOR } from '../_shared/ai/models.ts'
 
-const MODEL = 'claude-sonnet-4-5'
+const MODEL = MODEL_FOR.enforcementJudge
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
 const BATCH_SIZE = 40
@@ -113,59 +114,52 @@ Deno.serve(async (req) => {
     }
     const caseList = unevaluated.map((r, i) => `${i}. [${r.agency ?? 'SEC/FINRA'}] ${caseExcerpt(r)}`).join('\n\n')
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 4096,
-        // Verdicts, not prose: the same item should get the same answer on
-        // every run (at the default temperature borderline items flipped).
-        temperature: 0,
-        tool_choice: { type: 'tool', name: 'submit_verdicts' },
-        tools: [
-          {
-            name: 'submit_verdicts',
-            description: 'Submit a relevance verdict for every numbered enforcement case.',
-            input_schema: {
-              type: 'object',
-              properties: {
-                verdicts: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      index: { type: 'integer' },
-                      relevant: { type: 'boolean' },
-                      reason: {
-                        type: 'string',
-                        description:
-                          "One sentence naming the specific factual overlap (same instrument, customer type, or practice) between the case and this entity's own activity. Never state or imply the entity is involved in the case.",
-                      },
-                      scope: { type: 'string', enum: ['firm', 'fund', 'company'] },
-                      entity_name: { type: 'string', description: 'Exact fund or company name if scope is fund/company, else empty string' },
+    const result = await callClaude({
+      model: MODEL,
+      max_tokens: 4096,
+      // Verdicts, not prose: the same item should get the same answer on
+      // every run (at the default temperature borderline items flipped).
+      temperature: 0,
+      tool_choice: { type: 'tool', name: 'submit_verdicts' },
+      tools: [
+        {
+          name: 'submit_verdicts',
+          description: 'Submit a relevance verdict for every numbered enforcement case.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              verdicts: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    index: { type: 'integer' },
+                    relevant: { type: 'boolean' },
+                    reason: {
+                      type: 'string',
+                      description:
+                        "One sentence naming the specific factual overlap (same instrument, customer type, or practice) between the case and this entity's own activity. Never state or imply the entity is involved in the case.",
                     },
-                    required: ['index', 'relevant', 'reason', 'scope'],
+                    scope: { type: 'string', enum: ['firm', 'fund', 'company'] },
+                    entity_name: { type: 'string', description: 'Exact fund or company name if scope is fund/company, else empty string' },
                   },
+                  required: ['index', 'relevant', 'reason', 'scope'],
                 },
               },
-              required: ['verdicts'],
             },
-            cache_control: { type: 'ephemeral' },
+            required: ['verdicts'],
           },
-        ],
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                cache_control: { type: 'ephemeral' },
-                text: `Firm: ${firm.name}, headquartered in ${firm.hq_location ?? 'unknown'}.${firmProfile ? `
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              cache_control: { type: 'ephemeral' },
+              text: `Firm: ${firm.name}, headquartered in ${firm.hq_location ?? 'unknown'}.${firmProfile ? `
 Firm profile — ${firmProfile}.` : ''}
 
 Funds:
@@ -179,28 +173,14 @@ Below are numbered SEC and FINRA enforcement actions (litigation releases, admin
 For each one, decide whether it is meaningfully relevant background awareness for this firm, a fund, or a portfolio company — meaning the alleged conduct (the instrument sold, the customer type targeted, the practice used, the role played) genuinely overlaps with that specific entity's own described activity. A shared label like "both are in financial services" or "both are private funds" is NOT sufficient — you must be able to name the specific concrete practice or activity in common. Be strict: most enforcement actions will not be relevant to most entities. If you cannot point to a real overlap in what was actually done, mark it not relevant.
 
 Never write a reason that could be read as saying the firm, a fund, or a portfolio company did something wrong, was investigated, or is connected to the people or entities named in the case — they are not. The only permissible relevance is "this case involves conduct, an instrument, or a practice similar to what this entity does," stated neutrally.`,
-              },
-              { type: 'text', text: caseList },
-            ],
-          },
-        ],
-      }),
-    })
+            },
+            { type: 'text', text: caseList },
+          ],
+        },
+      ],
+    }, { usage: { admin, functionName: 'match-enforcement-relevance', firmId } })
 
-    if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`)
-    const result = await res.json()
-    const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
-    const verdicts: Verdict[] = toolUse?.input?.verdicts ?? []
-
-    await recordUsage(admin, {
-      functionName: 'match-enforcement-relevance',
-      firmId,
-      model: MODEL,
-      inputTokens: result.usage?.input_tokens,
-      cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
-      cacheReadInputTokens: result.usage?.cache_read_input_tokens,
-      outputTokens: result.usage?.output_tokens,
-    })
+    const verdicts: Verdict[] = toolInput<{ verdicts?: Verdict[] }>(result, 'submit_verdicts')?.verdicts ?? []
 
     const rows = buildRelevanceRows(verdicts, unevaluated, firmId, funds, companies)
     await upsertRelevanceRows(admin, rows)

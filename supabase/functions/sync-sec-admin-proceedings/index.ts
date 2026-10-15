@@ -30,11 +30,13 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { parseRssItems, type FeedItem } from '../_shared/rss.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
+import { AnthropicError, callClaude, toolInput, type ClaudeResponse } from '../_shared/ai/client.ts'
+import { MODEL_FOR } from '../_shared/ai/models.ts'
 import { recordUsage } from '../_shared/usage.ts'
 
 const SOURCE = 'sec_admin_proceedings'
 const ADMIN_PROCEEDINGS_RSS = 'https://www.sec.gov/enforcement-litigation/administrative-proceedings/rss'
-const MODEL = 'claude-sonnet-4-5'
+const MODEL = MODEL_FOR.secExtraction
 // Conservative cap: each item costs a real Claude call (PDF extraction) that
 // takes several seconds, run synchronously in the request (see below) — kept
 // small enough that ordinary daily volume (a handful of genuinely new items)
@@ -66,15 +68,9 @@ async function extractFromPdf(admin: SupabaseClient, pdfBase64: string): Promise
   // indefinitely with no error ever surfaced — exactly what was observed
   // during real-data testing (requests that never completed, no log entry
   // anywhere since the invocation hadn't finished from the platform's view).
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    signal: AbortSignal.timeout(45000),
-    headers: {
-      'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
+  let result: ClaudeResponse
+  try {
+    result = await callClaude({
       model: MODEL,
       max_tokens: 4000,
       tool_choice: { type: 'tool', name: 'submit_extraction' },
@@ -108,24 +104,14 @@ async function extractFromPdf(admin: SupabaseClient, pdfBase64: string): Promise
           ],
         },
       ],
-    }),
-  })
-  if (!res.ok) {
-    console.error('admin-proceedings PDF extraction failed', res.status, await res.text())
+    }, { usage: { admin, functionName: 'sync-sec-admin-proceedings' }, timeoutMs: 45000 })
+  } catch (err) {
+    if (!(err instanceof AnthropicError)) throw err
+    console.error('admin-proceedings PDF extraction failed', err.status, err.body)
     await recordUsage(admin, { functionName: 'sync-sec-admin-proceedings', model: MODEL, ok: false })
     return null
   }
-  const result = await res.json()
-  await recordUsage(admin, {
-    functionName: 'sync-sec-admin-proceedings',
-    model: MODEL,
-    inputTokens: result.usage?.input_tokens,
-    cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
-    cacheReadInputTokens: result.usage?.cache_read_input_tokens,
-    outputTokens: result.usage?.output_tokens,
-  })
-  const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
-  return toolUse?.input ?? null
+  return toolInput<{ headline: string; narrative_text: string }>(result, 'submit_extraction') ?? null
 }
 
 async function buildRow(admin: SupabaseClient, item: FeedItem) {

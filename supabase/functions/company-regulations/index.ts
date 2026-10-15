@@ -13,12 +13,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { generateImpacts } from '../_shared/impact.ts'
-import { recordUsage } from '../_shared/usage.ts'
+import { callClaude, textOf, toolInput } from '../_shared/ai/client.ts'
+import { MODEL_FOR } from '../_shared/ai/models.ts'
 
-const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
-const MODEL = 'claude-sonnet-4-5'
+const MODEL = MODEL_FOR.companyScan
 
 interface RegulationItem {
   title: string
@@ -29,20 +29,6 @@ interface RegulationItem {
   summary: string
   why_it_applies?: string
   source_url: string
-}
-
-async function callClaude(body: Record<string, unknown>) {
-  const res = await fetch(ANTHROPIC_API, {
-    method: 'POST',
-    headers: {
-      'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ model: MODEL, ...body }),
-  })
-  if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`)
-  return res.json()
 }
 
 Deno.serve(async (req) => {
@@ -108,6 +94,7 @@ Deno.serve(async (req) => {
 
     // Step 1: grounded search.
     const searchResult = await callClaude({
+      model: MODEL,
       max_tokens: 2048,
       tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
       messages: [
@@ -116,27 +103,14 @@ Deno.serve(async (req) => {
           content: `Search for regulatory changes published or proposed in the last 90 days that would create compliance obligations for ${company.name}, a company in the "${sectorDescriptor}" sector headquartered in ${locationDescriptor}. Include federal, state/local, and (if applicable) foreign regulators. For each distinct item found, report: the exact rule or document title, the issuing regulator/agency, the jurisdiction, the publication or effective date, a one-sentence plain-language summary, which of the company's known facts (sector, location, activity) it applies to, and the official source URL. Only include items you found real sources for — do not invent items.${factsText}`,
         },
       ],
-    })
+    }, { usage: { admin, functionName: 'company-regulations:search', firmId: company.firm_id } })
 
-    await recordUsage(admin, {
-      functionName: 'company-regulations:search',
-      firmId: company.firm_id,
-      model: MODEL,
-      inputTokens: searchResult.usage?.input_tokens,
-      cacheCreationInputTokens: searchResult.usage?.cache_creation_input_tokens,
-      cacheReadInputTokens: searchResult.usage?.cache_read_input_tokens,
-      outputTokens: searchResult.usage?.output_tokens,
-      webSearchRequests: searchResult.usage?.server_tool_use?.web_search_requests,
-    })
-
-    const searchText = (searchResult.content ?? [])
-      .filter((b: { type: string }) => b.type === 'text')
-      .map((b: { text: string }) => b.text)
-      .join('\n')
+    const searchText = textOf(searchResult)
 
     // Step 2: force the free-text findings into a strict structured list via
     // tool-choice, so we get reliable fields to store instead of parsing prose.
     const extraction = await callClaude({
+      model: MODEL,
       max_tokens: 2048,
       tool_choice: { type: 'tool', name: 'submit_regulations' },
       tools: [
@@ -180,20 +154,9 @@ Deno.serve(async (req) => {
           content: `Convert these regulatory findings for ${company.name} into the structured tool call. Refer to the company only as "${company.name}". Only include items that have a real source_url from the findings below — never fabricate one, and leave out items whose connection to ${company.name} rests on an assumption about what it does.\n\n${searchText}`,
         },
       ],
-    })
+    }, { usage: { admin, functionName: 'company-regulations:extract', firmId: company.firm_id } })
 
-    await recordUsage(admin, {
-      functionName: 'company-regulations:extract',
-      firmId: company.firm_id,
-      model: MODEL,
-      inputTokens: extraction.usage?.input_tokens,
-      cacheCreationInputTokens: extraction.usage?.cache_creation_input_tokens,
-      cacheReadInputTokens: extraction.usage?.cache_read_input_tokens,
-      outputTokens: extraction.usage?.output_tokens,
-    })
-
-    const toolUse = (extraction.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
-    const items: RegulationItem[] = toolUse?.input?.items ?? []
+    const items: RegulationItem[] = toolInput<{ items?: RegulationItem[] }>(extraction, 'submit_regulations')?.items ?? []
 
     const insertedIds: string[] = []
     for (const item of items) {

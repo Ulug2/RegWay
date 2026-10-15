@@ -20,9 +20,10 @@
 // announced it.
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { recordUsage } from './usage.ts'
+import { callClaude, toolInput } from './ai/client.ts'
+import { MODEL_FOR } from './ai/models.ts'
 
-const MODEL = 'claude-haiku-4-5'
+const MODEL = MODEL_FOR.announcementMatch
 const FUNCTION_NAME = 'group-duplicates'
 
 // Two versions of one act (EU Decision and Regulation, two parts of one FCA
@@ -202,37 +203,30 @@ Decide which press release, if any, announced this exact document: the same rule
 // model call; the caller has already checked there is something to compare.
 // `bodies`: each press release's fuller text by id, where it could be read.
 export async function matchAnnouncement(admin: SupabaseClient, document: Version, announcements: Version[], bodies: Map<string, string> = new Map()): Promise<number | null> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 400,
-      // A yes/no link, not prose: the same pair must get the same answer.
-      temperature: 0,
-      tool_choice: { type: 'tool', name: 'submit_match' },
-      tools: [
-        {
-          name: 'submit_match',
-          description: 'Say which press release announced the Federal Register document.',
-          input_schema: {
-            type: 'object',
-            properties: {
-              reason: { type: 'string', description: 'One sentence: what the document does and what the chosen press release announced, or why none fits.' },
-              press_release: { type: 'integer', description: 'The number of the press release that announced this document, or 0 if none did.' },
-            },
-            required: ['reason', 'press_release'],
+  const result = await callClaude({
+    model: MODEL,
+    max_tokens: 400,
+    // A yes/no link, not prose: the same pair must get the same answer.
+    temperature: 0,
+    tool_choice: { type: 'tool', name: 'submit_match' },
+    tools: [
+      {
+        name: 'submit_match',
+        description: 'Say which press release announced the Federal Register document.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            reason: { type: 'string', description: 'One sentence: what the document does and what the chosen press release announced, or why none fits.' },
+            press_release: { type: 'integer', description: 'The number of the press release that announced this document, or 0 if none did.' },
           },
+          required: ['reason', 'press_release'],
         },
-      ],
-      messages: [
-        {
-          role: 'user',
-          content: `${INSTRUCTIONS}
+      },
+    ],
+    messages: [
+      {
+        role: 'user',
+        content: `${INSTRUCTIONS}
 
 FEDERAL REGISTER DOCUMENT (${document.agency ?? 'agency n/a'}, published ${document.published_date ?? 'n/a'})
 Title: ${document.title}
@@ -240,24 +234,10 @@ Summary: ${(document.summary ?? 'none').slice(0, SUMMARY_CHARS)}
 
 PRESS RELEASES
 ${announcements.map((a, i) => `${i + 1}. [${a.published_date ?? 'date n/a'}] ${a.title}\n   ${bodies.get(a.id) || (a.summary ?? 'no summary').slice(0, SUMMARY_CHARS)}`).join('\n')}`,
-        },
-      ],
-    }),
-  })
-  if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`)
-  const result = await res.json()
-
-  await recordUsage(admin, {
-    functionName: FUNCTION_NAME,
-    model: MODEL,
-    inputTokens: result.usage?.input_tokens,
-    cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
-    cacheReadInputTokens: result.usage?.cache_read_input_tokens,
-    outputTokens: result.usage?.output_tokens,
-  })
-
-  const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
-  const chosen = Number(toolUse?.input?.press_release)
+      },
+    ],
+  }, { usage: { admin, functionName: FUNCTION_NAME } })
+  const chosen = Number(toolInput<{ press_release?: number }>(result, 'submit_match')?.press_release)
   return Number.isInteger(chosen) && chosen >= 1 && chosen <= announcements.length ? chosen - 1 : null
 }
 

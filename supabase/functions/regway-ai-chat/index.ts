@@ -29,9 +29,11 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { COMPANY_FACTS, COMPANY_UNKNOWNS, FACT_MARKERS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from '../_shared/entityFacts.ts'
 import { loadMatchedDevelopments, type MatchedDevelopments, type MatchScope } from '../_shared/matchedDevelopments.ts'
+import { streamClaude } from '../_shared/ai/client.ts'
+import { MODEL_FOR } from '../_shared/ai/models.ts'
 import { mergeUsage, recordUsage, type UsageTotals } from '../_shared/usage.ts'
 
-const MODEL = 'claude-sonnet-4-5'
+const MODEL = MODEL_FOR.chat
 
 // Size limits, enforced here because the browser's own checks can be
 // bypassed and input is billed per token: without them one request could
@@ -329,28 +331,20 @@ Your answer is shown as rendered Markdown. Use it where it helps the reader: sho
     const textWithAttachment = focusNote + (attachment?.content ? `${message}\n\n--- Attached file: ${attachment.name} ---\n${attachment.content}` : message)
     userContent.push({ type: 'text', text: textWithAttachment })
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
+    let anthropicRes: Response
+    try {
+      anthropicRes = await streamClaude({
         model: MODEL,
         max_tokens: 4096,
-        stream: true,
         system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5, cache_control: { type: 'ephemeral' } }],
         messages: [...historyMessages(history), { role: 'user', content: userContent }],
-      }),
-    })
-
-    if (!anthropicRes.ok || !anthropicRes.body) {
+      })
+    } catch (err) {
       // Nothing was answered, so a conversation this message would have
       // started shouldn't appear in the user's history.
       if (startedConversation) await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
-      throw new Error(`Anthropic API error: ${anthropicRes.status} ${await anthropicRes.text()}`)
+      throw err
     }
 
     const decoder = new TextDecoder()
@@ -420,7 +414,7 @@ Your answer is shown as rendered Markdown. Use it where it helps the reader: sho
       },
     })
 
-    return new Response(anthropicRes.body.pipeThrough(tee), {
+    return new Response(anthropicRes.body!.pipeThrough(tee), {
       headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
     })
   } catch (err) {

@@ -9,11 +9,11 @@ import { withoutCoveredDuplicates } from './duplicates.ts'
 import { COMPANY_FACTS, COMPANY_UNKNOWNS, FACT_MARKERS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from './entityFacts.ts'
 import { federalRegisterTextUrls, type FederalRegisterDocumentRef } from './federalRegister.ts'
 import { fetchPlainText } from './text.ts'
-import { recordUsage } from './usage.ts'
+import { callClaude, toolInput } from './ai/client.ts'
+import { MODEL_FOR } from './ai/models.ts'
 import { impactPromptFor } from './impactPrompts.ts'
 
-const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
-const MODEL = 'claude-sonnet-4-5'
+const MODEL = MODEL_FOR.impactAnalysis
 // ~15K tokens of regulation text. Long final rules run to hundreds of pages;
 // the preamble and operative sections come first, which is what matters most.
 const MAX_TEXT_CHARS = 60000
@@ -66,20 +66,6 @@ async function loadRegulationText(reg: RegulationTextSource): Promise<string | n
   const text = await fetchPlainText(textUrls(reg))
   if (!text && reg.on_public_inspection) return null
   return text || reg.summary || ''
-}
-
-async function callClaude(body: Record<string, unknown>) {
-  const res = await fetch(ANTHROPIC_API, {
-    method: 'POST',
-    headers: {
-      'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ model: MODEL, ...body }),
-  })
-  if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`)
-  return res.json()
 }
 
 const listOfStrings = { type: 'array', items: { type: 'string' } }
@@ -144,6 +130,7 @@ export async function generateImpact(
   const prompt = impactPromptFor(reg.category)
 
   const result = await callClaude({
+    model: MODEL,
     max_tokens: 6000,
     tool_choice: { type: 'tool', name: 'submit_impact_analysis' },
     // Identical for every firm analyzing this same category of item — its
@@ -226,21 +213,11 @@ ${entities.join('\n')}`,
         ],
       },
     ],
-  })
+  }, { usage: { admin, functionName: 'regulation-impact', firmId } })
 
-  await recordUsage(admin, {
-    functionName: 'regulation-impact',
-    firmId,
-    model: MODEL,
-    inputTokens: result.usage?.input_tokens,
-    cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
-    cacheReadInputTokens: result.usage?.cache_read_input_tokens,
-    outputTokens: result.usage?.output_tokens,
-  })
-
-  const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
-  if (!toolUse?.input) throw new Error('Model returned no structured analysis')
-  const content: ImpactContent = { ...toolUse.input, text_truncated: truncated }
+  const analysis = toolInput<Omit<ImpactContent, 'text_truncated'>>(result, 'submit_impact_analysis')
+  if (!analysis) throw new Error('Model returned no structured analysis')
+  const content: ImpactContent = { ...analysis, text_truncated: truncated }
 
   const { error } = await admin
     .from('regulation_impacts')
