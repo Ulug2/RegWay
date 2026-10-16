@@ -18,4 +18,8 @@ export const MODEL_FOR = {
   announcementMatch: HAIKU,
   // The second pass that challenges a match: reasoning-heavy, so Sonnet.
   skeptic: SONNET,
+  // The chat check: finding the claims and comparing them with quoted
+  // source text are mechanical; judging them against the facts is not.
+  claimGate: HAIKU,
+  citationCheck: HAIKU,
 } as const

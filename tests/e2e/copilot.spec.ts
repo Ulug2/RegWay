@@ -328,3 +328,84 @@ test.describe('chat sidebar and session context', () => {
   })
 })
 
+
+// The check run after an answer that claims something applies to the firm
+// (regway-ai-chat/review.ts), as the server adds it to the stream.
+const regwayEvents = (...events: Record<string, unknown>[]) => events.map(e => `event: regway\ndata: ${JSON.stringify(e)}\n\n`).join('')
+const step = (name: 'facts' | 'sources', state: 'running' | 'done' | 'failed', label: string) => ({ type: 'regway_status', step: name, state, label })
+const CAUTION = {
+  type: 'regway_review',
+  review: {
+    status: 'caution',
+    checks: ['facts', 'sources'],
+    claims: 1,
+    notes: [{ claim: 'The CLIA rule applies to GetixHealth.', note: 'Running a clinical laboratory is not recorded for GetixHealth.' }],
+  },
+}
+
+test.describe('the check after an answer about the firm', () => {
+  test('shows each step while it runs', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = () => ({
+      sse: aiReply('Yes, the CLIA rule applies to GetixHealth.') + regwayEvents(step('facts', 'running', 'Checking against your recorded facts…'), step('sources', 'running', 'Verifying sources…')),
+    })
+    await openCopilot(page)
+    await ask(page, 'Does the CLIA rule affect GetixHealth?')
+    await expect(page.getByText('Yes, the CLIA rule applies to GetixHealth.')).toBeVisible()
+    await expect(page.getByText('Checking against your recorded facts…')).toBeVisible()
+    await expect(page.getByText('Verifying sources…')).toBeVisible()
+  })
+
+  test('ends in a note that says what to confirm, in place of the steps', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = () => ({
+      sse:
+        aiReply('Yes, the CLIA rule applies to GetixHealth.', [{ url: 'https://www.cms.gov/clia', title: 'CLIA proposed rule' }]) +
+        regwayEvents(
+          step('facts', 'running', 'Checking against your recorded facts…'),
+          step('sources', 'running', 'Verifying sources…'),
+          step('sources', 'done', 'Verified sources'),
+          step('facts', 'done', 'Checked against your recorded facts'),
+          CAUTION,
+        ),
+    })
+    await openCopilot(page)
+    await ask(page, 'Does the CLIA rule affect GetixHealth?')
+    const note = page.getByRole('status').filter({ hasText: 'worth confirming' })
+    await expect(note).toContainText('Checked against your recorded facts and the cited sources')
+    await expect(note).toContainText('Running a clinical laboratory is not recorded for GetixHealth.')
+    await expect(page.getByText('Checking against your recorded facts…')).toHaveCount(0)
+  })
+
+  test('an answer with no claim about the firm shows nothing extra', async ({ page, backend }) => {
+    backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('CLIA sets quality standards for laboratory testing.') })
+    await openCopilot(page)
+    await ask(page, 'What is CLIA?')
+    await expect(page.getByText('CLIA sets quality standards for laboratory testing.')).toBeVisible()
+    await expect(page.getByText(/Checked against/)).toHaveCount(0)
+  })
+
+  test('a reopened conversation shows the note saved with the answer', async ({ page, backend }) => {
+    backend.tables.regway_ai_conversations.push({ id: 'conv-checked', firm_id: FIRM_ID, user_id: USER.id, title: 'CLIA and GetixHealth', context: null, updated_at: '2026-10-03T10:00:00Z' })
+    backend.tables.regway_ai_messages.push(
+      { conversation_id: 'conv-checked', role: 'user', content: 'Does the CLIA rule affect GetixHealth?', citations: null, review: null, created_at: '2026-10-03T09:59:00Z' },
+      { conversation_id: 'conv-checked', role: 'assistant', content: 'It may, if GetixHealth runs a laboratory.', citations: [], review: { status: 'supported', checks: ['facts'], claims: 1, notes: [] }, created_at: '2026-10-03T10:00:00Z' },
+    )
+    await openCopilot(page)
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    await page.getByRole('button', { name: /CLIA and GetixHealth/ }).click()
+    await expect(page.getByText('Checked against your recorded facts: supported.')).toBeVisible()
+  })
+
+  test.describe('at phone width', () => {
+    test.use({ viewport: { width: 390, height: 844 } })
+    test('the note fits the screen', async ({ page, backend }) => {
+      backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('Yes, it applies to GetixHealth.') + regwayEvents(CAUTION) })
+      await openCopilot(page)
+      await ask(page, 'Does it affect GetixHealth?')
+      const note = page.getByRole('status').filter({ hasText: 'worth confirming' })
+      await expect(note).toBeVisible()
+      const box = await note.boundingBox()
+      expect(box!.x).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+    })
+  })
+})

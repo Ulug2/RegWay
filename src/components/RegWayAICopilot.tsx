@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
-import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, type ConversationSummary } from '../lib/data'
+import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, type AnswerReview, type ConversationSummary } from '../lib/data'
 import ConversationHistory from './ConversationHistory'
 import SessionContext, { type Focus } from './SessionContext'
 import { renderMarkdown } from '../lib/markdown'
 import type { Firm, Fund, PortfolioCompany, AiContext } from '../lib/types'
-import { ArrowDown, ArrowUpRight, Check, Copy, PaperPlaneRight, Paperclip, SidebarSimple, Stop, X } from './icons'
+import { ArrowDown, ArrowUpRight, Check, CheckCircle, Copy, PaperPlaneRight, Paperclip, SidebarSimple, Stop, WarningCircle, X } from './icons'
 
 interface RegWayAICopilotProps {
   onClose: () => void
@@ -23,12 +23,22 @@ interface Citation {
   title?: string
 }
 
+// One step of the check run after an answer that claims something applies
+// to the firm (regway-ai-chat/review.ts), as the server labels it.
+interface CheckStep {
+  step: 'facts' | 'sources'
+  state: 'running' | 'done' | 'failed'
+  label: string
+}
+
 interface Message {
   role: 'user' | 'ai'
   content: string
   citations?: Citation[]
   attachmentName?: string
   status?: string
+  steps?: CheckStep[]
+  review?: AnswerReview | null
 }
 
 // Suggested first questions, about whatever the chat is focused on. Worded
@@ -117,6 +127,11 @@ interface SseEvent {
   type: string
   content_block?: { type: string }
   delta?: { type: string; text?: string; citation?: Citation; stop_reason?: string }
+  // RegWay's own events after the answer: regway_status, regway_review.
+  step?: CheckStep['step']
+  state?: CheckStep['state']
+  label?: string
+  review?: AnswerReview
 }
 
 // Reads one SSE stream, calling onEvent for each parsed `data: {...}` line.
@@ -155,6 +170,69 @@ async function copyCode(e: React.MouseEvent) {
   }
   button.textContent = 'Copied'
   setTimeout(() => (button.textContent = 'Copy'), 1500)
+}
+
+const CHECKED_AGAINST: Record<string, string> = {
+  'facts,sources': 'your recorded facts and the cited sources',
+  facts: 'your recorded facts',
+  sources: 'the cited sources',
+}
+
+// Under an answer that claims something applies to the firm: the check's
+// steps while it runs, then its note. Nothing for any other answer.
+function AnswerCheck({ steps, review }: { steps?: CheckStep[]; review?: AnswerReview | null }) {
+  const failed = (steps ?? []).filter(s => s.state === 'failed')
+  if (review) {
+    const against = CHECKED_AGAINST[review.checks.join(',')] ?? 'your recorded facts'
+    return (
+      <div className={`notice mt-3 ${review.status === 'caution' ? 'is-warn' : ''}`} role="status">
+        {review.status === 'supported' ? (
+          <div className="flex items-start gap-2">
+            <CheckCircle size={16} aria-hidden="true" className="flex-shrink-0 mt-0.5" style={{ color: 'var(--primary)' }} />
+            <span>Checked against {against}: supported.</span>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2">
+            <WarningCircle size={16} aria-hidden="true" className="flex-shrink-0 mt-0.5" style={{ color: 'var(--warning)' }} />
+            <div className="min-w-0">
+              <div className="font-medium" style={{ color: 'var(--text-900)' }}>Checked against {against}: worth confirming before you rely on this.</div>
+              <ul className="mt-1 space-y-1 list-disc pl-4">
+                {review.notes.map((n, i) => (
+                  <li key={i}>{n.note}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+        {failed.map(s => (
+          <div key={s.step} className="mt-1.5 text-xs" style={{ color: 'var(--text-400)' }}>
+            {s.label}.
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (!steps?.length) return null
+  return (
+    <div className="mt-3 space-y-1.5 text-sm" role="status" aria-live="polite">
+      {steps.map(s => (
+        <div key={s.step} className="flex items-center gap-2" style={{ color: 'var(--text-400)' }}>
+          {s.state === 'running' ? (
+            <span className="flex items-center gap-0.5 w-4 justify-center" aria-hidden="true">
+              {[0, 1, 2].map(d => (
+                <span key={d} className="dot-wobble" style={{ width: 3, height: 3, background: 'var(--text-300)', animationDelay: `${d * 0.15}s` }} />
+              ))}
+            </span>
+          ) : s.state === 'done' ? (
+            <CheckCircle size={16} aria-hidden="true" style={{ color: 'var(--primary)' }} />
+          ) : (
+            <WarningCircle size={16} aria-hidden="true" style={{ color: 'var(--text-400)' }} />
+          )}
+          <span>{s.label}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -386,6 +464,15 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
     // block of text that doesn't start with a space.
     let afterTool = false
     const citations: Citation[] = []
+    // The check after the answer, if one runs.
+    let steps: CheckStep[] = []
+    let review: AnswerReview | undefined
+    const showCheck = () =>
+      setMessages(m => {
+        const copy = [...m]
+        copy[copy.length - 1] = { ...copy[copy.length - 1], steps: [...steps], review }
+        return copy
+      })
 
     const statusTimer = setInterval(() => {
       setMessages(m => {
@@ -423,7 +510,7 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
       revealed = Math.min(target.length, revealed + due)
       setMessages(m => {
         const copy = [...m]
-        copy[copy.length - 1] = { role: 'ai', content: target.slice(0, revealed), citations: [...citations] }
+        copy[copy.length - 1] = { role: 'ai', content: target.slice(0, revealed), citations: [...citations], steps: [...steps], review }
         return copy
       })
     }, REVEAL_INTERVAL_MS)
@@ -442,6 +529,17 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
       setPendingRefocus(null)
 
       await consumeSse(res.body, evt => {
+        if (evt.type === 'regway_status' && evt.step && evt.state && evt.label) {
+          const next = { step: evt.step, state: evt.state, label: evt.label }
+          steps = steps.some(s => s.step === next.step) ? steps.map(s => (s.step === next.step ? next : s)) : [...steps, next]
+          showCheck()
+          return
+        }
+        if (evt.type === 'regway_review' && evt.review) {
+          review = evt.review
+          showCheck()
+          return
+        }
         // Surfaced honestly rather than just silently cutting off — the
         // reader should know the model ran out of room, not wonder if
         // something broke.
@@ -463,6 +561,11 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
       answered = true
     } catch (err) {
       clearInterval(statusTimer)
+      // Stopped or cut off during the check: a step can no longer finish.
+      if (steps.some(st => st.state === 'running')) {
+        steps = steps.filter(st => st.state !== 'running')
+        showCheck()
+      }
       if ((err as Error).name !== 'AbortError') {
         target += (target ? '\n\n' : '') + `Something went wrong: ${err instanceof Error ? err.message : 'please try again'}`
       }
@@ -505,7 +608,7 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
       setActiveContext(conversation.context)
       setMessages([
         welcomeMessage(conversation.context),
-        ...saved.map(m => ({ role: m.role === 'assistant' ? ('ai' as const) : ('user' as const), content: m.content, citations: m.citations ?? undefined })),
+        ...saved.map(m => ({ role: m.role === 'assistant' ? ('ai' as const) : ('user' as const), content: m.content, citations: m.citations ?? undefined, review: m.review ?? undefined })),
       ])
       setHasStarted(true)
       setPendingRefocus(null)
@@ -690,7 +793,7 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
                             dangerouslySetInnerHTML={{
                               __html:
                                 msg.role === 'ai'
-                                  ? isTyping && i === messages.length - 1
+                                  ? isTyping && i === messages.length - 1 && !msg.steps?.length
                                     ? withCursor(renderMarkdown(msg.content))
                                     : renderMarkdown(msg.content)
                                   : msg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
@@ -722,6 +825,7 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
                             ))}
                         </div>
                       )}
+                      {msg.role === 'ai' && <AnswerCheck steps={msg.steps} review={msg.review} />}
                       {msg.role === 'ai' && msg.content !== '' && !(isTyping && i === messages.length - 1) && (
                         <CopyButton text={msg.content} />
                       )}

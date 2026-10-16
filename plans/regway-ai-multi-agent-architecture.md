@@ -1,10 +1,11 @@
 # RegWay AI: multi-role agentic architecture
 
-**Status: planning only, not implemented.** Linked from Priority order item
-3 in `regway-mvp-roadmap.md`. Do not build from this doc without an
-explicit go-ahead — per the plan's own principle below, the existing
-single-shot copilot is a real, working feature; this is about evolving it,
-not replacing it wholesale.
+**Status (2026-10-15): partly built, differently.** The owner chose to put
+the Skeptic on the background matching first and to check chat answers after
+they stream, rather than build the full seven-role chat pipeline below. What
+was built and what is left: roadmap item 17. This document stays as the
+reference for the roles and the reasoning; the "Implementation phases" below
+are not the plan being followed.
 
 ## Why this file exists
 

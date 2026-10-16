@@ -48,6 +48,9 @@ export interface CallOptions {
   // Default: under the platform's ~150 s limit, so a stalled request fails
   // with an error instead of hanging the whole invocation.
   timeoutMs?: number
+  // Cancels the call when the caller no longer wants the answer (a reader
+  // who went away).
+  signal?: AbortSignal
 }
 
 export class AnthropicError extends Error {
@@ -100,8 +103,8 @@ async function send(request: ClaudeRequest, signal: AbortSignal): Promise<Respon
 }
 
 export async function callClaude(request: ClaudeRequest, opts: CallOptions = {}): Promise<ClaudeResponse> {
-  const signal = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS)
-  const res = await send(request, signal)
+  const timeout = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS)
+  const res = await send(request, opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout)
   const result = (await res.json()) as ClaudeResponse
   if (opts.usage) await recordCall(opts.usage, request.model, result.usage)
   return result

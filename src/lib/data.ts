@@ -646,10 +646,20 @@ export interface ConversationSummary {
   updated_at: string
 }
 
+// The check run after an answer that claims something applies to the firm
+// (regway-ai-chat/review.ts); null when none ran.
+export interface AnswerReview {
+  status: 'supported' | 'caution'
+  checks: ('facts' | 'sources')[]
+  claims: number
+  notes: { claim: string; note: string }[]
+}
+
 export interface SavedMessage {
   role: 'user' | 'assistant'
   content: string
   citations: { url?: string; title?: string }[] | null
+  review?: AnswerReview | null
 }
 
 const RECENT_CONVERSATIONS = 30
@@ -667,7 +677,7 @@ export async function fetchConversations(): Promise<ConversationSummary[]> {
 export async function fetchConversationMessages(conversationId: string): Promise<SavedMessage[]> {
   const { data, error } = await supabase
     .from('regway_ai_messages')
-    .select('role, content, citations')
+    .select('role, content, citations, review')
     .eq('conversation_id', conversationId)
     .order('created_at')
   if (error) throw error

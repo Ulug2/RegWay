@@ -115,3 +115,18 @@ Apply the ones you agree with, by id (only moves and rejections do anything):
 curl ... -d '{"firmId": "<firm id>", "apply": ["<review id>", "<review id>"]}'
 ```
 
+## The chat's answer check (`CHAT_REVIEW`)
+
+When an answer claims that something applies (or doesn't) to the firm, a
+fund or a company, `regway-ai-chat` checks the claims after the answer and
+shows a short note under it (`regway-ai-chat/review.ts`). Other answers
+cost one small extra call (the claim gate, about $0.001); a checked answer
+about $0.02–0.04 more. Off by default:
+
+```bash
+supabase secrets set CHAT_REVIEW=on
+supabase secrets unset CHAT_REVIEW
+```
+
+Every call is in `usage_events` under `regway-ai-chat/gate`,
+`regway-ai-chat/skeptic` and `regway-ai-chat/citations`.
