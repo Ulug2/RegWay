@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { fakeClient, hasFilter, setClient, type Query } from './helpers/fakeSupabase'
 import { FIRM_ID, firmQueries, promptText, stubModel, type FirmState } from './helpers/firm'
 import { loadHandler, post } from './helpers/handler'
+import { setEnv } from './helpers/setup'
 
 const REG = 'reg-1'
 const ANALYSIS = { overview: 'An overview.', scope: '', status: '', key_provisions: [], key_dates: [], impacts: [], considerations: [], limitations: '' }
@@ -29,6 +30,8 @@ interface State extends FirmState {
   regulation?: Record<string, unknown> | null
   // The firm's current verdict rows on this regulation.
   existing?: { id: string; fund_id: string | null; portfolio_company_id: string | null }[]
+  // What the Skeptic answers, when SKEPTIC_MODE is on.
+  reviews?: unknown[]
 }
 
 async function recheck(state: State, verdicts: unknown[], body: Record<string, unknown> = { regulationId: REG }) {
@@ -45,7 +48,7 @@ async function recheck(state: State, verdicts: unknown[], body: Record<string, u
   })
   setClient(db)
   const { handler } = await loadHandler('rematch-regulation')
-  const net = stubModel({ submit_verdicts: { verdicts }, submit_impact_analysis: ANALYSIS }, url => (url.hostname === 'www.cms.test' ? new Response(TEXT) : undefined))
+  const net = stubModel({ submit_verdicts: { verdicts }, submit_impact_analysis: ANALYSIS, submit_reviews: { reviews: state.reviews ?? [] } }, url => (url.hostname === 'www.cms.test' ? new Response(TEXT) : undefined))
   const res = await handler(post('rematch-regulation', { token: 'user-jwt', body }))
   return { res, db, ...net, verdictCalls: net.model.filter(m => m.tool === 'submit_verdicts'), analysisCalls: net.model.filter(m => m.tool === 'submit_impact_analysis') }
 }
@@ -157,5 +160,22 @@ describe('rematch-regulation', () => {
   it('charges the re-check to this function in the usage log', async () => {
     const { db } = await recheck({}, noLonger)
     expect(db.ran('usage_events', 'insert')[0].payload).toMatchObject({ function_name: 'rematch-regulation', firm_id: FIRM_ID })
+  })
+})
+
+describe('rematch-regulation with the Skeptic on', () => {
+  afterEach(() => setEnv('SKEPTIC_MODE', undefined))
+
+  it("sends the re-check's verdict through the same second pass as a new match", async () => {
+    setEnv('SKEPTIC_MODE', 'on')
+    const reviews = [{ index: 0, decision: 'reject', scope: 'company', entity_name: 'GetixHealth', reason: 'Billing Medicare is not recorded for GetixHealth.', unsupported_assumptions: ['bills Medicare'] }]
+    const { res, db, model, analysisCalls } = await recheck({ reviews }, stillRelevant)
+    expect(model.map(m => m.tool)).toEqual(['submit_verdicts', 'submit_reviews'])
+    const [upsert] = db.ran('regulation_relevance', 'upsert')
+    expect(upsert.payload).toEqual([
+      { regulation_id: REG, firm_id: FIRM_ID, fund_id: null, portfolio_company_id: 'co-getix', relevance_reason: 'NOT_RELEVANT: Reviewed: Billing Medicare is not recorded for GetixHealth.' },
+    ])
+    expect(analysisCalls).toEqual([])
+    expect(await res.json()).toMatchObject({ relevant: false, reason: 'Reviewed: Billing Medicare is not recorded for GetixHealth.' })
   })
 })

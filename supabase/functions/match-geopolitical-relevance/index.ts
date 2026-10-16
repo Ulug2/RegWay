@@ -41,6 +41,7 @@ import { handleOptions, json } from '../_shared/cors.ts'
 import { companyFootprint, firmFootprint, foreignCountries, hasForeignExposure, type EntityFootprint } from '../_shared/footprint.ts'
 import { CANDIDATE_COLUMNS, judgeGeopolitical, type Candidate } from '../_shared/geopoliticalJudge.ts'
 import { syncHoldingsRollup } from '../_shared/holdings.ts'
+import { applySkeptic } from '../_shared/verdictReview.ts'
 import { geopoliticalSourcesOutside } from '../_shared/regulatorFeeds.ts'
 import { buildRelevanceRows, checkRateLimit, loadFirmEntities, requestScheduledRematch, resolveFirmContext, upsertRelevanceRows, type CompanyRow, type FirmRow, type FundRow } from '../_shared/relevance.ts'
 
@@ -137,7 +138,9 @@ async function evaluateNew(
     if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
   }
 
-  const verdicts = await judgeGeopolitical(admin, { firmId, firmName: firm.name, companies, footprints, candidates: unevaluated, functionName: FUNCTION_NAME })
+  const judged = await judgeGeopolitical(admin, { firmId, firmName: firm.name, companies, footprints, candidates: unevaluated, functionName: FUNCTION_NAME })
+  // A second pass that tries to break each match (SKEPTIC_MODE; off by default).
+  const verdicts = await applySkeptic(admin, { firmId, category: 'geopolitical', entities: { firm, funds, companies }, candidates: unevaluated, verdicts: judged, functionName: FUNCTION_NAME })
 
   const rows = buildRelevanceRows(verdicts, unevaluated, firmId, funds, companies)
   await upsertRelevanceRows(admin, rows)

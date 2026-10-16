@@ -16,4 +16,6 @@ export const MODEL_FOR = {
   geopoliticalJudge: SONNET,
   enforcementJudge: SONNET,
   announcementMatch: HAIKU,
+  // The second pass that challenges a match: reasoning-heavy, so Sonnet.
+  skeptic: SONNET,
 } as const

@@ -11,7 +11,16 @@ const env: Record<string, string> = {
   AI_RETRY_DELAY_MS: '0',
 }
 
+;(globalThis as Record<string, unknown>).__testEnv = env
 ;(globalThis as Record<string, unknown>).Deno = {
-  env: { get: (name: string) => env[name] },
+  env: { get: (name: string) => ((globalThis as Record<string, unknown>).__testEnv as Record<string, string>)[name] },
   serve: () => {},
+}
+
+// Sets (or, with undefined, removes) one setting for the test that calls it;
+// undo it in an afterEach.
+export function setEnv(name: string, value: string | undefined): void {
+  const current = (globalThis as Record<string, unknown>).__testEnv as Record<string, string>
+  if (value === undefined) delete current[name]
+  else current[name] = value
 }

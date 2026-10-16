@@ -72,6 +72,14 @@ sees a document only after something judged that it applies to them.
    `match-geopolitical-relevance`. A matcher sends new documents and the
    firm's profile to Claude and stores the verdicts in
    `regulation_relevance`. **This costs money.**
+
+   **Review (the Skeptic).** Between the regulatory and geopolitical
+   matchers' verdicts and the table, a second AI pass
+   (`_shared/roles/skeptic.ts`, wired in by `_shared/verdictReview.ts`)
+   tries to break each "relevant" verdict against the recorded facts: it
+   keeps it, moves it to the entity it really rests on, or rejects it. Every
+   review is recorded in `verdict_reviews`. Controlled by the
+   `SKEPTIC_MODE` secret: `off` (default), `shadow` (record only), `on`.
 4. **Analyse.** `regulation-impact` writes the analysis a user reads when
    they open a development (`refresh-entity-impacts` rewrites these after a
    profile edit).
