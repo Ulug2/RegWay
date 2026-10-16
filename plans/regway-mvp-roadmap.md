@@ -54,8 +54,7 @@ The owner is working on this; nobody else changes
 
 Why: relevance reasoning drifts speculative, and two prompt fixes have not
 cured it. A Skeptic is a separate second pass with its own context, which
-one prompt cannot do for itself. Decided with the owner on 2026-10-15
-(plan: `~/.claude/plans/dreamy-seeking-tulip.md`, summarised here): the
+one prompt cannot do for itself. Decided with the owner on 2026-10-15: the
 Skeptic goes on matching first, where the false matches are; the chat keeps
 answering in one call and is checked afterwards only when an answer claims
 something applies to the firm, a fund or a company, with live step labels.
