@@ -22,6 +22,7 @@ import { generateImpacts } from '../_shared/impact.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { resolveFirmContext, loadFirmEntities, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, forgetRejections, requestScheduledRematch } from '../_shared/relevance.ts'
 import { judgeRegulations } from '../_shared/regulatoryJudge.ts'
+import { applySkeptic } from '../_shared/verdictReview.ts'
 import { regulatorySourcesFor } from '../_shared/regulatorFeeds.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
     // U.S.-only firm).
     const { data: candidates } = await admin
       .from('regulations')
-      .select('id, title, agency, jurisdiction, summary')
+      .select('id, title, agency, jurisdiction, summary, published_date, effective_date')
       .in('source', regulatorySourcesFor({ firm, funds, companies }))
       .eq('category', 'regulatory')
       .order('published_date', { ascending: false })
@@ -89,7 +90,9 @@ Deno.serve(async (req) => {
 
     if (rateLimitClient && !reevaluate && !(await checkRateLimit(rateLimitClient, 'match-relevance', 15, 60))) return rateLimited()
 
-    const verdicts = await judgeRegulations(admin, { firmId, entities: { firm, funds, companies }, candidates: unevaluated, functionName: 'match-relevance' })
+    const judged = await judgeRegulations(admin, { firmId, entities: { firm, funds, companies }, candidates: unevaluated, functionName: 'match-relevance' })
+    // A second pass that tries to break each match (SKEPTIC_MODE; off by default).
+    const verdicts = await applySkeptic(admin, { firmId, category: 'regulatory', entities: { firm, funds, companies }, candidates: unevaluated, verdicts: judged, functionName: 'match-relevance' })
 
     const rows = buildRelevanceRows(verdicts, unevaluated, firmId, funds, companies)
     await upsertRelevanceRows(admin, rows)

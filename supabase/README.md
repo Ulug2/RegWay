@@ -75,3 +75,43 @@ a failing run shows on the dashboard as "Automatic matching". Run it by hand
 with `{ "force": true }` and the service key. Enrol a firm with
 `insert into scheduled_matching_firms (firm_id) values ('<firm id>')`.
 
+## The Skeptic (`SKEPTIC_MODE`, `review-existing-matches`)
+
+A second AI pass reviews every match the regulatory and geopolitical
+matchers (and a user's re-check) mark relevant, and keeps, moves or rejects
+it (roadmap item 17; `_shared/verdictReview.ts`). Each review is a row in
+`verdict_reviews`. Set how much it does with a function secret:
+
+```bash
+supabase secrets set SKEPTIC_MODE=shadow   # review and record, change nothing
+supabase secrets set SKEPTIC_MODE=on       # apply: rejected → "not relevant", moved → the right entity
+supabase secrets unset SKEPTIC_MODE        # off (the default)
+```
+
+To measure it on a firm's existing matches first, call
+`review-existing-matches` with the service key. Each call reviews up to 45
+matches and changes nothing; repeat until `remaining` is 0:
+
+```bash
+curl -X POST "https://<project-ref>.supabase.co/functions/v1/review-existing-matches" \
+  -H "Authorization: Bearer <service key>" -H "apikey: <service key>" \
+  -H "Content-Type: application/json" -d '{"firmId": "<firm id>"}'
+```
+
+Read the results in the SQL editor:
+
+```sql
+select v.id, v.decision, r.title, v.original->>'scope' as was_on, v.original->>'entity_name' as was_entity,
+       v.scope as now_on, v.entity_name as now_entity, v.original->>'reason' as matcher_reason, v.reason as review,
+       v.unsupported_assumptions
+from verdict_reviews v join regulations r on r.id = v.regulation_id
+where v.firm_id = '<firm id>' and v.mode = 'backfill' and v.applied_at is null
+order by v.decision, r.title;
+```
+
+Apply the ones you agree with, by id (only moves and rejections do anything):
+
+```bash
+curl ... -d '{"firmId": "<firm id>", "apply": ["<review id>", "<review id>"]}'
+```
+

@@ -36,6 +36,7 @@ import {
   replaceRegulationVerdicts,
 } from '../_shared/relevance.ts'
 import { judgeRegulations } from '../_shared/regulatoryJudge.ts'
+import { applySkeptic } from '../_shared/verdictReview.ts'
 
 const FUNCTION_NAME = 'rematch-regulation'
 
@@ -73,7 +74,7 @@ Deno.serve(async req => {
     const { firm, funds, companies } = await loadFirmEntities(admin, firmId)
     if (!firm) return json({ error: 'Firm not found' }, 404)
 
-    const verdicts =
+    const judged =
       reg.category === 'geopolitical'
         ? await judgeGeopolitical(admin, {
             firmId,
@@ -88,6 +89,8 @@ Deno.serve(async req => {
             // No verdict at all still records the re-check, as "not relevant".
             v.length ? v : [{ index: 0, relevant: false, reason: 'No verdict returned for this regulation.', scope: 'firm' as const, entity_name: null }],
           )
+    // The re-check's verdict goes through the same second pass as a new match.
+    const verdicts = await applySkeptic(admin, { firmId, category: reg.category as 'regulatory' | 'geopolitical', entities: { firm, funds, companies }, candidates: [reg], verdicts: judged, functionName: FUNCTION_NAME })
 
     await replaceRegulationVerdicts(admin, firmId, regulationId, buildRelevanceRows(verdicts, [reg], firmId, funds, companies))
     if (reg.category === 'geopolitical') await syncHoldingsRollup(admin, firmId, 'geopolitical', { funds, companies })
