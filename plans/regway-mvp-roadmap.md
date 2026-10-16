@@ -45,37 +45,68 @@ multi-phase build.
 
 ## In progress
 
-### 17. RegWay AI: multi-role architecture (Orchestrator + Skeptic) (XL) — owner
+### 17. RegWay AI: Skeptic on matching, checked chat answers (XL) — owner; built, waiting to be measured and switched on
 The owner is working on this; nobody else changes
-`supabase/functions/regway-ai-chat/`, the matchers' judges
+`supabase/functions/regway-ai-chat/`, `_shared/ai/`, `_shared/roles/`,
+`_shared/verdictReview.ts`, the matchers' judges
 (`_shared/regulatoryJudge.ts`, `_shared/geopoliticalJudge.ts`),
 `_shared/impact.ts` or `rematch-regulation` without asking first.
 
-Full plan: `plans/regway-ai-multi-agent-architecture.md`. Today one Claude
-call does everything in the chat. The plan splits it into an Orchestrator
-that routes to specialised roles (Regulatory Researcher, Context Analyst,
-Impact Analyst, Skeptic, Citation Checker, Final Synthesizer), run only
-when a question needs them, independent ones in parallel. Still one
-provider: "multi-role" means several prompts run by the same model.
-
 Why: relevance reasoning drifts speculative, and two prompt fixes have not
 cured it. A Skeptic is a separate second pass with its own context, which
-one prompt cannot do for itself. Known cases waiting for it:
+one prompt cannot do for itself. Decided with the owner on 2026-10-15
+(plan: `~/.claude/plans/dreamy-seeking-tulip.md`, summarised here): the
+Skeptic goes on matching first, where the false matches are; the chat keeps
+answering in one call and is checked afterwards only when an answer claims
+something applies to the firm, a fund or a company, with live step labels.
+The full seven-role chat pipeline in
+`plans/regway-ai-multi-agent-architecture.md` is not being built: it would
+cost about four to five times as much per message and slow every answer.
+
+Built (2026-10-15, three stacked pull requests, all switched off):
+1. **PR #19, one AI client** (`_shared/ai/`): every Claude call goes through
+   `callClaude` / `streamClaude` (timeout, one retry, cost recording);
+   `runTool` for structured answers; `models.ts`.
+2. **PR #20, the Skeptic on matching**: reviews each match the regulatory
+   and geopolitical matchers (and a user re-check) mark relevant: keep, move
+   to the right entity, or reject. Recorded in `verdict_reviews` (migration
+   0036). `SKEPTIC_MODE` = off | shadow | on. `review-existing-matches`
+   reviews a firm's existing matches without changing them, then applies
+   only the reviews the owner approves.
+3. **PR #21, checked chat answers**: `CHAT_REVIEW` = on. A claim gate
+   (Haiku) finds applicability claims; the Skeptic (facts) and a citation
+   check (quoted passages) run side by side with step labels; a note under
+   the answer, saved with it.
+
+Not verified: no real AI call has been made by any of it. The prompts'
+judgement is untested.
+
+Left, in order (owner):
+1. Merge #19, #20, #21; `supabase db push` (migration 0036); deploy
+   `match-relevance`, `match-geopolitical-relevance`, `rematch-regulation`,
+   `review-existing-matches`, `regway-ai-chat`, and the functions that use
+   the client (`regulation-impact`, `match-enforcement-relevance`,
+   `company-regulations`, `sync-sec-admin-proceedings`, `group-duplicates`,
+   `sync-regulator-feeds`).
+2. Run `review-existing-matches` on H.I.G. (about $0.30), read the reviews
+   (SQL in `supabase/README.md`). Bar: the three known false matches below
+   rejected or moved, and no clearly correct match rejected.
+3. `SKEPTIC_MODE=shadow` for a few days of new matches, read
+   `verdict_reviews`, then `on`; apply the approved backfill reviews.
+4. About 15 chat questions on H.I.G. (applies / does not apply / borderline
+   / explain-only / drafting) with `CHAT_REVIEW=on` locally or on a
+   preview, then switch it on.
+5. Later, if wanted: the same hook for the enforcement matcher and company
+   web scans; a Skeptic before the impact analysis is written.
+
+Known cases the Skeptic should fix:
 - A Section 301 "manufacturing sectors" investigation matched to 3Pillar
-  Global (software) through India. The model's own reason says the sector
-  fit is not confirmed.
+  Global (software) through India.
 - An EPA approval of Florida's air-permit forms on the firm page because
-  H.I.G. is headquartered in Florida. No recorded fact supports it.
+  H.I.G. is headquartered in Florida.
 - Verdicts stored for the firm that are about one company (the UK
   Employment Rights Act and the EU Customs Code both say "applies to
   A.L.A. S.p.A.").
-
-Reuse, do not rebuild: the forced structured output in `_shared/impact.ts`,
-the profile loaders in `_shared/relevance.ts`, `recordUsage()` in
-`_shared/usage.ts` (one `function_name` per role), and
-`rematch-regulation`. Order: architecture definition, Researcher, Context
-Analyst, Impact Analyst, Skeptic and Citation Checker, routing, parallel
-execution, evaluation.
 
 ## Open for the team
 
