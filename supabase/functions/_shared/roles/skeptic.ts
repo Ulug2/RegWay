@@ -6,10 +6,12 @@
 //
 // reviewVerdicts: for each match a matcher marked relevant, keep it, move
 // it to the entity it really rests on, or reject it.
+// reviewAnswer: for each applicability claim in a chat answer, say whether
+// the recorded facts carry it (regway-ai-chat/review.ts).
 
 import { MODEL_FOR } from '../ai/models.ts'
 import { runTool, type ToolSpec } from '../ai/structured.ts'
-import type { UsageTarget } from '../ai/client.ts'
+import type { CallOptions, UsageTarget } from '../ai/client.ts'
 import { FACT_MARKERS } from '../entityFacts.ts'
 import { describeRecord, findEntity, type EntityScope, type FirmRecord } from './entityContext.ts'
 
@@ -176,4 +178,102 @@ ${describeRecord(record, { footprints: category === 'geopolitical' })}`,
     const entity = findEntity(record, r.scope, r.entity_name)!
     return { ...r, entity_name: r.scope === 'firm' ? null : entity.name, unsupported_assumptions: r.unsupported_assumptions ?? [] }
   })
+}
+
+// reviewAnswer: the chat's applicability claims, checked against what is
+// recorded and what RegWay has matched. A claim the facts do not support is
+// flagged, with what it assumed; nothing here rewrites the answer.
+
+export interface ClaimUnderReview {
+  claim: string
+  kind: 'applies' | 'does_not_apply'
+  scope: EntityScope
+  entity_name: string | null
+}
+
+export interface ClaimReview {
+  index: number
+  verdict: 'supported' | 'unsupported' | 'overstated'
+  note: string
+  unrecorded_facts: string[]
+}
+
+const ANSWER_SYSTEM = `You are the reviewer in RegWay, a regulatory intelligence service for private equity firms. RegWay's assistant has just answered a user, and its answer claims that particular rules or developments apply (or do not apply) to the firm, its funds or its portfolio companies. Try to break each claim using only what is recorded about the entities and what RegWay has already matched to them.
+
+${CHALLENGE_CHECKLIST}
+
+For each claim:
+- "supported": recorded facts carry it, or RegWay's matched list already records it with a reason that carries it.
+- "overstated": a connection is supported, but the claim states it more firmly or more widely than the facts allow (a "must" where it is "if", a whole firm where it is one company, a final rule that is only proposed).
+- "unsupported": it rests on a fact that is not recorded, or a check fails. A claim that something does NOT apply is unsupported when a recorded fact suggests it might.
+
+The note is one sentence written to the user: say what the claim assumes that is not recorded, or which recorded fact carries it. Plain words, no mention of reviewers or checks. ${FACT_MARKERS}`
+
+const ANSWER_TOOL: ToolSpec = {
+  name: 'submit_claim_reviews',
+  description: 'Submit a review for every numbered claim.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      reviews: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            index: { type: 'integer' },
+            verdict: { type: 'string', enum: ['supported', 'unsupported', 'overstated'] },
+            note: { type: 'string', description: 'One sentence to the user.' },
+            unrecorded_facts: { type: 'array', items: { type: 'string' }, description: 'Facts the claim assumes that are not recorded. Empty if none.' },
+          },
+          required: ['index', 'verdict', 'note', 'unrecorded_facts'],
+        },
+      },
+    },
+    required: ['reviews'],
+  },
+}
+
+export async function reviewAnswer(
+  input: { record: FirmRecord; matched: string; claims: ClaimUnderReview[] },
+  opts: CallOptions,
+): Promise<ClaimReview[]> {
+  const { record, claims } = input
+  if (claims.length === 0) return []
+  const where = (c: ClaimUnderReview) => (c.scope === 'firm' ? 'the firm' : `${c.scope} "${c.entity_name}"`)
+  const answer = await runTool<{ reviews: ClaimReview[] }>(
+    {
+      model: MODEL,
+      max_tokens: 2000,
+      temperature: 0,
+      system: [{ type: 'text', text: ANSWER_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      tool: ANSWER_TOOL,
+      cacheTool: true,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              cache_control: { type: 'ephemeral' },
+              text: `Firm: ${record.firmName}. What is recorded about it, its funds and its portfolio companies:
+${describeRecord(record, { footprints: true })}
+
+What RegWay has matched so far:
+${input.matched || 'nothing'}`,
+            },
+            {
+              type: 'text',
+              text: `Claims to review:\n${claims.map((c, i) => `${i}. [${c.kind === 'applies' ? 'applies to' : 'does not apply to'} ${where(c)}] ${c.claim}`).join('\n')}`,
+            },
+          ],
+        },
+      ],
+      check: a => {
+        const seen = new Set((a.reviews ?? []).map(r => r.index))
+        return claims.every((_, i) => seen.has(i)) ? null : 'not every claim was reviewed'
+      },
+    },
+    opts,
+  )
+  return answer.reviews.filter(r => r.index >= 0 && r.index < claims.length).map(r => ({ ...r, unrecorded_facts: r.unrecorded_facts ?? [] }))
 }

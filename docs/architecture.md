@@ -91,6 +91,16 @@ On demand, from the app: `company-regulations` (a web-search scan for one
 portfolio company), `rematch-regulation` ("this match looks wrong"), and
 `regway-ai-chat` (the chat, streamed).
 
+When a chat answer claims that something applies (or doesn't) to the firm,
+a fund or a company, `regway-ai-chat` checks it after the answer has
+streamed (`regway-ai-chat/review.ts`): a cheap call finds such claims
+(`roles/claimGate.ts`); then the Skeptic checks them against the recorded
+facts and RegWay's matches, and `roles/citationCheck.ts` against the
+passages the answer cited, each shown to the user as a step label; the
+result is a short note under the answer, saved in
+`regway_ai_messages.review`. Controlled by the `CHAT_REVIEW` secret (`on`;
+off by default).
+
 Every AI call is recorded in `usage_events` (`_shared/usage.ts`), and
 user-triggered functions are rate limited (`check_rate_limit`, migration
 0005).

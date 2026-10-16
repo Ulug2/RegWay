@@ -7,16 +7,17 @@
 //
 // Streams the response back as raw Anthropic SSE (text/event-stream) so the
 // frontend can render text as it arrives instead of waiting for the full
-// reply. The full exchange is still saved to `regway_ai_messages` once the
-// stream ends — this function tees the upstream bytes: forwarded to the
-// client unchanged, and parsed in parallel just to accumulate the final
-// text/citations/usage for that one DB write.
+// reply. The bytes are forwarded unchanged and read on the way past
+// (stream.ts) to keep what is saved once the answer ends.
+//
+// When the answer claims that something applies (or doesn't) to the firm, a
+// fund or a company, a check runs after it on the same stream, with step
+// labels and a short note (review.ts; CHAT_REVIEW secret, off by default).
 //
 // The system prompt and the web_search tool definition are marked
 // cache_control: ephemeral — both are identical across every message in a
-// session (same firm/fund/company context, same tool), so repeat messages
-// within the 5-minute cache window get that portion of input billed at a
-// fraction of normal price instead of re-sent-and-rebilled from scratch.
+// session, so repeat messages within the cache window are billed at the
+// cache rate.
 //
 // `refocus` switches what the conversation is about from inside the chat
 // (the whole firm, one fund, one company): the conversation's stored scope
@@ -25,200 +26,20 @@
 //   POST /functions/v1/regway-ai-chat   { "message": "...", "conversationId"?: "<uuid>", "context"?: AiContext, "refocus"?: Refocus, "attachment"?: { "name": string, "mimeType": string, "content": string (text) | "base64Data": string (pdf) } }
 //   Authorization: Bearer <user session access_token>
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
-import { COMPANY_FACTS, COMPANY_UNKNOWNS, FACT_MARKERS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from '../_shared/entityFacts.ts'
-import { loadMatchedDevelopments, type MatchedDevelopments, type MatchScope } from '../_shared/matchedDevelopments.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { streamClaude } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
-import { mergeUsage, recordUsage, type UsageTotals } from '../_shared/usage.ts'
+import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { loadMatchedDevelopments, type MatchScope } from '../_shared/matchedDevelopments.ts'
+import type { CompanyRow, FundRow } from '../_shared/relevance.ts'
+import { firmRecord } from '../_shared/roles/entityContext.ts'
+import { recordUsage } from '../_shared/usage.ts'
+import { historyMessages, loadHistory, openConversation, refocusNote, resolveRefocus, type HistoryTurn, type Refocus } from './conversation.ts'
+import { sizeProblem, systemPrompt, type AiContext, type Attachment, type EntityRow, type FirmSummary } from './prompt.ts'
+import { chatReviewEnabled, checkAnswer } from './review.ts'
+import { AnswerCollector, sseEvent } from './stream.ts'
 
 const MODEL = MODEL_FOR.chat
-
-// Size limits, enforced here because the browser's own checks can be
-// bypassed and input is billed per token: without them one request could
-// cost many times the usual few cents. The drawer applies the same limits
-// (RegWayAICopilot.tsx) so a user is told before sending.
-const MAX_MESSAGE_CHARS = 10_000
-const MAX_ATTACHMENT_TEXT_CHARS = 160_000 // a .txt/.md of about 150 KB
-const MAX_PDF_BASE64_CHARS = 7_000_000 // a PDF of about 5 MB
-
-function sizeProblem(message: string, attachment?: Attachment): string | null {
-  if (message.length > MAX_MESSAGE_CHARS) return `Message is too long (limit ${MAX_MESSAGE_CHARS.toLocaleString('en-US')} characters).`
-  if ((attachment?.content?.length ?? 0) > MAX_ATTACHMENT_TEXT_CHARS) return 'Attached text file is too large (limit 150 KB).'
-  if ((attachment?.base64Data?.length ?? 0) > MAX_PDF_BASE64_CHARS) return 'Attached PDF is too large (limit 5 MB).'
-  return null
-}
-
-// One line per entity is capped so a single very long free-text answer
-// can't crowd out the rest of the prompt.
-const ENTITY_LINE_CHARS = 1200
-
-interface EntityRow extends Record<string, unknown> {
-  id: string
-  name: string
-}
-
-// Everything recorded about the firm, its funds and its portfolio
-// companies (the questionnaire answers, not just names), and which fund
-// holds which company, so a question can be answered from the profile even
-// when the chat wasn't opened from a particular fund or company.
-function profileContext(firm: Record<string, unknown> | null, funds: EntityRow[], companies: EntityRow[], holdings: { fund_id: string; portfolio_company_id: string }[]): string {
-  const line = (label: string, text: string) => `- ${label}: ${text || 'nothing else recorded'}`.slice(0, ENTITY_LINE_CHARS)
-  const names = (rows: EntityRow[], ids: string[]) => rows.filter(r => ids.includes(r.id)).map(r => r.name)
-
-  const fundLines = funds.map(f => {
-    const holds = names(companies, holdings.filter(h => h.fund_id === f.id).map(h => h.portfolio_company_id))
-    return line(f.name, facts({ ...f, holds }, FUND_FACTS, FUND_UNKNOWNS))
-  })
-  const companyLines = companies.map(c => {
-    const heldBy = names(funds, holdings.filter(h => h.portfolio_company_id === c.id).map(h => h.fund_id))
-    return line(c.name, [facts(c, COMPANY_FACTS, COMPANY_UNKNOWNS), heldBy.length ? `held by: ${heldBy.join(', ')}` : ''].filter(Boolean).join('; '))
-  })
-
-  return `Firm profile: ${facts(firm, FIRM_FACTS, FIRM_UNKNOWNS) || 'nothing recorded'}.
-
-Funds:
-${fundLines.join('\n') || 'none on file'}
-
-Portfolio companies:
-${companyLines.join('\n') || 'none on file'}
-
-These are the facts the firm has recorded. A fact that isn't listed is not recorded, which is different from "no": say so rather than assuming. ${FACT_MARKERS} Which fund holds which company is listed only where the firm recorded it.`
-}
-
-interface Attachment {
-  name: string
-  mimeType: string
-  content?: string // already-decoded text (.txt/.md)
-  base64Data?: string // raw base64 (.pdf)
-}
-
-// Mirrors src/lib/types.ts's AiContext — set when the copilot was opened
-// from a specific regulation/fund/company page instead of the generic
-// Dashboard bar, so the system prompt can focus on that item without the
-// user having to restate what they're asking about.
-interface AiContext {
-  type: 'regulation' | 'fund' | 'company'
-  id: string
-  name: string
-  regulation?: {
-    agency?: string | null
-    jurisdiction?: string | null
-    summary?: string | null
-    published_date?: string | null
-    effective_date?: string | null
-  }
-}
-
-function contextInstruction(context?: AiContext): string {
-  if (!context) return ''
-  if (context.type === 'regulation') {
-    const r = context.regulation
-    const details = [
-      r?.agency ? `agency: ${r.agency}` : '',
-      r?.jurisdiction ? `jurisdiction: ${r.jurisdiction}` : '',
-      r?.published_date ? `published: ${r.published_date}` : '',
-      r?.effective_date ? `effective: ${r.effective_date}` : '',
-    ].filter(Boolean).join(', ')
-    const summary = r?.summary ? ` Summary: ${r.summary}` : ''
-    return `\n\nThe user opened this chat directly from the regulation "${context.name}"${details ? ` (${details})` : ''}.${summary} Treat the conversation as being about this regulation unless the user clearly asks about something else — don't make them restate what they're asking about.`
-  }
-  const label = context.type === 'fund' ? 'fund' : 'portfolio company'
-  return `\n\nThis conversation is focused on the ${label} "${context.name}" (the user opened the chat from it, or switched to it). Treat the conversation as being about this specific ${label} unless the user clearly asks about something else — don't make them restate what they're asking about.`
-}
-
-// The firm's matched developments, and how to use them. Placed in the
-// system prompt (cached), since the list changes far less often than
-// messages are sent.
-function matchedInstruction(matched: MatchedDevelopments, scope: MatchScope): string {
-  const where = scope.type === 'firm' ? 'this firm, its funds and its portfolio companies' : scope.type === 'regulation' ? 'the firm\'s entities for this regulation' : `this ${scope.type}`
-  if (matched.count === 0) {
-    return `RegWay has not matched any developments to ${where} so far (from its tracked sources: the Federal Register, SEC and FINRA enforcement, State Department advisories, and company web scans). That isn't proof nothing applies; say so if asked, and use web search.`
-  }
-  return `Developments RegWay has already matched to ${where}${matched.shown < matched.count ? ` (newest ${matched.shown} of ${matched.count})` : ''}, with each entity's stated reason:
-${matched.text}
-
-When asked what is relevant, new, or affecting an entity, answer from this list first and say these are what RegWay has matched (with the reason given). Use web search for details, status updates, or anything not listed. An item's absence from this list isn't proof it doesn't apply: matching covers RegWay's tracked sources only.`
-}
-
-// How much of a conversation is replayed to the model: the most recent
-// turns, capped in size so a long chat doesn't grow every request without
-// bound (older turns drop off first).
-const HISTORY_MESSAGES = 20
-const HISTORY_CHARS = 24_000
-const TITLE_CHARS = 80
-
-interface HistoryTurn {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-type Refocus = { type: 'firm' } | { type: 'fund' | 'company'; id: string }
-
-// The scope a refocus names, read through the caller's own client so it can
-// only be one of their firm's funds or companies (the stored name, not the
-// client's). Undefined = the whole firm; null = not found.
-async function resolveRefocus(supabase: SupabaseClient, firmId: string, refocus: Refocus): Promise<AiContext | undefined | null> {
-  if (refocus.type === 'firm') return undefined
-  if (refocus.type !== 'fund' && refocus.type !== 'company') return null
-  const table = refocus.type === 'fund' ? 'funds' : 'portfolio_companies'
-  const { data } = await supabase.from(table).select('id, name').eq('id', refocus.id).eq('firm_id', firmId).maybeSingle()
-  return data ? { type: refocus.type, id: data.id as string, name: data.name as string } : null
-}
-
-const refocusNote = (context: AiContext | undefined) =>
-  `[The user has switched this conversation's focus to ${context ? `the ${context.type === 'fund' ? 'fund' : 'portfolio company'} "${context.name}"` : 'the whole firm'}. Earlier turns may be about something else; answer about the new focus from here on.]\n\n`
-
-// This user's conversation, created on its first message. Null when the id
-// is someone else's: RLS hides it from the read, and the insert can't take
-// an id that already exists.
-async function openConversation(
-  supabase: SupabaseClient,
-  id: string,
-  firmId: string,
-  userId: string,
-  firstMessage: string,
-  context: AiContext | undefined,
-): Promise<{ context: AiContext | null; created: boolean } | null> {
-  const { data: existing } = await supabase.from('regway_ai_conversations').select('context').eq('id', id).maybeSingle()
-  if (existing) return { context: (existing.context as AiContext | null) ?? null, created: false }
-  const title = firstMessage.replace(/\s+/g, ' ').trim().slice(0, TITLE_CHARS) || 'New conversation'
-  const { error } = await supabase.from('regway_ai_conversations').insert({ id, firm_id: firmId, user_id: userId, title, context: context ?? null })
-  return error ? null : { context: context ?? null, created: true }
-}
-
-async function loadHistory(supabase: SupabaseClient, conversationId: string): Promise<HistoryTurn[]> {
-  const { data } = await supabase
-    .from('regway_ai_messages')
-    .select('role, content')
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: false })
-    .limit(HISTORY_MESSAGES)
-  const turns: HistoryTurn[] = []
-  let chars = 0
-  for (const m of (data ?? []) as HistoryTurn[]) {
-    // A stopped reply can be saved empty; the API rejects empty content.
-    if (!m.content?.trim()) continue
-    if (chars + m.content.length > HISTORY_CHARS) break
-    chars += m.content.length
-    turns.unshift(m)
-  }
-  // The conversation sent to the model must start with a user turn.
-  while (turns[0]?.role === 'assistant') turns.shift()
-  return turns
-}
-
-// Earlier turns as API messages, with a cache breakpoint on the last one:
-// each new message re-sends the same prefix, so it's billed at the cache
-// rate instead of in full.
-function historyMessages(history: HistoryTurn[]) {
-  return history.map((turn, i) =>
-    i === history.length - 1
-      ? { role: turn.role, content: [{ type: 'text', text: turn.content, cache_control: { type: 'ephemeral' } }] }
-      : { role: turn.role, content: turn.content },
-  )
-}
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
@@ -260,7 +81,7 @@ Deno.serve(async (req) => {
 
     if (!membership) return json({ error: 'No firm associated with this user' }, 404)
 
-    const firm = (membership as unknown as { firms: { name: string; hq_location: string; jurisdictions: string[]; profile: Record<string, unknown> | null } }).firms
+    const firm = (membership as unknown as { firms: FirmSummary | null }).firms
 
     // Before anything is created or spent: a refused message must not
     // leave an empty conversation behind in the user's history.
@@ -282,12 +103,15 @@ Deno.serve(async (req) => {
       startedConversation = conversation.created
       history = await loadHistory(supabase, conversationId)
     }
+    const forgetConversation = async () => {
+      if (startedConversation) await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
+    }
 
     let focusNote = ''
     if (body.refocus) {
       const next = await resolveRefocus(supabase, membership.firm_id, body.refocus)
       if (next === null) {
-        if (startedConversation) await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
+        await forgetConversation()
         return json({ error: 'That fund or company was not found' }, 404)
       }
       context = next
@@ -306,20 +130,15 @@ Deno.serve(async (req) => {
       loadMatchedDevelopments(supabase, membership.firm_id, firm?.name ?? 'the firm', scope),
     ])
 
-    const ambiguityInstruction =
-      !context && ((funds?.length ?? 0) > 1 || (companies?.length ?? 0) > 1)
-        ? '\n\nIf the user refers to "my fund", "this company", "the portfolio company", or similar without naming which one, and more than one exists, ask them which one they mean instead of guessing.'
-        : ''
-
-    const systemPrompt = `You are RegWay AI, an AI regulatory intelligence copilot for private equity general partners. You are advising ${firm?.name ?? 'the firm'}, headquartered in ${firm?.hq_location ?? 'an unspecified location'}, operating in: ${(firm?.jurisdictions ?? []).join(', ') || 'unspecified jurisdictions'}.
-
-${profileContext(firm, (funds ?? []) as EntityRow[], (companies ?? []) as EntityRow[], holdings ?? [])}
-
-${matchedInstruction(matched, scope)}
-
-Use web search to ground every regulatory claim in a real, current source. Always cite the primary source (agency or publisher name, document title, URL, and date). If you are not confident a rule applies to this firm, say so plainly instead of guessing. Never assign an unprompted urgency label such as "critical" or "low impact" — describe obligations and deadlines factually and let the user judge priority themselves.
-
-Your answer is shown as rendered Markdown. Use it where it helps the reader: short headings for a long answer, bullet or numbered lists, **bold** for the key term or date, a table when comparing several items across the same attributes (rules, funds, companies, deadlines), and a fenced code block for anything to be copied exactly. Keep a short answer as plain paragraphs.${contextInstruction(context)}${ambiguityInstruction}`
+    const system = systemPrompt({
+      firm,
+      funds: (funds ?? []) as EntityRow[],
+      companies: (companies ?? []) as EntityRow[],
+      holdings: holdings ?? [],
+      matched,
+      scope,
+      context,
+    })
 
     // Text attachments (.txt/.md) are inlined into the message; a .pdf is
     // sent as a native Anthropic `document` content block — no separate
@@ -336,85 +155,98 @@ Your answer is shown as rendered Markdown. Use it where it helps the reader: sho
       anthropicRes = await streamClaude({
         model: MODEL,
         max_tokens: 4096,
-        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5, cache_control: { type: 'ephemeral' } }],
         messages: [...historyMessages(history), { role: 'user', content: userContent }],
       })
     } catch (err) {
       // Nothing was answered, so a conversation this message would have
       // started shouldn't appear in the user's history.
-      if (startedConversation) await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
+      await forgetConversation()
       throw err
     }
 
-    const decoder = new TextDecoder()
-    let sseBuffer = ''
-    let fullText = ''
-    // Text that resumes after a search doesn't start with a space.
-    let afterTool = false
-    const citations: unknown[] = []
-    const usage: UsageTotals = {}
+    const answer = new AnswerCollector()
+    const upstream = anthropicRes.body!.getReader()
+    const stopReview = new AbortController()
     let persisted = false
+    let cancelled = false
 
-    const persist = async () => {
-      if (persisted) return
+    // Saves the exchange; returns the answer's row id.
+    const persist = async (): Promise<string | null> => {
       persisted = true
       const answeredAt = new Date(Math.max(Date.now(), askedAt.getTime() + 1))
-      await Promise.all([
-        supabase.from('regway_ai_messages').insert([
-          { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'user', content: message, created_at: askedAt.toISOString() },
-          { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'assistant', content: fullText, citations, created_at: answeredAt.toISOString() },
-        ]),
+      const [saved] = await Promise.all([
+        supabase
+          .from('regway_ai_messages')
+          .insert([
+            { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'user', content: message, created_at: askedAt.toISOString() },
+            { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'assistant', content: answer.text, citations: answer.citations, created_at: answeredAt.toISOString() },
+          ])
+          .select('id, role'),
         conversationId
           ? supabase.from('regway_ai_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId)
           : Promise.resolve(),
-        recordUsage(admin, { functionName: 'regway-ai-chat', firmId: membership.firm_id, model: MODEL, ...usage }),
+        recordUsage(admin, { functionName: 'regway-ai-chat', firmId: membership.firm_id, model: MODEL, ...answer.usage }),
       ])
+      const rows = (saved as { data: { id: string; role: string }[] | null }).data ?? []
+      return rows.find(r => r.role === 'assistant')?.id ?? null
     }
 
-    const tee = new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        // Forward bytes to the client immediately and unchanged — parsing
-        // below is only to accumulate the final record for regway_ai_messages
-        // and usage_events.
-        controller.enqueue(chunk)
-        sseBuffer += decoder.decode(chunk, { stream: true })
-        const lines = sseBuffer.split('\n')
-        sseBuffer = lines.pop() ?? ''
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
+    // After the answer: the check (review.ts), for an answer that makes a
+    // claim about the firm's own entities, while someone is still reading.
+    const review = async (send: (bytes: Uint8Array) => void, answerId: string | null) => {
+      if (!firm || !chatReviewEnabled() || cancelled || !answer.text.trim()) return
+      try {
+        const result = await checkAnswer({
+          admin,
+          firmId: membership.firm_id,
+          record: firmRecord({ firm, funds: (funds ?? []) as unknown as FundRow[], companies: (companies ?? []) as unknown as CompanyRow[] }, holdings ?? []),
+          matched: matched.text,
+          question: message,
+          answer: answer.text,
+          citations: answer.citations,
+          signal: stopReview.signal,
+          emit: event => send(sseEvent(event)),
+        })
+        if (result && answerId && !cancelled) await supabase.from('regway_ai_messages').update({ review: result }).eq('id', answerId)
+      } catch (err) {
+        console.error('chat answer check failed', (err as Error).message)
+      }
+    }
+
+    const stream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        const send = (bytes: Uint8Array) => {
+          if (cancelled) return
           try {
-            const evt = JSON.parse(line.slice(6))
-            if (evt.type === 'content_block_start' && evt.content_block?.type !== 'text') {
-              afterTool = true
-            } else if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
-              if (afterTool && /\S$/.test(fullText) && /^\S/.test(evt.delta.text)) fullText += ' '
-              afterTool = false
-              fullText += evt.delta.text
-            } else if (evt.type === 'content_block_delta' && evt.delta?.type === 'citations_delta' && evt.delta.citation) {
-              citations.push(evt.delta.citation)
-            } else if (evt.type === 'message_start') {
-              mergeUsage(usage, evt.message?.usage)
-            } else if (evt.type === 'message_delta') {
-              mergeUsage(usage, evt.usage)
-            }
+            controller.enqueue(bytes)
           } catch {
-            // Partial line (split across chunks) or a non-JSON SSE comment — skip.
+            // The reader went away between the check and this write.
           }
         }
+        const { done, value } = await upstream.read()
+        if (!done) {
+          // Forwarded at once and unchanged; read only to keep the record.
+          send(value)
+          answer.push(value)
+          return
+        }
+        await review(send, await persist())
+        if (!cancelled) controller.close()
       },
-      async flush() {
-        await persist()
-      },
-      // The reader went away before the answer finished (stop button, a
-      // closed tab): nothing was saved, so a conversation this message
-      // started must not stay in the user's history as an empty entry.
+      // The reader went away (stop button, a closed tab): the check stops,
+      // and a conversation this message started stays out of the user's
+      // history if nothing was saved.
       async cancel() {
-        if (startedConversation && !persisted) await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
+        cancelled = true
+        stopReview.abort()
+        await upstream.cancel().catch(() => {})
+        if (!persisted) await forgetConversation()
       },
     })
 
-    return new Response(anthropicRes.body!.pipeThrough(tee), {
+    return new Response(stream, {
       headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
     })
   } catch (err) {
