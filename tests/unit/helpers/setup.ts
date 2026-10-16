@@ -7,6 +7,8 @@ const env: Record<string, string> = {
   SUPABASE_ANON_KEY: 'test-anon-key',
   SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY,
   ANTHROPIC_API_KEY: 'test-anthropic-key',
+  // No real wait before the AI client's one retry (_shared/ai/client.ts).
+  AI_RETRY_DELAY_MS: '0',
 }
 
 ;(globalThis as Record<string, unknown>).Deno = {

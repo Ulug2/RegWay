@@ -28,6 +28,12 @@ data travels; the code and the roadmap have the detail.
   Deno (a JavaScript runtime like Node). They hold the two secrets the
   browser must never see: the service key (reads and writes any row,
   ignoring RLS) and the Anthropic key.
+- **AI calls** (`supabase/functions/_shared/ai/`). Every call to Claude goes
+  through `callClaude` / `streamClaude` (`client.ts`): one place for the
+  headers, timeout, one retry when the API is overloaded, and recording the
+  cost in `usage_events`. `runTool` (`structured.ts`) is for answers that
+  must come back as structured data, and `models.ts` says which model each
+  job uses. New AI work uses these; nothing calls the API directly.
 - **Scheduled jobs.** `pg_cron` runs inside the database and calls
   functions over HTTP on a timer. The schedules are written in migrations.
 

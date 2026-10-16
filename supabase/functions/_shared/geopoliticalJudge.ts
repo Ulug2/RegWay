@@ -6,9 +6,10 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { describeFootprint, overlaps, type EntityFootprint } from './footprint.ts'
 import type { Verdict } from './relevance.ts'
-import { recordUsage } from './usage.ts'
+import { callClaude, toolInput } from './ai/client.ts'
+import { MODEL_FOR } from './ai/models.ts'
 
-const MODEL = 'claude-sonnet-4-5'
+const MODEL = MODEL_FOR.geopoliticalJudge
 const EXCERPT_CHARS = 600
 
 export interface Candidate {
@@ -83,92 +84,71 @@ export async function judgeGeopolitical(
   },
 ): Promise<Verdict[]> {
   const { firmId, companies, footprints, candidates, functionName, model = MODEL } = opts
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 4096,
-      // Verdicts, not prose: the same item should get the same answer on
-      // every run (at the default temperature borderline items flipped).
-      temperature: 0,
-      tool_choice: { type: 'tool', name: 'submit_verdicts' },
-      tools: [
-        {
-          name: 'submit_verdicts',
-          description: 'Submit a relevance verdict for every numbered geopolitical development.',
-          input_schema: {
-            type: 'object',
-            properties: {
-              verdicts: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    index: { type: 'integer' },
-                    relevant: { type: 'boolean' },
-                    reason: {
-                      type: 'string',
-                      description:
-                        'One or two sentences: the recorded location fact, whether the connection is direct or indirect, and the possible effect stated conditionally. Never imply the entity is sanctioned or prohibited from anything.',
-                    },
-                    scope: { type: 'string', enum: ['firm', 'company'] },
-                    entity_name: { type: 'string', description: 'Exact portfolio company name if scope is company, else empty string' },
+  const result = await callClaude({
+    model,
+    max_tokens: 4096,
+    // Verdicts, not prose: the same item should get the same answer on
+    // every run (at the default temperature borderline items flipped).
+    temperature: 0,
+    tool_choice: { type: 'tool', name: 'submit_verdicts' },
+    tools: [
+      {
+        name: 'submit_verdicts',
+        description: 'Submit a relevance verdict for every numbered geopolitical development.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            verdicts: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  index: { type: 'integer' },
+                  relevant: { type: 'boolean' },
+                  reason: {
+                    type: 'string',
+                    description:
+                      'One or two sentences: the recorded location fact, whether the connection is direct or indirect, and the possible effect stated conditionally. Never imply the entity is sanctioned or prohibited from anything.',
                   },
-                  required: ['index', 'relevant', 'reason', 'scope'],
+                  scope: { type: 'string', enum: ['firm', 'company'] },
+                  entity_name: { type: 'string', description: 'Exact portfolio company name if scope is company, else empty string' },
                 },
+                required: ['index', 'relevant', 'reason', 'scope'],
               },
             },
-            required: ['verdicts'],
           },
-          cache_control: { type: 'ephemeral' },
+          required: ['verdicts'],
         },
-      ],
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              // Changes only when the firm edits a location — cached
-              // separately from the per-batch development list.
-              type: 'text',
-              cache_control: { type: 'ephemeral' },
-              text: `Firm: ${opts.firmName}. Recorded location footprints:
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            // Changes only when the firm edits a location — cached
+            // separately from the per-batch development list.
+            type: 'text',
+            cache_control: { type: 'ephemeral' },
+            text: `Firm: ${opts.firmName}. Recorded location footprints:
 ${footprints.map(describeFootprint).join('\n')}
 
 ${INSTRUCTIONS}`,
-            },
-            { type: 'text', text: candidates.map((c, i) => candidateLine(c, i, footprints)).join('\n\n') + correctionText(opts.correction) },
-          ],
-        },
-      ],
-    }),
-  })
+          },
+          { type: 'text', text: candidates.map((c, i) => candidateLine(c, i, footprints)).join('\n\n') + correctionText(opts.correction) },
+        ],
+      },
+    ],
+  }, { usage: { admin, functionName, firmId } })
 
-  if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`)
-  const result = await res.json()
-  const toolUse = (result.content ?? []).find((b: { type: string }) => b.type === 'tool_use')
   // A company verdict naming no real company would otherwise fall through
   // buildRelevanceRows to a firm-level row, putting a company's connection
   // on the firm page. Drop it.
   const companyNames = new Set(companies.map(c => c.name.toLowerCase()))
-  const verdicts: Verdict[] = (toolUse?.input?.verdicts ?? []).filter(
+  const verdicts: Verdict[] = (toolInput<{ verdicts?: Verdict[] }>(result, 'submit_verdicts')?.verdicts ?? []).filter(
     (v: Verdict) => v.scope === 'firm' || (v.scope === 'company' && !!v.entity_name && companyNames.has(v.entity_name.toLowerCase())),
   )
-
-  await recordUsage(admin, {
-    functionName,
-    firmId,
-    model,
-    inputTokens: result.usage?.input_tokens,
-    cacheCreationInputTokens: result.usage?.cache_creation_input_tokens,
-    cacheReadInputTokens: result.usage?.cache_read_input_tokens,
-    outputTokens: result.usage?.output_tokens,
-  })
 
   // Any development the model skipped still gets a firm-level marker, so
   // it isn't re-sent (and re-billed) on every run.
