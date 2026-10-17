@@ -89,10 +89,15 @@ export const reviewRow = (
 })
 
 // The verdict a review leaves behind.
+// A kept match that depends on facts not recorded says so in its reason,
+// where the firm reads why it is shown.
+export const dependsOnNote = (unrecorded: string[]): string => (unrecorded.length ? `Depends on facts not recorded: ${unrecorded.join('; ')}.` : '')
+
 export function applyReview(verdict: Verdict, review: VerdictReview): Verdict {
   if (review.decision === 'reject') return { ...verdict, relevant: false, reason: `${REVIEWED_PREFIX}${review.reason}` }
   if (review.decision === 'move') return { ...verdict, scope: review.scope, entity_name: review.entity_name, reason: review.reason }
-  return verdict
+  const note = dependsOnNote(review.unsupported_assumptions)
+  return note ? { ...verdict, reason: `${verdict.reason} ${note}` } : verdict
 }
 
 export async function applySkeptic(

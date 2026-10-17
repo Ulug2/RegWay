@@ -20,7 +20,7 @@ const SUMMARY_CHARS = 1500
 
 // What every Skeptic review checks, whatever it is reviewing.
 export const CHALLENGE_CHECKLIST = `Check each one against this list:
-1. Unstated assumption: does the connection need a fact about the entity that is not recorded (what it sells, who its customers are, whether it is licensed, whether it imports, its size)? A fact listed as "not recorded" is unknown, not a yes.
+1. Unstated assumption: does the connection need a fact about the entity that is not recorded (what it sells, who its customers are, whether it is licensed, whether it imports, its size)? A fact listed as "not recorded" is unknown: neither a yes nor a no.
 2. Wrong entity: does the connection actually run through a different entity than the one named (a company's activity stored as a match for the firm, or the other way round)?
 3. Entity type: does the measure bind this kind of entity at all (an investment adviser, a fund, a hospital, a carrier, a bank)?
 4. Scope of the measure: if it is limited to particular products, sectors, activities or places, does the entity's recorded activity or location fall inside it? A shared region or a general industry label is not enough.
@@ -77,8 +77,9 @@ ${CHALLENGE_CHECKLIST}
 
 Decide for each match:
 - "keep": the reason rests on recorded facts of the named entity and survives every check. Do not reject a well-supported match because you can imagine a doubt the facts do not raise.
+- "keep", with the missing fact listed: the entity's recorded business is the kind the measure is aimed at, and only a detail of its activity is not recorded (an aerospace and defense logistics company and a rule on exporting defense articles, when whether it ships such articles is not recorded). List that detail in unsupported_assumptions and say in the reason what the match depends on. The firm sees the match with that caveat and can confirm the fact.
 - "move": the connection is real and supported by recorded facts, but it runs through a different entity than the one named. Give that entity's scope and its exact name as listed, and a reason that names the recorded fact it rests on.
-- "reject": any check fails and no other entity's recorded facts support it either.
+- "reject": a check fails on what is recorded: the measure is aimed at a different kind of entity or activity than anything recorded for it (a medical billing company and a rule for laboratories), the document creates no obligation, or the jurisdiction does not reach it; and no other entity's recorded facts support it either. A missing fact is a reason to reject only when nothing recorded points towards it.
 
 Write each reason as one sentence a compliance officer can check against the recorded facts: name the fact and the measure. For a rejection, say which check failed. Never add a fact that is not recorded. ${FACT_MARKERS}`
 
@@ -98,7 +99,7 @@ const TOOL: ToolSpec = {
             scope: { type: 'string', enum: ['firm', 'fund', 'company'], description: 'Where the match stands after the review: the original entity for keep or reject, the new one for move.' },
             entity_name: { type: 'string', description: 'Exact fund or company name as listed when scope is fund or company, else empty string.' },
             reason: { type: 'string', description: 'One sentence naming the recorded fact and the measure, or the check that failed.' },
-            unsupported_assumptions: { type: 'array', items: { type: 'string' }, description: 'Facts the original reason assumed that are not recorded. Empty if none.' },
+            unsupported_assumptions: { type: 'array', items: { type: 'string' }, description: 'Facts the match depends on that are not recorded, each phrased as a question of fact ("whether A.L.A. ships defense articles"). Empty if none.' },
           },
           required: ['index', 'decision', 'scope', 'entity_name', 'reason', 'unsupported_assumptions'],
         },

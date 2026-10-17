@@ -109,10 +109,21 @@ where v.firm_id = '<firm id>' and v.mode = 'backfill' and v.applied_at is null
 order by v.decision, r.title;
 ```
 
-Apply the ones you agree with, by id (only moves and rejections do anything):
+Apply the ones you agree with, by id. A rejection hides the match, a move
+puts it on the entity named, and a keep that depends on facts not recorded
+adds them to the match's reason ("Depends on facts not recorded: …"); a
+plain keep does nothing:
 
 ```bash
 curl ... -d '{"firmId": "<firm id>", "apply": ["<review id>", "<review id>"]}'
+```
+
+To review the same matches again after the Skeptic's instructions change,
+pass the time the new round started; only reviews made since then count as
+done:
+
+```bash
+curl ... -d '{"firmId": "<firm id>", "since": "2026-10-17T21:00:00Z"}'
 ```
 
 ## The chat's answer check (`CHAT_REVIEW`)

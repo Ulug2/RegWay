@@ -157,6 +157,14 @@ describe('applySkeptic', () => {
     expect((db.ran('verdict_reviews', 'insert')[0].payload as { mode: string }[])[0].mode).toBe('on')
   })
 
+  it('when on, a kept match that depends on facts not recorded says so in its reason', async () => {
+    const withNote = reviews.map(r => (r.index === 2 ? { ...r, unsupported_assumptions: ['whether GetixHealth bills Medicare'] } : r))
+    const { result } = run('on', { reviews: withNote })
+    const kept = (await result)[2]
+    expect(kept).toMatchObject({ relevant: true, scope: 'company', entity_name: 'GetixHealth' })
+    expect(kept.reason).toBe(`${verdicts[2].reason} Depends on facts not recorded: whether GetixHealth bills Medicare.`)
+  })
+
   it('a failed review keeps the verdicts as the matcher gave them, and is recorded as failed', async () => {
     const { db, result } = run('on', () => new Response('{"error":"credit balance is too low"}', { status: 400 }))
     expect(await result).toBe(verdicts)
