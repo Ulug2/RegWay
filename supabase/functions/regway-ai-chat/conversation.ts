@@ -42,12 +42,37 @@ export async function openConversation(
   userId: string,
   firstMessage: string,
   context: AiContext | undefined,
-): Promise<{ context: AiContext | null; created: boolean } | null> {
-  const { data: existing } = await supabase.from('regway_ai_conversations').select('context').eq('id', id).maybeSingle()
-  if (existing) return { context: (existing.context as AiContext | null) ?? null, created: false }
+): Promise<{ context: AiContext | null; created: boolean; stoppedAt: string | null } | null> {
+  const { data: existing } = await supabase.from('regway_ai_conversations').select('context, stopped_at').eq('id', id).maybeSingle()
+  if (existing) return { context: (existing.context as AiContext | null) ?? null, created: false, stoppedAt: (existing.stopped_at as string | null) ?? null }
   const title = firstMessage.replace(/\s+/g, ' ').trim().slice(0, TITLE_CHARS) || 'New conversation'
   const { error } = await supabase.from('regway_ai_conversations').insert({ id, firm_id: firmId, user_id: userId, title, context: context ?? null })
-  return error ? null : { context: context ?? null, created: true }
+  return error ? null : { context: context ?? null, created: true, stoppedAt: null }
+}
+
+// The stop button, as the server sees it: the browser stamps the
+// conversation's stopped_at (migration 0037), or deletes a conversation the
+// stopped message would have started. A closed connection alone does not
+// reach the function. Polls while an answer or its check runs; returns the
+// function that ends the watch.
+export const STOP_POLL_MS = 1500
+
+export function watchForStop(supabase: SupabaseClient, conversationId: string, stoppedAt: string | null, onStop: () => void): () => void {
+  let ended = false
+  const end = () => {
+    ended = true
+    clearInterval(timer)
+  }
+  const timer = setInterval(async () => {
+    const { data, error } = await supabase.from('regway_ai_conversations').select('stopped_at').eq('id', conversationId).maybeSingle()
+    // A failed read is not a stop.
+    if (ended || error) return
+    if (!data || ((data.stopped_at as string | null) ?? null) !== stoppedAt) {
+      end()
+      onStop()
+    }
+  }, Number(Deno.env.get('CHAT_STOP_POLL_MS')) || STOP_POLL_MS)
+  return end
 }
 
 export async function loadHistory(supabase: SupabaseClient, conversationId: string): Promise<HistoryTurn[]> {
