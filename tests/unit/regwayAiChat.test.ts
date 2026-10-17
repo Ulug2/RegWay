@@ -336,10 +336,12 @@ describe('regway-ai-chat', () => {
 
   const outage = { anthropic: () => new Response('{"error":{"message":"Your credit balance is too low"}}', { status: 400 }) }
 
-  it('reports an API failure as an error and saves nothing', async () => {
-    const { res, db } = await chat({}, { message: 'hi' }, outage)
-    expect(res.status).toBe(500)
+  it('reports an API failure plainly, records it, and saves nothing', async () => {
+    const { res, text, db } = await chat({}, { message: 'hi' }, outage)
+    expect(res.status).toBe(502)
+    expect(JSON.parse(text).error).toContain('run out of credit')
     expect(db.ran('regway_ai_messages', 'insert')).toEqual([])
+    expect(db.ran('usage_events', 'insert')[0].payload).toMatchObject({ function_name: 'regway-ai-chat', ok: false, error: expect.stringMatching(/^credit: Anthropic API error: 400/) })
   })
 
   it('removes a conversation that an unanswered first message would have started', async () => {

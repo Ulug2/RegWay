@@ -633,6 +633,30 @@ export async function fetchFailingSources(): Promise<string[]> {
   return [...latestBySource.entries()].filter(([source, ok]) => !ok && !NOT_DATA_SOURCES.has(source)).map(([source]) => SOURCE_LABELS[source] ?? source)
 }
 
+// Whether RegWay's AI is failing now (migration 0038's ai_status): a few
+// calls in a row have failed since the last one that worked. Same for every
+// firm. Null when it is working, or when the status can't be read.
+export type AiOutage = { reason: 'credit' | 'auth' | 'rate_limited' | 'unavailable' | 'timeout' | 'other'; since: string }
+
+export async function fetchAiOutage(): Promise<AiOutage | null> {
+  const { data, error } = await supabase.rpc('ai_status')
+  const row = (Array.isArray(data) ? data[0] : data) as { failing: boolean; reason: string | null; since: string | null } | null
+  if (error || !row?.failing || !row.since) return null
+  return { reason: (row.reason ?? 'other') as AiOutage['reason'], since: row.since }
+}
+
+const AI_OUTAGE_CAUSES: Record<AiOutage['reason'], string> = {
+  credit: 'the AI service account has run out of credit',
+  auth: 'the AI service is refusing RegWay\'s key',
+  rate_limited: 'the AI service is turning requests away',
+  unavailable: 'the AI service is not responding',
+  timeout: 'the AI service is timing out',
+  other: 'the AI service is returning errors',
+}
+
+export const aiOutageText = (outage: AiOutage): string =>
+  `RegWay's AI has not been working since ${new Date(outage.since).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}: ${AI_OUTAGE_CAUSES[outage.reason]}. New matches, analyses and chat answers are paused until it is fixed.`
+
 // ---------------------------------------------------------------------------
 // RegWay AI conversations (saved chats). RLS limits both tables to the
 // signed-in user's own conversations in their firm.

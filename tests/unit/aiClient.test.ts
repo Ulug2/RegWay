@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AnthropicError, callClaude, streamClaude, textOf, toolInput } from '../../supabase/functions/_shared/ai/client.ts'
+import { aiFailure, AnthropicError, callClaude, streamClaude, textOf, toolInput } from '../../supabase/functions/_shared/ai/client.ts'
 import { AiOutputError, runTool, type ToolSpec } from '../../supabase/functions/_shared/ai/structured.ts'
 import { fakeClient } from './helpers/fakeSupabase'
 import { jsonResponse, stubFetch } from './helpers/handler'
@@ -57,6 +57,24 @@ describe('callClaude', () => {
     expect(err).toBeInstanceOf(AnthropicError)
     expect(err).toMatchObject({ status: 400, message: expect.stringContaining('Anthropic API error: 400') })
     expect(calls).toHaveLength(1)
+  })
+
+  it('records a failed call under the caller, with why it failed, for the AI status', async () => {
+    answers(() => new Response('{"error":{"message":"Your credit balance is too low"}}', { status: 400 }))
+    const db = fakeClient()
+    await callClaude(REQUEST, { usage: { admin: db as never, functionName: 'match-relevance', firmId: 'firm-1' } }).catch(() => {})
+    expect(db.ran('usage_events', 'insert')[0].payload).toMatchObject({ function_name: 'match-relevance', ok: false, error: expect.stringMatching(/^credit: Anthropic API error: 400/) })
+  })
+
+  it('names why a call failed, and nothing for a call the caller stopped', () => {
+    expect(aiFailure(new AnthropicError(400, '{"error":{"message":"Your credit balance is too low"}}'))).toBe('credit')
+    expect(aiFailure(new AnthropicError(401, 'invalid x-api-key'))).toBe('auth')
+    expect(aiFailure(new AnthropicError(429, ''))).toBe('rate_limited')
+    expect(aiFailure(new AnthropicError(529, 'overloaded'))).toBe('unavailable')
+    expect(aiFailure(new AnthropicError(400, 'prompt is too long'))).toBe('other')
+    expect(aiFailure(new DOMException('timed out', 'TimeoutError'))).toBe('timeout')
+    expect(aiFailure(new TypeError('fetch failed'))).toBe('unavailable')
+    expect(aiFailure(new DOMException('stopped', 'AbortError'))).toBeNull()
   })
 
   it('fails a request that takes longer than its timeout instead of hanging', async () => {

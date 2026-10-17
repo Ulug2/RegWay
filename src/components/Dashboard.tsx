@@ -3,7 +3,7 @@ import { useCachedState } from '../lib/useCachedState'
 import { isScanning, needsScan, onScanChange, prewarmCompanies } from '../lib/scans'
 import { patchCache, writeCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { fetchFirmRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchImpactStatuses, matchGeopoliticalDevelopments, subscribeToMatches } from '../lib/data'
+import { fetchFirmRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchAiOutage, aiOutageText, type AiOutage, fetchImpactStatuses, matchGeopoliticalDevelopments, subscribeToMatches } from '../lib/data'
 import type { MatchedRegulation, PortfolioCompany, Fund, Firm } from '../lib/types'
 import { DEFAULT_FILTER, type FeedFilter } from '../lib/feedFilter'
 import type { DaySelection } from '../lib/feedDays'
@@ -134,8 +134,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   // Platform-wide, not per-firm — so a quiet dashboard reads as a stated
   // data-source limitation rather than silently implying nothing is relevant.
   const [failingSources, setFailingSources] = useState<string[]>([])
+  // The AI itself failing (no credit, the service down) stops matching,
+  // analyses and chat for every firm: said outright, with why.
+  const [aiOutage, setAiOutage] = useState<AiOutage | null>(null)
   useEffect(() => {
     fetchFailingSources().then(setFailingSources).catch(() => {})
+    fetchAiOutage().then(setAiOutage).catch(() => {})
   }, [])
 
   const dismiss = (regulationId: string) => {
@@ -228,6 +232,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               {firm ? `Here's what's moving across ${firm.name} today.` : "Here's what's moving across your firm today."}
             </p>
           </div>
+
+          {aiOutage && (
+            <div className="notice is-warn mb-8" role="alert">
+              {aiOutageText(aiOutage)}
+            </div>
+          )}
 
           {failingSources.length > 0 && (
             <div className="notice mb-8" role="status">

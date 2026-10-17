@@ -63,6 +63,43 @@ export class AnthropicError extends Error {
   }
 }
 
+// Why a call failed, in the words the dashboard's AI status (migration 0038)
+// and the chat's error use. Null when the caller stopped it on purpose.
+export type AiFailure = 'credit' | 'auth' | 'rate_limited' | 'unavailable' | 'timeout' | 'other'
+
+export function aiFailure(err: unknown): AiFailure | null {
+  const name = (err as Error)?.name
+  if (name === 'TimeoutError') return 'timeout'
+  if (name === 'AbortError') return null
+  if (err instanceof AnthropicError) {
+    if (/credit balance/i.test(err.body)) return 'credit'
+    if (err.status === 401 || err.status === 403) return 'auth'
+    if (err.status === 429) return 'rate_limited'
+    if (err.status >= 500) return 'unavailable'
+    return 'other'
+  }
+  // The request never got an answer (network, DNS).
+  return err instanceof TypeError ? 'unavailable' : 'other'
+}
+
+// What a person is told when the AI can't answer.
+export const AI_FAILURE_MESSAGES: Record<AiFailure, string> = {
+  credit: "RegWay AI is unavailable: the AI service account has run out of credit. It will work again once it's topped up.",
+  auth: 'RegWay AI is unavailable: the AI service refused its key.',
+  rate_limited: 'The AI service is busy right now. Please try again in a minute.',
+  unavailable: 'The AI service is not responding right now. Please try again in a few minutes.',
+  timeout: 'The AI service took too long to answer. Please try again.',
+  other: 'The AI service could not answer this request.',
+}
+
+// A failed call, recorded beside the ones that worked: what the dashboard's
+// AI status reads.
+export async function recordFailure(target: UsageTarget, model: string, err: unknown): Promise<void> {
+  const failure = aiFailure(err)
+  if (!failure) return
+  await recordUsage(target.admin, { functionName: target.functionName, firmId: target.firmId, model, ok: false, error: `${failure}: ${String((err as Error)?.message ?? err).slice(0, 300)}` })
+}
+
 const DEFAULT_TIMEOUT_MS = 120_000
 const RETRYABLE = new Set([429, 500, 502, 503, 504, 529])
 const MAX_RETRY_WAIT_MS = 10_000
@@ -104,7 +141,13 @@ async function send(request: ClaudeRequest, signal: AbortSignal): Promise<Respon
 
 export async function callClaude(request: ClaudeRequest, opts: CallOptions = {}): Promise<ClaudeResponse> {
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS)
-  const res = await send(request, opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout)
+  let res: Response
+  try {
+    res = await send(request, opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout)
+  } catch (err) {
+    if (opts.usage) await recordFailure(opts.usage, request.model, err)
+    throw err
+  }
   const result = (await res.json()) as ClaudeResponse
   if (opts.usage) await recordCall(opts.usage, request.model, result.usage)
   return result
