@@ -61,7 +61,7 @@ export function mergeUsage(into: UsageTotals, raw: Record<string, unknown> | nul
 
 export async function recordUsage(
   admin: SupabaseClient,
-  params: { functionName: string; firmId?: string | null; model: string; ok?: boolean } & UsageTotals,
+  params: { functionName: string; firmId?: string | null; model: string; ok?: boolean; error?: string } & UsageTotals,
 ): Promise<void> {
   try {
     await admin.from('usage_events').insert({
@@ -75,6 +75,7 @@ export async function recordUsage(
       web_search_requests: params.webSearchRequests ?? 0,
       estimated_cost_usd: estimateCostUsd(params.model, params),
       ok: params.ok ?? true,
+      ...(params.error ? { error: params.error } : {}),
     })
   } catch (err) {
     console.error('failed to record usage event', params.functionName, (err as Error).message)

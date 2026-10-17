@@ -120,6 +120,14 @@ test.describe('firm page', () => {
     await expect(page.getByText("Automatic matching hasn't updated successfully recently")).toBeVisible()
   })
 
+  test('says so, with why, when the AI itself is failing', async ({ page, backend }) => {
+    backend.rpc.ai_status = [{ failing: true, reason: 'credit', since: '2026-10-08T23:30:00Z' }]
+    await signIn(page)
+    await page.goto('/')
+    await expect(page.getByRole('alert')).toContainText("RegWay's AI has not been working since")
+    await expect(page.getByRole('alert')).toContainText('run out of credit')
+  })
+
   test('loading the dashboard makes no call that costs AI money', async ({ page, backend }) => {
     await openFirmList(page)
     await page.waitForLoadState('networkidle')

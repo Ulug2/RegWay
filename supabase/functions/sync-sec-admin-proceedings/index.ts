@@ -32,7 +32,6 @@ import { parseRssItems, type FeedItem } from '../_shared/rss.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
 import { AnthropicError, callClaude, toolInput, type ClaudeResponse } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
-import { recordUsage } from '../_shared/usage.ts'
 
 const SOURCE = 'sec_admin_proceedings'
 const ADMIN_PROCEEDINGS_RSS = 'https://www.sec.gov/enforcement-litigation/administrative-proceedings/rss'
@@ -107,8 +106,8 @@ async function extractFromPdf(admin: SupabaseClient, pdfBase64: string): Promise
     }, { usage: { admin, functionName: 'sync-sec-admin-proceedings' }, timeoutMs: 45000 })
   } catch (err) {
     if (!(err instanceof AnthropicError)) throw err
+    // Recorded as a failed call by callClaude.
     console.error('admin-proceedings PDF extraction failed', err.status, err.body)
-    await recordUsage(admin, { functionName: 'sync-sec-admin-proceedings', model: MODEL, ok: false })
     return null
   }
   return toolInput<{ headline: string; narrative_text: string }>(result, 'submit_extraction') ?? null

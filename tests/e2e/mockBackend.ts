@@ -153,6 +153,11 @@ export class MockBackend {
   // Set to make Supabase refuse a new password, as its Auth settings would:
   // e.g. ['pwned'] for one found in a breach.
   weakPasswordReasons: string[] | null = null
+  // What a database function answers, by name; true for any not listed.
+  rpc: Record<string, unknown> = {
+    ai_status: [{ failing: false, reason: null, since: null }],
+  }
+
   functions: Record<string, FunctionHandler> = {
     'match-geopolitical-relevance': () => ({ json: { evaluated: 0, relevant: 0, candidates: 0, fundRowsChanged: 0 } }),
     'refresh-entity-impacts': () => ({ json: {} }),
@@ -218,7 +223,7 @@ export class MockBackend {
 
   private handle(method: string, path: string, query: URLSearchParams, body: any, accept: string): FunctionReply {
     if (path.startsWith('auth/v1/')) return this.auth(method, path, query, body)
-    if (path.startsWith('rest/v1/rpc/')) return { json: true }
+    if (path.startsWith('rest/v1/rpc/')) return { json: this.rpc[path.slice('rest/v1/rpc/'.length)] ?? true }
     if (path.startsWith('rest/v1/')) return this.rest(method, path.slice('rest/v1/'.length), query, body, accept)
     if (path.startsWith('functions/v1/')) {
       const name = path.slice('functions/v1/'.length)

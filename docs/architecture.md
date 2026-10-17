@@ -34,6 +34,9 @@ data travels; the code and the roadmap have the detail.
   cost in `usage_events`. `runTool` (`structured.ts`) is for answers that
   must come back as structured data, and `models.ts` says which model each
   job uses. New AI work uses these; nothing calls the API directly.
+  A failed call is recorded too (`ok = false`, with why in `error`), and
+  `ai_status()` (migration 0038) turns repeated failures into a banner on
+  the dashboard ("the AI service account has run out of credit").
 - **Scheduled jobs.** `pg_cron` runs inside the database and calls
   functions over HTTP on a timer. The schedules are written in migrations.
 

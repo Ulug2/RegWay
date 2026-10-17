@@ -32,7 +32,7 @@
 //   Authorization: Bearer <user session access_token>
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { streamClaude } from '../_shared/ai/client.ts'
+import { AI_FAILURE_MESSAGES, aiFailure, recordFailure, streamClaude } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { loadMatchedDevelopments, type MatchScope } from '../_shared/matchedDevelopments.ts'
@@ -170,7 +170,10 @@ Deno.serve(async (req) => {
       // Nothing was answered, so a conversation this message would have
       // started shouldn't appear in the user's history.
       await forgetConversation()
-      throw err
+      await recordFailure({ admin, functionName: 'regway-ai-chat', firmId: membership.firm_id }, MODEL, err)
+      // Said plainly ("out of credit"), not as the provider's raw error.
+      const failure = aiFailure(err)
+      return json({ error: failure ? AI_FAILURE_MESSAGES[failure] : (err as Error).message }, 502)
     }
 
     const answer = new AnswerCollector()
