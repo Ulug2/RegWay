@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
-import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, type AnswerReview, type ConversationSummary } from '../lib/data'
+import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, markConversationStopped, type AnswerReview, type ConversationSummary } from '../lib/data'
 import ConversationHistory from './ConversationHistory'
 import SessionContext, { type Focus } from './SessionContext'
 import { renderMarkdown } from '../lib/markdown'
@@ -634,6 +634,8 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
   const attachedFiles = [...messages.flatMap(m => (m.attachmentName ? [m.attachmentName] : [])), ...(pendingFile ? [`${pendingFile.name} (not sent yet)`] : [])]
 
   const stopGenerating = () => {
+    // The server doesn't see the closed connection; it watches for this.
+    if (abortRef.current) markConversationStopped(conversationId).catch(() => {})
     abortRef.current?.abort()
     abortRef.current = null
     if (statusTimerRef.current) clearInterval(statusTimerRef.current)

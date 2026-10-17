@@ -216,3 +216,86 @@ describe('stopping during the check', () => {
     expect(db.ran('regway_ai_messages', 'update')).toEqual([])
   })
 })
+
+// The closed connection doesn't reach the function in production; the
+// browser stamps the conversation and the function watches for it.
+describe('stopping, as the server sees it', () => {
+  const CONVERSATION = '6f1c2a9e-0000-4000-8000-000000000001'
+  const until = async (done: () => boolean) => {
+    for (let i = 0; i < 200 && !done(); i++) await new Promise(r => setTimeout(r, 5))
+  }
+  const withConversation = (state: { stamped: boolean; started?: boolean }) => (q: Query) => {
+    if (q.table === 'regway_ai_conversations' && q.op === 'select') {
+      if (q.columns === 'stopped_at') return { data: state.started === false ? null : { stopped_at: state.stamped ? '2026-10-17T20:03:57Z' : null } }
+      return { data: state.started === false ? null : { context: null, stopped_at: null } }
+    }
+    if (q.table === 'regway_ai_conversations') return {}
+    return database(q)
+  }
+
+  afterEach(() => setEnv('CHAT_STOP_POLL_MS', undefined))
+
+  it('a stop stamped during the check cancels both checks and writes no note', async () => {
+    setEnv('CHAT_REVIEW', 'on')
+    setEnv('CHAT_STOP_POLL_MS', '5')
+    const state = { stamped: false }
+    const db = fakeClient(withConversation(state))
+    setClient(db)
+    const { handler } = await loadHandler('regway-ai-chat')
+    let aborted = 0
+    stubFetch((url, init) => {
+      if (url.hostname !== 'api.anthropic.com') return undefined
+      const tool = JSON.parse(init!.body as string).tool_choice?.name
+      if (!tool) return new Response(ANSWER)
+      if (tool === 'submit_claims') return jsonResponse({ content: [{ type: 'tool_use', name: 'submit_claims', input: { claims: FOUND } }] })
+      init!.signal!.addEventListener('abort', () => aborted++)
+      return new Promise<Response>(() => {})
+    })
+    const res = await handler(post('regway-ai-chat', { token: 'user-jwt', body: { message: 'Does it affect GetixHealth?', conversationId: CONVERSATION } }))
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let seen = ''
+    while (!seen.includes('regway_status')) seen += decoder.decode((await reader.read()).value)
+
+    // The browser stopped reading, but nothing reached the function except the stamp.
+    state.stamped = true
+    await until(() => aborted === 2)
+    expect(aborted).toBe(2)
+    expect(db.ran('regway_ai_messages', 'insert')).toHaveLength(1)
+    expect(db.ran('regway_ai_messages', 'update')).toEqual([])
+  })
+
+  it('a stop stamped during the answer ends it, saves nothing and drops the conversation it started', async () => {
+    setEnv('CHAT_STOP_POLL_MS', '5')
+    const state = { stamped: false, started: false }
+    const db = fakeClient(q => {
+      // Created by this message; afterwards the watch finds it, then the stamp.
+      if (q.table === 'regway_ai_conversations' && q.op === 'insert') state.started = true
+      return withConversation(state)(q)
+    })
+    setClient(db)
+    const { handler } = await loadHandler('regway-ai-chat')
+    let cancelled = false
+    const encoder = new TextEncoder()
+    stubFetch(url => {
+      if (url.hostname !== 'api.anthropic.com') return undefined
+      // The model writes a first sentence, then keeps going until cancelled.
+      const body = new ReadableStream<Uint8Array>({
+        start: c => c.enqueue(encoder.encode(sse([{ type: 'content_block_delta', delta: { type: 'text_delta', text: 'Yes, ' } }]))),
+        cancel: () => {
+          cancelled = true
+        },
+      })
+      return new Response(body)
+    })
+    const res = await handler(post('regway-ai-chat', { token: 'user-jwt', body: { message: 'Does it affect GetixHealth?', conversationId: CONVERSATION } }))
+    const reader = res.body!.getReader()
+    await reader.read()
+
+    state.stamped = true
+    await until(() => cancelled && db.ran('regway_ai_conversations', 'delete').length > 0)
+    expect(cancelled).toBe(true)
+    expect(db.ran('regway_ai_messages', 'insert')).toEqual([])
+    expect(hasFilter(db.ran('regway_ai_conversations', 'delete')[0], 'eq', 'id', CONVERSATION)).toBe(true)
+  })
+})

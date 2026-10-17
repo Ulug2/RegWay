@@ -693,6 +693,13 @@ export async function discardEmptyConversation(conversationId: string): Promise<
   if (data.length === 0) await deleteConversation(conversationId)
 }
 
+// The stop button, for the server: it watches this stamp while it answers
+// (regway-ai-chat/conversation.ts), since a closed connection doesn't reach it.
+export async function markConversationStopped(conversationId: string): Promise<void> {
+  const { error } = await supabase.from('regway_ai_conversations').update({ stopped_at: new Date().toISOString() }).eq('id', conversationId)
+  if (error) throw error
+}
+
 // Deletes the conversation and (by cascade) its messages.
 export async function deleteConversation(conversationId: string): Promise<void> {
   const { error } = await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)

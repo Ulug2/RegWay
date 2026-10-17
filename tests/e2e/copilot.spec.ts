@@ -140,6 +140,8 @@ test.describe('a chat with no answer is not kept', () => {
     await expect(page.getByTitle('Send')).toBeVisible()
     await page.waitForLoadState('networkidle')
     expect(backend.tables.regway_ai_conversations.map(c => c.id)).toEqual(['conv-kept'])
+    // Stamped for the server, which doesn't see the closed connection.
+    expect(backend.tables.regway_ai_conversations[0].stopped_at).toEqual(expect.any(String))
   })
 })
 

@@ -19,6 +19,11 @@
 // session, so repeat messages within the cache window are billed at the
 // cache rate.
 //
+// Stop: the browser stops reading and stamps the conversation's stopped_at;
+// the function watches for that stamp (conversation.ts watchForStop), since
+// a closed connection alone does not reach it. A stopped answer is not saved
+// and its check is cancelled.
+//
 // `refocus` switches what the conversation is about from inside the chat
 // (the whole firm, one fund, one company): the conversation's stored scope
 // is updated and the model is told on that turn.
@@ -34,7 +39,7 @@ import { loadMatchedDevelopments, type MatchScope } from '../_shared/matchedDeve
 import type { CompanyRow, FundRow } from '../_shared/relevance.ts'
 import { firmRecord } from '../_shared/roles/entityContext.ts'
 import { recordUsage } from '../_shared/usage.ts'
-import { historyMessages, loadHistory, openConversation, refocusNote, resolveRefocus, type HistoryTurn, type Refocus } from './conversation.ts'
+import { historyMessages, loadHistory, openConversation, refocusNote, resolveRefocus, watchForStop, type HistoryTurn, type Refocus } from './conversation.ts'
 import { sizeProblem, systemPrompt, type AiContext, type Attachment, type EntityRow, type FirmSummary } from './prompt.ts'
 import { chatReviewEnabled, checkAnswer } from './review.ts'
 import { AnswerCollector, sseEvent } from './stream.ts'
@@ -96,11 +101,13 @@ Deno.serve(async (req) => {
     // reopened from, and its earlier turns give the model the thread.
     let history: HistoryTurn[] = []
     let startedConversation = false
+    let stoppedAt: string | null = null
     if (conversationId) {
       const conversation = await openConversation(supabase, conversationId, membership.firm_id, user.id, message, context)
       if (!conversation) return json({ error: 'Conversation not found' }, 404)
       context = conversation.context ?? undefined
       startedConversation = conversation.created
+      stoppedAt = conversation.stoppedAt
       history = await loadHistory(supabase, conversationId)
     }
     const forgetConversation = async () => {
@@ -170,7 +177,21 @@ Deno.serve(async (req) => {
     const upstream = anthropicRes.body!.getReader()
     const stopReview = new AbortController()
     let persisted = false
-    let cancelled = false
+    let stopped = false
+
+    // The user pressed stop (the reader went away, or the browser stamped
+    // the conversation): the answer and its check stop, and a conversation
+    // this message started stays out of the user's history if nothing was
+    // saved.
+    const stop = async () => {
+      if (stopped) return
+      stopped = true
+      endWatch()
+      stopReview.abort()
+      await upstream.cancel().catch(() => {})
+      if (!persisted) await forgetConversation()
+    }
+    const endWatch = conversationId ? watchForStop(supabase, conversationId, stoppedAt, () => void stop()) : () => {}
 
     // Saves the exchange; returns the answer's row id.
     const persist = async (): Promise<string | null> => {
@@ -196,7 +217,7 @@ Deno.serve(async (req) => {
     // After the answer: the check (review.ts), for an answer that makes a
     // claim about the firm's own entities, while someone is still reading.
     const review = async (send: (bytes: Uint8Array) => void, answerId: string | null) => {
-      if (!firm || !chatReviewEnabled() || cancelled || !answer.text.trim()) return
+      if (!firm || !chatReviewEnabled() || stopped || !answer.text.trim()) return
       try {
         const result = await checkAnswer({
           admin,
@@ -209,7 +230,7 @@ Deno.serve(async (req) => {
           signal: stopReview.signal,
           emit: event => send(sseEvent(event)),
         })
-        if (result && answerId && !cancelled) await supabase.from('regway_ai_messages').update({ review: result }).eq('id', answerId)
+        if (result && answerId && !stopped) await supabase.from('regway_ai_messages').update({ review: result }).eq('id', answerId)
       } catch (err) {
         console.error('chat answer check failed', (err as Error).message)
       }
@@ -218,7 +239,7 @@ Deno.serve(async (req) => {
     const stream = new ReadableStream<Uint8Array>({
       async pull(controller) {
         const send = (bytes: Uint8Array) => {
-          if (cancelled) return
+          if (stopped) return
           try {
             controller.enqueue(bytes)
           } catch {
@@ -232,17 +253,17 @@ Deno.serve(async (req) => {
           answer.push(value)
           return
         }
-        await review(send, await persist())
-        if (!cancelled) controller.close()
+        // Stopped before the answer ended: nothing is saved.
+        if (!stopped) await review(send, await persist())
+        endWatch()
+        try {
+          controller.close()
+        } catch {
+          // Already cancelled by the reader.
+        }
       },
-      // The reader went away (stop button, a closed tab): the check stops,
-      // and a conversation this message started stays out of the user's
-      // history if nothing was saved.
       async cancel() {
-        cancelled = true
-        stopReview.abort()
-        await upstream.cancel().catch(() => {})
-        if (!persisted) await forgetConversation()
+        await stop()
       },
     })
 
