@@ -13,8 +13,14 @@
 //
 //   POST /functions/v1/review-existing-matches   { "firmId": "<uuid>" }
 //
+// To review again after the Skeptic changed, pass the time the new round
+// started: only reviews made since then count as done.
+//
+//   POST /functions/v1/review-existing-matches   { "firmId": "<uuid>", "since": "<ISO time>" }
+//
 // Apply: only the reviews the owner approved, by id. A rejection turns the
-// match into a "not relevant" marker; a move puts it on the entity named.
+// match into a "not relevant" marker; a move puts it on the entity named; a
+// keep that depends on facts not recorded adds them to the match's reason.
 //
 //   POST /functions/v1/review-existing-matches   { "firmId": "<uuid>", "apply": ["<review id>", ...] }
 //
@@ -27,7 +33,7 @@ import { generateImpacts } from '../_shared/impact.ts'
 import { loadFirmEntities, type CompanyRow, type FundRow } from '../_shared/relevance.ts'
 import { firmRecord, loadHoldings, type EntityScope, type FirmRecord } from '../_shared/roles/entityContext.ts'
 import { reviewVerdicts, type ReviewCategory, type VerdictUnderReview } from '../_shared/roles/skeptic.ts'
-import { asDocument, REVIEWED_PREFIX, reviewRow, type ReviewCandidate } from '../_shared/verdictReview.ts'
+import { asDocument, dependsOnNote, REVIEWED_PREFIX, reviewRow, type ReviewCandidate } from '../_shared/verdictReview.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
@@ -48,7 +54,9 @@ interface MatchRow {
   regulations: ReviewCandidate & { category: string; source: string }
 }
 
-async function loadUnreviewed(admin: SupabaseClient, firmId: string): Promise<MatchRow[]> {
+async function loadUnreviewed(admin: SupabaseClient, firmId: string, since?: string): Promise<MatchRow[]> {
+  let reviewedQuery = admin.from('verdict_reviews').select('relevance_id').eq('firm_id', firmId).eq('mode', 'backfill').not('relevance_id', 'is', null)
+  if (since) reviewedQuery = reviewedQuery.gte('created_at', since)
   const [matches, reviewed] = await Promise.all([
     admin
       .from('regulation_relevance')
@@ -62,7 +70,7 @@ async function loadUnreviewed(admin: SupabaseClient, firmId: string): Promise<Ma
       .in('regulations.category', CATEGORIES)
       .neq('regulations.source', 'ai_search')
       .order('created_at', { ascending: false }),
-    admin.from('verdict_reviews').select('relevance_id').eq('firm_id', firmId).eq('mode', 'backfill').not('relevance_id', 'is', null),
+    reviewedQuery,
   ])
   if (matches.error) throw matches.error
   if (reviewed.error) throw reviewed.error
@@ -94,12 +102,12 @@ async function reviewBatch(admin: SupabaseClient, firmId: string, record: FirmRe
   return { reviews: (data ?? []).map(r => ({ ...r, title: titleOf.get(r.relevance_id as string) })), failed: 0, error: null }
 }
 
-async function review(admin: SupabaseClient, firmId: string) {
+async function review(admin: SupabaseClient, firmId: string, since?: string) {
   const entities = await loadFirmEntities(admin, firmId)
   if (!entities.firm) return json({ error: 'Firm not found' }, 404)
   const record = firmRecord({ ...entities, firm: entities.firm }, await loadHoldings(admin, firmId))
 
-  const unreviewed = await loadUnreviewed(admin, firmId)
+  const unreviewed = await loadUnreviewed(admin, firmId, since)
   const now = unreviewed.slice(0, MAX_PER_CALL)
   const batches = CATEGORIES.flatMap(category => {
     const ofCategory = now.filter(m => m.regulations.category === category)
@@ -119,10 +127,12 @@ interface StoredReview {
   id: string
   relevance_id: string
   regulation_id: string
-  decision: 'move' | 'reject'
+  decision: 'keep' | 'move' | 'reject'
   scope: EntityScope
   entity_name: string | null
   reason: string
+  unsupported_assumptions: string[]
+  original: { reason?: string }
 }
 
 // The (fund_id, portfolio_company_id) pair a moved match is stored under.
@@ -137,6 +147,13 @@ function targetOf(review: StoredReview, funds: FundRow[], companies: CompanyRow[
 async function applyOne(admin: SupabaseClient, firmId: string, review: StoredReview, funds: FundRow[], companies: CompanyRow[]): Promise<boolean> {
   if (review.decision === 'reject') {
     const { error } = await admin.from('regulation_relevance').update({ relevance_reason: `NOT_RELEVANT: ${REVIEWED_PREFIX}${review.reason}` }).eq('id', review.relevance_id).eq('firm_id', firmId)
+    if (error) throw error
+    return true
+  }
+  if (review.decision === 'keep') {
+    const note = dependsOnNote(review.unsupported_assumptions ?? [])
+    if (!note || !review.original?.reason) return false
+    const { error } = await admin.from('regulation_relevance').update({ relevance_reason: `${review.original.reason} ${note}` }).eq('id', review.relevance_id).eq('firm_id', firmId)
     if (error) throw error
     return true
   }
@@ -166,11 +183,11 @@ async function applyOne(admin: SupabaseClient, firmId: string, review: StoredRev
 async function apply(admin: SupabaseClient, firmId: string, ids: string[]) {
   const { data, error } = await admin
     .from('verdict_reviews')
-    .select('id, relevance_id, regulation_id, decision, scope, entity_name, reason')
+    .select('id, relevance_id, regulation_id, decision, scope, entity_name, reason, unsupported_assumptions, original')
     .eq('firm_id', firmId)
     .eq('mode', 'backfill')
     .in('id', ids)
-    .in('decision', ['move', 'reject'])
+    .in('decision', ['keep', 'move', 'reject'])
     .is('applied_at', null)
     .not('relevance_id', 'is', null)
   if (error) throw error
@@ -210,7 +227,8 @@ Deno.serve(async req => {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, key)
 
     if (Array.isArray(body.apply)) return await apply(admin, firmId, body.apply.filter((id: unknown): id is string => typeof id === 'string'))
-    return await review(admin, firmId)
+    const since = typeof body.since === 'string' && !Number.isNaN(Date.parse(body.since)) ? body.since : undefined
+    return await review(admin, firmId, since)
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }

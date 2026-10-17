@@ -123,6 +123,25 @@ describe('review-existing-matches', () => {
     expect(json).toMatchObject({ applied: 2, skipped: 0 })
   })
 
+  it('a keep that depends on facts not recorded adds them to the reason; a plain keep changes nothing', async () => {
+    const stored = [
+      { id: 'rev-3', relevance_id: 'rel-itar', regulation_id: 'reg-itar', decision: 'keep', scope: 'company', entity_name: 'Aero Logistics', reason: 'Plausible for a defense logistics company.', unsupported_assumptions: ['whether Aero Logistics ships defense articles'], original: { reason: 'Aero Logistics serves defense manufacturers.' } },
+      { id: 'rev-4', relevance_id: 'rel-pf', regulation_id: 'reg-pf', decision: 'keep', scope: 'firm', entity_name: null, reason: 'An SEC-registered adviser.', unsupported_assumptions: [], original: { reason: 'H.I.G. files Form PF.' } },
+    ]
+    const { db, json } = await call({ stored }, { firmId: FIRM_ID, apply: ['rev-3', 'rev-4'] })
+    const updates = db.ran('regulation_relevance', 'update')
+    expect(updates).toHaveLength(1)
+    expect(updates[0].payload).toEqual({ relevance_reason: 'Aero Logistics serves defense manufacturers. Depends on facts not recorded: whether Aero Logistics ships defense articles.' })
+    expect(hasFilter(updates[0], 'eq', 'id', 'rel-itar')).toBe(true)
+    expect(json).toMatchObject({ applied: 1, skipped: 1, appliedIds: ['rev-3'] })
+  })
+
+  it('reviews again only what this round has not reviewed, when given the time it started', async () => {
+    const { db } = await call({ reviewed: [] }, { firmId: FIRM_ID, since: '2026-10-17T21:00:00Z' })
+    const lookup = db.ran('verdict_reviews', 'select')[0]
+    expect(hasFilter(lookup, 'gte', 'created_at', '2026-10-17T21:00:00Z')).toBe(true)
+  })
+
   it('a move onto an entity that already has a row puts the reason there and removes the moved row', async () => {
     const stored = [{ id: 'rev-2', relevance_id: 'rel-era', regulation_id: 'reg-era', decision: 'move', scope: 'company', entity_name: 'Aero Logistics', reason: 'Aero Logistics operates in Italy.' }]
     const { db } = await call({ stored, targetRow: { id: 'rel-era-aero' } }, { firmId: FIRM_ID, apply: ['rev-2'] })
