@@ -146,6 +146,16 @@ Ready-to-take versions of these, with acceptance criteria, are in
     file), `src/lib/data.ts`, `tests/e2e/dashboard.spec.ts`.
 
 ### Known defects (S each unless marked)
+- **Nobody is told when the AI stops working** (M). The Anthropic credit
+  ran out and every AI call failed from 2026-10-08 to 2026-10-17: no
+  matching, analyses, scans or chat for nine days, found only by chance.
+  Failed calls are already recorded (`usage_events.ok = false`). Show a
+  banner on the dashboard, like the failing-source one, when AI calls have
+  failed repeatedly in the last hours, with the reason ("no AI credit",
+  "the API is down"), and tell the chat user plainly instead of a generic
+  error. Consider an email to the owner too (needs the owner's yes).
+  Files: `src/components/Dashboard.tsx`, `src/lib/data.ts`, a new
+  migration if the banner needs a view or function that RLS allows.
 - **Failing-source banner is vague and ungrammatical**: "Regulator feeds
   (U.S., UK and EU) hasn't updated…" when one feed of eleven is down. It
   should name the feed (`Dashboard.tsx`, `SOURCE_LABELS` in `data.ts`).
