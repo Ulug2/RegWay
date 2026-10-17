@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fakeClient, hasFilter, setClient, type Query } from './helpers/fakeSupabase'
 import { FIRM_ID, firmQueries, promptText, stubModel } from './helpers/firm'
-import { loadHandler, post } from './helpers/handler'
+import { jsonResponse, loadHandler, post } from './helpers/handler'
 import { SERVICE_KEY } from './helpers/setup'
 
 // review-existing-matches: the Skeptic over matches that already exist,
@@ -33,18 +33,18 @@ function database(state: State) {
   }
 }
 
-async function call(state: State, body: Record<string, unknown>, token = SERVICE_KEY) {
+const REVIEWS = {
+  reviews: [
+    { index: 0, decision: 'reject', scope: 'firm', entity_name: '', reason: 'A state program approval binds no one here.', unsupported_assumptions: [] },
+    { index: 1, decision: 'keep', scope: 'company', entity_name: 'GetixHealth', reason: 'Recorded billing activity.', unsupported_assumptions: [] },
+  ],
+}
+
+async function call(state: State, body: Record<string, unknown>, token = SERVICE_KEY, answer: unknown = REVIEWS) {
   const db = fakeClient(database(state))
   setClient(db)
   const { handler, background } = await loadHandler('review-existing-matches')
-  const net = stubModel({
-    submit_reviews: {
-      reviews: [
-        { index: 0, decision: 'reject', scope: 'firm', entity_name: '', reason: 'A state program approval binds no one here.', unsupported_assumptions: [] },
-        { index: 1, decision: 'keep', scope: 'company', entity_name: 'GetixHealth', reason: 'Recorded billing activity.', unsupported_assumptions: [] },
-      ],
-    },
-  })
+  const net = stubModel({ submit_reviews: answer })
   const res = await handler(post('review-existing-matches', { token, body }))
   await Promise.all(background)
   return { res, db, ...net, json: await res.json() }
@@ -73,7 +73,7 @@ describe('review-existing-matches', () => {
     expect(db.ran('regulation_relevance', 'upsert')).toEqual([])
     expect(json.reviews.find((r: { relevance_id: string }) => r.relevance_id === 'rel-air')).toMatchObject({ decision: 'reject', title: 'Florida air permit program approval' })
     expect(rows.map(r => r.relevance_id)).not.toContain('rel-301')
-    expect(json).toMatchObject({ reviewed: 2, remaining: 1 })
+    expect(json).toMatchObject({ reviewed: 2, failed: 1, remaining: 1 })
 
     // Only live, AI-judged matches: not dismissed, not derived from holdings,
     // not company web-scan results, not "not relevant" markers.
@@ -82,6 +82,15 @@ describe('review-existing-matches', () => {
     expect(hasFilter(query, 'eq', 'via_holdings', false)).toBe(true)
     expect(hasFilter(query, 'neq', 'regulations.source', 'ai_search')).toBe(true)
     expect(hasFilter(query, 'not', 'relevance_reason', 'like', 'NOT_RELEVANT:%')).toBe(true)
+  })
+
+  it('reports a failed AI call as an error, not as nothing to review', async () => {
+    const credit = () => jsonResponse({ error: { message: 'Your credit balance is too low' } }, 400)
+    const { res, db, json } = await call({}, { firmId: FIRM_ID }, SERVICE_KEY, credit)
+    expect(res.status).toBe(502)
+    expect(json).toMatchObject({ reviewed: 0, failed: 3, remaining: 3 })
+    expect(json.errors).toEqual([expect.stringContaining('credit balance is too low')])
+    expect(db.ran('verdict_reviews', 'insert')).toEqual([])
   })
 
   it('skips matches a backfill already reviewed, so it can be run until nothing remains', async () => {

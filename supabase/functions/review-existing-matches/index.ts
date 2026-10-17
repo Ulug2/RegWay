@@ -6,7 +6,9 @@
 // Review: each call reviews up to MAX_PER_CALL of the firm's current
 // matches not yet reviewed this way, records each review in verdict_reviews
 // (mode 'backfill') and changes nothing else. Call again until `remaining`
-// is 0. Matches from company web scans and enforcement cases are not
+// is 0. A batch the AI could not review is left for the next call and
+// counted in `failed`, with the reason in `errors` (status 502 when nothing
+// at all could be reviewed). Matches from company web scans and enforcement cases are not
 // reviewed (the Skeptic does not cover them yet).
 //
 //   POST /functions/v1/review-existing-matches   { "firmId": "<uuid>" }
@@ -71,6 +73,8 @@ async function loadUnreviewed(admin: SupabaseClient, firmId: string): Promise<Ma
 const scopeOf = (m: MatchRow): { scope: EntityScope; entity_name: string | null } =>
   m.fund_id ? { scope: 'fund', entity_name: m.funds?.name ?? null } : m.portfolio_company_id ? { scope: 'company', entity_name: m.portfolio_companies?.name ?? null } : { scope: 'firm', entity_name: null }
 
+// A batch whose review failed is not recorded, so the next call tries those
+// matches again; its error is reported rather than counted as "reviewed 0".
 async function reviewBatch(admin: SupabaseClient, firmId: string, record: FirmRecord, category: ReviewCategory, batch: MatchRow[]) {
   const items: VerdictUnderReview[] = batch.map((m, index) => ({ index, document: asDocument(m.regulations), ...scopeOf(m), reason: m.relevance_reason }))
   const base = { firm_id: firmId, function_name: FUNCTION_NAME, mode: 'backfill' } as const
@@ -80,14 +84,14 @@ async function reviewBatch(admin: SupabaseClient, firmId: string, record: FirmRe
     const byIndex = new Map(reviews.map(r => [r.index, r]))
     rows = batch.map((m, i) => reviewRow(base, m.regulation_id, { ...scopeOf(m), reason: m.relevance_reason }, byIndex.get(i)!, m.id))
   } catch (err) {
-    // Not recorded against the matches, so the next call tries them again.
-    console.error('backfill review failed', (err as Error).message)
-    return []
+    const error = (err as Error).message
+    console.error('backfill review failed', error)
+    return { reviews: [], failed: batch.length, error }
   }
   const { data, error } = await admin.from('verdict_reviews').insert(rows).select('id, relevance_id, decision, scope, entity_name, reason, unsupported_assumptions, original')
   if (error) throw error
   const titleOf = new Map(batch.map(m => [m.id, m.regulations.title]))
-  return (data ?? []).map(r => ({ ...r, title: titleOf.get(r.relevance_id as string) }))
+  return { reviews: (data ?? []).map(r => ({ ...r, title: titleOf.get(r.relevance_id as string) })), failed: 0, error: null }
 }
 
 async function review(admin: SupabaseClient, firmId: string) {
@@ -101,8 +105,14 @@ async function review(admin: SupabaseClient, firmId: string) {
     const ofCategory = now.filter(m => m.regulations.category === category)
     return Array.from({ length: Math.ceil(ofCategory.length / BATCH_SIZE) }, (_, i) => ({ category, rows: ofCategory.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE) }))
   })
-  const reviews = (await Promise.all(batches.map(b => reviewBatch(admin, firmId, record, b.category, b.rows)))).flat()
-  return json({ reviewed: reviews.length, remaining: unreviewed.length - reviews.length, reviews })
+  const results = await Promise.all(batches.map(b => reviewBatch(admin, firmId, record, b.category, b.rows)))
+  const reviews = results.flatMap(r => r.reviews)
+  const failed = results.reduce((n, r) => n + r.failed, 0)
+  const errors = [...new Set(results.flatMap(r => (r.error ? [r.error] : [])))]
+  const body = { reviewed: reviews.length, failed, remaining: unreviewed.length - reviews.length, ...(errors.length ? { errors } : {}), reviews }
+  // Nothing reviewed because every batch failed (no AI credit, the API down):
+  // an error, not an empty success.
+  return json(body, failed > 0 && reviews.length === 0 ? 502 : 200)
 }
 
 interface StoredReview {
