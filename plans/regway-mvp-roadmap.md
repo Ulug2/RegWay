@@ -74,8 +74,9 @@ Live in production (deployed 2026-10-17 and 18):
   answer costs about $0.01 to $0.04 more.
 
 Measured on H.I.G. (three backfill rounds, 2026-10-17 and 18): the three
-known false matches were rejected or moved; 23 matches applied (2 moved,
-21 rejected, 2 kept with a note). Round three: 17 of 18 right; the one
+known false matches were rejected or moved; 24 reviews applied (3 moves,
+19 rejections, 2 kept with a note; the battery standard was moved to
+Rheintal, then rejected). Round three: 17 of 18 right; the one
 error (the EU Customs Code for A.L.A., "not known to be in the EU") is
 fixed by #27 and not yet re-run.
 
