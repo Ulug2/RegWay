@@ -9,6 +9,46 @@
 >
 > New entries go directly below this box, newest first.
 
+### Item 17: the Skeptic on matching, checked chat answers (2026-10-15 to 10-18, PRs #19–#29)
+Decided 2026-10-15: a Skeptic, a separate second AI pass, on matching first;
+the chat answers in one call and is checked afterwards only when it claims
+something applies to the firm, a fund or a company. The seven-role chat
+pipeline in `plans/regway-ai-multi-agent-architecture.md` was not built (four
+to five times the cost per message).
+- **One AI client** (#19, `_shared/ai/`): every Claude call goes through
+  `callClaude` / `streamClaude` (timeout, one retry, cost recorded);
+  `runTool` for structured answers; `models.ts`. Failed calls are recorded
+  with their cause, and `ai_status()` (migration 0038) puts a banner on the
+  dashboard when the AI keeps failing (#25).
+- **The Skeptic on matching** (#20, #23, #26, #27; `roles/skeptic.ts`,
+  `verdictReview.ts`): reviews each relevant verdict of the regulatory and
+  geopolitical matchers and of a user's re-check: keep, move to the right
+  entity, or reject. A plausible match resting on an unrecorded fact is kept
+  with "Depends on facts not recorded: …"; proposed rules are kept; the
+  record states which entities are in the EU or the UK. Every review is in
+  `verdict_reviews` (migration 0036). `review-existing-matches` reviews a
+  firm's existing matches, applies approved ones by id, and takes `since`
+  for a new round. **`SKEPTIC_MODE=on` since 2026-10-18.**
+- **Checked chat answers** (#21, #24, #29; `regway-ai-chat/review.ts`): a
+  claim gate (Haiku), then the Skeptic against the record and a check of
+  the cited passages, with step labels and a note saved with the answer.
+  Stop reaches the server through a stamp on the conversation (migration
+  0037), since a closed connection does not. Notes calibrated to flag only
+  what matters (#29). **`CHAT_REVIEW=on`.**
+- **Measured on H.I.G.** Matches, four backfill rounds: the three known
+  false matches (Section 301 on 3Pillar, the Florida air permit on the firm,
+  A.L.A. verdicts stored on the firm) rejected or moved; 24 reviews applied
+  (3 moves, 19 rejections, 2 kept with a note). The matcher alone had put
+  about 14 wrong matches among 29. Last round: 10 of 11 right; the EU
+  Customs Code for A.L.A. was rejected ("imports and exports not recorded"),
+  a borderline call left unapplied (item 17a). Chat, 8 questions twice: the
+  final notes caught two real errors (a rule on the adviser said to bind
+  the funds) and speculative export-control claims; two remain strict but
+  defensible. A checked answer costs about $0.02 more.
+- Found and fixed on the way: the AI credit had run out unnoticed for nine
+  days (#25); the backfill hid failed AI calls as "reviewed 0" (#22).
+- Tests: 477 unit, the browser tests for the chat and the dashboard banner.
+
 ### Repository tidy-up for the team (2026-10-12)
 - Roadmap cut down to open work; this file created from the old one.
 - `prompts/` → `docs/notes/`, product documents → `docs/product/`, logo

@@ -45,55 +45,24 @@ multi-phase build.
 
 ## In progress
 
-### 17. RegWay AI: Skeptic on matching, checked chat answers (XL) — owner; live, Skeptic in shadow
-The owner is working on this; nobody else changes
-`supabase/functions/regway-ai-chat/`, `_shared/ai/`, `_shared/roles/`,
-`_shared/verdictReview.ts`, the matchers' judges
-(`_shared/regulatoryJudge.ts`, `_shared/geopoliticalJudge.ts`),
-`_shared/impact.ts` or `rematch-regulation` without asking first.
-
-Why: relevance reasoning drifted speculative. A Skeptic is a separate second
-pass with its own context. Decided 2026-10-15: the Skeptic on matching
-first; the chat answers in one call and is checked afterwards only when it
-claims something applies to the firm, a fund or a company. The full
-seven-role chat pipeline in `plans/regway-ai-multi-agent-architecture.md` is
-not being built (four to five times the cost per message).
-
-Live in production (deployed 2026-10-17 and 18):
-- **One AI client** (#19): timeout, one retry, cost recording; failed calls
-  recorded with their cause (#25).
-- **The Skeptic on matching** (#20, #23, #26, #27): keep, move or reject
-  each new relevant match; a plausible match resting on an unrecorded fact
-  is kept with "Depends on facts not recorded: …"; proposed rules are kept;
-  EU / UK membership is stated in the record. `SKEPTIC_MODE=shadow`.
-  `review-existing-matches` (backfill, apply by id, `since` for a new round).
-- **Checked chat answers** (#21, #24): `CHAT_REVIEW=on`. Tested in the
-  browser on H.I.G.: labels then a note; no labels for an explain-only
-  question; stop cancels the check (the browser stamps the conversation,
-  migration 0037); the note comes back when a chat is reopened. A checked
-  answer costs about $0.01 to $0.04 more.
-
-Measured on H.I.G. (three backfill rounds, 2026-10-17 and 18): the three
-known false matches were rejected or moved; 24 reviews applied (3 moves,
-19 rejections, 2 kept with a note; the battery standard was moved to
-Rheintal, then rejected). Round three: 17 of 18 right; the one
-error (the EU Customs Code for A.L.A., "not known to be in the EU") is
-fixed by #27 and not yet re-run.
-
-Left (owner):
-1. Re-run `review-existing-matches` with `since` after #27 (needs AI
-   credit); if the EU Customs Code is kept, `SKEPTIC_MODE=on`.
-2. About 10 more chat questions (borderline, drafting) to judge the notes;
-   4 asked so far.
-3. Then this item moves to `docs/archive/roadmap-history.md`.
-
-Later, if wanted (each its own item):
-- A "Hidden by review" list for the owner: with the Skeptic on, a rejected
-  match leaves the dashboard and is visible only in `verdict_reviews`.
-- The Skeptic for enforcement matches (needs its own checklist: a case
-  against someone else) and for company web-scan results (review before
-  they are saved).
-- A Skeptic pass before an impact analysis is written.
+### 17a. After item 17: a safety net and the Skeptic's reach (S–M each) — owner
+Item 17 is done (`docs/archive/roadmap-history.md`). With `SKEPTIC_MODE=on`
+a rejected match leaves the dashboard; these follow from that. Ask the
+owner before changing `supabase/functions/regway-ai-chat/`, `_shared/ai/`,
+`_shared/roles/`, `_shared/verdictReview.ts`, the matchers' judges or
+`_shared/impact.ts`: they decide what the AI is asked.
+1. **"Hidden by review" list for the owner** (M; do before the first
+   customer). Rejected matches are visible today only in `verdict_reviews`.
+   Known borderline rejection: the EU Customs Code for A.L.A. S.p.A.
+   (kept, moved, then rejected across four rounds; not applied).
+2. **The Skeptic for enforcement matches** (M): needs its own checklist (a
+   case against someone else; overlap of conduct, never implied
+   wrongdoing).
+3. **The Skeptic for company web-scan results** (M): review before they
+   are saved; today the backfill skips them (`source = 'ai_search'`).
+4. **An email to the owner when the AI stops working** (S; needs the
+   owner's yes). The dashboard banner (migration 0038) shows only to
+   someone who opens it.
 
 ## Open for the team
 
@@ -134,10 +103,6 @@ Ready-to-take versions of these, with acceptance criteria, are in
     file), `src/lib/data.ts`, `tests/e2e/dashboard.spec.ts`.
 
 ### Known defects (S each unless marked)
-- **An email to the owner when the AI stops working** (S; needs the
-  owner's yes). The dashboard says so since 2026-10-17 (`ai_status()`,
-  migration 0038), but only to someone who opens it; the credit ran out
-  unnoticed for nine days in October.
 - **Failing-source banner is vague and ungrammatical**: "Regulator feeds
   (U.S., UK and EU) hasn't updated…" when one feed of eleven is down. It
   should name the feed (`Dashboard.tsx`, `SOURCE_LABELS` in `data.ts`).
@@ -150,7 +115,7 @@ Ready-to-take versions of these, with acceptance criteria, are in
   include:&nbsp;Guidance focused…". Not reproduced since; `_shared/rss.ts`.
 - **Some enforcement cards repeat the title as the summary.**
 - **After stopping a chat answer, the empty bubble stays** until the next
-  message. (Chat file: ask the owner first, see item 17.)
+  message. (Chat file: ask the owner first, see item 17a.)
 - **The one-year staleness threshold is defined twice** (client
   `questionnaire.ts`, server `entityFacts.ts`).
 - **"JWT issued at future"**: the database now and then refuses a newly

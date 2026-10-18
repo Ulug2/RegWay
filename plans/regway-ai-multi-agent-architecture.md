@@ -1,9 +1,10 @@
 # RegWay AI: multi-role agentic architecture
 
-**Status (2026-10-15): partly built, differently.** The owner chose to put
-the Skeptic on the background matching first and to check chat answers after
-they stream, rather than build the full seven-role chat pipeline below. What
-was built and what is left: roadmap item 17. This document stays as the
+**Status (2026-10-18): partly built, differently, and live.** The owner chose
+to put the Skeptic on the background matching first and to check chat
+answers after they stream, rather than build the full seven-role chat
+pipeline below. What was built and measured: the item 17 entry in
+`docs/archive/roadmap-history.md`; what follows: roadmap item 17a. This document stays as the
 reference for the roles and the reasoning; the "Implementation phases" below
 are not the plan being followed.
 
