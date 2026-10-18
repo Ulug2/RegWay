@@ -24,8 +24,8 @@ export const CHALLENGE_CHECKLIST = `Check each one against this list:
 2. Wrong entity: does the connection actually run through a different entity than the one named (a company's activity stored as a match for the firm, or the other way round)?
 3. Entity type: does the measure bind this kind of entity at all (an investment adviser, a fund, a hospital, a carrier, a bank)?
 4. Scope of the measure: if it is limited to particular products, sectors, activities or places, does the entity's recorded activity or location fall inside it? A shared region or a general industry label is not enough.
-5. Real obligation: does the document create or change an obligation, restriction or exposure, or is it administrative (a correction, an extension of a comment period, an approval of another body's program, an individual's case)?
-6. Proposed vs final, published vs effective: is the conclusion right about what is already binding?
+5. Real obligation: would the document create, change or remove an obligation, restriction or exposure for the entity once in force? A proposed rule counts: firms follow proposals to comment on them and prepare. An administrative document does not: a correction, an extension of a comment period, a technical conforming amendment, an approval of another body's program, an individual's case.
+6. Proposed vs final, published vs effective: if the reason treats a proposal as already binding or gets a date wrong, keep the match and state its status correctly in your reason. This alone is never a reason to reject.
 7. Thresholds and exemptions: is there a recorded fact that puts the entity under a threshold or inside an exemption?
 8. Jurisdiction: a UK or EU measure binds only an entity recorded as established, operating or marketing there; a state measure only one recorded in that state.
 9. Could the opposite be true: argue briefly that it does not apply; if that argument is at least as strong, the match is not supported.`
@@ -66,7 +66,7 @@ export type ReviewCategory = 'regulatory' | 'geopolitical'
 
 const CATEGORY_NOTES: Record<ReviewCategory, string> = {
   regulatory:
-    'These are rules, proposed rules, guidance and regulator announcements. A match is supported only when the document creates a specific obligation, deadline or requirement and a recorded fact of the named entity puts it inside that measure.',
+    'These are rules, proposed rules, guidance and regulator announcements. A match is supported only when the document creates, changes or removes a specific obligation, deadline or requirement (or would, if it is a proposal) and a recorded fact of the named entity puts it inside that measure.',
   geopolitical:
     'These are sanctions, export controls, trade actions and travel advisories, matched by recorded location. A designation of named persons or entities is not a measure on their country: presence in that country is not a connection. A measure limited to products or sectors needs the entity\'s recorded activity to fall inside it, besides any location link. A global import measure needs recorded foreign suppliers or import activity. Geopolitical matches stand on the firm or a portfolio company, never on a fund (fund exposure is derived from holdings).',
 }
@@ -79,7 +79,7 @@ Decide for each match:
 - "keep": the reason rests on recorded facts of the named entity and survives every check. Do not reject a well-supported match because you can imagine a doubt the facts do not raise.
 - "keep", with the missing fact listed: the entity's recorded business is the kind the measure is aimed at, and only a detail of its activity is not recorded (an aerospace and defense logistics company and a rule on exporting defense articles, when whether it ships such articles is not recorded). List that detail in unsupported_assumptions and say in the reason what the match depends on. The firm sees the match with that caveat and can confirm the fact.
 - "move": the connection is real and supported by recorded facts, but it runs through a different entity than the one named. Give that entity's scope and its exact name as listed, and a reason that names the recorded fact it rests on.
-- "reject": a check fails on what is recorded: the measure is aimed at a different kind of entity or activity than anything recorded for it (a medical billing company and a rule for laboratories), the document creates no obligation, or the jurisdiction does not reach it; and no other entity's recorded facts support it either. A missing fact is a reason to reject only when nothing recorded points towards it.
+- "reject": a check fails on what is recorded: the measure is aimed at a different kind of entity or activity than anything recorded for it (a medical billing company and a rule for laboratories), the document is administrative (check 5), or the jurisdiction does not reach it; and no other entity's recorded facts support it either. A missing fact is a reason to reject only when nothing recorded points towards it.
 
 Write each reason as one sentence a compliance officer can check against the recorded facts: name the fact and the measure. For a rejection, say which check failed. Never add a fact that is not recorded. ${FACT_MARKERS}`
 
