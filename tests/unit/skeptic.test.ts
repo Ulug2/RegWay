@@ -49,6 +49,9 @@ describe('the Skeptic reviewing matches', () => {
     // Location footprints are for geopolitical items only.
     expect(text).not.toContain('Location footprints')
     expect(call.body.system[0].text).toContain('Could the opposite be true')
+    // A proposal is followed, not rejected for not binding yet.
+    expect(call.body.system[0].text).toContain('A proposed rule counts')
+    expect(call.body.system[0].text).toContain('This alone is never a reason to reject')
     expect(db.ran('usage_events', 'insert')[0].payload).toMatchObject({ function_name: 'match-relevance/skeptic', firm_id: FIRM_ID })
   })
 
