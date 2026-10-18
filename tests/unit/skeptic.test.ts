@@ -43,6 +43,8 @@ describe('the Skeptic reviewing matches', () => {
     expect(text).toContain('holds: GetixHealth')
     expect(text).toContain('COMPANY — GetixHealth')
     expect(text).toContain('held by: Fund I')
+    // Membership said outright, not left to the model.
+    expect(text).toMatch(/COMPANY — Aero Logistics:[^\n]*located in the EU \(Italy\)/)
     expect(text).toContain('not recorded:')
     expect(text).toContain('Matched to the firm. Stated reason: H.I.G. is headquartered in Florida.')
     expect(text).toContain('Matched to company "GetixHealth"')
@@ -219,5 +221,13 @@ describe('the Skeptic inside match-relevance', () => {
     const { rows, model } = await match(undefined)
     expect(model.map(m => m.tool)).toEqual(['submit_verdicts'])
     expect(rows.map(r => r.relevance_reason)).toEqual(matcherVerdicts.map(v => v.reason))
+  })
+})
+
+describe('regionFact', () => {
+  it('names EU members and says the UK is not one', async () => {
+    const { regionFact } = await import('../../supabase/functions/_shared/roles/entityContext.ts')
+    expect(regionFact(['Italy', 'United Kingdom', 'France', 'Italy'])).toBe('located in the EU (Italy, France); and in the UK, which is not in the EU')
+    expect(regionFact(['United States'])).toBe('')
   })
 })

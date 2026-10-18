@@ -7,6 +7,7 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { COMPANY_FACTS, COMPANY_UNKNOWNS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from '../entityFacts.ts'
 import { companyFootprint, describeFootprint, firmFootprint } from '../footprint.ts'
+import { EU_MEMBERS } from '../regulatorFeeds.ts'
 import type { FirmEntities } from '../relevance.ts'
 
 export type EntityScope = 'firm' | 'fund' | 'company'
@@ -37,11 +38,22 @@ export async function loadHoldings(admin: SupabaseClient, firmId: string): Promi
   return (data ?? []) as Holding[]
 }
 
+// Whether an entity's recorded countries put it in the EU or the UK, said
+// outright: a reviewer once judged a company headquartered in Italy as
+// outside the EU customs territory.
+export function regionFact(countries: string[]): string {
+  const eu = [...new Set(countries.filter(c => EU_MEMBERS.has(c)))]
+  const parts = [eu.length ? `in the EU (${eu.join(', ')})` : '', countries.includes('United Kingdom') ? 'in the UK, which is not in the EU' : ''].filter(Boolean)
+  return parts.length ? `located ${parts.join('; and ')}` : ''
+}
+
+const countriesOf = (footprint: { facts: { country: string }[] }) => footprint.facts.map(f => f.country)
+
 export function firmRecord(entities: FirmEntities & { firm: NonNullable<FirmEntities['firm']> }, holdings: Holding[] = []): FirmRecord {
   const { firm, funds, companies } = entities
   const nameOf = (rows: { id: string; name: string }[], id: string) => rows.find(r => r.id === id)?.name
   const records: EntityRecord[] = [
-    { scope: 'firm', name: firm.name, facts: facts(firm as unknown as Record<string, unknown>, FIRM_FACTS, FIRM_UNKNOWNS) },
+    { scope: 'firm', name: firm.name, facts: [facts(firm as unknown as Record<string, unknown>, FIRM_FACTS, FIRM_UNKNOWNS), regionFact(countriesOf(firmFootprint(firm)))].filter(Boolean).join('; ') },
     ...funds.map(f => {
       const holds = holdings.filter(h => h.fund_id === f.id).map(h => nameOf(companies, h.portfolio_company_id)).filter(Boolean)
       return { scope: 'fund' as const, name: f.name, facts: facts({ ...f, holds } as unknown as Record<string, unknown>, FUND_FACTS, FUND_UNKNOWNS) }
@@ -49,7 +61,7 @@ export function firmRecord(entities: FirmEntities & { firm: NonNullable<FirmEnti
     ...companies.map(c => {
       const heldBy = holdings.filter(h => h.portfolio_company_id === c.id).map(h => nameOf(funds, h.fund_id)).filter(Boolean)
       const recorded = facts(c as unknown as Record<string, unknown>, COMPANY_FACTS, COMPANY_UNKNOWNS)
-      return { scope: 'company' as const, name: c.name, facts: [recorded, heldBy.length ? `held by: ${heldBy.join(', ')}` : ''].filter(Boolean).join('; ') }
+      return { scope: 'company' as const, name: c.name, facts: [recorded, regionFact(countriesOf(companyFootprint(c))), heldBy.length ? `held by: ${heldBy.join(', ')}` : ''].filter(Boolean).join('; ') }
     }),
   ]
   return {

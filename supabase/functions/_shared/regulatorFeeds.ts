@@ -186,7 +186,7 @@ export const sourcesIn = (region: Region, category: RegulatorFeed['category'] = 
   ...new Set(REGULATOR_FEEDS.filter(f => f.region === region && f.category === category).map(f => f.source)),
 ]
 
-const EU_MEMBERS = new Set([
+export const EU_MEMBERS = new Set([
   'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic', 'Czechia', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary',
   'Ireland', 'Italy', 'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands', 'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia', 'Spain', 'Sweden',
 ])
