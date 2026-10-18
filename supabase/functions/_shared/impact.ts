@@ -189,13 +189,13 @@ export async function generateImpact(
         role: 'user',
         content: [
           {
-            // Regulation-level, not firm-level — identical whether this is
-            // firm #1 or firm #50 analyzing the same item, and identical on
-            // a `force: true` regeneration. Its own cache breakpoint,
-            // separate from the firm-specific entity block below, so that
-            // reuse isn't defeated by the one part that actually varies.
+            // Regulation-level, not firm-level. Not cached: a cache write
+            // costs 25% more than plain input and pays off only when another
+            // firm analyses the same item within minutes, which with one
+            // firm almost never happens (2026-10-18: ~6,500 tokens written
+            // per analysis, ~400 read back). Add a cache_control breakpoint
+            // here again once many firms share the same developments.
             type: 'text',
-            cache_control: { type: 'ephemeral' },
             text: `${prompt.documentLabel}
 Title: ${reg.title}
 Agency: ${reg.agency ?? 'n/a'} · Jurisdiction: ${reg.jurisdiction ?? 'n/a'}
