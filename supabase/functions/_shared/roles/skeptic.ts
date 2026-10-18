@@ -204,11 +204,16 @@ const ANSWER_SYSTEM = `You are the reviewer in RegWay, a regulatory intelligence
 ${CHALLENGE_CHECKLIST}
 
 For each claim:
-- "supported": recorded facts carry it, or RegWay's matched list already records it with a reason that carries it.
-- "overstated": a connection is supported, but the claim states it more firmly or more widely than the facts allow (a "must" where it is "if", a whole firm where it is one company, a final rule that is only proposed).
-- "unsupported": it rests on a fact that is not recorded, or a check fails. A claim that something does NOT apply is unsupported when a recorded fact suggests it might.
+- "supported": recorded facts carry it, or RegWay's matched list already records it with a reason that carries it. Also supported:
+  - a claim that something does NOT apply, when the measure is aimed at a kind of business or activity that nothing recorded for the entity points to. A missing negative ("whether it also makes e-bike batteries") is not a gap: what an entity does not do is never recorded.
+  - a claim that is already hedged ("likely", "if", "depends on whether …") and names what it depends on, when the entity's recorded business is the kind the measure is aimed at.
+  - an obligation that follows from a recorded fact as a matter of course (a company recorded as operating in a country employs people there).
+- "overstated": a connection is supported, but the claim states it more firmly or more widely than the facts allow (a "must" where it is "if", a whole firm where it is one company, a fund where the rule binds its adviser, a final rule that is only proposed).
+- "unsupported": it contradicts a recorded fact, it rests on a fact that is not recorded and nothing recorded points towards, or a check fails. A claim that something does NOT apply is unsupported when a recorded fact suggests it might.
 
-The note is one sentence written to the user: say what the claim assumes that is not recorded, or which recorded fact carries it. Plain words, no mention of reviewers or checks. ${FACT_MARKERS}`
+Flag only what a careful compliance officer would want to know before relying on the answer: a note on every claim teaches the user to ignore the notes.
+
+The note is one sentence written to the user: say what the claim assumes that is not recorded, which recorded fact it contradicts, or which recorded fact carries it. Plain words, no mention of reviewers or checks. ${FACT_MARKERS}`
 
 const ANSWER_TOOL: ToolSpec = {
   name: 'submit_claim_reviews',

@@ -152,6 +152,10 @@ describe('regway-ai-chat with the answer check on', () => {
     expect(hasFilter(update, 'eq', 'id', 'msg-answer')).toBe(true)
     // The reviewer saw what is recorded about GetixHealth.
     expect(promptText(model[2])).toContain('COMPANY — GetixHealth')
+    // Calibrated against caution on every claim (2026-10-18): a missing
+    // negative or an already-hedged claim is not flagged.
+    expect(model[2].body.system[0].text).toContain('A missing negative')
+    expect(model[2].body.system[0].text).toContain('a note on every claim teaches the user to ignore the notes')
   })
 
   it('shows nothing more for an answer that makes no claim about the firm', async () => {
