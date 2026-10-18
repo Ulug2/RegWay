@@ -45,67 +45,54 @@ multi-phase build.
 
 ## In progress
 
-### 17. RegWay AI: Skeptic on matching, checked chat answers (XL) — owner; built, waiting to be measured and switched on
+### 17. RegWay AI: Skeptic on matching, checked chat answers (XL) — owner; live, Skeptic in shadow
 The owner is working on this; nobody else changes
 `supabase/functions/regway-ai-chat/`, `_shared/ai/`, `_shared/roles/`,
 `_shared/verdictReview.ts`, the matchers' judges
 (`_shared/regulatoryJudge.ts`, `_shared/geopoliticalJudge.ts`),
 `_shared/impact.ts` or `rematch-regulation` without asking first.
 
-Why: relevance reasoning drifts speculative, and two prompt fixes have not
-cured it. A Skeptic is a separate second pass with its own context, which
-one prompt cannot do for itself. Decided with the owner on 2026-10-15: the
-Skeptic goes on matching first, where the false matches are; the chat keeps
-answering in one call and is checked afterwards only when an answer claims
-something applies to the firm, a fund or a company, with live step labels.
-The full seven-role chat pipeline in
-`plans/regway-ai-multi-agent-architecture.md` is not being built: it would
-cost about four to five times as much per message and slow every answer.
+Why: relevance reasoning drifted speculative. A Skeptic is a separate second
+pass with its own context. Decided 2026-10-15: the Skeptic on matching
+first; the chat answers in one call and is checked afterwards only when it
+claims something applies to the firm, a fund or a company. The full
+seven-role chat pipeline in `plans/regway-ai-multi-agent-architecture.md` is
+not being built (four to five times the cost per message).
 
-Built (2026-10-15, three stacked pull requests, all switched off):
-1. **PR #19, one AI client** (`_shared/ai/`): every Claude call goes through
-   `callClaude` / `streamClaude` (timeout, one retry, cost recording);
-   `runTool` for structured answers; `models.ts`.
-2. **PR #20, the Skeptic on matching**: reviews each match the regulatory
-   and geopolitical matchers (and a user re-check) mark relevant: keep, move
-   to the right entity, or reject. Recorded in `verdict_reviews` (migration
-   0036). `SKEPTIC_MODE` = off | shadow | on. `review-existing-matches`
-   reviews a firm's existing matches without changing them, then applies
-   only the reviews the owner approves.
-3. **PR #21, checked chat answers**: `CHAT_REVIEW` = on. A claim gate
-   (Haiku) finds applicability claims; the Skeptic (facts) and a citation
-   check (quoted passages) run side by side with step labels; a note under
-   the answer, saved with it.
+Live in production (deployed 2026-10-17 and 18):
+- **One AI client** (#19): timeout, one retry, cost recording; failed calls
+  recorded with their cause (#25).
+- **The Skeptic on matching** (#20, #23, #26, #27): keep, move or reject
+  each new relevant match; a plausible match resting on an unrecorded fact
+  is kept with "Depends on facts not recorded: …"; proposed rules are kept;
+  EU / UK membership is stated in the record. `SKEPTIC_MODE=shadow`.
+  `review-existing-matches` (backfill, apply by id, `since` for a new round).
+- **Checked chat answers** (#21, #24): `CHAT_REVIEW=on`. Tested in the
+  browser on H.I.G.: labels then a note; no labels for an explain-only
+  question; stop cancels the check (the browser stamps the conversation,
+  migration 0037); the note comes back when a chat is reopened. A checked
+  answer costs about $0.01 to $0.04 more.
 
-Not verified: no real AI call has been made by any of it. The prompts'
-judgement is untested.
+Measured on H.I.G. (three backfill rounds, 2026-10-17 and 18): the three
+known false matches were rejected or moved; 23 matches applied (2 moved,
+21 rejected, 2 kept with a note). Round three: 17 of 18 right; the one
+error (the EU Customs Code for A.L.A., "not known to be in the EU") is
+fixed by #27 and not yet re-run.
 
-Left, in order (owner):
-1. Merge #19, #20, #21; `supabase db push` (migration 0036); deploy
-   `match-relevance`, `match-geopolitical-relevance`, `rematch-regulation`,
-   `review-existing-matches`, `regway-ai-chat`, and the functions that use
-   the client (`regulation-impact`, `match-enforcement-relevance`,
-   `company-regulations`, `sync-sec-admin-proceedings`, `group-duplicates`,
-   `sync-regulator-feeds`).
-2. Run `review-existing-matches` on H.I.G. (about $0.30), read the reviews
-   (SQL in `supabase/README.md`). Bar: the three known false matches below
-   rejected or moved, and no clearly correct match rejected.
-3. `SKEPTIC_MODE=shadow` for a few days of new matches, read
-   `verdict_reviews`, then `on`; apply the approved backfill reviews.
-4. About 15 chat questions on H.I.G. (applies / does not apply / borderline
-   / explain-only / drafting) with `CHAT_REVIEW=on` locally or on a
-   preview, then switch it on.
-5. Later, if wanted: the same hook for the enforcement matcher and company
-   web scans; a Skeptic before the impact analysis is written.
+Left (owner):
+1. Re-run `review-existing-matches` with `since` after #27 (needs AI
+   credit); if the EU Customs Code is kept, `SKEPTIC_MODE=on`.
+2. About 10 more chat questions (borderline, drafting) to judge the notes;
+   4 asked so far.
+3. Then this item moves to `docs/archive/roadmap-history.md`.
 
-Known cases the Skeptic should fix:
-- A Section 301 "manufacturing sectors" investigation matched to 3Pillar
-  Global (software) through India.
-- An EPA approval of Florida's air-permit forms on the firm page because
-  H.I.G. is headquartered in Florida.
-- Verdicts stored for the firm that are about one company (the UK
-  Employment Rights Act and the EU Customs Code both say "applies to
-  A.L.A. S.p.A.").
+Later, if wanted (each its own item):
+- A "Hidden by review" list for the owner: with the Skeptic on, a rejected
+  match leaves the dashboard and is visible only in `verdict_reviews`.
+- The Skeptic for enforcement matches (needs its own checklist: a case
+  against someone else) and for company web-scan results (review before
+  they are saved).
+- A Skeptic pass before an impact analysis is written.
 
 ## Open for the team
 
