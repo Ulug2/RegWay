@@ -156,7 +156,7 @@ COMPANIES (entity_name exactly as listed)
 ${list(input.companies)}
 ${catalogue('company')}
 
-If a fact fits no field, leave it out. If the report is not clearly about this firm, set identity.confident to false.`
+If a fact fits no field, leave it out. A fund listed as "closed" in a fund database usually means its fundraising has closed: that is not the status "Closed" (a fund that has ended). If the report is not clearly about this firm, set identity.confident to false.`
 }
 
 const byName = (rows: Row[], name: string) => rows.find(r => r.name.trim().toLowerCase() === name.trim().toLowerCase())

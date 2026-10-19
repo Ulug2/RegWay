@@ -68,6 +68,9 @@ describe('the fields research may propose', () => {
     const type = questionFor('firm', 'firm_type')!
     expect(compare(type, 'Hedge fund', 'Private equity firm')).toEqual({ value: 'Hedge fund', recorded: 'Private equity firm' })
     expect(compare(type, 'Hedge fund', null)).toEqual({ value: 'Hedge fund', recorded: null })
+    // A rewording of a description the firm wrote is not proposed.
+    expect(compare(questionFor('company', 'description')!, 'Builds software.', 'Software engineering services')).toBeNull()
+    expect(compare(questionFor('company', 'description')!, 'Builds software.', null)).toEqual({ value: 'Builds software.', recorded: null })
   })
 })
 

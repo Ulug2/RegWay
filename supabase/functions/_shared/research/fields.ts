@@ -115,6 +115,9 @@ function same(q: Question, a: unknown, b: unknown): boolean {
 export function compare(q: Question, found: unknown, recorded: unknown): { value: unknown; recorded: unknown } | null {
   if (!recordedValue(recorded)) return { value: found, recorded: null }
   if (same(q, found, recorded)) return null
+  // A page's own wording of something the firm already described in its
+  // words is not a different fact (first H.I.G. run, 2026-10-19).
+  if (q.type === 'text') return null
   if ((q.type === 'multi' || q.type === 'tags') && Array.isArray(found) && Array.isArray(recorded)) {
     const known = new Set(recorded.map(norm))
     const added = found.filter(v => !known.has(norm(v)))
