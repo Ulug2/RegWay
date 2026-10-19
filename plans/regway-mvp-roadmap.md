@@ -292,9 +292,9 @@ spend, and the owner has said no alert is wanted for now.
   line.
 - **Multi-user firms**: one user per firm today. Blocks "investment owner
   per company" and brief recipients.
-- **Company enrichment and a confirm screen** after a company is added
-  (research public facts, let the user Confirm / Edit / Not sure). Item 18
-  does this for the firm first.
+- **Research a company when it is added later** (after onboarding). Item
+  18 researches the firm and the companies entered at the time; a company
+  added afterwards is covered only by "Research Again".
 - **A real history of a development** (how its status changed).
 - **Vercel previews**: every pull request gets a preview deployment; which
   Supabase address previews are built with was not checked.
@@ -313,12 +313,10 @@ Deployed functions other than the ones redeployed on 2026-10-08 were
 compared with the code by deploy time, not line by line.
 
 ### Team setup — owner
-- Turn on branch protection for `main`; invite the contributors; add
-  Aadit's GitHub handle to `.github/CODEOWNERS` (steps at the end of
-  `CONTRIBUTING.md`).
-- Run `scripts/export-demo-firm.sh` once against the hosted project and
-  commit `supabase/seeds/demo-firm.sql` (`docs/local-demo-data.md`). Until
-  then local dashboards are empty. Tested against a local database only.
+- Turn on branch protection for `main` (steps at the end of
+  `CONTRIBUTING.md`). Not on as of 2026-10-19.
+- Invite the rest of the team: 6 contributors and Aadit have access as of
+  2026-10-19, no invitations pending.
 - Create a development AI key with a low spend limit for contributors who
   need one (`docs/onboarding.md`, "Using the AI").
 
