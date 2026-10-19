@@ -22,4 +22,7 @@ export const MODEL_FOR = {
   // source text are mechanical; judging them against the facts is not.
   claimGate: HAIKU,
   citationCheck: HAIKU,
+  // Web research on a firm after onboarding: searching and telling one
+  // firm from another with a similar name both need judgement.
+  firmResearch: SONNET,
 } as const

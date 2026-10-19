@@ -40,7 +40,7 @@ import type { CompanyRow, FundRow } from '../_shared/relevance.ts'
 import { firmRecord } from '../_shared/roles/entityContext.ts'
 import { recordUsage } from '../_shared/usage.ts'
 import { historyMessages, loadHistory, openConversation, refocusNote, resolveRefocus, watchForStop, type HistoryTurn, type Refocus } from './conversation.ts'
-import { sizeProblem, systemPrompt, type AiContext, type Attachment, type EntityRow, type FirmSummary } from './prompt.ts'
+import { sizeProblem, systemPrompt, type AiContext, type Attachment, type EntityRow, type FirmSummary, type UnconfirmedFinding } from './prompt.ts'
 import { chatReviewEnabled, checkAnswer } from './review.ts'
 import { AnswerCollector, sseEvent } from './stream.ts'
 
@@ -130,10 +130,12 @@ Deno.serve(async (req) => {
     // What RegWay has already matched, narrowed to whatever the chat was
     // opened from (a fund, a company, one regulation), else firm-wide.
     const scope: MatchScope = context ? { type: context.type, id: context.id } : { type: 'firm' }
-    const [{ data: funds }, { data: companies }, { data: holdings }, matched] = await Promise.all([
+    const [{ data: funds }, { data: companies }, { data: holdings }, { data: unconfirmed }, matched] = await Promise.all([
       supabase.from('funds').select('id, name, size, structure, jurisdictions, profile, profile_meta').eq('firm_id', membership.firm_id).order('name'),
       supabase.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile, profile_meta').eq('firm_id', membership.firm_id).order('name'),
       supabase.from('fund_holdings').select('fund_id, portfolio_company_id').eq('firm_id', membership.firm_id),
+      // Web research the firm has not confirmed: for the chat only, marked.
+      supabase.from('firm_findings').select('scope, entity_id, field, value, source_url').eq('firm_id', membership.firm_id).eq('status', 'pending').order('created_at'),
       loadMatchedDevelopments(supabase, membership.firm_id, firm?.name ?? 'the firm', scope),
     ])
 
@@ -145,6 +147,7 @@ Deno.serve(async (req) => {
       matched,
       scope,
       context,
+      unconfirmed: (unconfirmed ?? []) as UnconfirmedFinding[],
     })
 
     // Text attachments (.txt/.md) are inlined into the message; a .pdf is

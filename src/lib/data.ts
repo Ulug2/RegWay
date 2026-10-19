@@ -1,7 +1,8 @@
 import { supabase } from './supabase'
 import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
-import { toRow, type Answers, type ProfileMeta } from './questionnaire'
+import { fromRow, metaOf, toRow, type Answers, type ProfileMeta, type Scope } from './questionnaire'
+import type { Finding, FoundEntity, ResearchRun } from './research'
 import { firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
 import { collapseDuplicates, isAnnouncement, isOfficialDocument, versionsOf } from './duplicates'
 import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, PublishedVersion, Regulation, RegulationNote } from './types'
@@ -348,8 +349,8 @@ export async function saveFirmAnswers(firmId: string, answers: Answers, meta?: P
   queueProfileWork(firmId, { scope: 'firm', refreshImpacts: true, rediscover, geopolitical: rediscover && firmLocationChanged(before, row) })
 }
 
-export async function addFund(firmId: string, answers: Answers): Promise<void> {
-  const row = toRow('fund', answers)
+export async function addFund(firmId: string, answers: Answers, meta?: ProfileMeta): Promise<void> {
+  const row = toRow('fund', answers, { meta })
   const { error } = await supabase.from('funds').insert({ ...row, firm_id: firmId })
   if (error) throw error
   // A new fund: items rejected before it existed may concern it, unless
@@ -396,8 +397,8 @@ export async function setHolding(firmId: string, fundId: string, companyId: stri
   matchGeopoliticalDevelopments().catch(() => {})
 }
 
-export async function addPortfolioCompany(firmId: string, answers: Answers): Promise<void> {
-  const { error } = await supabase.from('portfolio_companies').insert({ ...toRow('company', answers), firm_id: firmId })
+export async function addPortfolioCompany(firmId: string, answers: Answers, meta?: ProfileMeta): Promise<void> {
+  const { error } = await supabase.from('portfolio_companies').insert({ ...toRow('company', answers, { meta }), firm_id: firmId })
   if (error) throw error
   // A new company can bring new countries into the firm's footprint.
   queueProfileWork(firmId, { scope: 'company', geopolitical: true })
@@ -656,6 +657,72 @@ const AI_OUTAGE_CAUSES: Record<AiOutage['reason'], string> = {
 
 export const aiOutageText = (outage: AiOutage): string =>
   `RegWay's AI has not been working since ${new Date(outage.since).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}: ${AI_OUTAGE_CAUSES[outage.reason]}. New matches, analyses and chat answers are paused until it is fixed.`
+
+// ---------------------------------------------------------------------------
+// Web research on the firm (roadmap item 18; research-firm, migration 0039).
+// A finding enters the profile only when the user confirms it, with the
+// page it came from as its provenance.
+// ---------------------------------------------------------------------------
+
+export async function fetchResearch(firmId: string): Promise<{ run: ResearchRun | null; findings: Finding[] }> {
+  const [runs, findings] = await Promise.all([
+    supabase.from('firm_research_runs').select('id, status, note, found, started_at, finished_at').eq('firm_id', firmId).order('started_at', { ascending: false }).limit(1),
+    supabase.from('firm_findings').select('id, scope, entity_id, field, value, recorded, source_url, quote').eq('firm_id', firmId).eq('status', 'pending').order('created_at'),
+  ])
+  if (runs.error) throw runs.error
+  if (findings.error) throw findings.error
+  return { run: (runs.data?.[0] as ResearchRun | undefined) ?? null, findings: (findings.data ?? []) as Finding[] }
+}
+
+// Starts a run; an answer while one is already running returns that one.
+export const startResearch = () => callFunction<{ runId?: string; status?: string }>('research-firm', {})
+
+async function decideFinding(id: string, status: 'confirmed' | 'rejected'): Promise<void> {
+  const { error } = await supabase.from('firm_findings').update({ status, decided_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw error
+}
+
+export const rejectFinding = (id: string) => decideFinding(id, 'rejected')
+
+const webMeta = (meta: ProfileMeta, fields: string[], url: string): ProfileMeta => ({
+  ...meta,
+  ...Object.fromEntries(fields.map(f => [f, { source: 'web' as const, url, confirmed_at: new Date().toISOString() }])),
+})
+
+// The finding's value (or the user's correction of it) saved into the
+// profile through the same path as a Profile edit, so the usual re-matching
+// follows.
+export async function confirmFinding(firmId: string, finding: Finding, value: unknown = finding.value): Promise<void> {
+  const scope: Scope = finding.scope
+  const save = async (row: Record<string, unknown>, write: (answers: Answers, meta: ProfileMeta) => Promise<void>) => {
+    const answers = { ...fromRow(scope, row), [finding.field]: value }
+    await write(answers, webMeta(metaOf(row), [finding.field], finding.source_url))
+  }
+  if (scope === 'firm') {
+    await save((await fetchFirm(firmId)) as unknown as Record<string, unknown>, (answers, meta) => saveFirmAnswers(firmId, answers, meta))
+  } else if (scope === 'fund') {
+    const fund = (await fetchFunds(firmId)).find(f => f.id === finding.entity_id)
+    if (!fund) throw new Error('That fund is no longer in your profile')
+    await save(fund as unknown as Record<string, unknown>, (answers, meta) => saveFundAnswers(fund.id, answers, meta))
+  } else {
+    const company = (await fetchPortfolioCompanies(firmId)).find(c => c.id === finding.entity_id)
+    if (!company) throw new Error('That company is no longer in your profile')
+    await save(company as unknown as Record<string, unknown>, (answers, meta) => saveCompanyAnswers(firmId, company, answers, meta))
+  }
+  await decideFinding(finding.id, 'confirmed')
+}
+
+// A fund or company the research found that the firm had not entered.
+export async function addFoundEntity(firmId: string, finding: Finding): Promise<void> {
+  const found = finding.value as FoundEntity
+  if (finding.scope === 'fund') {
+    await addFund(firmId, { name: found.name }, webMeta({}, ['name'], finding.source_url))
+  } else {
+    const answers: Answers = { name: found.name, website: found.website || undefined, description: found.description || undefined }
+    await addPortfolioCompany(firmId, answers, webMeta({}, Object.keys(answers).filter(k => answers[k]), finding.source_url))
+  }
+  await decideFinding(finding.id, 'confirmed')
+}
 
 // ---------------------------------------------------------------------------
 // RegWay AI conversations (saved chats). RLS limits both tables to the

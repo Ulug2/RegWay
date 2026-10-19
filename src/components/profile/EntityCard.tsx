@@ -142,8 +142,8 @@ export default function EntityCard({ scope, title, subtitle, row, defaultOpen, o
 
   const change = (id: string, value: unknown) => {
     setAnswers(a => ({ ...a, [id]: value }))
-    // A document that backed the old value says nothing about the new one.
-    if (meta[id]?.document) setMeta(m => ({ ...m, [id]: { source: 'user', confirmed_at: m[id].confirmed_at } }))
+    // A document or web page that backed the old value says nothing about the new one.
+    if (meta[id]?.document || meta[id]?.source === 'web') setMeta(m => ({ ...m, [id]: { source: 'user', confirmed_at: m[id].confirmed_at } }))
     setDirty(true)
     setSavedAt(false)
   }

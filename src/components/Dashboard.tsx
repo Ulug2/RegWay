@@ -15,6 +15,7 @@ import EntityFeed from './EntityFeed'
 import AiAskBar from './AiAskBar'
 import { dayKey, type EntityRef } from './EntityPage'
 import ProfileReminder from './ProfileReminder'
+import ResearchCard from './ResearchCard'
 import { useProfileCompletion } from '../lib/useProfileCompletion'
 
 type View = 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai' | 'entity'
@@ -246,6 +247,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 : `${failingSources.join(', ')} haven't updated successfully recently. Recent items from these sources may be missing.`}
             </div>
           )}
+
+          <ResearchCard firmId={firmId} firmName={firm?.name} onReview={() => onNavigate('profile', { tab: 'research' })} />
 
           <ProfileReminder completion={completion} onOpen={(tab, focusId) => onNavigate('profile', { tab, focusId })} />
 

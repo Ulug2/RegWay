@@ -94,6 +94,16 @@ On demand, from the app: `company-regulations` (a web-search scan for one
 portfolio company), `rematch-regulation` ("this match looks wrong"), and
 `regway-ai-chat` (the chat, streamed).
 
+**Web research on the firm.** After onboarding (and from Profile, "Research
+Again"), `research-firm` searches the web for the firm, its funds and its
+companies and stores proposals in `firm_findings` (migration 0039), each in
+a questionnaire field (`_shared/research/fields.ts` reads the questions from
+`src/lib/questionnaire.ts`) with the page it came from. A proposal enters
+the profile only when the user confirms it in Profile, "Found on the Web"
+(saved with `profile_meta` source `web` and the link). Until then only the
+chat sees it, marked unconfirmed; matching, analyses and the Skeptic read
+the confirmed profile only.
+
 When a chat answer claims that something applies (or doesn't) to the firm,
 a fund or a company, `regway-ai-chat` checks it after the answer has
 streamed (`regway-ai-chat/review.ts`): a cheap call finds such claims
