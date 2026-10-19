@@ -9,6 +9,41 @@
 >
 > New entries go directly below this box, newest first.
 
+### Item 18: research the firm on the web after onboarding (2026-10-18 and 19, PRs #30, #31)
+Decided with the owner on 2026-10-18: findings the firm has not confirmed go
+to the chat only, labelled; the first version covers the firm and the funds
+and companies it entered, and offers ones it has not entered; review is a
+dashboard card opening Profile.
+- **`research-firm`** (migration 0039: `firm_research_runs`,
+  `firm_findings`): after onboarding, or Profile → Found on the Web →
+  Research Again (3 a day). Sonnet with web search (up to 8 searches), then
+  a forced-tool extraction into questionnaire fields
+  (`_shared/research/fields.ts` reads the questions from
+  `src/lib/questionnaire.ts`). Kept only if it cites a page the search
+  read, names a listed entity and a researchable question, and fits that
+  question's options; already-recorded values dropped, differing ones shown
+  as a conflict, rewordings of the firm's own descriptions dropped. Not
+  sure it is the right firm → nothing stored, the reason shown.
+- **Review**: a dashboard card; Profile → Found on the Web with each
+  finding's source and quote, Confirm / Use This / Not Right, Add for funds
+  and companies not entered. Confirming saves through the usual profile
+  path with `profile_meta` source `web` and the link ("From the web:
+  adviserinfo.sec.gov · confirmed …"), so re-matching follows.
+- **Chat**: pending findings in the system prompt as "FOUND ON THE WEB, NOT
+  CONFIRMED BY THE FIRM"; matching, analyses and the Skeptic read the
+  confirmed profile only.
+- **Live on H.I.G.** (2026-10-19): 13 findings in about 2 minutes for
+  $0.61 ($0.52 search with 8 searches, $0.09 extraction). Useful: the legal
+  name and Delaware domicile from Form ADV, 18 offices, Latin America
+  added to geographies, Fund VII's U.S. focus. Noise, fixed in #31: two
+  rewordings of company descriptions, and PitchBook's "Closed"
+  (fundraising) proposed as the fund status. Confirmed the legal name in
+  the browser (saved with its Form ADV link); "Not Right" set a finding
+  aside; the chat answered an offices question saying the facts came from
+  a public page and were not confirmed.
+- Tests: 493 unit (16 new), 6 new browser tests; screens checked in both
+  themes and at phone width.
+
 ### Item 17: the Skeptic on matching, checked chat answers (2026-10-15 to 10-18, PRs #19–#29)
 Decided 2026-10-15: a Skeptic, a separate second AI pass, on matching first;
 the chat answers in one call and is checked afterwards only when it claims
