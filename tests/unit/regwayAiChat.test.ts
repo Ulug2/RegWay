@@ -20,6 +20,8 @@ interface State {
   firmProfile?: Record<string, unknown>
   // What a refocus lookup finds among the caller's own funds / companies.
   refocusTarget?: { id: string; name: string } | null
+  // Web research the firm has not confirmed (firm_findings, pending).
+  findings?: unknown[]
 }
 
 function database(state: State): Resolver {
@@ -36,6 +38,7 @@ function database(state: State): Resolver {
     if (q.table === 'funds') return { data: state.funds ?? [{ id: 'fund-1', name: 'Fund I', size: '$1B', structure: 'Delaware LP', jurisdictions: ['United States'], profile: {} }] }
     if (q.table === 'portfolio_companies') return { data: state.companies ?? [{ id: 'co-1', name: 'GetixHealth', hq_location: 'Houston, Texas', sectors: ['Healthcare'], regions: ['United States'], offerings: null, profile: {} }] }
     if (q.table === 'fund_holdings') return { data: state.holdings ?? [] }
+    if (q.table === 'firm_findings') return { data: state.findings ?? [] }
     if (q.table === 'regulation_relevance') return { data: state.matches ?? [] }
   }
 }
@@ -335,6 +338,22 @@ describe('regway-ai-chat', () => {
   })
 
   const outage = { anthropic: () => new Response('{"error":{"message":"Your credit balance is too low"}}', { status: 400 }) }
+
+  it('gives the model what web research found but no one confirmed, marked as such', async () => {
+    const findings = [
+      { scope: 'firm', entity_id: null, field: 'aum', value: '$25B+', source_url: 'https://adviserinfo.sec.gov/firm/1' },
+      { scope: 'company', entity_id: 'co-1', field: 'supplier_locations', value: ['Mexico'], source_url: 'https://getixhealth.com/about' },
+      { scope: 'company', entity_id: null, field: 'new_entity', value: { name: 'Acme Clinics', description: 'Runs clinics.' }, source_url: 'https://example.com' },
+    ]
+    const { system, db } = await chat({ findings }, { message: 'hi' })
+    expect(system).toContain('FOUND ON THE WEB, NOT CONFIRMED BY THE FIRM')
+    expect(system).toContain('- the firm, aum: $25B+ (https://adviserinfo.sec.gov/firm/1)')
+    expect(system).toContain('- GetixHealth, supplier_locations: Mexico (https://getixhealth.com/about)')
+    expect(system).toContain('- A company the firm has not entered: Acme Clinics: Runs clinics. (https://example.com)')
+    expect(hasFilter(db.ran('firm_findings', 'select')[0], 'eq', 'status', 'pending')).toBe(true)
+
+    expect((await chat({}, { message: 'hi' })).system).not.toContain('FOUND ON THE WEB')
+  })
 
   it('reports an API failure plainly, records it, and saves nothing', async () => {
     const { res, text, db } = await chat({}, { message: 'hi' }, outage)

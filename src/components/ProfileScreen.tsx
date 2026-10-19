@@ -11,14 +11,16 @@ import FirmProfile from './profile/FirmProfile'
 import FundsProfile from './profile/FundsProfile'
 import CompaniesProfile from './profile/CompaniesProfile'
 import DismissedRegulations from './profile/DismissedRegulations'
+import FoundOnWeb from './profile/FoundOnWeb'
 
-export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio' | 'dismissed'
+export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio' | 'research' | 'dismissed'
 
 const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'account', label: 'Account' },
   { key: 'firm', label: 'Firm' },
   { key: 'funds', label: 'Funds' },
   { key: 'portfolio', label: 'Portfolio Companies' },
+  { key: 'research', label: 'Found on the Web' },
   { key: 'dismissed', label: 'Dismissed' },
 ]
 
@@ -183,6 +185,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
         {tab === 'funds' && firmId && <FundsProfile firmId={firmId} focusId={focusId} />}
         {tab === 'portfolio' && firmId && <CompaniesProfile firmId={firmId} focusId={focusId} />}
 
+        {tab === 'research' && firmId && <FoundOnWeb firmId={firmId} />}
         {tab === 'dismissed' && firmId && <DismissedRegulations firmId={firmId} />}
 
         {tab === 'account' && (

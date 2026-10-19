@@ -94,6 +94,14 @@ export interface FactProvenance {
   onDocument: (document: string) => void
 }
 
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
 function FactLine({ fact, label }: { fact: FactProvenance; label: string }) {
@@ -103,10 +111,13 @@ function FactLine({ fact, label }: { fact: FactProvenance; label: string }) {
   const stale = isStale(meta)
   const validDate = (iso: string | null | undefined): iso is string => !!iso && !Number.isNaN(Date.parse(iso))
 
+  const confirmed = meta ? (stale ? `last confirmed ${shortDate(meta.confirmed_at)}, over a year ago` : `confirmed ${shortDate(meta.confirmed_at)}`) : ''
   const origin = fact.changed
     ? `Edited: recorded ${meta?.document ? `from “${meta.document}”` : 'as entered by you'} today when you save`
     : meta
-      ? `${meta.source === 'document' ? `From a document: ${meta.document}` : 'Entered by you'} · ${stale ? `last confirmed ${shortDate(meta.confirmed_at)}, over a year ago` : `confirmed ${shortDate(meta.confirmed_at)}`}`
+      ? meta.source === 'web' && meta.url
+        ? null
+        : `${meta.source === 'document' ? `From a document: ${meta.document}` : 'Entered by you'} · ${confirmed}`
       : `Recorded ${validDate(fact.recordedBy) ? `on or before ${shortDate(fact.recordedBy)}` : 'earlier'} · not confirmed since`
 
   const apply = () => {
@@ -116,7 +127,17 @@ function FactLine({ fact, label }: { fact: FactProvenance; label: string }) {
 
   return (
     <div className="mt-1.5 text-xs flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 num" style={{ color: stale ? 'var(--warning)' : 'var(--text-400)' }} data-fact-line>
-      <span>{origin}</span>
+      {origin != null ? (
+        <span>{origin}</span>
+      ) : (
+        <span>
+          From the web:{' '}
+          <a className="link" href={meta!.url} target="_blank" rel="noopener noreferrer">
+            {hostOf(meta!.url!)}
+          </a>{' '}
+          · {confirmed}
+        </span>
+      )}
       {!fact.changed && (stale || !meta) && (
         <button type="button" className="link" onClick={fact.onConfirm} aria-label={`Confirm ${label} is still correct`}>
           Still correct

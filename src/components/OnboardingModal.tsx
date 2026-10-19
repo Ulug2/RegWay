@@ -114,6 +114,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       callFunction('match-relevance').catch(() => {})
       callFunction('match-enforcement-relevance').catch(() => {})
       callFunction('match-geopolitical-relevance').catch(() => {})
+      // What the web says about the firm, for the user to confirm (item 18).
+      callFunction('research-firm').catch(() => {})
 
       onComplete()
     } catch (err) {

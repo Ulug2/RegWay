@@ -14,7 +14,7 @@
 export const PAGES = ['about', 'sources', 'legal', 'privacy'] as const
 export type PageSlug = (typeof PAGES)[number]
 
-export const PROFILE_TABS = ['account', 'firm', 'funds', 'portfolio', 'dismissed'] as const
+export const PROFILE_TABS = ['account', 'firm', 'funds', 'portfolio', 'research', 'dismissed'] as const
 export type ProfileTabSlug = (typeof PROFILE_TABS)[number]
 
 export type Route =

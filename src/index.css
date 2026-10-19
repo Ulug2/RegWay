@@ -629,6 +629,10 @@ select:focus-visible {
     line-height: 1.6;
   }
   /* Something in it needs attention (the same amber as a set flag). */
+  /* Rows of one list inside a card, divided by a rule. */
+  .rows > * + * {
+    border-top: 1px solid rgb(var(--line-rgb) / 0.30);
+  }
   .notice.is-warn {
     background: rgb(245 158 11 / 0.08);
     border-color: rgb(245 158 11 / 0.30);

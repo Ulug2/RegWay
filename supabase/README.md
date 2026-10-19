@@ -126,6 +126,21 @@ done:
 curl ... -d '{"firmId": "<firm id>", "since": "2026-10-17T21:00:00Z"}'
 ```
 
+## Web research on a firm (`research-firm`)
+
+Runs after onboarding and from Profile → Found on the Web. To run it for a
+firm yourself (about $0.30–0.50; the result appears in that firm's Profile
+for review):
+
+```bash
+curl -X POST "https://<project-ref>.supabase.co/functions/v1/research-firm" \
+  -H "Authorization: Bearer <service key>" -H "apikey: <service key>" \
+  -H "Content-Type: application/json" -d '{"firmId": "<firm id>"}'
+```
+
+Runs are in `firm_research_runs`, proposals in `firm_findings`; the calls in
+`usage_events` under `research-firm:search` and `research-firm:extract`.
+
 ## The chat's answer check (`CHAT_REVIEW`)
 
 When an answer claims that something applies (or doesn't) to the firm, a

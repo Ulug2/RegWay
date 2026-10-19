@@ -334,10 +334,13 @@ const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))]
 // ---------------------------------------------------------------------------
 
 export interface FactMeta {
-  // Typed into RegWay, or taken from a supporting document the user names.
-  source: 'user' | 'document'
+  // Typed into RegWay, taken from a supporting document the user names, or
+  // found on the web by RegWay's research and confirmed by the user.
+  source: 'user' | 'document' | 'web'
   // The document's name or link, when there is one.
   document?: string
+  // The page a web finding came from.
+  url?: string
   // When the answer was last entered, changed, or confirmed as still correct.
   confirmed_at: string
 }
@@ -376,7 +379,10 @@ function metaAfterSave(scope: Scope, answers: Answers, opts: SaveContext): Profi
   for (const q of questionsFor(scope)) {
     if (!isFact(q) || isEmpty(answers[q.id])) continue
     const document = edited[q.id]?.document?.trim() || undefined
-    if (!before || !sameAnswer(before[q.id], answers[q.id])) meta[q.id] = stamp(opts.meta ? document : undefined, at)
+    // A web finding the user confirmed keeps its page (lib/research.ts).
+    const web = edited[q.id]?.source === 'web' && edited[q.id].url ? edited[q.id] : undefined
+    if (!before || !sameAnswer(before[q.id], answers[q.id])) meta[q.id] = web && opts.meta ? { source: 'web', url: web.url, confirmed_at: at } : stamp(opts.meta ? document : undefined, at)
+    else if (web) meta[q.id] = { source: 'web', url: web.url, confirmed_at: web.confirmed_at }
     else if (edited[q.id]) meta[q.id] = stamp(document, edited[q.id].confirmed_at)
   }
   return meta

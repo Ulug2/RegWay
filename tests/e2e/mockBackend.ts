@@ -114,6 +114,9 @@ function seed(): Record<string, Row[]> {
     sync_runs: [{ source: 'federal_register', ok: true, ran_at: recently() }],
     regway_ai_conversations: [],
     regway_ai_messages: [],
+    // Web research on the firm (item 18): runs and what they proposed.
+    firm_research_runs: [],
+    firm_findings: [],
   }
 }
 
@@ -161,6 +164,7 @@ export class MockBackend {
   functions: Record<string, FunctionHandler> = {
     'match-geopolitical-relevance': () => ({ json: { evaluated: 0, relevant: 0, candidates: 0, fundRowsChanged: 0 } }),
     'refresh-entity-impacts': () => ({ json: {} }),
+    'research-firm': () => ({ status: 202, json: { runId: 'run-new', status: 'running' } }),
   }
 
   // Calls to one endpoint, e.g. called('POST', 'functions/v1/regway-ai-chat').
