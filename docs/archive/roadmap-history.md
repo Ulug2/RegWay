@@ -24,8 +24,13 @@
   among three, another firm's row refused, a second restore refused);
   browser tests for the list, restore and a failed restore; screenshots at
   1280px light and 390px dark.
-- Not yet: the migration on the hosted database (the owner pushes it). A
-  restored company match reaches its fund's list at the next matching run
+- Migration 0041: on H.I.G., one of 21 hidden matches had no review the
+  first version could find (the matcher named "Rheintal Batterie GmbH",
+  the company is recorded with "(test)", so the row went on the firm). The
+  level now ranks candidates instead of ruling them out; all 21 then have
+  a review.
+- Hosted database: 0040 applied 2026-10-23; 0041 not yet (the owner
+  applies it). A restored company match reaches its fund's list at the next matching run
   (the holdings roll-up runs there). A restored match has no analysis
   until it is opened.
 
