@@ -37,7 +37,7 @@ test.describe('signed in', () => {
   test('the keyboard can skip to the content, and focus is visible', async ({ page }) => {
     await signIn(page)
     await page.goto('/')
-    await expect(page.getByRole('button', { name: 'PE Firm' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'General Partners' })).toBeVisible()
     await page.keyboard.press('Tab')
     const skip = page.getByRole('link', { name: 'Skip to content' })
     await expect(skip).toBeFocused()
@@ -50,7 +50,7 @@ test.describe('signed in', () => {
   test('the open level is marked as pressed', async ({ page }) => {
     await signIn(page)
     await page.goto('/')
-    const firm = page.getByRole('button', { name: 'PE Firm' })
+    const firm = page.getByRole('button', { name: 'General Partners' })
     await expect(firm).toHaveAttribute('aria-pressed', 'false')
     await firm.click()
     await expect(firm).toHaveAttribute('aria-pressed', 'true')
@@ -64,7 +64,7 @@ test.describe('signed in', () => {
     await page.setViewportSize({ width: 1280, height: 700 })
     await signIn(page)
     await page.goto('/')
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     await page.getByRole('button', { name: 'All days' }).click()
     await page.getByText('Long list rule 2', { exact: true }).scrollIntoViewIfNeeded()
     await page.mouse.wheel(0, 900)
@@ -76,7 +76,7 @@ test.describe('signed in', () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(0)
 
     await page.getByRole('button', { name: 'Back to Dashboard' }).click()
-    await expect(page.getByRole('button', { name: 'PE Firm' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'General Partners' })).toBeVisible()
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before - 200)
   })
 

@@ -37,7 +37,7 @@ const FEATURES = [
   {
     Icon: TreeStructure,
     title: 'Built for PE structure',
-    description: 'Organized the way your firm actually works: PE Firm, Fund Structure, Portfolio Companies, each with its own page of what was found for it, day by day.',
+    description: 'Organized the way your firm actually works: General Partners, Funds, Portfolio Companies, each with its own page of what was found for it, day by day.',
   },
 ]
 

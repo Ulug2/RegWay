@@ -44,7 +44,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [activeToggle, setActiveToggle] = useCachedState<Toggle | null>('ui:activeToggle', null)
 
   const [peRegs, setPeRegs] = useCachedState<MatchedRegulation[] | null>('regs:pe', null)
-  // The day the PE Firm list shows (null = today); funds and companies
+  // The day the General Partners list shows (null = today); funds and companies
   // have their own pages (EntityPage).
   const [peDay, setPeDay] = useCachedState<DaySelection>(dayKey({ type: 'firm' }), null)
   // Category/topic/date/location filter for whichever entity list is open;
@@ -102,14 +102,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     [],
   )
 
-  // Refresh the open PE Firm list in the background.
+  // Refresh the open General Partners list in the background.
   useEffect(() => {
     if (!firmId) return
     if (activeToggle === 'pe') fetchFirmRegulations(firmId).catch(() => null).then(r => r && setPeRegs(r))
   }, [firmId, activeToggle])
 
   // The scheduled matcher (run-matching) writes new matches while the
-  // dashboard may be open: refresh the PE Firm list when it's showing. A
+  // dashboard may be open: refresh the General Partners list when it's showing. A
   // ref, so the subscription isn't torn down on every tab switch.
   const openTab = useRef(activeToggle)
   openTab.current = activeToggle
@@ -169,13 +169,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   }
 
   const toggles: { key: Toggle; label: string }[] = [
-    { key: 'pe', label: 'PE Firm' },
-    { key: 'fund', label: 'Fund Structure' },
+    { key: 'pe', label: 'General Partners' },
+    { key: 'fund', label: 'Funds' },
     { key: 'portfolio', label: 'Portfolio Companies' },
   ]
 
   const selectToggle = (key: Toggle) => {
-    // Opening the PE Firm list starts on today.
+    // Opening the General Partners list starts on today.
     if (key === 'pe' && activeToggle !== 'pe') setPeDay(null)
     setActiveToggle(activeToggle === key ? null : key)
   }

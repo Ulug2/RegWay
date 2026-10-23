@@ -538,7 +538,7 @@ select:focus-visible {
     line-height: 20px;
   }
 
-  /* The dashboard's three levels (PE Firm / Fund Structure / Portfolio
+  /* The dashboard's three levels (General Partners / Funds / Portfolio
      Companies): one bar, the open level filled. */
   .level-tab {
     display: flex;
@@ -726,6 +726,34 @@ select:focus-visible {
   .info-prose strong {
     font-weight: 600;
     color: var(--text-900);
+  }
+  .info-prose ol.info-steps {
+    list-style: none;
+    padding-left: 0;
+  }
+  .info-steps li + li {
+    margin-top: 14px;
+  }
+  /* Legal and Privacy: the summary above the numbered sections, the
+     sections themselves, and the list of them. */
+  .info-summary {
+    padding-left: 16px;
+    border-left: 2px solid var(--primary);
+  }
+  .info-clause {
+    margin-top: 32px;
+    padding-top: 28px;
+    border-top: 1px solid rgb(var(--line-rgb) / 0.3);
+    scroll-margin-top: 88px;
+  }
+  .info-toc {
+    padding: 16px 18px;
+    border-radius: var(--r-tile);
+    border: 1px solid rgb(var(--line-rgb) / 0.3);
+  }
+  .info-toc-side {
+    padding-left: 18px;
+    border-left: 1px solid rgb(var(--line-rgb) / 0.3);
   }
 
   .site-footer {

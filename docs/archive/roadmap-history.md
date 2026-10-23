@@ -9,6 +9,20 @@
 >
 > New entries go directly below this box, newest first.
 
+### 16f, in part: level buttons renamed, team on About, Legal and Privacy as documents (2026-10-23)
+- The dashboard's levels read "General Partners", "Funds", "Portfolio
+  Companies" (was "PE Firm", "Fund Structure"), also on the landing page;
+  the browser tests click the new names.
+- About: the steps numbered, and a team section: the two co-founders and
+  the UC Berkeley Codify team, with template bios and placeholder pictures
+  until the real ones arrive.
+- Legal and Privacy: same text, laid out as documents (summary, numbered
+  sections with anchors, a list of sections beside the text on a wide
+  screen, above it on a phone).
+- FAQ questions and draft answers written to `docs/faq.md`.
+- Checked: `pnpm test:all`; screenshots of About and Privacy in both themes
+  at 1280px and 390px. Not checked: Safari, Firefox.
+
 ### Item 18: research the firm on the web after onboarding (2026-10-18 and 19, PRs #30, #31)
 Decided with the owner on 2026-10-18: findings the firm has not confirmed go
 to the chat only, labelled; the first version covers the firm and the funds

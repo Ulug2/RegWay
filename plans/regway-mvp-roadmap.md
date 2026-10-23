@@ -72,13 +72,13 @@ Ready-to-take versions of these, with acceptance criteria, are in
 ### 16f. Asked for by the owner
 - **FAQ page** (S–M). A fifth public page at `/faq`, linked from the footer
   and the page navigation (`PAGES` in `src/lib/router.ts`, `InfoPage.tsx`).
-  Needs the questions from the owner; suggested: what RegWay is, who it is
-  for, where the data comes from, how matching works and how wrong it can
-  be, what the AI sees, what it costs, how to get access.
-- **Rename the dashboard's level buttons** (S): "PE Firm" → "General
-  Partners", "Fund Structure" → "Funds", wherever they label the same thing
-  (the chat's session context, the landing page) and in the tests that
-  click them by name.
+  The questions and draft answers are in `docs/faq.md`; the ones marked
+  "Owner to answer" need the owner before the page goes live.
+- **Team bios and photos on About** (S): the About page lists the founders
+  and the UC Berkeley Codify team with template bios and placeholder
+  pictures (`FOUNDERS`, `CODIFY`, `CODIFY_MEMBERS` in `InfoPage.tsx`;
+  photos go in `public/team/`). Needs the real bios, photos and the Codify
+  members' names.
 
 - **Filter portfolio companies by fund** (M). On the dashboard's Portfolio
   Companies level, choosing a fund shows only the companies that fund
@@ -101,6 +101,17 @@ Ready-to-take versions of these, with acceptance criteria, are in
     stay reachable, and browser tests cover each.
   - Files: `src/components/Dashboard.tsx` (one person at a time in this
     file), `src/lib/data.ts`, `tests/e2e/dashboard.spec.ts`.
+
+### 16i. Chat features (planned, owner 2026-10-23; S–M each)
+Asked for, not built. The conversation-list ones touch only the chat's
+screen and tables; the ones marked * change what the chat function returns,
+so ask the owner first (item 17a).
+- Rename, pin and archive conversations (needs columns on the
+  conversations table: a migration).
+- Thumbs up and down on an answer, and a way to share one.
+- Save an answer as a note or a flag on a development.
+- An "Analyzed N sources" line under an answer.*
+- Citations attached to the sentences they support.*
 
 ### Known defects (S each unless marked)
 - **Failing-source banner is vague and ungrammatical**: "Regulator feeds
@@ -227,6 +238,8 @@ through before more firms use it, most serious first:
 10. **An outside test**, then a decision on SOC 2: buyers at PE firms will ask.
 
 ### 6. Cost optimization, remaining levers (S–M each) — owner
+Deferred (owner, 2026-10-23): spending is low since polling was stopped;
+revisit if spending grows or when sponsorship changes the budget.
 1. **Stop pre-writing analyses nobody opens.** Matchers and scans write up
    to 8 in the background per new match. The on-demand path exists; the
    trade-off is a 30 to 60 second wait on first open.
@@ -272,9 +285,10 @@ spend, and the owner has said no alert is wanted for now.
   matcher.
 
 ### Product decisions waiting on the owner
-- **Email alerts and the Morning Brief** (item 12, Phase 3; M). Skipped for
-  now. Needs an email provider and a definition of "high priority". The
-  per-fund notification preference is stored; nothing sends.
+- **Email alerts and the Morning Brief** (item 12, Phase 3; M). Waiting
+  for a company email account and an email provider (owner, 2026-10-23);
+  also needs a definition of "high priority". The per-fund notification
+  preference is stored; nothing sends.
 - **Public pages** (About, Sources, Legal, Privacy): not yet read by the
   owner, not written by a lawyer. No contact address (`CONTACT_EMAIL` in
   `InfoPage.tsx` is unset), no company name or governing law. Privacy names
@@ -285,11 +299,8 @@ spend, and the owner has said no alert is wanted for now.
   re-confirmation; should the user who confirmed be recorded; answers
   entered before 2026-10-08 are undated until someone confirms them.
 - **CFTC and OFAC through the Federal Register only**: acceptable?
-- **Scheduled matching beyond H.I.G.**, and per-firm local-time schedules.
-- **Chat features asked for, not built**: rename, pin and archive
-  conversations; thumbs up and down and share; citations attached to
-  sentences; saving an answer as a note or flag; an "Analyzed N sources"
-  line.
+- **Scheduled matching beyond H.I.G.**, and per-firm local-time schedules:
+  after launch, once there are customers (owner, 2026-10-23).
 - **Multi-user firms**: one user per firm today. Blocks "investment owner
   per company" and brief recipients.
 - **Research a company when it is added later** (after onboarding). Item
@@ -313,12 +324,11 @@ Deployed functions other than the ones redeployed on 2026-10-08 were
 compared with the code by deploy time, not line by line.
 
 ### Team setup — owner
-- Turn on branch protection for `main` (steps at the end of
-  `CONTRIBUTING.md`). Not on as of 2026-10-19.
-- Invite the rest of the team: 6 contributors and Aadit have access as of
-  2026-10-19, no invitations pending.
-- Create a development AI key with a low spend limit for contributors who
-  need one (`docs/onboarding.md`, "Using the AI").
+- `main` is protected by a ruleset (pull request with one approval and
+  code-owner review, both CI checks, no force pushes, no deletion).
+- A development AI key with a low spend limit is created when a
+  contributor's issue needs one (ask through Aadit; `docs/onboarding.md`,
+  "Using the AI").
 
 ## Housekeeping (production data, owner)
 - H.I.G. carries test data: 3 funds and 4 companies whose names end in

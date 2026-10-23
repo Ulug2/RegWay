@@ -31,6 +31,8 @@ export {
   Sun,
   Trash,
   TreeStructure,
+  User,
+  UsersThree,
   WarningCircle,
   X,
 } from '@phosphor-icons/react'

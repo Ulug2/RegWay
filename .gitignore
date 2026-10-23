@@ -43,3 +43,6 @@ supabase/.branches/
 .DS_Store
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# The owner's source registry (kept outside the repository).
+docs/product/Regway_US_Regulatory_Source_Master_Registry_Comprehensive_V2*.docx
