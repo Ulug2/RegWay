@@ -31,6 +31,18 @@ test.describe('signed out', () => {
     })
   }
 
+  test('About introduces the team; Legal lists its sections', async ({ page }) => {
+    await page.goto('/about')
+    await expect(page.getByRole('heading', { name: 'The team' })).toBeVisible()
+    await expect(page.getByText('Ulykbek Khairulla')).toBeVisible()
+    await expect(page.getByText('Shivang Chalise')).toBeVisible()
+    await expect(page.getByText('UC Berkeley Codify')).toBeVisible()
+
+    await page.goto('/legal')
+    await page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Written by AI' }).click()
+    expect(new URL(page.url()).hash).toBe('#written-by-ai')
+  })
+
   test('sign-in has an address, and Back closes the form', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('banner').getByRole('button', { name: 'Sign In' }).click()
@@ -57,7 +69,7 @@ test.describe('signed in', () => {
 
   test('a fund page keeps its address through a reload, and Back returns to the dashboard', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: 'Fund Structure' }).click()
+    await page.getByRole('button', { name: 'Funds', exact: true }).click()
     await page.getByRole('button', { name: /Harbor Fund I Delaware LP/ }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Harbor Fund I' })).toBeVisible()
     expect(path(page)).toBe('/funds/fund-1')
@@ -75,7 +87,7 @@ test.describe('signed in', () => {
   test('a development opens from its address alone', async ({ page, backend }) => {
     backend.tables.regulation_relevance = [relevance('rel-1', REGS.formPf)]
     await page.goto('/')
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     await page.getByText(REGS.formPf.title).click()
     await expect(page.getByRole('heading', { level: 1, name: REGS.formPf.title })).toBeVisible()
     const address = path(page)

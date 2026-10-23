@@ -24,24 +24,14 @@ at a time: `src/components/Dashboard.tsx` (tasks 2, 3), `src/lib/data.ts`
 - **Done when:** `/faq` opens signed out and signed in; it is in the footer;
   a browser test in `tests/e2e/routes.spec.ts` covers it; both themes and
   phone width look right.
-- **Depends on:** the owner supplying or approving the questions and
-  answers (suggested set is in roadmap 16f).
+- **Depends on:** the owner approving the questions and answers in
+  `docs/faq.md` (the ones marked "Owner to answer").
 - **Difficulty:** easy. **Files:** `src/lib/router.ts`,
   `src/components/InfoPage.tsx`, `src/components/SiteFooter.tsx`.
 - **New contributor:** yes.
 
 ### 2. Rename the dashboard's level buttons
-- **Problem:** the owner wants "PE Firm" → "General Partners" and "Fund
-  Structure" → "Funds" (roadmap 16f). Checked: old labels are in
-  `Dashboard.tsx:167-168`, `LandingPage.tsx:40`, and about 15 places in
-  `tests/e2e/`.
-- **Expected result:** the new words everywhere the old ones label the same
-  thing, including the chat's session context.
-- **Done when:** no user-visible "PE Firm" or "Fund Structure" remains
-  (`grep` finds none outside comments and history); all browser tests pass
-  with the new names.
-- **Depends on:** nothing. Do not run at the same time as task 3.
-- **Difficulty:** easy. **New contributor:** yes.
+Done on 2026-10-23 by the owner ("General Partners", "Funds").
 
 ### 3. Failing-source banner: grammar and which feed
 - **Problem:** the banner reads "Regulator feeds (U.S., UK and EU) hasn't

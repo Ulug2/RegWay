@@ -21,7 +21,7 @@ const published = (backend: MockBackend) =>
 async function openFirmList(page: Page) {
   await signIn(page)
   await page.goto('/')
-  await page.getByRole('button', { name: 'PE Firm' }).click()
+  await page.getByRole('button', { name: 'General Partners' }).click()
   await expect(page.getByText(REGS.formPf.title)).toBeVisible()
 }
 
@@ -49,7 +49,7 @@ test.describe('one publication listed twice', () => {
     const popup = page.waitForEvent('popup')
     await card(page, BULLETIN.title).getByRole('link', { name: /FCA/ }).click()
     await (await popup).close()
-    await expect(page.getByRole('button', { name: 'PE Firm' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'General Partners' })).toBeVisible()
     await expect(page.getByRole('heading', { name: BULLETIN.title })).toHaveCount(0)
   })
 
@@ -64,7 +64,7 @@ test.describe('one publication listed twice', () => {
     expect(patch.query.get('regulation_id')!.slice(4, -1).split(',').sort()).toEqual([BULLETIN_AGAIN.id, BULLETIN.id].sort())
 
     await page.reload()
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     await expect(page.getByText(REGS.formPf.title)).toBeVisible()
     await expect(page.getByText('Primary Market Bulletin No. 66')).toHaveCount(0)
   })
@@ -141,7 +141,7 @@ test.describe('an announcement and the official document for it', () => {
     expect(patch.query.get('regulation_id')).toBe(`in.(${DOCUMENT.id})`)
 
     await page.reload()
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     await expect(page.getByText(SECOND_DOCUMENT.title)).toBeVisible()
     await expect(page.getByText(DOCUMENT.title)).toHaveCount(0)
     await expect(titles(page).filter({ hasText: NEWS.title })).toHaveCount(0)

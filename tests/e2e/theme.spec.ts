@@ -25,7 +25,7 @@ test.describe('on a device set to dark', () => {
     expect(await canvas(page)).toBe(DARK)
     await signIn(page)
     await page.goto('/')
-    await expect(page.getByRole('button', { name: 'PE Firm' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'General Partners' })).toBeVisible()
     expect(await canvas(page)).toBe(DARK)
     // Text is light on the dark canvas.
     const heading = await page.getByRole('heading', { level: 1 }).evaluate(el => getComputedStyle(el).color)

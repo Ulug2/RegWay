@@ -6,7 +6,7 @@ const titles = (page: Page) => page.locator('.glass-card-light .font-semibold.mb
 async function openFundPage(page: Page, card: string) {
   await signIn(page)
   await page.goto('/')
-  await page.getByRole('button', { name: 'Fund Structure' }).click()
+  await page.getByRole('button', { name: 'Funds', exact: true }).click()
   await page.getByRole('button', { name: card }).click()
 }
 
@@ -20,7 +20,7 @@ async function openCompanyPage(page: Page, card: string) {
 async function openFirmList(page: Page) {
   await signIn(page)
   await page.goto('/')
-  await page.getByRole('button', { name: 'PE Firm' }).click()
+  await page.getByRole('button', { name: 'General Partners' }).click()
   await expect(page.getByText(REGS.formPf.title)).toBeVisible()
 }
 
@@ -106,7 +106,7 @@ test.describe('firm page', () => {
     await expect(page.getByText(REGS.tariff.title)).toBeVisible()
 
     await page.getByRole('button', { name: 'Dashboard' }).click()
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     const card = page.locator('.group', { hasText: REGS.adviserCase.title })
     await card.hover()
     await card.getByRole('button', { name: 'Dismiss' }).click()
@@ -228,7 +228,7 @@ test.describe('day by day', () => {
     for (const r of backend.tables.regulation_relevance) r.created_at = daysAgoAt(2)
     await signIn(page)
     await page.goto('/')
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     await expect(page.getByText('Nothing new was found for today.')).toBeVisible()
     await page.getByRole('button', { name: /^See .* \(3\)$/ }).click()
     await expect(titles(page)).toHaveCount(3)
@@ -250,8 +250,8 @@ test.describe('day by day', () => {
     await page.getByRole('button', { name: /Back/ }).first().click()
     await expect(page.getByText(/^Yesterday · /)).toBeVisible()
 
-    await page.getByRole('button', { name: 'PE Firm' }).click()
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     await expect(page.getByText(/^Today · /)).toBeVisible()
   })
 })

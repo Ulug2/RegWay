@@ -55,7 +55,7 @@ test.describe('a development’s page', () => {
     backend.functions['regulation-impact'] = () => ({ json: { status: 'awaiting_publication', content: null } })
     await signIn(page)
     await page.goto('/')
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     await page.getByText(REGS.formPf.title).click()
 
     await expect(page.getByText(/^Publishes /)).toBeVisible()
@@ -91,7 +91,7 @@ test.describe('a development’s page', () => {
     })
     await signIn(page)
     await page.goto('/')
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     await page.getByText(REGS.tariff.title).click()
 
     await page.getByRole('button', { name: 'This match looks wrong?' }).click()
@@ -105,7 +105,7 @@ test.describe('a development’s page', () => {
     backend.functions['regulation-impact'] = () => ({ json: { status: 'created', content: ANALYSIS } })
     await signIn(page)
     await page.goto('/')
-    await page.getByRole('button', { name: 'PE Firm' }).click()
+    await page.getByRole('button', { name: 'General Partners' }).click()
     await page.getByText(REGS.adviserCase.title).click()
     await expect(page.getByRole('heading', { name: REGS.adviserCase.title })).toBeVisible()
     await expect(page.getByRole('button', { name: 'This match looks wrong?' })).toHaveCount(0)
