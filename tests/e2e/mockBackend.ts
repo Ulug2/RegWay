@@ -160,6 +160,8 @@ export class MockBackend {
   rpc: Record<string, unknown> = {
     ai_status: [{ failing: false, reason: null, since: null }],
   }
+  // A database function that should fail, by name, with this status.
+  rpcStatus: Record<string, number> = {}
 
   functions: Record<string, FunctionHandler> = {
     'match-geopolitical-relevance': () => ({ json: { evaluated: 0, relevant: 0, candidates: 0, fundRowsChanged: 0 } }),
@@ -227,7 +229,11 @@ export class MockBackend {
 
   private handle(method: string, path: string, query: URLSearchParams, body: any, accept: string): FunctionReply {
     if (path.startsWith('auth/v1/')) return this.auth(method, path, query, body)
-    if (path.startsWith('rest/v1/rpc/')) return { json: this.rpc[path.slice('rest/v1/rpc/'.length)] ?? true }
+    if (path.startsWith('rest/v1/rpc/')) {
+      const name = path.slice('rest/v1/rpc/'.length)
+      if (this.rpcStatus[name]) return { status: this.rpcStatus[name], json: { code: 'P0002', message: 'failed' } }
+      return { json: this.rpc[name] ?? true }
+    }
     if (path.startsWith('rest/v1/')) return this.rest(method, path.slice('rest/v1/'.length), query, body, accept)
     if (path.startsWith('functions/v1/')) {
       const name = path.slice('functions/v1/'.length)

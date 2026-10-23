@@ -11,9 +11,10 @@ import FirmProfile from './profile/FirmProfile'
 import FundsProfile from './profile/FundsProfile'
 import CompaniesProfile from './profile/CompaniesProfile'
 import DismissedRegulations from './profile/DismissedRegulations'
+import HiddenByReview from './profile/HiddenByReview'
 import FoundOnWeb from './profile/FoundOnWeb'
 
-export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio' | 'research' | 'dismissed'
+export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio' | 'research' | 'dismissed' | 'hidden'
 
 const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'account', label: 'Account' },
@@ -22,6 +23,7 @@ const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'portfolio', label: 'Portfolio Companies' },
   { key: 'research', label: 'Found on the Web' },
   { key: 'dismissed', label: 'Dismissed' },
+  { key: 'hidden', label: 'Hidden' },
 ]
 
 const THEMES: { key: ThemeChoice; label: string }[] = [
@@ -187,6 +189,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
 
         {tab === 'research' && firmId && <FoundOnWeb firmId={firmId} />}
         {tab === 'dismissed' && firmId && <DismissedRegulations firmId={firmId} />}
+        {tab === 'hidden' && firmId && <HiddenByReview firmId={firmId} />}
 
         {tab === 'account' && (
         <div className="space-y-6">

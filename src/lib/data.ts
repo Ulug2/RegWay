@@ -600,6 +600,47 @@ export async function fetchDismissed(firmId: string): Promise<Regulation[]> {
   return dismissed.filter(r => !r.duplicate_of || !seen.has(r.duplicate_of))
 }
 
+// Matches the Skeptic hid (SKEPTIC_MODE=on): stored as not relevant with
+// its reason after this prefix (REVIEWED_PREFIX in
+// supabase/functions/_shared/verdictReview.ts).
+const HIDDEN_BY_REVIEW = 'NOT_RELEVANT: Reviewed: '
+
+export interface HiddenMatch {
+  id: string
+  regulation: Regulation
+  // The fund or company it was matched to; null for the firm itself.
+  entity: string | null
+  reason: string
+}
+
+export async function fetchHiddenByReview(firmId: string): Promise<HiddenMatch[]> {
+  const { data, error } = await supabase
+    .from('regulation_relevance')
+    .select('id, relevance_reason, created_at, funds(name), portfolio_companies(name), regulations(*)')
+    .eq('firm_id', firmId)
+    .is('dismissed_at', null)
+    .like('relevance_reason', `${HIDDEN_BY_REVIEW}%`)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  type Row = { id: string; relevance_reason: string; funds: { name: string } | null; portfolio_companies: { name: string } | null; regulations: Regulation | null }
+  return (data as unknown as Row[])
+    .filter(r => r.regulations)
+    .map(r => ({
+      id: r.id,
+      regulation: r.regulations as Regulation,
+      entity: r.portfolio_companies?.name ?? r.funds?.name ?? null,
+      reason: r.relevance_reason.slice(HIDDEN_BY_REVIEW.length),
+    }))
+}
+
+// Puts a hidden match back with the reason the matcher gave
+// (migration 0040), so it returns to the dashboard.
+export async function restoreHiddenMatch(relevanceId: string): Promise<void> {
+  const { error } = await supabase.rpc('restore_reviewed_match', { p_relevance_id: relevanceId })
+  if (error) throw error
+  dropCache('regs:pe', 'regs:fund', 'regs:company')
+}
+
 // ---------------------------------------------------------------------------
 // Data source health
 // ---------------------------------------------------------------------------

@@ -9,6 +9,26 @@
 >
 > New entries go directly below this box, newest first.
 
+### 17a.1: the "Hidden" list (2026-10-23)
+- Profile → Hidden (`/profile/hidden`, `HiddenByReview.tsx`): each match
+  the Skeptic took off the dashboard (`NOT_RELEVANT: Reviewed: …`), with
+  the fund or company it was for and the Skeptic's reason, linked to the
+  development. Restore puts it back with the matcher's own reason.
+- Migration 0040: `restore_reviewed_match(relevance_id)`, security definer,
+  only for a row of the caller's firm that was hidden by review; finds the
+  rejection in `verdict_reviews` (by row for a backfill, by entity for one
+  made at matching time), restores its `original.reason` and stamps the
+  review's new `restored_at`, so undone rejections can be counted against
+  the Skeptic. No AI call.
+- Checked: the function against the local database (right review chosen
+  among three, another firm's row refused, a second restore refused);
+  browser tests for the list, restore and a failed restore; screenshots at
+  1280px light and 390px dark.
+- Not yet: the migration on the hosted database (the owner pushes it). A
+  restored company match reaches its fund's list at the next matching run
+  (the holdings roll-up runs there). A restored match has no analysis
+  until it is opened.
+
 ### 16f, in part: level buttons renamed, team on About, Legal and Privacy as documents (2026-10-23)
 - The dashboard's levels read "General Partners", "Funds", "Portfolio
   Companies" (was "PE Firm", "Fund Structure"), also on the landing page;

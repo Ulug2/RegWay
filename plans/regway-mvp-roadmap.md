@@ -45,24 +45,22 @@ multi-phase build.
 
 ## In progress
 
-### 17a. After item 17: a safety net and the Skeptic's reach (S–M each) — owner
-Item 17 is done (`docs/archive/roadmap-history.md`). With `SKEPTIC_MODE=on`
-a rejected match leaves the dashboard; these follow from that. Ask the
+### 17a. After item 17: the Skeptic's reach (S–M each) — owner, later
+Item 17 is done (`docs/archive/roadmap-history.md`); the "Hidden" list is
+done too. The rest waits until it is needed (owner, 2026-10-23). Ask the
 owner before changing `supabase/functions/regway-ai-chat/`, `_shared/ai/`,
 `_shared/roles/`, `_shared/verdictReview.ts`, the matchers' judges or
 `_shared/impact.ts`: they decide what the AI is asked.
-1. **"Hidden by review" list for the owner** (M; do before the first
-   customer). Rejected matches are visible today only in `verdict_reviews`.
-   Known borderline rejection: the EU Customs Code for A.L.A. S.p.A.
-   (kept, moved, then rejected across four rounds; not applied).
-2. **The Skeptic for enforcement matches** (M): needs its own checklist (a
+1. **The Skeptic for enforcement matches** (M): needs its own checklist (a
    case against someone else; overlap of conduct, never implied
    wrongdoing).
-3. **The Skeptic for company web-scan results** (M): review before they
+2. **The Skeptic for company web-scan results** (M): review before they
    are saved; today the backfill skips them (`source = 'ai_search'`).
-4. **An email to the owner when the AI stops working** (S; needs the
-   owner's yes). The dashboard banner (migration 0038) shows only to
-   someone who opens it.
+3. **An email to the owner when the AI stops working** (S): with the email
+   alerts, once there is an email provider. The dashboard banner
+   (migration 0038) shows only to someone who opens it.
+- Known borderline rejection, never applied: the EU Customs Code for
+  A.L.A. S.p.A. (a backfill review, so it is not in the Hidden list).
 
 ## Open for the team
 
@@ -171,6 +169,15 @@ the Unified Agenda. Compared against the owner's source registry document
 the owner; ask for it if your task needs it).
 
 Also open here:
+- **Review CFTC and OFAC coverage** (S to look, M to build; owner,
+  2026-10-23). Both arrive only through the Federal Register today, days
+  after the agency's own announcement. To find: a way to read CFTC's
+  announcements and enforcement that is not refused (a different address,
+  their email lists, or fetching from somewhere other than Supabase), and
+  an OFAC source for new designations (the Sanctions List Service's
+  downloads, or OFAC's recent-actions page). Sanctions are the more
+  urgent of the two. Starts from issue #15 (feed research: MSRB, PCAOB
+  and CFTC).
 - **CFTC feeds answer 403** to Supabase's addresses, so CFTC announcements
   and enforcement are not read (its rules arrive through the Federal
   Register). No workaround tried.
@@ -295,17 +302,18 @@ spend, and the owner has said no alert is wanted for now.
   its providers by kind, not by name.
 - **Search listing**: indexing was requested on 2026-10-08; check
   `site:regwayai.com`.
-- **Fact provenance**: is one year the right age to ask for
-  re-confirmation; should the user who confirmed be recorded; answers
-  entered before 2026-10-08 are undated until someone confirms them.
-- **CFTC and OFAC through the Federal Register only**: acceptable?
+- **Fact provenance**: one year stays the age to ask for re-confirmation
+  (owner, 2026-10-23). Open: should the user who confirmed be recorded;
+  answers entered before 2026-10-08 are undated until someone confirms
+  them.
 - **Scheduled matching beyond H.I.G.**, and per-firm local-time schedules:
   after launch, once there are customers (owner, 2026-10-23).
 - **Multi-user firms**: one user per firm today. Blocks "investment owner
-  per company" and brief recipients.
+  per company" and brief recipients. Delayed (owner, 2026-10-23).
 - **Research a company when it is added later** (after onboarding). Item
   18 researches the firm and the companies entered at the time; a company
-  added afterwards is covered only by "Research Again".
+  added afterwards is covered only by "Research Again". Not needed before
+  the first customers (owner, 2026-10-23).
 - **A real history of a development** (how its status changed).
 - **Vercel previews**: every pull request gets a preview deployment; which
   Supabase address previews are built with was not checked.
