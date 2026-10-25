@@ -31,6 +31,9 @@ supabase/.branches/
 # Claude Code per-machine local settings (e.g. which project MCP servers this
 # machine has approved) — not shared project config, unlike .mcp.json.
 .claude/settings.local.json
+# Permissions the owner granted his own Claude Code (merging, migrations);
+# committed, they would apply to every contributor's agent.
+.claude/settings.json
 
 # Everything in /plans/ stays local-only by default (YC execution doc,
 # cost-model notes, etc.) EXCEPT the two roadmap docs below, which are
