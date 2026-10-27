@@ -113,8 +113,16 @@ export default function LandingPage({ authMode, notice, onOpenAuth, onCloseAuth,
             <div className={`hero-side ${open ? 'is-open' : ''}`}>
               <figure className="hero-shot" aria-hidden={open}>
                 <div className="shot-frame">
-                  <img className="shot-light" src="/landing/company-light.jpg" width={1440} height={1600} alt="A portfolio company's page in RegWay: two developments found today, each with the reason it applies to the company." fetchPriority="high" />
-                  <img className="shot-dark" src="/landing/company-dark.jpg" width={1440} height={1600} alt="A portfolio company's page in RegWay: two developments found today, each with the reason it applies to the company." loading="lazy" />
+                  {/* Under 640px, the same page taken at phone width: the laptop
+                      picture would be too small to read there. */}
+                  <picture className="contents">
+                    <source media="(max-width: 639px)" srcSet="/landing/company-phone-light.jpg" width={780} height={1440} />
+                    <img className="shot-light" src="/landing/company-light.jpg" width={1440} height={1600} alt="A portfolio company's page in RegWay: two developments found today, each with the reason it applies to the company." fetchPriority="high" />
+                  </picture>
+                  <picture className="contents">
+                    <source media="(max-width: 639px)" srcSet="/landing/company-phone-dark.jpg" width={780} height={1440} />
+                    <img className="shot-dark" src="/landing/company-dark.jpg" width={1440} height={1600} alt="A portfolio company's page in RegWay: two developments found today, each with the reason it applies to the company." loading="lazy" />
+                  </picture>
                 </div>
                 <figcaption className="text-xs mt-3 text-center" style={{ color: 'var(--text-300)' }}>A portfolio company's page, shown with example data.</figcaption>
               </figure>

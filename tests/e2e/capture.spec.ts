@@ -41,10 +41,17 @@ test.describe('link preview picture', () => {
   })
 })
 
+// The laptop picture, and a phone one (the page at phone width, for screens
+// under 640px, where the laptop picture would be too small to read).
+const LANDING_SHOTS = [
+  { suffix: '', viewport: { width: 720, height: 1100 }, clip: { x: 0, y: 80, width: 720, height: 800 } },
+  { suffix: '-phone', viewport: { width: 390, height: 1000 }, clip: { x: 0, y: 72, width: 390, height: 720 } },
+]
+
 for (const scheme of ['light', 'dark'] as const) {
-  test.describe(`landing picture, ${scheme}`, () => {
+  for (const shot of LANDING_SHOTS) test.describe(`landing picture${shot.suffix}, ${scheme}`, () => {
     test.skip(MODE !== 'landing', 'CAPTURE=landing only')
-    test.use({ colorScheme: scheme, viewport: { width: 720, height: 1100 }, deviceScaleFactor: 2 })
+    test.use({ colorScheme: scheme, viewport: shot.viewport, deviceScaleFactor: 2 })
 
     // Example data: an invented company and invented developments.
     test('company page', async ({ page, backend }) => {
@@ -71,7 +78,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await settle(page)
       // From the company's name down through its two developments; the page
       // header above and the RegWay AI bar below are left out.
-      await page.screenshot({ path: `public/landing/company-${scheme}.jpg`, type: 'jpeg', quality: 86, clip: { x: 0, y: 80, width: 720, height: 800 } })
+      await page.screenshot({ path: `public/landing/company${shot.suffix}-${scheme}.jpg`, type: 'jpeg', quality: 86, clip: shot.clip })
     })
   })
 
