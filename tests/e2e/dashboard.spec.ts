@@ -321,6 +321,17 @@ test.describe('profile opened from a company page', () => {
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 360, height: 800 } })
 
+  test('a fund page keeps the name beside the logo and puts Edit profile under the details', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/funds/fund-2')
+    const name = page.getByRole('heading', { level: 1, name: 'Harbor Fund II' })
+    const edit = page.getByRole('button', { name: 'Edit profile' })
+    await expect(edit).toBeVisible()
+    expect((await edit.boundingBox())!.y).toBeGreaterThan((await name.boundingBox())!.y + 40)
+    await edit.click()
+    await expect(page).toHaveURL(/\/profile\/funds$/)
+  })
+
   test('the setup reminder keeps its text beside the ring and its button on a line of its own', async ({ page }) => {
     await signIn(page)
     await page.goto('/')
