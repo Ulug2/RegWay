@@ -317,3 +317,28 @@ test.describe('profile opened from a company page', () => {
     await expect(page.getByRole('heading', { name: 'GetixHealth' })).toBeVisible()
   })
 })
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 360, height: 800 } })
+
+  test('the setup reminder keeps its text beside the ring and its button on a line of its own', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/')
+    const title = page.getByRole('heading', { name: 'Finish setting up RegWay' })
+    const cont = page.getByRole('button', { name: 'Continue' })
+    await expect(title).toBeVisible()
+    expect((await cont.boundingBox())!.y).toBeGreaterThan((await title.boundingBox())!.y + 40)
+  })
+
+  test('the category filters stay on one row, and the two menus share one', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'General Partners' }).click()
+    await page.getByRole('button', { name: 'All days' }).click()
+    const top = async (name: RegExp) => (await page.getByRole('button', { name }).first().boundingBox())!.y
+    await expect.poll(async () => new Set([await top(/^All/), await top(/^Regulatory/), await top(/^Geopolitical/)]).size).toBe(1)
+    const date = (await page.getByRole('combobox', { name: 'Published' }).boundingBox())!
+    const location = (await page.getByRole('combobox', { name: 'Location' }).boundingBox())!
+    expect(date.y).toBe(location.y)
+  })
+})

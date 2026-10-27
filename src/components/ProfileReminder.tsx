@@ -41,7 +41,7 @@ export default function ProfileReminder({ completion, onOpen }: ProfileReminderP
       </button>
       <div className="flex items-center gap-4 sm:gap-5 flex-wrap pr-8">
         <ProgressRing percent={percent} size={56} />
-        <div className="flex-1 min-w-[12rem]">
+        <div className="flex-1 min-w-0 sm:min-w-[12rem]">
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-900)', letterSpacing: '-0.01em' }}>
             Finish setting up RegWay
           </h2>
@@ -49,9 +49,11 @@ export default function ProfileReminder({ completion, onOpen }: ProfileReminderP
             <span className="num">{left}</span> quick {left === 1 ? 'answer' : 'answers'} left. The more RegWay knows, the sharper your alerts.
           </p>
         </div>
-        <button className="btn-primary shrink-0" onClick={() => onOpen(tabFor(first), first.id)}>Continue</button>
+        {/* Full width on a phone, so it takes its own line under the text. */}
+        <button className="btn-primary shrink-0 w-full sm:w-auto" onClick={() => onOpen(tabFor(first), first.id)}>Continue</button>
       </div>
-      <div className="flex flex-wrap gap-2 mt-5">
+      {/* One row on a phone, scrolled sideways; wrapped from sm up. */}
+      <div className="flex sm:flex-wrap gap-2 mt-5 overflow-x-auto sm:overflow-visible -mx-5 px-5 sm:mx-0 sm:px-0 [&>*]:shrink-0">
         {incomplete.slice(0, 4).map(i => (
           <button key={`${i.scope}-${i.id}`} onClick={() => onOpen(tabFor(i), i.id)} className="btn-tool" style={{ padding: '5px 12px', fontSize: 12 }}>
             {i.label}
@@ -59,7 +61,7 @@ export default function ProfileReminder({ completion, onOpen }: ProfileReminderP
           </button>
         ))}
         {incomplete.length > 4 && (
-          <span className="text-xs self-center" style={{ color: 'var(--text-300)' }}>+{incomplete.length - 4} more</span>
+          <span className="text-xs self-center whitespace-nowrap" style={{ color: 'var(--text-300)' }}>+{incomplete.length - 4} more</span>
         )}
       </div>
     </div>

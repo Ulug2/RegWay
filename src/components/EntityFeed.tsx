@@ -124,7 +124,8 @@ function FilterBar({ items, filter, onChange }: { items: MatchedRegulation[]; fi
 
   return (
     <div className="space-y-3 mb-5">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* One row on a phone, scrolled sideways; wrapped from sm up. */}
+      <div className="flex sm:flex-wrap items-center gap-2 overflow-x-auto sm:overflow-visible -mx-5 px-5 sm:mx-0 sm:px-0 [&>*]:shrink-0">
         {CATEGORIES.map(c => (
           <Chip key={c.key} selected={filter.category === c.key} onClick={() => set({ category: c.key })}>
             {c.label} <span className="num" style={{ opacity: 0.7 }}>{counts[c.key]}</span>
@@ -136,9 +137,10 @@ function FilterBar({ items, filter, onChange }: { items: MatchedRegulation[]; fi
           </button>
         )}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
+      {/* On a phone the two menus share a row under the search field. */}
+      <div className="grid grid-cols-2 sm:grid-cols-[1fr_auto_auto] gap-2">
         <input
-          className="glass-input-rect"
+          className="glass-input-rect col-span-2 sm:col-span-1"
           type="search"
           name="search"
           autoComplete="off"
