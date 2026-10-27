@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
-import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, markConversationStopped, type AnswerReview, type ConversationSummary } from '../lib/data'
+import { getFirmId, getCachedFirm, getCachedFunds, getCachedCompanies, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, markConversationStopped, type AnswerReview, type ConversationSummary } from '../lib/data'
 import ConversationHistory from './ConversationHistory'
 import SessionContext, { type Focus } from './SessionContext'
-import { renderMarkdown } from '../lib/markdown'
+import { renderMarkdownBlocks } from '../lib/markdown'
 import type { Firm, Fund, PortfolioCompany, AiContext } from '../lib/types'
 import { ArrowDown, ArrowUpRight, Check, CheckCircle, Copy, PaperPlaneRight, Paperclip, SidebarSimple, Stop, WarningCircle, X } from './icons'
 
@@ -95,11 +95,30 @@ const pickStatusPhrase = (exclude?: string) => {
   return options[Math.floor(Math.random() * options.length)]
 }
 
-// Decoupled from network timing: the stream can deliver text in uneven
-// bursts, but the display reveals it at a steady, readable pace.
+// Decoupled from network timing: the stream delivers text in uneven bursts
+// (a long one after each web search), and the display shows it whole words
+// at a time, a share of what is waiting on each tick, so it keeps up with
+// the model instead of ticking out letter by letter.
 const REVEAL_INTERVAL_MS = 16
-const REVEAL_CHARS_PER_TICK = 2
+const REVEAL_MIN_CHARS = 4
+const REVEAL_SHARE = 0.12
 const STATUS_CYCLE_MS = 1800
+
+// Where the text on screen should end after `ticks` more ticks: never in
+// the middle of a word, except the last word once the stream is done.
+function revealEnd(text: string, shown: number, ticks: number, streamDone: boolean): number {
+  const step = Math.max(REVEAL_MIN_CHARS * ticks, Math.ceil((text.length - shown) * REVEAL_SHARE * ticks))
+  const end = shown + step
+  if (end >= text.length) {
+    if (streamDone) return text.length
+    // The last word may still be arriving: stop before it.
+    const lastSpace = text.search(/\s\S*$/)
+    return lastSpace > shown ? lastSpace : shown
+  }
+  const nextSpace = text.slice(end).search(/\s/)
+  if (nextSpace !== -1) return end + nextSpace
+  return streamDone ? text.length : Math.max(shown, text.search(/\s\S*$/))
+}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -111,16 +130,6 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'))
     reader.readAsDataURL(file)
   })
-}
-
-// Inserts a blinking cursor right before the final closing tag of a
-// markdown-rendered HTML string, so it sits at the true visual end of the
-// text rather than on its own line after a block element. Safe here only
-// because we fully control what renderMarkdown produces.
-function withCursor(html: string): string {
-  const cursor = '<span class="cursor-blink"></span>'
-  const idx = html.lastIndexOf('</')
-  return idx === -1 ? html + cursor : html.slice(0, idx) + cursor + html.slice(idx)
 }
 
 interface SseEvent {
@@ -308,11 +317,12 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
   }, [])
   useLayoutEffect(() => {
     if (headerRef.current) setHeaderH(headerRef.current.offsetHeight)
-  }, [hasStarted])
+  }, [])
   const [visible, setVisible] = useState(false)
-  const [firm, setFirm] = useState<Firm | null>(null)
-  const [funds, setFunds] = useState<Fund[]>([])
-  const [companies, setCompanies] = useState<PortfolioCompany[]>([])
+  // Shown at once from what the app already loaded, then refreshed below.
+  const [firm, setFirm] = useState<Firm | null>(getCachedFirm)
+  const [funds, setFunds] = useState<Fund[]>(() => getCachedFunds() ?? [])
+  const [companies, setCompanies] = useState<PortfolioCompany[]>(() => getCachedCompanies() ?? [])
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [attachError, setAttachError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -491,10 +501,10 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
     let lastReveal = performance.now()
     const revealTimer = setInterval(() => {
       const now = performance.now()
-      const due = Math.max(1, Math.round((now - lastReveal) / REVEAL_INTERVAL_MS)) * REVEAL_CHARS_PER_TICK
+      const ticks = Math.max(1, Math.round((now - lastReveal) / REVEAL_INTERVAL_MS))
       lastReveal = now
-      if (revealed >= target.length) {
-        if (streamDone) {
+      if (revealed >= target.length || (!streamDone && revealEnd(target, revealed, 1, false) <= revealed)) {
+        if (streamDone && revealed >= target.length) {
           clearInterval(revealTimer)
           // Only the call that's still "current" flips isTyping off / frees
           // abortRef — a stale reveal finishing after the user already
@@ -507,7 +517,7 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
         }
         return
       }
-      revealed = Math.min(target.length, revealed + due)
+      revealed = revealEnd(target, revealed, ticks, streamDone)
       setMessages(m => {
         const copy = [...m]
         copy[copy.length - 1] = { role: 'ai', content: target.slice(0, revealed), citations: [...citations], steps: [...steps], review }
@@ -651,42 +661,31 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
       hidden={hidden}
       style={{
         display: hidden ? 'none' : undefined,
-        background: hasStarted ? 'transparent' : 'rgb(var(--ink-rgb) / 0.45)',
-                transition: 'opacity 0.3s ease, background 0.4s ease',
+        transition: 'opacity 0.3s ease',
         opacity: visible ? 1 : 0,
       }}
-      onClick={e => !hasStarted && e.target === e.currentTarget && handleClose()}
     >
-      {/* Drawer panel — expands to fill the screen like its own page once a
-          real conversation starts, instead of staying a partial bottom sheet. */}
+      {/* The chat takes the whole screen as soon as it opens, rolling up
+          from the bottom: it's a page of its own, not a sheet over one. */}
       <div
-        className="mt-auto flex flex-col relative"
+        className="flex flex-col relative"
         style={{
-          height: hasStarted ? '100dvh' : '90dvh',
+          height: '100dvh',
           background: 'var(--canvas)',
-          borderTop: hasStarted ? 'none' : '1px solid rgb(var(--line-rgb) / 0.50)',
-          borderRadius: hasStarted ? 0 : '24px 24px 0 0',
-          boxShadow: hasStarted ? 'none' : '0 -20px 60px rgba(0,0,0,0.14)',
           transform: visible ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), height 0.4s ease, border-radius 0.4s ease',
+          transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)',
         }}
       >
-        {/* Drag handle — only meaningful while this still reads as a sheet */}
-        {!hasStarted && (
-          <div className="flex justify-center pt-4 pb-2 flex-shrink-0">
-            <div className="w-10 h-1 rounded-full" style={{ background: 'rgb(var(--line-rgb) / 0.60)' }} />
-          </div>
-        )}
-
-        {/* Header */}
+        {/* Header: floats over the conversation, which scrolls underneath
+            and shows through it, blurred. */}
         <div
           ref={headerRef}
-          className={`flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 flex-shrink-0 ${hasStarted ? 'absolute top-0 inset-x-0 z-30' : ''}`}
-          // Full screen: the header floats over the conversation, which
-          // scrolls underneath and shows through it, blurred.
+          className="absolute top-0 inset-x-0 z-30 flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5"
           style={{
             borderBottom: '1px solid rgb(var(--line-rgb) / 0.30)',
-            ...(hasStarted ? { background: 'rgb(var(--canvas-rgb) / 0.68)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' } : {}),
+            background: 'rgb(var(--canvas-rgb) / 0.68)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
           }}
         >
           <div className="flex items-center gap-3 min-w-0">
@@ -731,7 +730,7 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
         </div>
 
         {/* Content area: chats sidebar + conversation + session context */}
-        <div className="flex-1 flex overflow-hidden min-h-0 relative" style={{ '--chat-top': hasStarted ? `${headerH}px` : '0px' } as React.CSSProperties}>
+        <div className="flex-1 flex overflow-hidden min-h-0 relative" style={{ '--chat-top': `${headerH}px` } as React.CSSProperties}>
           {chatsOpen && (
             <ConversationHistory
               activeId={conversationId}
@@ -789,18 +788,26 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
                               {msg.attachmentName}
                             </div>
                           )}
-                          <div
-                            className={msg.role === 'ai' ? 'ai-markdown text-[15.5px] leading-[1.7] break-words' : 'text-[15px] leading-relaxed whitespace-pre-line break-words'}
-                            style={{ color: 'var(--text-900)' }}
-                            dangerouslySetInnerHTML={{
-                              __html:
-                                msg.role === 'ai'
-                                  ? isTyping && i === messages.length - 1 && !msg.steps?.length
-                                    ? withCursor(renderMarkdown(msg.content))
-                                    : renderMarkdown(msg.content)
-                                  : msg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
-                            }}
-                          />
+                          {msg.role === 'ai' ? (
+                            // One element per paragraph, list, table or code
+                            // block: while an answer streams in, the blocks
+                            // already shown stay put and each new one fades in
+                            // below them; the last one fills in word by word.
+                            <div
+                              className={`ai-markdown text-[15.5px] leading-[1.7] break-words ${isTyping && i === messages.length - 1 ? 'is-streaming' : ''}`}
+                              style={{ color: 'var(--text-900)' }}
+                            >
+                              {renderMarkdownBlocks(msg.content).map((block, bi) => (
+                                <div key={bi} className={`md-block is-${block.kind}`} dangerouslySetInnerHTML={{ __html: block.html }} />
+                              ))}
+                            </div>
+                          ) : (
+                            <div
+                              className="text-[15px] leading-relaxed whitespace-pre-line break-words"
+                              style={{ color: 'var(--text-900)' }}
+                              dangerouslySetInnerHTML={{ __html: msg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }}
+                            />
+                          )}
                         </>
                       )}
                       {msg.citations && msg.citations.length > 0 && (
