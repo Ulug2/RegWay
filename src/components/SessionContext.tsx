@@ -76,8 +76,9 @@ export default function SessionContext({
   return (
     <aside
       aria-label="Session context"
-      className="w-72 hidden xl:flex flex-col flex-shrink-0 overflow-y-auto scrollable"
-      style={{ borderLeft: '1px solid rgb(var(--line-rgb) / 0.30)', padding: '20px 20px', paddingTop: 'calc(20px + var(--chat-top, 0px))' }}
+      // Beside the conversation from xl; over it, from the right, below that.
+      className="absolute xl:static inset-y-0 right-0 z-20 w-full sm:w-80 xl:w-72 flex flex-col flex-shrink-0 overflow-y-auto scrollable"
+      style={{ borderLeft: '1px solid rgb(var(--line-rgb) / 0.30)', padding: '20px 20px', paddingTop: 'calc(20px + var(--chat-top, 0px))', background: 'var(--canvas)' }}
     >
       <div className="flex items-center justify-between mb-1">
         <div className="section-label">Session Context</div>

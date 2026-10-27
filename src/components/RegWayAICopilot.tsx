@@ -6,7 +6,7 @@ import ConversationHistory from './ConversationHistory'
 import SessionContext, { type Focus } from './SessionContext'
 import { renderMarkdownBlocks } from '../lib/markdown'
 import type { Firm, Fund, PortfolioCompany, AiContext } from '../lib/types'
-import { ArrowDown, ArrowUpRight, Check, CheckCircle, Copy, PaperPlaneRight, Paperclip, SidebarSimple, Stop, WarningCircle, X } from './icons'
+import { ArrowDown, ArrowUpRight, Check, CheckCircle, Copy, PaperPlaneRight, Paperclip, SidebarSimple, Stop, TreeStructure, WarningCircle, X } from './icons'
 
 interface RegWayAICopilotProps {
   onClose: () => void
@@ -83,6 +83,13 @@ const MAX_TEXT_BYTES = 150 * 1024
 // How tall the chat input is allowed to auto-grow before it scrolls
 // internally instead of pushing the rest of the drawer around.
 const MAX_INPUT_HEIGHT = 160
+
+// Below these widths the chats list and the session context cover the
+// conversation instead of sitting beside it (the Tailwind md and xl
+// breakpoints their classes use).
+const SIDE_BY_SIDE_CHATS = '(min-width: 768px)'
+const SIDE_BY_SIDE_CONTEXT = '(min-width: 1280px)'
+const matches = (query: string) => typeof window !== 'undefined' && window.matchMedia(query).matches
 
 
 // Shown in the empty AI bubble while waiting for the first token — cycles
@@ -285,7 +292,11 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
   const [activeContext, setActiveContext] = useState<AiContext | null | undefined>(context)
   const [chatsOpen, setChatsOpen] = useState(false)
-  const [contextOpen, setContextOpen] = useState(true)
+  // Open beside the conversation on a wide screen; on a narrower one it
+  // would cover the conversation, so it waits to be asked for.
+  const [contextOpen, setContextOpen] = useState(() => matches(SIDE_BY_SIDE_CONTEXT))
+  // On a phone the input is narrow: a shorter placeholder fits on one line.
+  const [narrow] = useState(() => matches('(max-width: 639px)'))
   // Set when the user switches focus in a chat that already has messages:
   // sent with the next message so the server updates the conversation's
   // scope and tells the model. Cleared once a message carrying it is sent.
@@ -690,7 +701,10 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
         >
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => setChatsOpen(o => !o)}
+              onClick={() => {
+                if (!chatsOpen && !matches(SIDE_BY_SIDE_CONTEXT)) setContextOpen(false)
+                setChatsOpen(o => !o)
+              }}
               aria-label={chatsOpen ? 'Hide chats' : 'Show chats'}
               aria-pressed={chatsOpen}
               title="Chats"
@@ -723,6 +737,21 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
                 Session context
               </button>
             )}
+            {/* Narrower screens: the session context opens over the
+                conversation from this button. */}
+            <button
+              onClick={() => {
+                if (!contextOpen) setChatsOpen(false)
+                setContextOpen(o => !o)
+              }}
+              aria-label={contextOpen ? 'Hide session context' : 'Show session context'}
+              aria-pressed={contextOpen}
+              title="Session context"
+              className="btn-icon xl:hidden"
+              style={contextOpen ? { background: 'rgb(var(--primary-rgb) / 0.12)', color: 'var(--primary)' } : { color: 'var(--text-600)' }}
+            >
+              <TreeStructure size={18} aria-hidden="true" />
+            </button>
             <button onClick={handleClose} className="btn-icon" aria-label="Close RegWay AI" title="Close">
               <X size={17} weight="bold" aria-hidden="true" />
             </button>
@@ -736,8 +765,14 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
               activeId={conversationId}
               refreshKey={savedVersion}
               disabled={isTyping}
-              onResume={resumeConversation}
-              onNewChat={startNewChat}
+              onResume={conversation => {
+                if (!matches(SIDE_BY_SIDE_CHATS)) setChatsOpen(false)
+                resumeConversation(conversation)
+              }}
+              onNewChat={() => {
+                if (!matches(SIDE_BY_SIDE_CHATS)) setChatsOpen(false)
+                startNewChat()
+              }}
               onClose={() => setChatsOpen(false)}
             />
           )}
@@ -869,13 +904,14 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
             >
             <div className="max-w-3xl mx-auto pointer-events-auto">
             {!hasStarted && (
-                <div className="flex flex-wrap gap-2 mb-3">
+                // One row on a phone, scrolled sideways; wrapped from sm up.
+                <div className="flex sm:flex-wrap gap-2 mb-3 overflow-x-auto sm:overflow-visible -mx-4 px-4 sm:mx-0 sm:px-0">
                 {chips.map(chip => (
                   <button
                     key={chip.prompt}
                     onClick={() => sendMessage(chip.prompt)}
                     title={chip.prompt}
-                    className="btn-tool flex-auto whitespace-nowrap"
+                    className="btn-tool flex-none sm:flex-auto whitespace-nowrap"
                     style={{ fontSize: 13, background: 'rgb(var(--surface-rgb))' }}
                   >
                     {chip.label}
@@ -911,7 +947,7 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
                     aria-label="Message RegWay AI"
                     className="glass-input w-full pt-3.5 pb-4 px-5 pr-20 resize-none block"
                     style={{ fontSize: 15, color: 'var(--text-900)', lineHeight: 1.4, maxHeight: MAX_INPUT_HEIGHT, overflowY: 'auto', borderRadius: 18, background: 'rgb(var(--surface-rgb) / 0.94)', boxShadow: 'var(--shadow-float)' }}
-                    placeholder="Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure…"
+                    placeholder={narrow ? 'Ask RegWay AI…' : 'Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure…'}
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => {
@@ -966,7 +1002,10 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
               focus={activeContext}
               files={attachedFiles}
               disabled={isTyping}
-              onFocus={changeFocus}
+              onFocus={focus => {
+                changeFocus(focus)
+                if (!matches(SIDE_BY_SIDE_CONTEXT)) setContextOpen(false)
+              }}
               onClose={() => setContextOpen(false)}
             />
           )}
