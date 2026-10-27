@@ -140,10 +140,11 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6"
+      // Full screen on a phone; a dialog over the page from sm up.
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6"
       style={{ background: 'rgb(var(--ink-rgb) / 0.5)' }}
     >
-      <div className="glass-modal w-full max-w-2xl max-h-[92dvh] overflow-y-auto scrollable" role="dialog" aria-modal="true" aria-label="Set up RegWay" style={{ overscrollBehavior: 'contain' }}>
+      <div className="glass-modal w-full max-w-2xl max-h-[100dvh] max-sm:min-h-[100dvh] is-full-on-phone sm:max-h-[92dvh] overflow-y-auto scrollable" role="dialog" aria-modal="true" aria-label="Set up RegWay" style={{ overscrollBehavior: 'contain' }}>
         <div className="p-5 sm:p-8">
           <div className="flex items-center justify-between mb-7">
             <Wordmark size={32} />
@@ -160,7 +161,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   onClick={() => step > s.n && setStep(s.n)}
                   aria-current={step === s.n ? 'step' : undefined}
                   disabled={step < s.n}
-                  className="flex items-center gap-2 pl-2 pr-4 py-1.5 text-sm font-medium transition-ui"
+                  className={`flex items-center gap-2 pl-2 pr-4 py-1.5 text-sm font-medium transition-ui ${step === s.n ? '' : 'max-sm:pr-2'}`}
                   style={{
                     borderRadius: 9999,
                     background: step === s.n ? 'var(--brand)' : step > s.n ? 'rgb(var(--primary-rgb) / 0.12)' : 'rgb(var(--line-rgb) / 0.25)',
@@ -173,7 +174,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   >
                     {step > s.n ? <Check size={13} weight="bold" aria-label="Done" /> : s.n}
                   </span>
-                  {s.label}
+                  {/* On a phone only the current step is named, so the three fit on one row. */}
+                  <span className={step === s.n ? '' : 'max-sm:sr-only'}>{s.label}</span>
                 </button>
                 {i < STEPS.length - 1 && (
                   <div className="w-6 sm:w-8 h-px hidden min-[420px]:block" aria-hidden="true" style={{ background: step > s.n ? 'rgb(var(--primary-rgb) / 0.30)' : 'rgb(var(--line-strong-rgb) / 0.5)' }} />
@@ -235,7 +237,11 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
               {saveError}
             </div>
           )}
-          <div className="flex items-center justify-between gap-3 flex-wrap mt-8 pt-6" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)' }}>
+          {/* On a phone the buttons stay at the foot of the screen while the form scrolls. */}
+          <div
+            className="flex items-center justify-between gap-3 flex-wrap mt-8 pt-6 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-5 max-sm:px-5 max-sm:pt-4 max-sm:pb-4 max-sm:-mb-5"
+            style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)', background: 'rgb(var(--surface-rgb))' }}
+          >
             <div className="text-[13px] num" style={{ color: 'var(--text-400)' }}>
               {step === 1 ? 'Step 1 of 3' : step === 2 ? `${funds.length} fund${funds.length === 1 ? '' : 's'} added` : `${companies.length} compan${companies.length === 1 ? 'y' : 'ies'} added`}
             </div>
