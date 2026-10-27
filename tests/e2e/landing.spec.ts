@@ -70,3 +70,20 @@ test.describe('landing page', () => {
     await expect(page.getByText('Create your account')).toBeInViewport()
   })
 })
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('the product picture is the phone-width one, readable at that size', async ({ page }) => {
+    await page.goto('/')
+    const picture = page.locator('.shot-frame img.shot-light')
+    await expect.poll(() => picture.evaluate(img => (img as HTMLImageElement).currentSrc)).toContain('/landing/company-phone-light.jpg')
+  })
+})
+
+test('on a laptop the product picture is the laptop one', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  const picture = page.locator('.shot-frame img.shot-light')
+  await expect.poll(() => picture.evaluate(img => (img as HTMLImageElement).currentSrc)).toMatch(/\/landing\/company-light\.jpg$/)
+})
