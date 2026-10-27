@@ -132,6 +132,7 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
       ? holdings.filter(h => h.fund_id === entity.id).map(h => companies.find(c => c.id === h.portfolio_company_id)?.name).filter((n): n is string => !!n)
       : holdings.filter(h => h.portfolio_company_id === entity.id).map(h => funds.find(f => f.id === h.fund_id)?.name).filter((n): n is string => !!n)
 
+  const editProfile = () => onNavigate('profile', { tab: isFund ? 'funds' : 'portfolio', focusId: entity.id })
   const aiContext: AiContext | undefined = name ? { type: entity.type, id: entity.id, name } : undefined
   const subtitle = fund
     ? [fund.structure, fund.size, (fund.jurisdictions ?? []).join(', ')].filter(Boolean).join(' · ')
@@ -152,12 +153,12 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
         ) : (
           <>
             <div className="max-w-2xl mx-auto flex items-start gap-4 mb-10">
-              <div className="tile w-14 h-14 text-base" style={company?.logo_url ? { background: 'none', borderRadius: 14 } : { borderRadius: 14 }} aria-hidden="true">
+              <div className="tile w-12 h-12 sm:w-14 sm:h-14 text-base" style={company?.logo_url ? { background: 'none', borderRadius: 14 } : { borderRadius: 14 }} aria-hidden="true">
                 {company?.logo_url ? <img src={company.logo_url} alt="" width={56} height={56} className="w-full h-full block object-cover" /> : initialsOf(name)}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-medium" style={{ color: 'var(--primary)' }}>{isFund ? 'Fund' : 'Portfolio company'}</div>
-                <h1 className="text-[28px] font-semibold break-words" style={{ color: 'var(--text-900)', letterSpacing: '-0.035em', lineHeight: 1.15 }}>{name}</h1>
+                <h1 className="text-[24px] sm:text-[28px] font-semibold break-words" style={{ color: 'var(--text-900)', letterSpacing: '-0.035em', lineHeight: 1.15 }}>{name}</h1>
                 {subtitle && <div className="text-[15px] mt-1" style={{ color: 'var(--text-400)' }}>{subtitle}</div>}
                 <div className="text-[13px] mt-2" style={{ color: 'var(--text-600)' }}>
                   {related === null
@@ -168,8 +169,13 @@ export default function EntityPage({ entity, onNavigate }: { entity: EntityRef; 
                         ? 'Portfolio companies held: not recorded'
                         : 'Held by: not recorded'}
                 </div>
+                {/* On a phone the link goes under the details, leaving the
+                    name the full width beside the logo. */}
+                <button onClick={editProfile} className="link text-[13px] mt-2 sm:hidden">
+                  Edit profile
+                </button>
               </div>
-              <button onClick={() => onNavigate('profile', { tab: isFund ? 'funds' : 'portfolio', focusId: entity.id })} className="link text-[13px] flex-shrink-0 mt-1">
+              <button onClick={editProfile} className="link text-[13px] flex-shrink-0 mt-1 hidden sm:block">
                 Edit profile
               </button>
             </div>
