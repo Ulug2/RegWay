@@ -1,7 +1,6 @@
 import type { Page } from '@playwright/test'
 import { aiReply, expect, signIn, test, USER, FIRM_ID, type MockBackend } from './mockBackend'
 
-const ASK = 'Ask RegWay AI about regulatory impact, compliance obligations, or fund exposure…'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 const chatCalls = (backend: MockBackend) => backend.called('POST', 'functions/v1/regway-ai-chat').map(c => c.body)
@@ -14,8 +13,10 @@ async function openCopilot(page: Page) {
 }
 
 async function ask(page: Page, question: string) {
-  await page.getByPlaceholder(ASK).fill(question)
-  await page.getByPlaceholder(ASK).press('Enter')
+  // By its label: the placeholder is shorter on a phone.
+  const box = page.getByRole('textbox', { name: 'Message RegWay AI' })
+  await box.fill(question)
+  await box.press('Enter')
 }
 
 test.describe('RegWay AI chat', () => {
@@ -438,5 +439,48 @@ test.describe('the check after an answer about the firm', () => {
       expect(box!.x).toBeGreaterThanOrEqual(0)
       expect(box!.x + box!.width).toBeLessThanOrEqual(390)
     })
+  })
+})
+
+test.describe('the chat on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+  const context = (page: Page) => page.getByRole('complementary', { name: 'Session context' })
+
+  test('session context waits to be opened, covers the chat, and closes once a focus is picked', async ({ page }) => {
+    await openCopilot(page)
+    await expect(context(page)).toHaveCount(0)
+    await expect(page.getByPlaceholder('Ask RegWay AI…')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Show session context' }).click()
+    const box = (await context(page).boundingBox())!
+    expect(box.width).toBeGreaterThanOrEqual(389)
+
+    await context(page).getByRole('button', { name: 'GetixHealth' }).click()
+    await expect(context(page)).toHaveCount(0)
+    await expect(page.getByText('Focused on GetixHealth')).toBeVisible()
+  })
+
+  test('the chats list covers the chat, and closes when a new chat starts', async ({ page }) => {
+    await openCopilot(page)
+    await page.getByRole('button', { name: 'Show session context' }).click()
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    // Only one panel at a time on a phone.
+    await expect(context(page)).toHaveCount(0)
+    const chats = page.getByRole('complementary', { name: 'Chats' })
+    expect((await chats.boundingBox())!.width).toBeGreaterThanOrEqual(389)
+    await chats.getByRole('button', { name: 'New chat' }).click()
+    await expect(chats).toHaveCount(0)
+  })
+
+  test('the suggestions stay on one row that scrolls sideways', async ({ page }) => {
+    await openCopilot(page)
+    const rows = async () => {
+      const tops = await Promise.all(
+        ["Summarize today's changes", 'What fund deadlines are coming up?', 'Any new state rules for my companies?'].map(async name => (await page.getByRole('button', { name }).boundingBox())!.y),
+      )
+      return new Set(tops).size
+    }
+    // Polled: the chat is still sliding up when it first appears.
+    await expect.poll(rows).toBe(1)
   })
 })

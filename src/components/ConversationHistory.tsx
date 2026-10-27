@@ -71,7 +71,7 @@ export default function ConversationHistory({
   return (
     <aside
       aria-label="Chats"
-      className="absolute md:static inset-y-0 left-0 z-20 w-72 md:w-64 flex flex-col flex-shrink-0"
+      className="absolute md:static inset-y-0 left-0 z-20 w-full sm:w-72 md:w-64 flex flex-col flex-shrink-0"
       style={{ paddingTop: 'var(--chat-top, 0px)', background: 'var(--sidebar)', borderRight: '1px solid rgb(var(--line-rgb) / 0.30)' }}
     >
       <div className="flex items-center justify-between gap-2 px-4 py-3">
