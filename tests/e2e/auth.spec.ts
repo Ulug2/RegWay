@@ -44,3 +44,21 @@ test.describe('signing in', () => {
     await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening)/ })).toHaveCount(0)
   })
 })
+
+test.describe('onboarding on a phone', () => {
+  test.use({ viewport: { width: 360, height: 640 } })
+
+  test('fills the screen, names only the current step, and keeps Continue in reach', async ({ page, backend }) => {
+    backend.tables.firm_members = []
+    await signIn(page)
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: 'Tell us about your firm' })).toBeVisible()
+    const dialog = (await page.getByRole('dialog').boundingBox())!
+    expect(dialog.width).toBe(360)
+    expect(dialog.height).toBe(640)
+    // The steps are still named for a screen reader.
+    await expect(page.getByRole('button', { name: /First Fund/ })).toBeAttached()
+    const cont = (await page.getByRole('button', { name: 'Continue →' }).boundingBox())!
+    expect(cont.y + cont.height).toBeLessThanOrEqual(640)
+  })
+})

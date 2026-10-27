@@ -276,6 +276,12 @@ select:focus-visible {
   border-radius: var(--r-dialog);
   box-shadow: var(--shadow-lift);
 }
+/* A dialog that fills a phone's screen (onboarding) has no corners there. */
+@media (max-width: 639px) {
+  .glass-modal.is-full-on-phone {
+    border-radius: 0;
+  }
+}
 .glass-modal::before {
   content: '';
   position: absolute;
