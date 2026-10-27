@@ -32,6 +32,10 @@ function sourceDomain(url?: string) {
   }
 }
 
+
+// The actions that share a row two by two on a phone: a little tighter there.
+const HALF = 'max-sm:px-3 max-sm:gap-1.5 max-sm:text-[13px]'
+
 export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashboard', headline, onAskAI }: HeadlineDetailViewProps) {
   const [flagged, setFlaggedState] = useState(() => readCache<boolean>(`flag:${headline?.id}`) ?? false)
   const [noteOpen, setNoteOpen] = useState(false)
@@ -200,47 +204,49 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
             </div>
           )}
 
-          {/* Actions: the source on the right, everything else in one row */}
-          <div className="flex items-center gap-2 flex-wrap mt-7 pt-5" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)' }}>
+          {/* Actions: the source on the right, everything else in one row.
+              On a phone, a two-column grid with the AI and the source full width. */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:flex-wrap mt-7 pt-5" style={{ borderTop: '1px solid rgb(var(--line-rgb) / 0.35)' }}>
             {regulationId && (
-              <button onClick={askAI} className="btn-tool is-accent">
+              <button onClick={askAI} className="btn-tool is-accent col-span-2">
                 <Sparkle size={16} aria-hidden="true" />
                 Ask RegWay AI about this
               </button>
             )}
 
-            <button onClick={toggleFlag} aria-pressed={flagged} className={`btn-tool ${flagged ? 'is-warn' : ''}`}>
+            <button onClick={toggleFlag} aria-pressed={flagged} className={`btn-tool ${HALF} ${flagged ? 'is-warn' : ''}`}>
               <Flag size={16} weight={flagged ? 'fill' : 'regular'} aria-hidden="true" />
               {flagged ? 'Flagged for Review' : 'Flag for Review'}
             </button>
 
             {regulationId && (headline?.category === 'regulatory' || headline?.category === 'geopolitical') && (
-              <button onClick={() => setDisputeOpen(o => !o)} aria-expanded={disputeOpen} className="btn-tool">
+              <button onClick={() => setDisputeOpen(o => !o)} aria-expanded={disputeOpen} className={`btn-tool ${HALF}`}>
                 <WarningCircle size={16} aria-hidden="true" />
-                This match looks wrong?
+                <span className="sm:hidden">Wrong match?</span>
+                <span className="hidden sm:inline">This match looks wrong?</span>
               </button>
             )}
 
-            <button onClick={() => setNoteOpen(o => !o)} aria-expanded={noteOpen} className="btn-tool">
+            <button onClick={() => setNoteOpen(o => !o)} aria-expanded={noteOpen} className={`btn-tool ${HALF}`}>
               <NotePencil size={16} aria-hidden="true" />
               {notes.length > 0 ? `Notes (${notes.length})` : 'Add Note'}
             </button>
 
             {confirmDismiss ? (
-              <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Confirm dismissal">
+              <div className="flex items-center gap-2 flex-wrap col-span-2" role="group" aria-label="Confirm dismissal">
                 <span className="text-[13px]" style={{ color: 'var(--text-400)' }}>Remove from your dashboard? Restore any time in Profile → Dismissed.</span>
                 <button className="btn-primary btn-sm" onClick={dismiss} disabled={dismissing}>{dismissing ? 'Dismissing…' : 'Dismiss'}</button>
                 <button className="btn-ghost btn-sm" onClick={() => setConfirmDismiss(false)}>Cancel</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDismiss(true)} className="btn-tool" title="Not relevant: remove it from your dashboard">
+              <button onClick={() => setConfirmDismiss(true)} className={`btn-tool ${HALF}`} title="Not relevant: remove it from your dashboard">
                 <X size={15} weight="bold" aria-hidden="true" />
                 Dismiss
               </button>
             )}
 
             {headline?.source_url && (
-              <a href={headline.source_url} className="btn-primary sm:ml-auto" target="_blank" rel="noreferrer">
+              <a href={headline.source_url} className="btn-primary col-span-2 sm:ml-auto" target="_blank" rel="noreferrer">
                 <ArrowSquareOut size={16} weight="bold" aria-hidden="true" />
                 View Official Source
               </a>

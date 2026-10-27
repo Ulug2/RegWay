@@ -111,3 +111,20 @@ test.describe('a development’s page', () => {
     await expect(page.getByRole('button', { name: 'This match looks wrong?' })).toHaveCount(0)
   })
 })
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 360, height: 800 } })
+
+  test('the actions sit two to a row, with the AI and the source full width', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/developments/reg-tariff')
+    const box = async (name: string) => (await page.getByRole('button', { name, exact: true }).boundingBox())!
+    await expect(page.getByRole('button', { name: 'Wrong match?' })).toBeVisible()
+    const [flag, wrong, note, dismiss] = await Promise.all(['Flag for Review', 'Wrong match?', 'Add Note', 'Dismiss'].map(box))
+    expect(flag.y).toBe(wrong.y)
+    expect(note.y).toBe(dismiss.y)
+    expect(note.y).toBeGreaterThan(flag.y)
+    const ask = await box('Ask RegWay AI about this')
+    expect(ask.width).toBeGreaterThan(flag.width * 1.8)
+  })
+})
