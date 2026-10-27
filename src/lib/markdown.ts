@@ -199,21 +199,33 @@ function renderTable(b: { head: string[]; align: Align[]; rows: string[][] }): s
   return `<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`
 }
 
-export function renderMarkdown(source: string): string {
-  const blocks = parseBlocks(source.split('\n'))
+// One top-level block of an answer, rendered. The chat puts each in its own
+// element, so blocks already on screen keep their DOM while an answer
+// streams in, and only a new block appears (and fades in).
+export interface RenderedBlock {
+  kind: Block['type']
+  html: string
+}
 
-  return blocks
-    .map(b => {
-      if (b.type === 'heading') return `<h${b.level}>${renderInline(b.text)}</h${b.level}>`
-      if (b.type === 'list') return renderList(b.items)
-      if (b.type === 'table') return renderTable(b)
-      if (b.type === 'hr') return '<hr/>'
-      if (b.type === 'blockquote') return `<blockquote>${renderInline(b.text).replace(/\n/g, '<br/>')}</blockquote>`
-      // The Copy button is wired up by the chat (it listens for clicks on
-      // `data-copy-code`); the text it copies is the <code> beside it.
-      if (b.type === 'code')
-        return `<div class="code-block"><div class="code-head"><span>${escapeHtml(b.lang || 'code')}</span><button type="button" data-copy-code>Copy</button></div><pre><code>${escapeHtml(b.code)}</code></pre></div>`
-      return `<p>${renderInline(b.text).replace(/\n/g, '<br/>')}</p>`
-    })
+function renderBlock(b: Block): string {
+  if (b.type === 'heading') return `<h${b.level}>${renderInline(b.text)}</h${b.level}>`
+  if (b.type === 'list') return renderList(b.items)
+  if (b.type === 'table') return renderTable(b)
+  if (b.type === 'hr') return '<hr/>'
+  if (b.type === 'blockquote') return `<blockquote>${renderInline(b.text).replace(/\n/g, '<br/>')}</blockquote>`
+  // The Copy button is wired up by the chat (it listens for clicks on
+  // `data-copy-code`); the text it copies is the <code> beside it.
+  if (b.type === 'code')
+    return `<div class="code-block"><div class="code-head"><span>${escapeHtml(b.lang || 'code')}</span><button type="button" data-copy-code>Copy</button></div><pre><code>${escapeHtml(b.code)}</code></pre></div>`
+  return `<p>${renderInline(b.text).replace(/\n/g, '<br/>')}</p>`
+}
+
+export function renderMarkdownBlocks(source: string): RenderedBlock[] {
+  return parseBlocks(source.split('\n')).map(b => ({ kind: b.type, html: renderBlock(b) }))
+}
+
+export function renderMarkdown(source: string): string {
+  return renderMarkdownBlocks(source)
+    .map(b => b.html)
     .join('')
 }

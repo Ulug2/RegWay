@@ -193,13 +193,16 @@ test('the dashboard never shows a placeholder name before the real one', async (
   expect(greetings.filter(g => g.includes('there'))).toEqual([])
 })
 
-test('in the full-screen chat the header floats over the conversation', async ({ page, backend }) => {
+test('the chat opens full screen, and its header floats over the conversation', async ({ page, backend }) => {
   backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('An answer.') })
+  await page.setViewportSize({ width: 1280, height: 800 })
   await signIn(page)
   await page.goto('/')
   await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
   const header = page.getByRole('heading', { name: 'RegWay AI Copilot' }).locator('xpath=ancestor::div[contains(@class,"justify-between")][1]')
-  await expect(header).toHaveCSS('position', 'static')
+  // Full screen before any message: the header sits at the very top.
+  await expect(header).toHaveCSS('position', 'absolute')
+  await expect.poll(async () => (await header.boundingBox())!.y).toBe(0)
   const box = page.getByRole('textbox', { name: 'Message RegWay AI' })
   await box.fill('When does it start?')
   await box.press('Enter')

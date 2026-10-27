@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderMarkdown } from '../../src/lib/markdown'
+import { renderMarkdown, renderMarkdownBlocks } from '../../src/lib/markdown'
 
 describe('renderMarkdown', () => {
   it('renders headings, emphasis, lists and links', () => {
@@ -77,3 +77,20 @@ describe('renderMarkdown: tables, code and nested lists', () => {
     expect(html).toContain('<del>old</del>')
   })
 })
+
+describe('renderMarkdownBlocks', () => {
+  it('splits an answer into its top-level blocks, which join back into renderMarkdown', () => {
+    const source = '## Title\n\nA paragraph.\n\n- one\n- two\n\n| a | b |\n|---|---|\n| 1 | 2 |'
+    const blocks = renderMarkdownBlocks(source)
+    expect(blocks.map(b => b.kind)).toEqual(['heading', 'p', 'list', 'table'])
+    expect(blocks.map(b => b.html).join('')).toBe(renderMarkdown(source))
+  })
+
+  it('keeps the earlier blocks unchanged as more text streams in', () => {
+    const early = renderMarkdownBlocks('First paragraph.\n\nSecond is still')
+    const later = renderMarkdownBlocks('First paragraph.\n\nSecond is still arriving.\n\n- a list')
+    expect(later[0]).toEqual(early[0])
+    expect(later).toHaveLength(3)
+  })
+})
+
