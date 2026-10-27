@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getFirmId, fetchFirm, updateFirm, getCachedFirmId, getCachedFirm } from '../lib/data'
 import { readCache, writeCache } from '../lib/cache'
@@ -45,6 +45,18 @@ interface ProfileScreenProps {
 
 export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard', initialTab = 'account', focusId, onTabChange }: ProfileScreenProps) {
   const [tab, setTabState] = useState<ProfileTab>(initialTab)
+  // On a phone the tab row scrolls sideways: keep the open tab in view (a
+  // page opened at /profile/hidden would otherwise show its tab off-screen).
+  const tabRowRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const row = tabRowRef.current
+    const on = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!row || !on || row.scrollWidth <= row.clientWidth) return
+    const left = on.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft
+    if (left < row.scrollLeft || left + on.offsetWidth > row.scrollLeft + row.clientWidth) {
+      row.scrollLeft = left - (row.clientWidth - on.offsetWidth) / 2
+    }
+  }, [tab])
   const setTab = (next: ProfileTab) => {
     setTabState(next)
     onTabChange?.(next)
@@ -173,7 +185,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
         </div>
 
         {/* Scrolls sideways on a phone rather than wrapping into a block. */}
-        <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 mb-8">
+        <div ref={tabRowRef} className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 mb-8">
           <div className="seg seg-lg flex-nowrap">
             {TABS.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)} aria-pressed={tab === t.key} className={`seg-item ${tab === t.key ? 'is-on' : ''}`}>

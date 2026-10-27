@@ -125,3 +125,18 @@ test.describe('signed in', () => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Dana')
   })
 })
+
+test.describe('Profile on a phone', () => {
+  test.use({ viewport: { width: 360, height: 800 } })
+
+  test('a tab opened from its address is scrolled into view', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/profile/hidden')
+    const tab = page.getByRole('button', { name: 'Hidden', exact: true })
+    await expect(tab).toHaveAttribute('aria-pressed', 'true')
+    await expect.poll(async () => {
+      const box = (await tab.boundingBox())!
+      return box.x >= 0 && box.x + box.width <= 360
+    }).toBe(true)
+  })
+})
