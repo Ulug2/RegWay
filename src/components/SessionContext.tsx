@@ -1,5 +1,6 @@
 import type { AiContext, Firm, Fund, PortfolioCompany } from '../lib/types'
-import { X } from './icons'
+import { useState } from 'react'
+import { CaretDown, CaretUp, X } from './icons'
 
 // The chat's right-hand panel: what RegWay AI is focused on, and the firm,
 // funds and portfolio companies it can be switched to; plus the files
@@ -21,6 +22,33 @@ function Option({ selected, disabled, onClick, children }: { selected: boolean; 
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: selected ? 'var(--primary)' : 'rgb(var(--line-rgb))' }} />
       <span className="text-[13px] truncate">{children}</span>
     </button>
+  )
+}
+
+// A card whose list can be folded away: a firm can have many funds and
+// companies. The header says how many there are, so a folded card still
+// tells you something.
+function Collapsible({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true)
+  const Caret = open ? CaretUp : CaretDown
+  return (
+    <div className="p-3 rounded-xl" style={card}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-label={`${open ? 'Hide' : 'Show'} ${title}`}
+        className="w-full flex items-center justify-between gap-2 text-xs font-medium rounded-md hover:text-[var(--text-900)]"
+        style={{ color: 'var(--text-600)', marginBottom: open ? 4 : 0 }}
+      >
+        <span>
+          {title}
+          {count > 0 && <span className="num ml-1.5" style={{ color: 'var(--text-300)' }}>{count}</span>}
+        </span>
+        <Caret size={13} weight="bold" aria-hidden="true" style={{ color: 'var(--text-400)' }} />
+      </button>
+      {open && children}
+    </div>
   )
 }
 
@@ -79,8 +107,7 @@ export default function SessionContext({
           )}
         </div>
 
-        <div className="p-3 rounded-xl" style={card}>
-          <div className="text-xs font-medium mb-1" style={{ color: 'var(--text-600)' }}>Active Funds</div>
+        <Collapsible title="Active Funds" count={funds.length}>
           {funds.length === 0 ? (
             <div className="text-xs px-2" style={{ color: 'var(--text-300)' }}>None on file</div>
           ) : (
@@ -91,10 +118,9 @@ export default function SessionContext({
               </Option>
             ))
           )}
-        </div>
+        </Collapsible>
 
-        <div className="p-3 rounded-xl" style={card}>
-          <div className="text-xs font-medium mb-1" style={{ color: 'var(--text-600)' }}>Portfolio Companies</div>
+        <Collapsible title="Portfolio Companies" count={companies.length}>
           {companies.length === 0 ? (
             <div className="text-xs px-2" style={{ color: 'var(--text-300)' }}>None on file</div>
           ) : (
@@ -104,7 +130,7 @@ export default function SessionContext({
               </Option>
             ))
           )}
-        </div>
+        </Collapsible>
 
         <div className="p-3 rounded-xl" style={card}>
           <div className="text-xs font-medium mb-1" style={{ color: 'var(--text-600)' }}>Files in this chat</div>

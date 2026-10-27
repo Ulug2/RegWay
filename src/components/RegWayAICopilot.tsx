@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { streamFunction } from '../lib/functions'
 import { supabase } from '../lib/supabase'
-import { getFirmId, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, markConversationStopped, type AnswerReview, type ConversationSummary } from '../lib/data'
+import { getFirmId, getCachedFirm, getCachedFunds, getCachedCompanies, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, markConversationStopped, type AnswerReview, type ConversationSummary } from '../lib/data'
 import ConversationHistory from './ConversationHistory'
 import SessionContext, { type Focus } from './SessionContext'
 import { renderMarkdownBlocks } from '../lib/markdown'
@@ -319,9 +319,10 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
     if (headerRef.current) setHeaderH(headerRef.current.offsetHeight)
   }, [])
   const [visible, setVisible] = useState(false)
-  const [firm, setFirm] = useState<Firm | null>(null)
-  const [funds, setFunds] = useState<Fund[]>([])
-  const [companies, setCompanies] = useState<PortfolioCompany[]>([])
+  // Shown at once from what the app already loaded, then refreshed below.
+  const [firm, setFirm] = useState<Firm | null>(getCachedFirm)
+  const [funds, setFunds] = useState<Fund[]>(() => getCachedFunds() ?? [])
+  const [companies, setCompanies] = useState<PortfolioCompany[]>(() => getCachedCompanies() ?? [])
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [attachError, setAttachError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)

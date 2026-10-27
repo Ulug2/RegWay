@@ -328,6 +328,35 @@ test.describe('chat sidebar and session context', () => {
     await page.getByRole('button', { name: 'Session context' }).click()
     await expect(context(page)).toBeVisible()
   })
+
+  test('funds and companies are listed the moment the chat opens, from what the app already loaded', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Dana')
+    // From here on the server is slow to answer: the lists must not wait for it.
+    await page.route(/\/rest\/v1\/(funds|portfolio_companies)/, async route => {
+      await new Promise(resolve => setTimeout(resolve, 5_000))
+      await route.fallback()
+    })
+    await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+    await expect(context(page).getByRole('button', { name: /Harbor Fund II/ })).toBeVisible({ timeout: 1_000 })
+    await expect(context(page).getByRole('button', { name: 'GetixHealth' })).toBeVisible({ timeout: 1_000 })
+  })
+
+  test('the funds and the companies lists fold away separately', async ({ page }) => {
+    await openCopilot(page)
+    await context(page).getByRole('button', { name: 'Hide Active Funds' }).click()
+    await expect(context(page).getByRole('button', { name: /Harbor Fund II/ })).toHaveCount(0)
+    await expect(context(page).getByRole('button', { name: 'GetixHealth' })).toBeVisible()
+    await expect(context(page).getByRole('button', { name: 'Show Active Funds' })).toHaveAttribute('aria-expanded', 'false')
+
+    await context(page).getByRole('button', { name: 'Hide Portfolio Companies' }).click()
+    await expect(context(page).getByRole('button', { name: 'GetixHealth' })).toHaveCount(0)
+
+    await context(page).getByRole('button', { name: 'Show Active Funds' }).click()
+    await expect(context(page).getByRole('button', { name: /Harbor Fund II/ })).toBeVisible()
+    await expect(context(page).getByRole('button', { name: 'GetixHealth' })).toHaveCount(0)
+  })
 })
 
 

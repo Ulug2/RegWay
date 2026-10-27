@@ -9,6 +9,7 @@ export {
   CaretDown,
   CaretLeft,
   CaretRight,
+  CaretUp,
   ChatsCircle,
   Check,
   CheckCircle,
