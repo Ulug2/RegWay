@@ -58,7 +58,7 @@ export function versionsOf(item: Pick<Regulation, 'id' | 'duplicate_of'>, versio
     .sort((a, b) => (a.published_date ?? '').localeCompare(b.published_date ?? ''))
 }
 
-const SOURCE_NAMES: Record<string, string> = {
+export const SOURCE_NAMES: Record<string, string> = {
   federal_register: 'Federal Register',
   sec_news: 'SEC announcement',
   ftc_news: 'FTC announcement',

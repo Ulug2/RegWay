@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { sourceNotice } from '../lib/sourceNotice'
 import { useCachedState } from '../lib/useCachedState'
 import { isScanning, needsScan, onScanChange, prewarmCompanies } from '../lib/scans'
 import { patchCache, writeCache } from '../lib/cache'
@@ -242,9 +243,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
           {failingSources.length > 0 && (
             <div className="notice mb-8" role="status">
-              {failingSources.length === 1
-                ? `${failingSources[0]} hasn't updated successfully recently. Recent items from this source may be missing.`
-                : `${failingSources.join(', ')} haven't updated successfully recently. Recent items from these sources may be missing.`}
+              {sourceNotice(failingSources)}
             </div>
           )}
 

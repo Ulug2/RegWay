@@ -120,6 +120,18 @@ test.describe('firm page', () => {
     await expect(page.getByText("Automatic matching hasn't updated successfully recently")).toBeVisible()
   })
 
+  test('names only feeds that have failed three times', async ({ page, backend }) => {
+    backend.tables.sync_runs.push({ source: 'regulator_feeds', ok: false, ran_at: new Date().toISOString(), stats: { feeds: [
+      { source: 'fca_publications', url: 'https://example.com/fca', failures: 3 },
+      { source: 'eur_lex', url: 'https://example.com/eu1', failures: 4 },
+      { source: 'eur_lex', url: 'https://example.com/eu2', failures: 3 },
+      { source: 'esma_news', url: 'https://example.com/esma', failures: 2 },
+    ] } })
+    await signIn(page)
+    await page.goto('/')
+    await expect(page.getByRole('status').filter({ hasText: 'FCA' })).toHaveText("FCA and EUR-Lex haven't updated successfully recently. Recent items from these sources may be missing.")
+  })
+
   test('says so, with why, when the AI itself is failing', async ({ page, backend }) => {
     backend.rpc.ai_status = [{ failing: true, reason: 'credit', since: '2026-10-08T23:30:00Z' }]
     await signIn(page)
