@@ -1,0 +1,43 @@
+import { expect, signIn, test } from './mockBackend'
+
+const delayChunk = async (route: import('@playwright/test').Route) => {
+  await new Promise(resolve => setTimeout(resolve, 400))
+  await route.continue()
+}
+
+for (const scheme of ['light', 'dark'] as const) {
+  test.describe(`lazy screen loading in ${scheme} mode`, () => {
+    test.use({ colorScheme: scheme })
+
+    test('shows the themed skeleton while the dashboard loads', async ({ page }) => {
+      await signIn(page)
+      await page.route('**/Dashboard-*.js', delayChunk)
+      await page.goto('/')
+
+      const fallback = page.getByRole('status', { name: 'Loading screen' })
+      await expect(fallback).toBeVisible()
+      expect(await fallback.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(
+        scheme === 'dark' ? 'rgb(13, 13, 13)' : 'rgb(255, 255, 255)',
+      )
+      await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Dana\.$/ })).toBeVisible()
+    })
+  })
+}
+
+test.describe('lazy chat loading in dark mode', () => {
+  test.use({ colorScheme: 'dark' })
+
+  test('shows the themed skeleton while the chat loads', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Dana\.$/ })).toBeVisible()
+
+    await page.route('**/RegWayAICopilot-*.js', delayChunk)
+    await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+
+    const fallback = page.getByRole('status', { name: 'Loading chat' })
+    await expect(fallback).toBeVisible()
+    expect(await fallback.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(13, 13, 13)')
+    await expect(page.getByText('RegWay AI Copilot')).toBeVisible()
+  })
+})
