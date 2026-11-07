@@ -4,7 +4,7 @@ import { callFunction } from './functions'
 import { fromRow, metaOf, toRow, type Answers, type ProfileMeta, type Scope } from './questionnaire'
 import type { Finding, FoundEntity, ResearchRun } from './research'
 import { firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
-import { collapseDuplicates, isAnnouncement, isOfficialDocument, versionsOf } from './duplicates'
+import { collapseDuplicates, isAnnouncement, isOfficialDocument, versionsOf, SOURCE_NAMES } from './duplicates'
 import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, PublishedVersion, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
@@ -666,13 +666,27 @@ const NOT_DATA_SOURCES = new Set(['duplicates', 'profile_changes'])
 // limitation rather than silently implying nothing is relevant. Platform-
 // wide status, not per-firm, so no firmId filter.
 export async function fetchFailingSources(): Promise<string[]> {
-  const { data, error } = await supabase.from('sync_runs').select('source, ok').order('ran_at', { ascending: false }).limit(100)
+  const { data, error } = await supabase.from('sync_runs').select('source, ok, stats').order('ran_at', { ascending: false }).limit(100)
   if (error || !data) return []
-  const latestBySource = new Map<string, boolean>()
-  for (const row of data as { source: string; ok: boolean }[]) {
-    if (!latestBySource.has(row.source)) latestBySource.set(row.source, row.ok)
+  const latestBySource = new Map<string, { source: string; ok: boolean; stats: unknown }>()
+  for (const row of data as { source: string; ok: boolean; stats: unknown }[]) {
+    if (!latestBySource.has(row.source)) latestBySource.set(row.source, row)
   }
-  return [...latestBySource.entries()].filter(([source, ok]) => !ok && !NOT_DATA_SOURCES.has(source)).map(([source]) => SOURCE_LABELS[source] ?? source)
+  const names: string[] = []
+  for (const { source, ok, stats } of latestBySource.values()) {
+    if (ok || NOT_DATA_SOURCES.has(source)) continue
+    if (source === 'regulator_feeds' && stats && typeof stats === 'object' && 'feeds' in stats && Array.isArray(stats.feeds)) {
+      const feeds = stats.feeds.filter((feed: unknown): feed is { source: string; failures: number } =>
+        !!feed && typeof feed === 'object' && 'source' in feed && typeof feed.source === 'string' &&
+        'failures' in feed && typeof feed.failures === 'number' && feed.failures >= 3)
+      if (feeds.length) {
+        names.push(...feeds.map(feed => SOURCE_NAMES[feed.source] ?? feed.source))
+        continue
+      }
+    }
+    names.push(SOURCE_LABELS[source] ?? source)
+  }
+  return [...new Set(names)]
 }
 
 // Whether RegWay's AI is failing now (migration 0038's ai_status): a few
