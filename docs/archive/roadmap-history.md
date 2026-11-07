@@ -9,6 +9,19 @@
 >
 > New entries go directly below this box, newest first.
 
+### Load signed-in screens on demand (2026-11-07)
+- `App.tsx` lazy-loads the dashboard, chat, profile, onboarding modal,
+  development page and entity page. Landing and information pages remain
+  eager. Type-only imports keep `ProfileTab` and `EntityRef` out of the
+  runtime bundle.
+- Added themed skeleton fallbacks for page transitions and chat loading.
+- Checked: `pnpm build` before and after, and `pnpm test:all` (499 unit
+  tests, 168 browser tests; 14 capture tests skipped by default).
+- Build: the single 697.92 kB entry (193.06 kB gzip) is now a 272.86 kB
+  entry plus a 248.34 kB shared chunk. The initial JavaScript is 521.20 kB
+  (150.53 kB gzip), and no chunk exceeds 500 kB.
+- Not checked: a throttled-network capture of the loading fallback.
+
 ### 17a.1: the "Hidden" list (2026-10-23)
 - Profile → Hidden (`/profile/hidden`, `HiddenByReview.tsx`): each match
   the Skeptic took off the dashboard (`NOT_RELEVANT: Reviewed: …`), with
