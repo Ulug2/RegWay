@@ -19,8 +19,9 @@
   tests, 171 browser tests; 14 capture tests skipped by default). The
   delayed-chunk browser checks see the skeleton backgrounds in both themes.
 - Build: the single 697.92 kB entry (193.06 kB gzip) is now a 272.86 kB
-  entry plus a 248.34 kB shared chunk. The initial JavaScript is 521.20 kB
-  (150.53 kB gzip), and no chunk exceeds 500 kB.
+  entry plus a 248.34 kB shared chunk. Including statically preloaded
+  chunks, the initial JavaScript is 525.29 kB (152.36 kB gzip), and no
+  chunk exceeds 500 kB.
 - Not checked: Safari or Firefox.
 
 ### 17a.1: the "Hidden" list (2026-10-23)
