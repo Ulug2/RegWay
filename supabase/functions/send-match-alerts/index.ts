@@ -11,10 +11,11 @@
 // finds (FIRST_DAY_HOURS), which the person sees on the dashboard while
 // setting up rather than as a long email.
 //
-// A person seen for the first time gets an email_preferences row (alerts
-// on, from now) and no email that run, so switching this on never sends
-// the history. A failed send records nothing; the next run tries again
-// (while the match is inside LOOKBACK_HOURS).
+// Someone with no email_preferences row has alerts on (the default) and
+// gets one when an email is sent to them. History never arrives as one
+// email: a run looks back LOOKBACK_HOURS only, and a firm's first day is
+// left out. A failed send records nothing; the next run tries again (while
+// the match is inside LOOKBACK_HOURS).
 //
 //   POST /functions/v1/send-match-alerts   {}                  (cron)
 //   POST /functions/v1/send-match-alerts   { "dryRun": true }  — say what would be sent, send and write nothing
@@ -108,15 +109,11 @@ Deno.serve(async req => {
     }
 
     for (const person of (people ?? []) as Recipient[]) {
-      // First time seen: alerts on from now, nothing sent for the past.
-      if (person.match_alerts === null) {
-        newPeople++
-        if (!dryRun) await admin.from('email_preferences').upsert({ user_id: person.user_id }, { onConflict: 'user_id', ignoreDuplicates: true })
-        continue
-      }
-      if (!person.match_alerts || !person.alerts_since) continue
+      // No setting yet = on, with no start date of its own.
+      const isNew = person.match_alerts === null
+      if (person.match_alerts === false) continue
 
-      const fresh = candidates.filter(r => r.created_at > person.alerts_since!)
+      const fresh = person.alerts_since ? candidates.filter(r => r.created_at > person.alerts_since!) : candidates
       if (!fresh.length) continue
       const { data: done, error: doneError } = await admin.from('match_alert_items').select('relevance_id').eq('user_id', person.user_id).in('relevance_id', fresh.map(r => r.id))
       if (doneError) {
@@ -154,6 +151,10 @@ Deno.serve(async req => {
         .from('match_alert_items')
         .upsert(unsent.map(r => ({ relevance_id: r.id, user_id: person.user_id, firm_id: firmId, resend_id: result.id })), { onConflict: 'relevance_id,user_id', ignoreDuplicates: true })
       if (recordError) failures.push(`recording for ${person.email}: ${recordError.message}`)
+      if (isNew) {
+        newPeople++
+        await admin.from('email_preferences').upsert({ user_id: person.user_id }, { onConflict: 'user_id', ignoreDuplicates: true })
+      }
       sent.push({ email: person.email, headlines: headlines.length })
     }
   }

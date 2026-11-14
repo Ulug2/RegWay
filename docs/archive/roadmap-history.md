@@ -23,8 +23,8 @@ Profile; the email lists headlines and sends people to the dashboard.
   matches, later versions of a development, a firm's first 24 hours of
   matching (seen on the dashboard while setting up), matches before the
   person's `alerts_since`, and anything already emailed
-  (`match_alert_items`). Someone seen for the first time gets an
-  `email_preferences` row and no email for the past.
+  (`match_alert_items`). Someone with no setting yet has alerts on; a
+  run looks back 48 hours only, so history never arrives as one email.
 - Profile → Account → **Email alerts**: On / Off (`EmailAlerts.tsx`).
   Turning on starts from now. The onboarding question's "coming soon"
   help text now points there.

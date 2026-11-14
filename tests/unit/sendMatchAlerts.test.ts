@@ -101,12 +101,19 @@ describe('send-match-alerts', () => {
     expect(later.calls).toHaveLength(0)
   })
 
-  it('starts someone new from now: a preferences row, no email for the past', async () => {
+  it('emails someone with no setting yet (on by default) and records their setting', async () => {
     setEnv('RESEND_API_KEY', 're_test')
     const { body, calls, db } = await run({ rows: [row('rel-1', reg('reg-1', 'X'))], people: [{ ...PERSON, match_alerts: null, alerts_since: null }] })
-    expect(calls).toHaveLength(0)
+    expect(calls).toHaveLength(1)
     expect(body.newPeople).toBe(1)
     expect(db.ran('email_preferences', 'upsert')[0].payload).toEqual({ user_id: 'user-1' })
+  })
+
+  it('a dry run records no setting for someone new', async () => {
+    setEnv('RESEND_API_KEY', 're_test')
+    const { calls, db } = await run({ rows: [row('rel-1', reg('reg-1', 'X'))], people: [{ ...PERSON, match_alerts: null, alerts_since: null }], body: { dryRun: true } })
+    expect(calls).toHaveLength(0)
+    expect(db.ran('email_preferences')).toHaveLength(0)
   })
 
   it("skips a firm's first day of matching", async () => {
