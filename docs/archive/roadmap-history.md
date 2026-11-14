@@ -9,6 +9,13 @@
 >
 > New entries go directly below this box, newest first.
 
+### Legacy locations with full U.S. state names (2026-11-14)
+- `parseLegacyLocation` now recognizes full state names regardless of case,
+  including District of Columbia, while preserving city/country pairs.
+  It also accepts city/state/U.S. country strings; other three-part strings
+  remain unparsed.
+- Checked: focused unit tests for state names, abbreviations, country pairs,
+  ambiguous names and three-part locations; `pnpm test:all`.
 ### Syncs locked to the service key; a pause switch for automatic AI (2026-11-14)
 - The six sync functions accepted the public key (in every browser), so
   anyone could run them as often as they liked, and

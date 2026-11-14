@@ -111,9 +111,6 @@ so ask the owner first (item 17a).
 ### Known defects (S each unless marked)
 - **Source names live in three places**: `SOURCE_LABELS` (`data.ts`),
   `SOURCE_NAMES` (`duplicates.ts`), the landing page's list.
-- **Old locations with a full state name are misread**:
-  `parseLegacyLocation("Miami, Florida")` gives city Miami, country
-  Florida. Affects rows with `hq_location` but no `profile.hq`.
 - **After stopping a chat answer, the empty bubble stays** until the next
   message. (Chat file: ask the owner first, see item 17a.)
 - **The one-year staleness threshold is defined twice** (client
