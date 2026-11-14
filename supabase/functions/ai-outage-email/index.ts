@@ -6,10 +6,12 @@
 // ai_status() the banner reads: failing = three or more failed AI calls
 // since the last one that worked.
 //
-// One email per outage: an outage is identified by when it began
-// (`ai_status().since`), recorded in `ai_outage_emails` once the email has
-// gone. A run while the AI works, or for an outage already emailed, sends
-// nothing. If sending fails, nothing is recorded, so the next run tries
+// One email per outage. An outage lasts until an AI call works again, so
+// it has been emailed when an `ai_outage_emails` row was sent after the
+// last successful call (`usage_events`, ok). Not `ai_status().since`: that
+// looks back only 7 days, so in a long outage it moves forward with every
+// run, and keying on it sent an email every 30 minutes (2026-11-14). A run
+// while the AI works, or for an outage already emailed, sends nothing. If sending fails, nothing is recorded, so the next run tries
 // again. Makes no AI call. Runs every 15 minutes (migration 0042).
 //
 //   POST /functions/v1/ai-outage-email   {}                (cron)
@@ -74,7 +76,11 @@ Deno.serve(async req => {
   const status = (Array.isArray(data) ? data[0] : data) as Status | null
   if (!status?.failing || !status.since) return json({ failing: false })
 
-  const { data: earlier, error: readError } = await admin.from('ai_outage_emails').select('since').eq('since', status.since).maybeSingle()
+  const { data: lastOk, error: okError } = await admin.from('usage_events').select('created_at').eq('ok', true).order('created_at', { ascending: false }).limit(1).maybeSingle()
+  if (okError) return json({ error: `usage_events: ${okError.message}` }, 500)
+  let earlierQuery = admin.from('ai_outage_emails').select('sent_at').order('sent_at', { ascending: false }).limit(1)
+  if (lastOk?.created_at) earlierQuery = earlierQuery.gt('sent_at', lastOk.created_at)
+  const { data: earlier, error: readError } = await earlierQuery.maybeSingle()
   if (readError) return json({ error: `ai_outage_emails: ${readError.message}` }, 500)
   if (earlier) return json({ failing: true, emailed: 'already' })
 
@@ -84,7 +90,7 @@ Deno.serve(async req => {
     return json({ failing: true, emailed: false, reason: result.reason }, 502)
   }
 
-  const { error: writeError } = await admin.from('ai_outage_emails').insert({ since: status.since, reason: status.reason, recipients: to, resend_id: result.id })
+  const { error: writeError } = await admin.from('ai_outage_emails').upsert({ since: status.since, reason: status.reason, recipients: to, resend_id: result.id }, { onConflict: 'since', ignoreDuplicates: true })
   if (writeError) console.error('ai-outage-email: sent but not recorded:', writeError.message)
   return json({ failing: true, emailed: true })
 })

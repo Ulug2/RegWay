@@ -6,10 +6,11 @@ import { SERVICE_KEY, setEnv } from './helpers/setup'
 const SINCE = '2026-11-14T10:00:00+00:00'
 const FAILING = { failing: true, reason: 'credit', since: SINCE }
 
-async function run(opts: { status?: unknown; emailedBefore?: boolean; resend?: Response; token?: string; body?: unknown } = {}) {
+async function run(opts: { status?: unknown; emailedBefore?: boolean; lastOk?: string | null; resend?: Response; token?: string; body?: unknown } = {}) {
   const db = fakeClient((q: Query) => {
     if (q.table === 'ai_status') return { data: [opts.status ?? FAILING] }
-    if (q.table === 'ai_outage_emails' && q.op === 'select') return { data: opts.emailedBefore ? { since: SINCE } : null }
+    if (q.table === 'usage_events') return { data: opts.lastOk === null ? null : { created_at: opts.lastOk ?? '2026-11-04T00:00:00Z' } }
+    if (q.table === 'ai_outage_emails' && q.op === 'select') return { data: opts.emailedBefore ? { sent_at: '2026-11-14T20:18:00Z' } : null }
   })
   setClient(db)
   const { handler } = await loadHandler('ai-outage-email')
@@ -54,7 +55,7 @@ describe('ai-outage-email', () => {
     expect(sent.text).toContain('run out of credit')
     expect(sent.text).toContain('console.anthropic.com')
 
-    expect(db.ran('ai_outage_emails', 'insert')[0].payload).toEqual({ since: SINCE, reason: 'credit', recipients: ['team@regwayai.com'], resend_id: 'email-1' })
+    expect(db.ran('ai_outage_emails', 'upsert')[0].payload).toEqual({ since: SINCE, reason: 'credit', recipients: ['team@regwayai.com'], resend_id: 'email-1' })
   })
 
   it('does not email again for an outage already emailed', async () => {
@@ -62,7 +63,7 @@ describe('ai-outage-email', () => {
     const { body, calls, db } = await run({ emailedBefore: true })
     expect(body).toEqual({ failing: true, emailed: 'already' })
     expect(calls).toHaveLength(0)
-    expect(db.ran('ai_outage_emails', 'insert')).toHaveLength(0)
+    expect(db.ran('ai_outage_emails', 'upsert')).toHaveLength(0)
   })
 
   it('sends to the addresses in ALERT_EMAIL_TO', async () => {
@@ -77,7 +78,7 @@ describe('ai-outage-email', () => {
     const { res, body, db } = await run({ resend: jsonResponse({ message: 'Domain not verified' }, 403) })
     expect(res.status).toBe(502)
     expect(body).toMatchObject({ emailed: false, reason: 'Resend 403: Domain not verified' })
-    expect(db.ran('ai_outage_emails', 'insert')).toHaveLength(0)
+    expect(db.ran('ai_outage_emails', 'upsert')).toHaveLength(0)
   })
 
   it('says so without the Resend key, and calls nobody', async () => {
@@ -102,5 +103,23 @@ describe('ai-outage-email', () => {
     expect(JSON.parse(String(calls[0].init?.body)).subject).toBe('RegWay email test')
     expect(db.ran('ai_status')).toHaveLength(0)
     expect(db.ran('ai_outage_emails')).toHaveLength(0)
+  })
+
+  // The bug of 2026-11-14: ai_status().since moves forward with its 7-day
+  // window, so keying on it emailed every 30 minutes.
+  it('counts an outage as emailed if an email went out after the last call that worked, whatever its start time', async () => {
+    setEnv('RESEND_API_KEY', 're_test')
+    const { body, calls, db } = await run({ status: { failing: true, reason: 'credit', since: '2026-11-07T22:38:00Z' }, emailedBefore: true })
+    expect(body).toEqual({ failing: true, emailed: 'already' })
+    expect(calls).toHaveLength(0)
+    const lookup = db.ran('ai_outage_emails', 'select')[0]
+    expect(lookup.filters).toContainEqual(['gt', 'sent_at', '2026-11-04T00:00:00Z'])
+  })
+
+  it('with no call that ever worked, any earlier email counts', async () => {
+    setEnv('RESEND_API_KEY', 're_test')
+    const { db, calls } = await run({ emailedBefore: true, lastOk: null })
+    expect(calls).toHaveLength(0)
+    expect(db.ran('ai_outage_emails', 'select')[0].filters.some(f => f[0] === 'gt')).toBe(false)
   })
 })
