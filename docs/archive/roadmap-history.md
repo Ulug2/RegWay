@@ -9,6 +9,44 @@
 >
 > New entries go directly below this box, newest first.
 
+### Bug sweep and the system guide (2026-11-14)
+- **AI outage email sent every 30 minutes** (5 emails on 2026-11-14): it
+  keyed an outage on `ai_status().since`, which moves forward with its
+  7-day window. Now an outage counts as emailed when an email went out
+  after the last AI call that worked (PR #58, deployed).
+- **Alerts would have skipped the first matches after launch**: a person
+  was "registered" only when there was something to send, and then sent
+  nothing. Someone with no setting now has alerts on (PR #56, deployed).
+- **Alert job robustness**: asks only for real matches (rejections could
+  push them past the 2,000-row cap after a catch-up) and looks up what was
+  sent in chunks of 100 (deployed).
+- **Email addresses in `sync_runs`** (which every signed-in user can
+  read): a failed alert send recorded the address. Now the user id only
+  (deployed; none had been written).
+- **`refresh-entity-impacts` had no rate limit**: any signed-in user could
+  call it repeatedly, each call forcing up to 10 Sonnet analyses. Direct
+  user calls are now limited to 6 an hour (apply-profile-changes uses the
+  service key, unlimited). Needs deploying.
+- **Feed text encoded twice** showed as "&nbsp;" / "&amp;" on cards (FCA):
+  `_shared/rss.ts` decodes a second time when the first pass left an
+  entity behind.
+- **Enforcement cards repeated the title as the summary**: SEC litigation
+  releases fall back to the start of the release, FINRA items to no
+  summary.
+- **A blank page after a deploy**: a tab opened before the deploy asked for
+  files that no longer exist when it opened a screen. A failed screen load
+  now reloads the page once (`src/lib/lazyScreen.ts`). The browser tests
+  for the loading skeletons (PR #52) never slowed the screen down (their
+  file pattern matched only built files, the tests run on the dev server);
+  they now match both.
+- Out-of-date docs: `supabase/README.md` (6 of 21 functions, `db push`
+  warning), the SEC proceedings schedule comment.
+- New: `docs/regway-system-guide.md`, the whole system in one document.
+- Production check (2026-11-14): a temporary, labelled match on H.I.G.
+  and 40 real company-scan matches (the owner had just topped up the AI
+  credit and opened the dashboard) went out in one alert email at 22:55;
+  41 items recorded in `match_alert_items`. The test match was removed.
+
 ### Item 12, Phase 3: match alert emails (2026-11-14)
 Decided by the owner 2026-11-14: every match counts ("high priority" =
 anything matched to the firm, a fund or a company); on for everyone, off in

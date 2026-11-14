@@ -13,29 +13,37 @@
 
 ## 3. Link the CLI and push the schema
 
+For a **new** project:
+
 ```bash
 supabase login
 supabase link --project-ref <your-project-ref>   # found in the project URL / Settings → General
-supabase db push                                  # applies supabase/migrations/0001_init.sql
+supabase db push                                  # applies every file in supabase/migrations/
 ```
+
+**Not for RegWay's production project.** There, migrations from 0021 on
+were applied by hand and are recorded by date, not by number, so
+`supabase db push` would try to run 0021 onwards again. Apply each new
+migration on its own (the dashboard's SQL editor, or `apply_migration`).
 
 ## 4. Set Edge Function secrets
 
 ```bash
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+supabase secrets set RESEND_API_KEY=re_...        # email (Resend, regwayai.com domain)
+supabase secrets set SKEPTIC_MODE=on CHAT_REVIEW=on
 ```
 
-`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically into Edge Functions by Supabase — you don't set those yourself.
+Optional: `ALERT_EMAIL_TO` (who gets the AI outage email; default
+team@regwayai.com), `EMAIL_FROM` (default `RegWay <alerts@regwayai.com>`).
+`SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are
+injected by Supabase; you don't set those yourself.
 
 ## 5. Deploy the functions
 
 ```bash
-supabase functions deploy sync-federal-register
-supabase functions deploy match-relevance
-supabase functions deploy sync-travel-advisories
-supabase functions deploy match-geopolitical-relevance
-supabase functions deploy company-regulations
-supabase functions deploy regway-ai-chat
+supabase functions deploy                  # every function
+supabase functions deploy <name>           # one function
 ```
 
 ## 6. Do a first data sync
@@ -45,18 +53,40 @@ curl -X POST "https://<project-ref>.supabase.co/functions/v1/sync-federal-regist
   -H "Authorization: Bearer <anon-key>"
 ```
 
-This pulls the last 7 days of federal rules into the `regulations` table. To keep it fresh, schedule it from the Supabase dashboard (**Database → Cron**) to run daily, calling the same URL.
+The timers in the migrations keep it fresh after that (they read the
+service key from Vault, see below).
 
 ## What each function does
 
-- `sync-federal-register` — pulls new/proposed federal rules from the free Federal Register API for a curated list of agencies (SEC, CFTC, IRS, DOL, EPA, FERC, HHS, FMCSA, CFPB) and upserts them as shared `regulations` rows. This is raw, unfiltered federal data — every firm's regulations still have to go through relevance matching below before anyone sees them.
-- `match-relevance` — **the filter.** Takes a `firmId`, finds regulations not yet evaluated for that firm, and asks Claude (given that firm's real jurisdictions, funds, and portfolio companies) which ones actually create a compliance obligation or exposure, and for whom (the firm, a specific fund, or a specific portfolio company). Only regulations marked relevant get a `regulation_relevance` row; irrelevant ones get a `NOT_RELEVANT:` marker row so we don't re-ask about them every run. **The dashboard must always query through `regulation_relevance` (excluding rows whose `relevance_reason` starts with `NOT_RELEVANT:`), never straight from `regulations`** — that's what guarantees a firm never sees a regulation nothing has confirmed applies to them. Call this once right after onboarding (so a new firm isn't staring at an empty dashboard) and again after every `sync-federal-register` run. Regulatory category only: sanctions, export-control and trade documents from the same sync are `geopolitical` and go through `match-geopolitical-relevance`.
-- `sync-travel-advisories` — pulls U.S. State Department travel advisories (levels 3-4 only) as `geopolitical` rows tagged with their countries. Runs daily (migration 0023).
-- `match-geopolitical-relevance` — matches `geopolitical` items (OFAC, BIS, USTR, presidential sanctions/tariff documents, travel advisories) to the firm and its portfolio companies by recorded location: headquarters, facilities, operations, suppliers. A free pre-filter on `regulations.countries` runs first, so only items touching a country the firm is connected to reach Claude. Pass `{ "reevaluate": true }` after a location edit to re-check items rejected under the old footprint. Fund-level matches are not asked of Claude: every call re-derives them from `fund_holdings` (migration 0024, set on each company's profile card) plus the company verdicts (`_shared/holdings.ts`), as `regulation_relevance` rows with `via_holdings = true`. Call it with `{}` after a holdings edit.
-- `company-regulations` — the on-demand version of the same idea, scoped to one portfolio company: given a `portfolio_company_id`, builds a query from that company's sector + location, asks Claude (with web search) to find recent relevant regulatory activity, forces the answer into a structured list, and stores each item as its own `regulations` row **already linked** via `regulation_relevance` — no separate matching step needed since it was already searched specifically for that company. This is what powers clicking into a company on the "Portfolio Companies" tab.
-- `regway-ai-chat` — the conversational copilot. Loads the caller's firm/fund/portfolio context, asks Claude (with web search) to answer grounded in real sources, and saves the exchange to `regway_ai_messages`.
+The full story (pipeline, AI agents, emails, timers) is in
+[`docs/regway-system-guide.md`](../docs/regway-system-guide.md). In short:
 
-All four keep `ANTHROPIC_API_KEY` server-side only. The frontend never talks to Anthropic directly.
+| Function | Who calls it | What it does | AI? |
+|---|---|---|---|
+| `sync-federal-register` | timer, 30 min | Federal Register rules for 64 agencies into `regulations` | no |
+| `sync-regulator-feeds` | timer, 30 min | SEC/FTC/CFPB announcements, UK and EU regulators and sanctions | no |
+| `sync-sec-enforcement` | timer, hourly | SEC litigation releases | no |
+| `sync-finra-enforcement` | timer, hourly | FINRA bars, fines, suspensions | no |
+| `sync-sec-admin-proceedings` | timer, 3 h | SEC administrative proceedings (PDFs read by Claude) | yes |
+| `sync-travel-advisories` | timer, 6 h | State Department advisories, levels 3 and 4 | no |
+| `group-duplicates` | timer, 30 min | Links versions of one development | small |
+| `run-matching` | timer, 30 min | Runs the three matchers for enrolled firms | via matchers |
+| `match-relevance` | run-matching, onboarding, edits | Regulatory matches (Haiku) + the Skeptic | yes |
+| `match-enforcement-relevance` | same | Enforcement matches | yes |
+| `match-geopolitical-relevance` | same, dashboard load | Sanctions/trade/advisory matches by location + the Skeptic; fund rows from holdings | yes |
+| `rematch-regulation` | user: "this match looks wrong" | Re-judges one development with the user's note | yes |
+| `regulation-impact` | matchers, opening a development | Writes the analysis | yes |
+| `refresh-entity-impacts` | after a profile edit | Rewrites analyses of an edited entity's matches | yes |
+| `apply-profile-changes` | timer, 1 min | Runs the AI follow-up of profile edits once they settle | via others |
+| `company-regulations` | the app, per company | Web-search scan for one portfolio company | yes |
+| `research-firm` | after onboarding, "Research Again" | Web research on the firm, as proposals to confirm | yes |
+| `regway-ai-chat` | the chat | Streams the answer, then checks its claims | yes |
+| `review-existing-matches` | owner, by hand | Runs the Skeptic over existing matches | yes |
+| `send-match-alerts` | timer, 30 min | Emails each person what newly matched | no |
+| `ai-outage-email` | timer, 15 min | Emails the owner once when the AI keeps failing | no |
+
+`ANTHROPIC_API_KEY` stays server-side only. The frontend never talks to
+Anthropic directly.
 
 ## Scheduled matching (`run-matching`)
 

@@ -56,6 +56,17 @@ function extractHeadline(narrative: string): string {
   return HEADLINE_PATTERN.exec(narrative)?.[1]?.trim() ?? ''
 }
 
+// The card's summary: the headline sentence, or else the start of the
+// release itself. Never the RSS title again (just the respondents' names):
+// a card that repeated its title as the summary read as a broken card.
+export function summaryOf(narrative: string, title: string): string | null {
+  const headline = extractHeadline(narrative)
+  if (headline) return headline.slice(0, 600)
+  const opening = narrative.replace(/\s+/g, ' ').trim().slice(0, 400)
+  if (opening.length < 40 || opening === title) return null
+  return opening.length === 400 ? `${opening.replace(/\s+\S*$/, '')}…` : opening
+}
+
 Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
@@ -88,7 +99,6 @@ Deno.serve(async req => {
     for (const item of newItems) {
       const pageText = await fetchPlainText([item.link], { minLength: 200 })
       const narrative = extractNarrative(pageText)
-      const headline = extractHeadline(narrative)
       rows.push({
         source: 'sec_enforcement' as const,
         category: 'enforcement' as const,
@@ -96,7 +106,7 @@ Deno.serve(async req => {
         title: item.title,
         agency: 'Securities and Exchange Commission',
         jurisdiction: 'Federal',
-        summary: (headline || item.title).slice(0, 600),
+        summary: summaryOf(narrative, item.title),
         published_date: new Date(item.pubDate).toISOString().slice(0, 10),
         effective_date: null,
         source_url: item.link,

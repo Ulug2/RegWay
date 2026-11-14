@@ -90,7 +90,8 @@ Deno.serve(async req => {
         title: item.title,
         agency: 'Financial Industry Regulatory Authority (FINRA)',
         jurisdiction: 'Federal',
-        summary: (item.description || item.title).slice(0, 600),
+        // No description: no summary, rather than the title twice on the card.
+        summary: item.description && item.description !== item.title ? item.description.slice(0, 600) : null,
         published_date: new Date(item.pubDate).toISOString().slice(0, 10),
         effective_date: null,
         source_url: item.link,

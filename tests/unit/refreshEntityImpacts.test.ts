@@ -5,8 +5,8 @@ import { loadHandler, post } from './helpers/handler'
 
 const matched = (regulation_id: string, relevance_reason = 'Relevant.') => ({ regulation_id, relevance_reason })
 
-async function refresh(body: unknown, rows: unknown[] = []) {
-  const db = fakeClient((q: Query) => firmQueries(q) ?? (q.table === 'regulation_relevance' ? { data: rows } : undefined))
+async function refresh(body: unknown, rows: unknown[] = [], allowed = true) {
+  const db = fakeClient((q: Query) => firmQueries(q, { allowed }) ?? (q.table === 'regulation_relevance' ? { data: rows } : undefined))
   setClient(db)
   const { handler, background } = await loadHandler('refresh-entity-impacts')
   const net = stubModel({})
@@ -60,5 +60,14 @@ describe('refresh-entity-impacts', () => {
     const { res, queued } = await refresh({ scope: 'company', entityId: 'co-new' }, [])
     expect(await res.json()).toEqual({ queued: 0 })
     expect(queued).toEqual([])
+  })
+
+  // Anyone signed in could call this directly; each call forces up to 10
+  // Sonnet analyses.
+  it('refuses a signed-in caller over the hourly limit, before any AI call', async () => {
+    const { res, queued, model } = await refresh({ scope: 'firm' }, [matched('r1')], false)
+    expect(res.status).toBe(429)
+    expect(queued).toHaveLength(0)
+    expect(model).toHaveLength(0)
   })
 })

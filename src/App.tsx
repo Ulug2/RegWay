@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { getFirmId, getCachedFirmId, getCachedFirm, fetchFirm, fetchFunds, fetchPortfolioCompanies, fetchHoldings, fetchRegulation } from './lib/data'
 import { bindCacheToUser, clearCache, readCache, writeCache } from './lib/cache'
@@ -10,13 +10,14 @@ import type { ProfileTab } from './components/ProfileScreen'
 import type { EntityRef } from './components/EntityPage'
 import type { Regulation, AiContext } from './lib/types'
 import LogoMark from './components/LogoMark'
+import { lazyScreen } from './lib/lazyScreen'
 
-const ProfileScreen = lazy(() => import('./components/ProfileScreen'))
-const OnboardingModal = lazy(() => import('./components/OnboardingModal'))
-const Dashboard = lazy(() => import('./components/Dashboard'))
-const EntityPage = lazy(() => import('./components/EntityPage'))
-const RegWayAICopilot = lazy(() => import('./components/RegWayAICopilot'))
-const HeadlineDetailView = lazy(() => import('./components/HeadlineDetailView'))
+const ProfileScreen = lazyScreen(() => import('./components/ProfileScreen'))
+const OnboardingModal = lazyScreen(() => import('./components/OnboardingModal'))
+const Dashboard = lazyScreen(() => import('./components/Dashboard'))
+const EntityPage = lazyScreen(() => import('./components/EntityPage'))
+const RegWayAICopilot = lazyScreen(() => import('./components/RegWayAICopilot'))
+const HeadlineDetailView = lazyScreen(() => import('./components/HeadlineDetailView'))
 
 type View = 'loading' | 'landing' | 'auth' | 'reset-password' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai' | 'entity' | 'page'
 
