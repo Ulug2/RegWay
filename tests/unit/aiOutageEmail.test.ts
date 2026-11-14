@@ -6,7 +6,7 @@ import { SERVICE_KEY, setEnv } from './helpers/setup'
 const SINCE = '2026-11-14T10:00:00+00:00'
 const FAILING = { failing: true, reason: 'credit', since: SINCE }
 
-async function run(opts: { status?: unknown; emailedBefore?: boolean; resend?: Response; token?: string } = {}) {
+async function run(opts: { status?: unknown; emailedBefore?: boolean; resend?: Response; token?: string; body?: unknown } = {}) {
   const db = fakeClient((q: Query) => {
     if (q.table === 'ai_status') return { data: [opts.status ?? FAILING] }
     if (q.table === 'ai_outage_emails' && q.op === 'select') return { data: opts.emailedBefore ? { since: SINCE } : null }
@@ -14,7 +14,7 @@ async function run(opts: { status?: unknown; emailedBefore?: boolean; resend?: R
   setClient(db)
   const { handler } = await loadHandler('ai-outage-email')
   const calls = stubFetch(url => (url.hostname === 'api.resend.com' ? (opts.resend ?? jsonResponse({ id: 'email-1' })) : undefined))
-  const res = await handler(post('ai-outage-email', { token: opts.token ?? SERVICE_KEY }))
+  const res = await handler(post('ai-outage-email', { token: opts.token ?? SERVICE_KEY, body: opts.body }))
   return { res, body: await res.json(), db, calls }
 }
 
@@ -93,5 +93,14 @@ describe('ai-outage-email', () => {
     const sent = JSON.parse(String(calls[0].init?.body))
     expect(sent.subject).toBe("RegWay's AI has stopped working (other)")
     expect(sent.text).toContain('usage_events')
+  })
+
+  it('sends a test email on request, whatever the status, and records nothing', async () => {
+    setEnv('RESEND_API_KEY', 're_test')
+    const { body, calls, db } = await run({ body: { test: true }, status: { failing: false, reason: null, since: null } })
+    expect(body).toEqual({ sent: true, id: 'email-1' })
+    expect(JSON.parse(String(calls[0].init?.body)).subject).toBe('RegWay email test')
+    expect(db.ran('ai_status')).toHaveLength(0)
+    expect(db.ran('ai_outage_emails')).toHaveLength(0)
   })
 })

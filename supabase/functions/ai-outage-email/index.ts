@@ -12,7 +12,8 @@
 // nothing. If sending fails, nothing is recorded, so the next run tries
 // again. Makes no AI call. Runs every 15 minutes (migration 0042).
 //
-//   POST /functions/v1/ai-outage-email   {}
+//   POST /functions/v1/ai-outage-email   {}                (cron)
+//   POST /functions/v1/ai-outage-email   { "test": true }  — send a test email now, record nothing
 //   Authorization: Bearer <service key>
 //
 // Settings: RESEND_API_KEY (secret), ALERT_EMAIL_TO (comma-separated;
@@ -60,6 +61,13 @@ Deno.serve(async req => {
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   if (req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') !== key) return json({ error: 'Service key required' }, 401)
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, key)
+  const to = addressesFrom(Deno.env.get('ALERT_EMAIL_TO') || DEFAULT_TO)
+
+  const body = await req.json().catch(() => ({}))
+  if (body?.test === true) {
+    const result = await sendEmail({ to, subject: 'RegWay email test', text: "This is a test from RegWay's AI outage email. If you can read it, RegWay can email you when the AI stops working." })
+    return json(result, result.sent ? 200 : 502)
+  }
 
   const { data, error } = await admin.rpc('ai_status')
   if (error) return json({ error: `ai_status: ${error.message}` }, 500)
@@ -70,7 +78,6 @@ Deno.serve(async req => {
   if (readError) return json({ error: `ai_outage_emails: ${readError.message}` }, 500)
   if (earlier) return json({ failing: true, emailed: 'already' })
 
-  const to = addressesFrom(Deno.env.get('ALERT_EMAIL_TO') || DEFAULT_TO)
   const result = await sendEmail({ to, ...outageEmail(status.reason, status.since) })
   if (!result.sent) {
     console.error('ai-outage-email: not sent:', result.reason)
