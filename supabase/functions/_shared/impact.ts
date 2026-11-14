@@ -12,6 +12,7 @@ import { fetchPlainText } from './text.ts'
 import { callClaude, toolInput } from './ai/client.ts'
 import { MODEL_FOR } from './ai/models.ts'
 import { impactPromptFor } from './impactPrompts.ts'
+import { automaticAiPaused } from './ai/switch.ts'
 
 const MODEL = MODEL_FOR.impactAnalysis
 // ~15K tokens of regulation text. Long final rules run to hundreds of pages;
@@ -242,6 +243,8 @@ ${entities.join('\n')}`,
 // version, so its analysis isn't prepared ahead; opening it where it stands
 // alone writes it then.
 export async function generateImpacts(regulationIds: string[], firmId: string, max = 8, opts: { force?: boolean } = {}): Promise<void> {
+  // Written when someone opens the development instead (regulation-impact).
+  if (automaticAiPaused()) return
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const wanted = opts.force
     ? regulationIds

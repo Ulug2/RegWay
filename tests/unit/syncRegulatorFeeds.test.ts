@@ -1,3 +1,4 @@
+import { SERVICE_KEY } from './helpers/setup'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeClient, hasFilter, setClient } from './helpers/fakeSupabase'
 import { loadHandler, post, stubFetch } from './helpers/handler'
@@ -30,7 +31,7 @@ async function sync(feeds: Record<string, () => Response>, known: string[] = [],
     const key = Object.keys(feeds).find(k => url.href.includes(k))
     return key ? feeds[key]() : QUIET()
   })
-  const res = await handler(post('sync-regulator-feeds'))
+  const res = await handler(post('sync-regulator-feeds', { token: SERVICE_KEY }))
   const rows = db.ran('regulations', 'upsert').flatMap(u => u.payload as Row[])
   return { res, body: await res.json(), db, rows, fetched }
 }
@@ -147,7 +148,7 @@ describe('sync-regulator-feeds', () => {
     setClient(db)
     const { handler } = await loadHandler('sync-regulator-feeds')
     stubFetch(() => new Response('down', { status: 500 }))
-    const res = await handler(post('sync-regulator-feeds'))
+    const res = await handler(post('sync-regulator-feeds', { token: SERVICE_KEY }))
     expect(res.status).toBe(502)
     expect(db.ran('sync_runs', 'insert')[0].payload).toMatchObject({ ok: false })
   })

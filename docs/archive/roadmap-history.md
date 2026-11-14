@@ -9,6 +9,23 @@
 >
 > New entries go directly below this box, newest first.
 
+### Syncs locked to the service key; a pause switch for automatic AI (2026-11-14)
+- The six sync functions accepted the public key (in every browser), so
+  anyone could run them as often as they liked, and
+  `sync-sec-admin-proceedings` spends AI credit on each new item. They now
+  accept only the service key (`requireServiceKey`, `_shared/cors.ts`);
+  migration 0044 reschedules their timers to send it from Vault. Checked
+  live: a public-key call gets 401.
+- `AUTOMATIC_AI=off` (`_shared/ai/switch.ts`): pauses company scans,
+  background analyses, the matchers, duplicate grouping's AI step, the SEC
+  proceedings reader and the after-edit re-checks; the chat, opening a
+  development, re-checks and firm research stay on. Set in production
+  2026-11-14 after opening the dashboard spent $4.80 of a fresh top-up.
+- `docs/onboarding.md`: contributors put `AUTOMATIC_AI=off` beside their
+  key; the local sync example uses the local service key.
+- Checked: 14 new unit tests (every sync refuses the public key; every
+  paused job makes no AI call), 544 unit tests in all.
+
 ### Bug sweep and the system guide (2026-11-14)
 - **AI outage email sent every 30 minutes** (5 emails on 2026-11-14): it
   keyed an outage on `ai_status().since`, which moves forward with its

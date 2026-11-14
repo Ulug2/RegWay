@@ -11,10 +11,10 @@
 // banner, once a feed has failed several runs in a row.
 //
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-regulator-feeds \
-//     -H "Authorization: Bearer <SERVICE_ROLE_OR_ANON_KEY>"
+//     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { handleOptions, json } from '../_shared/cors.ts'
+import { handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { extractCountries } from '../_shared/countries.ts'
 import { HOME_COUNTRIES, JURISDICTION, REGULATOR_FEEDS, type RegulatorFeed } from '../_shared/regulatorFeeds.ts'
 import { parseFeedEntries } from '../_shared/rss.ts'
@@ -159,6 +159,8 @@ async function syncFeed(admin: SupabaseClient, feed: RegulatorFeed, today: Date,
 Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
+  const refused = requireServiceKey(req)
+  if (refused) return refused
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
   const today = new Date()

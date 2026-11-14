@@ -44,6 +44,7 @@ import { syncHoldingsRollup } from '../_shared/holdings.ts'
 import { applySkeptic } from '../_shared/verdictReview.ts'
 import { geopoliticalSourcesOutside } from '../_shared/regulatorFeeds.ts'
 import { buildRelevanceRows, checkRateLimit, loadFirmEntities, requestScheduledRematch, resolveFirmContext, upsertRelevanceRows, type CompanyRow, type FirmRow, type FundRow } from '../_shared/relevance.ts'
+import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 const FUNCTION_NAME = 'match-geopolitical-relevance'
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
@@ -130,6 +131,8 @@ async function evaluateNew(
   const evaluatedIds = new Set((alreadyEvaluated ?? []).map(r => r.regulation_id))
   const unevaluated = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
   if (unevaluated.length === 0) return { evaluated: 0, relevantIds: [], candidates: candidates.length }
+  // Judged once the owner resumes automatic AI work (_shared/ai/switch.ts).
+  if (automaticAiPaused()) return { evaluated: 0, relevantIds: [], candidates: candidates.length }
 
   // Only checked once there's real work, so a no-op run (the common case
   // on dashboard load) never uses up the caller's allowance.

@@ -264,7 +264,14 @@ company scan or a chat reply.
 
    ```
    ANTHROPIC_API_KEY=sk-ant-...
+   AUTOMATIC_AI=off
    ```
+
+   `AUTOMATIC_AI=off` stops the AI work nobody clicked for (company scans
+   when the dashboard opens, background analyses, matching), so the key is
+   spent only on what you try on purpose: the chat, opening a development,
+   "this match looks wrong". Remove that line only if your task is about
+   one of those automatic jobs.
 
 2. Start the server functions in their own terminal and leave it running:
 
@@ -302,13 +309,17 @@ file, that is the expected local behaviour.
 
 **Pulling fresh documents (free, no key)**
 
+The syncs accept only the service key (since 2026-11-14). Your local
+database's service key is printed by `supabase status`; it works only on
+your own machine.
+
 With `supabase functions serve` running, this fetches the last week of
 Federal Register documents into your local database:
 
 ```bash
-eval "$(supabase status -o env | grep -E '^(API_URL|ANON_KEY)=')"
+eval "$(supabase status -o env | grep -E '^(API_URL|SERVICE_ROLE_KEY)=')"
 curl -X POST "$API_URL/functions/v1/sync-federal-register" \
-  -H "Authorization: Bearer $ANON_KEY" -H 'Content-Type: application/json' -d '{}'
+  -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H 'Content-Type: application/json' -d '{}'
 ```
 
 They show in the `regulations` table, not on the dashboard: nothing has

@@ -15,6 +15,7 @@ import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { generateImpacts } from '../_shared/impact.ts'
 import { callClaude, textOf, toolInput } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
+import { automaticAiPaused, PAUSED_REASON } from '../_shared/ai/switch.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
@@ -38,6 +39,8 @@ Deno.serve(async (req) => {
   try {
     const { companyId } = await req.json()
     if (!companyId) return json({ error: 'companyId is required' }, 400)
+    // The app starts scans by itself (on opening the dashboard or a company).
+    if (automaticAiPaused()) return json({ paused: true, error: PAUSED_REASON }, 503)
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) return json({ error: 'Missing Authorization header' }, 401)

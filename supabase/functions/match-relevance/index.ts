@@ -24,6 +24,7 @@ import { resolveFirmContext, loadFirmEntities, checkRateLimit, buildRelevanceRow
 import { judgeRegulations } from '../_shared/regulatoryJudge.ts'
 import { applySkeptic } from '../_shared/verdictReview.ts'
 import { regulatorySourcesFor } from '../_shared/regulatorFeeds.ts'
+import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
@@ -87,6 +88,8 @@ Deno.serve(async (req) => {
     const unevaluated = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
 
     if (unevaluated.length === 0) return json({ evaluated: 0, relevant: 0 })
+    // Judged once the owner resumes automatic AI work (_shared/ai/switch.ts).
+    if (automaticAiPaused()) return json({ evaluated: 0, relevant: 0, paused: true })
 
     if (rateLimitClient && !reevaluate && !(await checkRateLimit(rateLimitClient, 'match-relevance', 15, 60))) return rateLimited()
 
