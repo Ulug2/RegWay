@@ -1,21 +1,67 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { getFirmId, getCachedFirmId, getCachedFirm, fetchFirm, fetchFunds, fetchPortfolioCompanies, fetchHoldings, fetchRegulation } from './lib/data'
 import { bindCacheToUser, clearCache, readCache, writeCache } from './lib/cache'
 import { detailPath, entityPath, historyIndex, onGo, parsePath, profilePath, pushPath, replacePath, type PageSlug } from './lib/router'
 import InfoPage from './components/InfoPage'
 import LandingPage from './components/LandingPage'
-import ProfileScreen, { type ProfileTab } from './components/ProfileScreen'
-import OnboardingModal from './components/OnboardingModal'
 import ResetPasswordScreen from './components/ResetPasswordScreen'
-import Dashboard from './components/Dashboard'
-import EntityPage, { type EntityRef } from './components/EntityPage'
-import RegWayAICopilot from './components/RegWayAICopilot'
-import HeadlineDetailView from './components/HeadlineDetailView'
+import type { ProfileTab } from './components/ProfileScreen'
+import type { EntityRef } from './components/EntityPage'
 import type { Regulation, AiContext } from './lib/types'
 import LogoMark from './components/LogoMark'
 
+const ProfileScreen = lazy(() => import('./components/ProfileScreen'))
+const OnboardingModal = lazy(() => import('./components/OnboardingModal'))
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const EntityPage = lazy(() => import('./components/EntityPage'))
+const RegWayAICopilot = lazy(() => import('./components/RegWayAICopilot'))
+const HeadlineDetailView = lazy(() => import('./components/HeadlineDetailView'))
+
 type View = 'loading' | 'landing' | 'auth' | 'reset-password' | 'onboarding' | 'dashboard' | 'detail' | 'profile' | 'ai' | 'entity' | 'page'
+
+function ScreenLoadingFallback() {
+  return (
+    <div className="min-h-[100dvh]" role="status" aria-label="Loading screen" style={{ background: 'var(--canvas)' }}>
+      <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8">
+        <div className="mb-10 flex items-center justify-between">
+          <div className="skeleton h-7 w-28" />
+          <div className="skeleton h-9 w-9 rounded-full" />
+        </div>
+        <main aria-hidden="true" className="mx-auto max-w-2xl">
+          <div className="skeleton mb-4 h-4 w-24" />
+          <div className="skeleton mb-8 h-8 w-2/3" />
+          {[0, 1, 2, 3].map(row => (
+            <div key={row} className="glass-card mb-4 space-y-3 p-5">
+              <div className="skeleton h-4 w-28" />
+              <div className="skeleton h-5 w-5/6" />
+              <div className="skeleton h-3.5 w-full" />
+              <div className="skeleton h-3.5 w-2/3" />
+            </div>
+          ))}
+        </main>
+      </div>
+    </div>
+  )
+}
+
+function ChatLoadingFallback() {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" role="status" aria-label="Loading chat" style={{ background: 'var(--canvas)' }}>
+      <div className="flex items-center justify-between border-b p-5" style={{ borderColor: 'rgba(var(--line-rgb), 0.16)' }}>
+        <div className="skeleton h-5 w-32" />
+        <div className="skeleton h-9 w-9 rounded-full" />
+      </div>
+      <div aria-hidden="true" className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-end gap-5 px-5 py-8">
+        <div className="glass-card space-y-3 p-5">
+          <div className="skeleton h-4 w-full" />
+          <div className="skeleton h-4 w-4/5" />
+        </div>
+        <div className="skeleton h-14 w-full rounded-xl" />
+      </div>
+    </div>
+  )
+}
 
 export default function App() {
   const [view, setView] = useState<View>('loading')
@@ -294,79 +340,83 @@ export default function App() {
 
       {/* Main content above spheres */}
       <div className="relative" style={{ zIndex: 1 }}>
-        {view === 'loading' && (
-          <div className="min-h-[100dvh] flex items-center justify-center" role="status">
-            <div className="flex flex-col items-center gap-4">
-              <div className="animate-pulse"><LogoMark size={40} /></div>
-              <div className="text-sm" style={{ color: 'var(--text-400)' }}>Loading…</div>
-            </div>
-          </div>
-        )}
-
-        {/* The landing page hosts sign-in / sign-up: 'auth' is the same page with the form open. */}
-        {(view === 'landing' || view === 'auth') && (
-          <LandingPage
-            authMode={view === 'auth' ? authMode : null}
-            notice={authNotice}
-            onOpenAuth={goToAuth}
-            onCloseAuth={() => { clearAuthNotice(); pendingPath.current = null; pushPath('/'); setView('landing') }}
-            onAuthenticated={handleAuthenticated}
-          />
-        )}
-
-        {view === 'reset-password' && (
-          <ResetPasswordScreen onDone={() => signOutWithNotice('Password updated. Sign in with your new password.')} />
-        )}
-
-        {view === 'onboarding' && (
-          <>
-            {/* Landing behind modal */}
-            <div className="min-h-[100dvh] flex items-center justify-center" style={{ padding: 24 }}>
-              <div className="text-center max-w-md">
-                <div className="flex justify-center mb-4"><LogoMark size={64} /></div>
-                <h1
-                  className="text-3xl font-semibold mb-2"
-                  style={{ color: 'var(--text-900)', letterSpacing: '-0.03em' }}
-                >
-                  RegWay
-                </h1>
-                <p className="text-base" style={{ color: 'var(--text-400)' }}>
-                  Regulatory intelligence for private equity firms and their portfolios.
-                </p>
+        <Suspense fallback={<ScreenLoadingFallback />}>
+          {view === 'loading' && (
+            <div className="min-h-[100dvh] flex items-center justify-center" role="status">
+              <div className="flex flex-col items-center gap-4">
+                <div className="animate-pulse"><LogoMark size={40} /></div>
+                <div className="text-sm" style={{ color: 'var(--text-400)' }}>Loading…</div>
               </div>
             </div>
-            <OnboardingModal onComplete={handleAuthenticated} />
-          </>
-        )}
+          )}
 
-        {view === 'dashboard' && (
-          <Dashboard onNavigate={navigate} />
-        )}
+          {/* The landing page hosts sign-in / sign-up: 'auth' is the same page with the form open. */}
+          {(view === 'landing' || view === 'auth') && (
+            <LandingPage
+              authMode={view === 'auth' ? authMode : null}
+              notice={authNotice}
+              onOpenAuth={goToAuth}
+              onCloseAuth={() => { clearAuthNotice(); pendingPath.current = null; pushPath('/'); setView('landing') }}
+              onAuthenticated={handleAuthenticated}
+            />
+          )}
 
-        {view === 'entity' && entity && (
-          <EntityPage key={`${entity.type}:${entity.id}`} entity={entity} onNavigate={navigate} />
-        )}
+          {view === 'reset-password' && (
+            <ResetPasswordScreen onDone={() => signOutWithNotice('Password updated. Sign in with your new password.')} />
+          )}
 
-        {view === 'detail' && (
-          <HeadlineDetailView
-            onBack={goBack}
-            backLabel={returnTo === 'entity' && entity ? 'Back' : 'Back to Dashboard'}
-            headline={detailPayload as Partial<Regulation> | undefined}
-            onAskAI={ctx => navigate('ai', ctx)}
-          />
-        )}
+          {view === 'onboarding' && (
+            <>
+              {/* Landing behind modal */}
+              <div className="min-h-[100dvh] flex items-center justify-center" style={{ padding: 24 }}>
+                <div className="text-center max-w-md">
+                  <div className="flex justify-center mb-4"><LogoMark size={64} /></div>
+                  <h1
+                    className="text-3xl font-semibold mb-2"
+                    style={{ color: 'var(--text-900)', letterSpacing: '-0.03em' }}
+                  >
+                    RegWay
+                  </h1>
+                  <p className="text-base" style={{ color: 'var(--text-400)' }}>
+                    Regulatory intelligence for private equity firms and their portfolios.
+                  </p>
+                </div>
+              </div>
+              <OnboardingModal onComplete={handleAuthenticated} />
+            </>
+          )}
 
-        {view === 'page' && <InfoPage slug={page} signedIn={auth.current === 'in'} />}
+          {view === 'dashboard' && (
+            <Dashboard onNavigate={navigate} />
+          )}
 
-        {view === 'profile' && (
-          <ProfileScreen key={profileTab} onBack={goBack} backLabel={returnTo === 'entity' && entity ? 'Back' : 'Back to Dashboard'} initialTab={profileTab} focusId={profileFocus} onTabChange={tab => replacePath(profilePath(tab))} />
-        )}
+          {view === 'entity' && entity && (
+            <EntityPage key={`${entity.type}:${entity.id}`} entity={entity} onNavigate={navigate} />
+          )}
+
+          {view === 'detail' && (
+            <HeadlineDetailView
+              onBack={goBack}
+              backLabel={returnTo === 'entity' && entity ? 'Back' : 'Back to Dashboard'}
+              headline={detailPayload as Partial<Regulation> | undefined}
+              onAskAI={ctx => navigate('ai', ctx)}
+            />
+          )}
+
+          {view === 'page' && <InfoPage slug={page} signedIn={auth.current === 'in'} />}
+
+          {view === 'profile' && (
+            <ProfileScreen key={profileTab} onBack={goBack} backLabel={returnTo === 'entity' && entity ? 'Back' : 'Back to Dashboard'} initialTab={profileTab} focusId={profileFocus} onTabChange={tab => replacePath(profilePath(tab))} />
+          )}
+        </Suspense>
       </div>
 
       {/* RegWay AI drawer — rendered over any view */}
-      {(showAI || aiBusy) && (
-        <RegWayAICopilot context={aiContext} hidden={!showAI} onBusyChange={setAiBusy} onClose={() => { setShowAI(false); setAiContext(null) }} />
-      )}
+      <Suspense fallback={<ChatLoadingFallback />}>
+        {(showAI || aiBusy) && (
+          <RegWayAICopilot context={aiContext} hidden={!showAI} onBusyChange={setAiBusy} onClose={() => { setShowAI(false); setAiContext(null) }} />
+        )}
+      </Suspense>
     </div>
   )
 }

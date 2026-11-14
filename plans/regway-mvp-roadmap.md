@@ -146,8 +146,6 @@ so ask the owner first (item 17a).
 - **Formatting** (S, one person, when no other branches are open):
   `oxfmt --check` fails on about 157 files, so formatting is not a required
   check. Format everything once, then add the check to CI.
-- **Bundle size** (M): `pnpm build` warns of a chunk over 500 kB; the
-  landing page loads the whole signed-in app.
 - **Dependency advisories** (M): `pnpm audit` reported 10 (7 high, 3
   moderate) on 2026-10-11, not yet sorted into shipped and build-only.
 - **Phone widths and other browsers** (S, findings only): the newer screens
