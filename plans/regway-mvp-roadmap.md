@@ -287,13 +287,15 @@ spend, and the owner has said no alert is wanted for now.
   matcher.
 
 ### Product decisions waiting on the owner
-- **Email alerts and the Morning Brief** (item 12, Phase 3; M). Waiting
-  for a company email account and an email provider (owner, 2026-10-23);
-  also needs a definition of "high priority". The per-fund notification
-  preference is stored; nothing sends.
+- **Email alerts and the Morning Brief** (item 12, Phase 3; M). The
+  company address is team@regwayai.com (owner, 2026-11-14). Still waiting
+  for a sending service (for example Resend) to send automatic email from
+  it. "High priority" = any development matched to the firm, one of its
+  funds or one of its portfolio companies (owner, 2026-11-14). The per-fund
+  notification preference is stored; nothing sends.
 - **Public pages** (About, Sources, Legal, Privacy): not yet read by the
-  owner, not written by a lawyer. No contact address (`CONTACT_EMAIL` in
-  `InfoPage.tsx` is unset), no company name or governing law. Privacy names
+  owner, not written by a lawyer. Contact address: team@regwayai.com
+  (2026-11-14). No company name or governing law. Privacy names
   its providers by kind, not by name.
 - **Search listing**: indexing was requested on 2026-10-08; check
   `site:regwayai.com`.

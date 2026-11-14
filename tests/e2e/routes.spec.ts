@@ -43,6 +43,13 @@ test.describe('signed out', () => {
     expect(new URL(page.url()).hash).toBe('#written-by-ai')
   })
 
+  test('Legal and Privacy end with the contact address', async ({ page }) => {
+    for (const address of ['/legal', '/privacy']) {
+      await page.goto(address)
+      await expect(page.getByRole('link', { name: 'team@regwayai.com' })).toHaveAttribute('href', 'mailto:team@regwayai.com')
+    }
+  })
+
   test('sign-in has an address, and Back closes the form', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('banner').getByRole('button', { name: 'Sign In' }).click()
