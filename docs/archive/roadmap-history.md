@@ -9,6 +9,15 @@
 >
 > New entries go directly below this box, newest first.
 
+### Contact address on the public pages (2026-11-14)
+- `CONTACT_EMAIL` in `InfoPage.tsx` is team@regwayai.com, so Legal and
+  Privacy end with a Contact section; the FAQ answer says the same.
+- Roadmap: the email alerts entry records the address and the owner's
+  definition of "high priority" (anything matched to the firm, a fund or a
+  company); a sending service is still needed.
+- Checked: a browser test for the Contact link on Legal and Privacy;
+  `pnpm test:all`.
+
 ### Load signed-in screens on demand (2026-11-07)
 - `App.tsx` lazy-loads the dashboard, chat, profile, onboarding modal,
   development page and entity page. Landing and information pages remain
