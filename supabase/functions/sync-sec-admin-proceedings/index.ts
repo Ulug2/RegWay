@@ -24,14 +24,15 @@
 // runs synchronously rather than in the background (see processItems below).
 //
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-sec-admin-proceedings \
-//     -H "Authorization: Bearer <SERVICE_ROLE_OR_ANON_KEY>"
+//     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { corsHeaders, handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { parseRssItems, type FeedItem } from '../_shared/rss.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
 import { AnthropicError, callClaude, toolInput, type ClaudeResponse } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
+import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 const SOURCE = 'sec_admin_proceedings'
 const ADMIN_PROCEEDINGS_RSS = 'https://www.sec.gov/enforcement-litigation/administrative-proceedings/rss'
@@ -177,6 +178,10 @@ async function processItems(admin: SupabaseClient, newItems: FeedItem[]) {
 Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
+  const refused = requireServiceKey(req)
+  if (refused) return refused
+  // Each new item is read by Claude: wait until automatic AI work resumes.
+  if (automaticAiPaused()) return json({ paused: true })
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 

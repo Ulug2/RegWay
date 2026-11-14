@@ -32,6 +32,7 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
+import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
@@ -124,6 +125,7 @@ Deno.serve(async req => {
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, key)
   const body = await req.json().catch(() => ({}))
 
+  if (automaticAiPaused()) return json({ paused: true })
   if (body?.force !== true && !(await hasWork(admin))) return json({ skipped: true })
 
   // Respond at once; the matchers take a minute or more and cron doesn't

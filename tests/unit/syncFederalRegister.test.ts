@@ -1,3 +1,4 @@
+import { SERVICE_KEY } from './helpers/setup'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeClient, setClient } from './helpers/fakeSupabase'
 import { jsonResponse, loadHandler, post, stubFetch } from './helpers/handler'
@@ -90,7 +91,7 @@ function federalRegister(opts: { readBefore?: boolean; heavy?: boolean } = {}) {
 async function sync(opts: { readBefore?: boolean; heavy?: boolean } = {}) {
   const { db, calls } = federalRegister(opts)
   const { handler } = await loadHandler('sync-federal-register')
-  const res = await handler(post('sync-federal-register'))
+  const res = await handler(post('sync-federal-register', { token: SERVICE_KEY }))
   const rows = (db.ran('regulations', 'upsert')[0]?.payload ?? []) as Row[]
   return { res, db, calls, row: (id: string) => rows.find(r => r.external_id === id)!, rows }
 }
@@ -196,7 +197,7 @@ describe('sync-federal-register', () => {
 
     const { calls: backfill } = federalRegister()
     const { handler } = await loadHandler('sync-federal-register')
-    await handler(new Request('http://supabase.test/functions/v1/sync-federal-register?since=2026-01-01', { method: 'POST' }))
+    await handler(new Request('http://supabase.test/functions/v1/sync-federal-register?since=2026-01-01', { method: 'POST', headers: { Authorization: `Bearer ${SERVICE_KEY}` } }))
     expect(backfill[0].url.searchParams.get('conditions[publication_date][gte]')).toBe('2026-01-01')
   })
 
@@ -207,7 +208,7 @@ describe('sync-federal-register', () => {
   ])('refuses %s without calling the Federal Register', async (_, since) => {
     const { calls, db } = federalRegister()
     const { handler } = await loadHandler('sync-federal-register')
-    const res = await handler(new Request(`http://supabase.test/functions/v1/sync-federal-register?since=${since}`, { method: 'POST' }))
+    const res = await handler(new Request(`http://supabase.test/functions/v1/sync-federal-register?since=${since}`, { method: 'POST', headers: { Authorization: `Bearer ${SERVICE_KEY}` } }))
     expect(res.status).toBe(400)
     expect(calls).toEqual([])
     expect(db.queries).toEqual([])
@@ -227,7 +228,7 @@ describe('sync-federal-register', () => {
     setClient(db)
     stubFetch(() => new Response('Service Unavailable', { status: 503 }))
     const { handler } = await loadHandler('sync-federal-register')
-    const res = await handler(post('sync-federal-register'))
+    const res = await handler(post('sync-federal-register', { token: SERVICE_KEY }))
     expect(res.status).toBe(500)
     expect(db.ran('regulations', 'upsert')).toEqual([])
     expect(db.ran('sync_runs', 'insert')[0].payload).toMatchObject({ source: 'federal_register', ok: false })

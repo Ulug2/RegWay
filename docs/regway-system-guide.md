@@ -497,9 +497,11 @@ removes them (`supabase/seed.sql`) so it never calls production.
   any signed-in user: they are public.
 - **Functions check their caller.** User-facing functions take the user's
   session and work out the firm from it; a user can never name another
-  firm. Jobs that spend money across firms (`run-matching`,
-  `group-duplicates`, `apply-profile-changes`, `review-existing-matches`,
-  the email jobs) accept only the service key.
+  firm. Every job the timers run (the syncs, `run-matching`,
+  `group-duplicates`, `apply-profile-changes`, the email jobs) and
+  `review-existing-matches` accept only the service key, which the timers
+  read from the database vault. (Until 2026-11-14 the syncs accepted the
+  public key, so anyone could run them.)
 - **Secrets** (Supabase function secrets, never in the repository):
   `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, the service key; switches
   `SKEPTIC_MODE`, `CHAT_REVIEW`. The timers read the service key from the
@@ -523,7 +525,16 @@ Emails cost nothing on Resend's free plan (3,000 a month).
 What spends money without anyone asking: the matching timer (for enrolled
 firms), background analyses of new matches, weekly company scans when the
 dashboard is opened, `group-duplicates`' small Haiku calls, and the SEC
-proceedings sync. The model behind the numbers is in
+proceedings sync.
+
+**The pause switch.** The `AUTOMATIC_AI` secret set to `off`
+(`_shared/ai/switch.ts`) stops all of that at once: company scans,
+background analyses, the matchers, duplicate grouping's AI step, the SEC
+proceedings reader and the after-edit re-checks. Still on, because each is
+a click: the chat, the analysis of a development someone opens, "this match
+looks wrong", and web research on the firm. Edits made while paused stay
+queued. On in production since 2026-11-14 (`supabase secrets unset
+AUTOMATIC_AI` to resume). The model behind the numbers is in
 `plans/ai-cost-model.md`.
 
 ---
@@ -575,6 +586,8 @@ As of 2026-11-14:
   Opening the dashboard right after started 9 company scans and 43
   background analyses (about $4.80): opening the app spends money when
   scans are due (§13).
+- **Automatic AI work is paused** (`AUTOMATIC_AI=off`, §13) since
+  2026-11-14, to save credit.
 - **The matching timer is switched off** (`run-matching-30min` inactive
   since 2026-10-18, kept off by the owner on 2026-11-14 to save credit).
   290+ documents have arrived since and were never judged for H.I.G.

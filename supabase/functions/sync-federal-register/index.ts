@@ -4,7 +4,7 @@
 // or `supabase functions schedule`) but can also be invoked manually:
 //
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-federal-register \
-//     -H "Authorization: Bearer <SERVICE_ROLE_OR_ANON_KEY>"
+//     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 //
 // Optional query param `?since=YYYY-MM-DD` overrides the default 7-day lookback.
 //
@@ -22,7 +22,7 @@
 // geopolitical matcher pre-filters on.
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { corsHeaders, handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { extractCountries } from '../_shared/countries.ts'
 import { federalRegisterTextUrl, federalRegisterTextUrls } from '../_shared/federalRegister.ts'
 import { sanctionsProgramCountries } from '../_shared/sanctionsPrograms.ts'
@@ -457,6 +457,8 @@ function sinceDate(param: string | null): { since: string } | { error: string } 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
+  const refused = requireServiceKey(req)
+  if (refused) return refused
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 

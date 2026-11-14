@@ -5,7 +5,7 @@
 // can also be invoked manually:
 //
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-sec-enforcement \
-//     -H "Authorization: Bearer <SERVICE_ROLE_OR_ANON_KEY>"
+//     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 //
 // SEC Administrative Proceedings and FINRA enforcement are covered by their
 // own sync functions (`sync-sec-admin-proceedings`, `sync-finra-enforcement`)
@@ -15,7 +15,7 @@
 // the original SEC/FINRA feed investigation.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { corsHeaders, handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { fetchPlainText } from '../_shared/text.ts'
 import { parseRssItems } from '../_shared/rss.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
@@ -70,6 +70,8 @@ export function summaryOf(narrative: string, title: string): string | null {
 Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
+  const refused = requireServiceKey(req)
+  if (refused) return refused
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 

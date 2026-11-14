@@ -1,3 +1,4 @@
+import { SERVICE_KEY } from './helpers/setup'
 import { describe, expect, it } from 'vitest'
 import { fakeClient, setClient } from './helpers/fakeSupabase'
 import { loadHandler, post, stubFetch } from './helpers/handler'
@@ -21,7 +22,7 @@ async function sync(feed: Response) {
   setClient(db)
   const { handler } = await loadHandler('sync-travel-advisories')
   stubFetch(url => (url.hostname === 'travel.state.gov' ? feed : undefined))
-  const res = await handler(post('sync-travel-advisories'))
+  const res = await handler(post('sync-travel-advisories', { token: SERVICE_KEY }))
   return { res, db, rows: (db.ran('regulations', 'upsert')[0]?.payload ?? []) as Row[] }
 }
 
