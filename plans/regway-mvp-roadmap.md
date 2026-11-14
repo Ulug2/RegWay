@@ -101,8 +101,6 @@ Ready-to-take versions of these, with acceptance criteria, are in
 Asked for, not built. The conversation-list ones touch only the chat's
 screen and tables; the ones marked * change what the chat function returns,
 so ask the owner first (item 17a).
-- Rename, pin and archive conversations (needs columns on the
-  conversations table: a migration).
 - Thumbs up and down on an answer, and a way to share one.
 - Save an answer as a note or a flag on a development.
 - An "Analyzed N sources" line under an answer.*

@@ -239,17 +239,150 @@ test.describe('saved conversations', () => {
     expect(call.context).toMatchObject({ type: 'company', id: 'co-getix' })
   })
 
+  const openActions = async (page: Page, title: string) => {
+    const chats = page.getByRole('complementary', { name: 'Chats' })
+    const row = chats.locator('.group', { hasText: title })
+    await row.hover()
+    await row.getByRole('button', { name: 'Conversation actions' }).click()
+    return chats
+  }
+
   test('deleting a conversation removes it', async ({ page, backend }) => {
     saved(backend)
     await openCopilot(page)
     await page.getByRole('button', { name: 'Show chats' }).click()
-    const row = page.locator('.group', { hasText: 'Form PF deadlines' })
-    await row.hover()
-    await row.getByRole('button', { name: 'Delete conversation' }).click()
+    await openActions(page, 'Form PF deadlines')
+    await page.getByRole('menuitem', { name: 'Delete' }).click()
 
     await expect(page.getByText('Form PF deadlines')).toHaveCount(0)
     await expect(page.getByText('Medicare rule for GetixHealth')).toBeVisible()
     expect(backend.called('DELETE', 'rest/v1/regway_ai_conversations')[0].query.get('id')).toBe('eq.conv-old')
+  })
+
+  test('renaming changes the title, refuses a blank one, and keeps the new title after the chat is closed', async ({ page, backend }) => {
+    saved(backend)
+    await openCopilot(page)
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    await openActions(page, 'Form PF deadlines')
+    await page.getByRole('menuitem', { name: 'Rename' }).click()
+
+    const title = page.getByRole('textbox', { name: 'Conversation title' })
+    await title.fill('   ')
+    await title.press('Enter')
+    await expect(page.getByRole('alert')).toHaveText('Enter a title.')
+    await expect(title).toBeVisible()
+
+    await title.fill('Not this')
+    await title.press('Escape')
+    await expect(page.getByText('Form PF deadlines')).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Conversation title' })).toHaveCount(0)
+
+    await openActions(page, 'Form PF deadlines')
+    await page.getByRole('menuitem', { name: 'Rename' }).click()
+    await page.getByRole('textbox', { name: 'Conversation title' }).fill('  Filing dates  ')
+    await page.getByRole('textbox', { name: 'Conversation title' }).press('Enter')
+    await expect(page.getByRole('complementary', { name: 'Chats' }).locator('.text-sm')).toHaveText(['Medicare rule for GetixHealth', 'Filing dates'])
+
+    await page.getByRole('button', { name: 'Close RegWay AI' }).click()
+    await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+    await expect(page.getByText('RegWay AI Copilot')).toBeVisible()
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    await expect(page.getByRole('complementary', { name: 'Chats' }).getByText('Filing dates')).toBeVisible()
+
+    const patch = backend.called('PATCH', 'rest/v1/regway_ai_conversations').at(-1)!
+    expect(patch.body).toEqual({ title: 'Filing dates' })
+    expect(backend.tables.regway_ai_conversations.find(c => c.id === 'conv-old')?.updated_at).toBe('2026-10-01T10:00:00Z')
+  })
+
+  test('pinning moves a conversation above the others, and unpinning puts it back', async ({ page, backend }) => {
+    saved(backend)
+    await openCopilot(page)
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    const titles = () => page.getByRole('complementary', { name: 'Chats' }).locator('.text-sm')
+    await expect(titles()).toHaveText(['Medicare rule for GetixHealth', 'Form PF deadlines'])
+
+    await openActions(page, 'Form PF deadlines')
+    await page.getByRole('menuitem', { name: 'Pin', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Pinned' })).toBeVisible()
+    await expect(titles()).toHaveText(['Form PF deadlines', 'Medicare rule for GetixHealth'])
+
+    await page.getByRole('button', { name: 'Close RegWay AI' }).click()
+    await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    await expect(titles()).toHaveText(['Form PF deadlines', 'Medicare rule for GetixHealth'])
+
+    const pinPatch = backend.called('PATCH', 'rest/v1/regway_ai_conversations')[0]
+    expect(pinPatch.body.pinned_at).toEqual(expect.any(String))
+    expect(pinPatch.body.updated_at).toBeUndefined()
+    expect(backend.tables.regway_ai_conversations.find(c => c.id === 'conv-old')?.updated_at).toBe('2026-10-01T10:00:00Z')
+
+    await openActions(page, 'Form PF deadlines')
+    await page.getByRole('menuitem', { name: 'Unpin' }).click()
+    await expect(page.getByRole('heading', { name: 'Pinned' })).toHaveCount(0)
+    await expect(titles()).toHaveText(['Medicare rule for GetixHealth', 'Form PF deadlines'])
+  })
+
+  test('a pinned conversation older than the newest 30 still appears at the top', async ({ page, backend }) => {
+    for (let i = 0; i < 31; i++) {
+      backend.tables.regway_ai_conversations.push({
+        id: `conv-${i}`,
+        firm_id: FIRM_ID,
+        user_id: USER.id,
+        title: `Chat ${String(i).padStart(2, '0')}`,
+        context: null,
+        updated_at: new Date(Date.now() - i * 3_600_000).toISOString(),
+        pinned_at: null,
+        archived_at: null,
+      })
+    }
+    backend.tables.regway_ai_conversations.push({
+      id: 'conv-pinned-old',
+      firm_id: FIRM_ID,
+      user_id: USER.id,
+      title: 'Pinned old chat',
+      context: null,
+      updated_at: '2020-01-01T00:00:00Z',
+      pinned_at: '2026-10-01T00:00:00Z',
+      archived_at: null,
+    })
+    await openCopilot(page)
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    const chats = page.getByRole('complementary', { name: 'Chats' })
+    await expect(chats.getByRole('heading', { name: 'Pinned' })).toBeVisible()
+    await expect(chats.locator('.text-sm').first()).toHaveText('Pinned old chat')
+    await expect(chats.getByText('Chat 00', { exact: true })).toBeVisible()
+    await expect(chats.getByText('Chat 29', { exact: true })).toBeAttached()
+    await expect(chats.getByText('Chat 30', { exact: true })).toHaveCount(0)
+  })
+
+  test('archiving hides a conversation until it is unarchived', async ({ page, backend }) => {
+    saved(backend)
+    await openCopilot(page)
+    await page.getByRole('button', { name: 'Show chats' }).click()
+    const chats = page.getByRole('complementary', { name: 'Chats' })
+
+    await openActions(page, 'Form PF deadlines')
+    await page.getByRole('menuitem', { name: 'Archive', exact: true }).click()
+    await expect(chats.getByText('Form PF deadlines')).toHaveCount(0)
+    await expect(chats.getByText('Medicare rule for GetixHealth')).toBeVisible()
+
+    const archivePatch = backend.called('PATCH', 'rest/v1/regway_ai_conversations').at(-1)!
+    expect(archivePatch.body.archived_at).toEqual(expect.any(String))
+    expect(archivePatch.body.updated_at).toBeUndefined()
+    expect(backend.tables.regway_ai_conversations.find(c => c.id === 'conv-old')?.updated_at).toBe('2026-10-01T10:00:00Z')
+
+    await chats.getByRole('button', { name: 'Archived', exact: true }).click()
+    await expect(chats.getByRole('heading', { name: 'Archived' })).toBeVisible()
+    await expect(chats.getByText('Form PF deadlines')).toBeVisible()
+    await expect(chats.getByText('Medicare rule for GetixHealth')).toHaveCount(0)
+
+    await openActions(page, 'Form PF deadlines')
+    await page.getByRole('menuitem', { name: 'Unarchive' }).click()
+    await expect(chats.getByText('No archived conversations.')).toBeVisible()
+    await chats.getByRole('button', { name: 'Back to chats' }).click()
+    await expect(chats.getByText('Form PF deadlines')).toBeVisible()
+    await expect(chats.getByText('Medicare rule for GetixHealth')).toBeVisible()
+    expect(backend.tables.regway_ai_conversations.find(c => c.id === 'conv-old')?.archived_at).toBeNull()
   })
 
   test('says so when there are none', async ({ page }) => {

@@ -9,6 +9,25 @@
 >
 > New entries go directly below this box, newest first.
 
+### Chat list: rename, pin and archive (2026-11-14)
+Roadmap 16i. Each conversation in the chat list can be renamed, pinned, or
+archived from its ⋯ menu.
+- A title is trimmed to one line and cut at 80 characters, the same length
+  as the automatic title. A blank title is refused. Enter saves, Escape
+  cancels.
+- `pinned_at` and `archived_at` on `regway_ai_conversations` (migration
+  0044), both nullable. The existing policy "users manage own ai
+  conversations" is `for all` with `using` and `with check`, so the owner
+  can update these columns and cannot hand the row to someone else.
+- Renaming, pinning and archiving do not write `updated_at`, so a chat
+  stays in its date group.
+- Pinned chats are a group above Today, including a pin older than the
+  newest 30. Archived chats are left out of that list and opened from
+  Archived, where they can be unarchived.
+- Checked: `tests/unit/conversationTitle.test.ts`; browser tests in
+  `tests/e2e/copilot.spec.ts` for rename, pin, an old pin, and archive.
+  Not applied to production (owner).
+
 ### Item 12, Phase 3: match alert emails (2026-11-14)
 Decided by the owner 2026-11-14: every match counts ("high priority" =
 anything matched to the firm, a fund or a company); on for everyone, off in

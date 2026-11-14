@@ -791,6 +791,21 @@ export interface ConversationSummary {
   // The fund / company / regulation scope it was started from, if any.
   context: AiContext | null
   updated_at: string
+  // Set while the conversation is pinned to the top of the list. Null when it is not.
+  pinned_at: string | null
+  // Set while the conversation is archived (hidden from the list, not deleted).
+  archived_at: string | null
+}
+
+// The same cut the first question is given (regway-ai-chat TITLE_CHARS).
+export const CONVERSATION_TITLE_MAX = 80
+
+// A title a person typed: one line, trimmed, no longer than the automatic
+// title. Blank is refused — a conversation with no name cannot be told apart.
+export function conversationTitle(raw: string): string {
+  const title = raw.replace(/\s+/g, ' ').trim().slice(0, CONVERSATION_TITLE_MAX)
+  if (!title) throw new Error('Enter a title.')
+  return title
 }
 
 // The check run after an answer that claims something applies to the firm
@@ -811,14 +826,48 @@ export interface SavedMessage {
 
 const RECENT_CONVERSATIONS = 30
 
+const CONVERSATION_COLUMNS = 'id, title, context, updated_at, pinned_at, archived_at'
+
+const asConversation = (row: ConversationSummary): ConversationSummary => ({
+  id: row.id,
+  title: row.title,
+  context: row.context ?? null,
+  updated_at: row.updated_at,
+  pinned_at: row.pinned_at ?? null,
+  archived_at: row.archived_at ?? null,
+})
+
+// Pinned conversations first (newest pin first), then the 30 most recent
+// that are neither pinned nor archived. A pin older than those 30 is still
+// included. Archived conversations are left out; see fetchArchivedConversations.
 export async function fetchConversations(): Promise<ConversationSummary[]> {
-  const { data, error } = await supabase
+  const pinned = supabase
     .from('regway_ai_conversations')
-    .select('id, title, context, updated_at')
+    .select(CONVERSATION_COLUMNS)
+    .not('pinned_at', 'is', null)
+    .is('archived_at', null)
+    .order('pinned_at', { ascending: false })
+  const recent = supabase
+    .from('regway_ai_conversations')
+    .select(CONVERSATION_COLUMNS)
+    .is('pinned_at', null)
+    .is('archived_at', null)
     .order('updated_at', { ascending: false })
     .limit(RECENT_CONVERSATIONS)
+  const [pinnedRes, recentRes] = await Promise.all([pinned, recent])
+  if (pinnedRes.error) throw pinnedRes.error
+  if (recentRes.error) throw recentRes.error
+  return [...(pinnedRes.data ?? []), ...(recentRes.data ?? [])].map(row => asConversation(row as ConversationSummary))
+}
+
+export async function fetchArchivedConversations(): Promise<ConversationSummary[]> {
+  const { data, error } = await supabase
+    .from('regway_ai_conversations')
+    .select(CONVERSATION_COLUMNS)
+    .not('archived_at', 'is', null)
+    .order('archived_at', { ascending: false })
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map(row => asConversation(row as ConversationSummary))
 }
 
 export async function fetchConversationMessages(conversationId: string): Promise<SavedMessage[]> {
@@ -851,6 +900,30 @@ export async function markConversationStopped(conversationId: string): Promise<v
 export async function deleteConversation(conversationId: string): Promise<void> {
   const { error } = await supabase.from('regway_ai_conversations').delete().eq('id', conversationId)
   if (error) throw error
+}
+
+// These three write only the column they mean to change. updated_at stays
+// as the last message left it, so renaming, pinning or archiving does not
+// move the conversation between Today / Yesterday / Older.
+export async function renameConversation(id: string, title: string): Promise<string> {
+  const next = conversationTitle(title)
+  const { error } = await supabase.from('regway_ai_conversations').update({ title: next }).eq('id', id)
+  if (error) throw error
+  return next
+}
+
+export async function setConversationPinned(id: string, pinned: boolean): Promise<string | null> {
+  const pinned_at = pinned ? new Date().toISOString() : null
+  const { error } = await supabase.from('regway_ai_conversations').update({ pinned_at }).eq('id', id)
+  if (error) throw error
+  return pinned_at
+}
+
+export async function setConversationArchived(id: string, archived: boolean): Promise<string | null> {
+  const archived_at = archived ? new Date().toISOString() : null
+  const { error } = await supabase.from('regway_ai_conversations').update({ archived_at }).eq('id', id)
+  if (error) throw error
+  return archived_at
 }
 
 

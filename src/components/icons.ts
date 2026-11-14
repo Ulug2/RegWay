@@ -2,6 +2,7 @@
 // proportions match. Import from here, not from the package, so the list
 // of what is in use stays in one place.
 export {
+  Archive,
   ArrowLeft,
   ArrowSquareOut,
   ArrowUpRight,
@@ -14,6 +15,7 @@ export {
   Check,
   CheckCircle,
   Copy,
+  DotsThree,
   Eye,
   EyeSlash,
   FileText,
@@ -25,7 +27,9 @@ export {
   NotePencil,
   PaperPlaneRight,
   Paperclip,
+  PencilSimple,
   Plus,
+  PushPin,
   SidebarSimple,
   Sparkle,
   Stop,
