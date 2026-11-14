@@ -276,15 +276,21 @@ export function formatLocation(l: LocationValue | undefined): string {
   return [l.city, l.state, l.country].map(x => x?.trim()).filter(Boolean).join(', ')
 }
 
-// "New York, NY" -> {city: New York, state: New York, country: United States}
+// "New York, NY" or "New York, New York" -> {city: New York, state: New York, country: United States}
 export function parseLegacyLocation(text: string | null | undefined): LocationValue | undefined {
   if (!text) return undefined
   const parts = text.split(',').map(p => p.trim()).filter(Boolean)
-  if (parts.length === 2 && STATE_ABBR[parts[1].toUpperCase()]) {
-    return { country: 'United States', state: STATE_ABBR[parts[1].toUpperCase()], city: parts[0] }
+  if (parts.length !== 2 && parts.length !== 3) return undefined
+  if (parts.length === 3 && !['US', 'USA', 'UNITED STATES'].includes(parts[2].toUpperCase())) return undefined
+
+  // In a city/state pair, "Georgia" means the U.S. state, not the country.
+  const state = STATE_ABBR[parts[1].toUpperCase()]
+    ?? US_STATES.find(name => name.toLowerCase() === parts[1].toLowerCase())
+  if (state) {
+    return { country: 'United States', state, city: parts[0] }
   }
-  if (parts.length === 2) return { country: parts[1], state: '', city: parts[0] }
-  return undefined
+  if (parts.length === 3) return undefined
+  return { country: parts[1], state: '', city: parts[0] }
 }
 
 const matchOption = (options: string[] | undefined, value: string | undefined) =>

@@ -114,9 +114,6 @@ so ask the owner first (item 17a).
   should name the feed (`Dashboard.tsx`, `SOURCE_LABELS` in `data.ts`).
 - **Source names live in three places**: `SOURCE_LABELS` (`data.ts`),
   `SOURCE_NAMES` (`duplicates.ts`), the landing page's list.
-- **Old locations with a full state name are misread**:
-  `parseLegacyLocation("Miami, Florida")` gives city Miami, country
-  Florida. Affects rows with `hq_location` but no `profile.hq`.
 - **Feed summaries show raw HTML entities**: an FCA card read "…These
   include:&nbsp;Guidance focused…". Not reproduced since; `_shared/rss.ts`.
 - **Some enforcement cards repeat the title as the summary.**

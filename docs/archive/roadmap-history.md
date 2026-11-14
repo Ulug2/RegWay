@@ -9,6 +9,14 @@
 >
 > New entries go directly below this box, newest first.
 
+### Legacy locations with full U.S. state names (2026-11-14)
+- `parseLegacyLocation` now recognizes full state names regardless of case,
+  including District of Columbia, while preserving city/country pairs.
+  It also accepts city/state/U.S. country strings; other three-part strings
+  remain unparsed.
+- Checked: focused unit tests for state names, abbreviations, country pairs,
+  ambiguous names and three-part locations; `pnpm test:all`.
+
 ### 17a.3: an email to the owner when the AI stops working (2026-11-14)
 - `ai-outage-email` (every 15 minutes, migration 0042) reads `ai_status()`,
   the same check as the dashboard banner, and emails team@regwayai.com once
