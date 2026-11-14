@@ -126,9 +126,11 @@ describe('send-match-alerts', () => {
     setEnv('RESEND_API_KEY', 're_test')
     const { res, body, db } = await run({ rows: [row('rel-1', reg('reg-1', 'X'))], resend: jsonResponse({ message: 'nope' }, 500) })
     expect(res.status).toBe(502)
-    expect(body.failures[0]).toContain('Resend 500')
+    expect(body.failures[0]).toBe('user user-1: Resend 500: nope')
     expect(db.ran('match_alert_items', 'upsert')).toHaveLength(0)
     expect(db.ran('sync_runs', 'insert')[0].payload).toMatchObject({ source: 'match_alerts', ok: false })
+    // sync_runs is readable by every signed-in user: no email addresses.
+    expect(JSON.stringify(db.ran('sync_runs', 'insert')[0].payload)).not.toContain('@')
   })
 
   it('a dry run says what it would send and sends nothing', async () => {
@@ -138,6 +140,20 @@ describe('send-match-alerts', () => {
     expect(calls).toHaveLength(0)
     expect(db.ran('match_alert_items')).toHaveLength(1) // the lookup only
     expect(db.ran('match_alert_items', 'upsert')).toHaveLength(0)
+  })
+})
+
+describe('send-match-alerts, large runs', () => {
+  afterEach(() => setEnv('RESEND_API_KEY', undefined))
+
+  it('asks only for real matches, and looks up what was sent in chunks', async () => {
+    setEnv('RESEND_API_KEY', 're_test')
+    const rows = Array.from({ length: 250 }, (_, i) => row(`rel-${i}`, reg(`reg-${i}`, `Rule ${i}`)))
+    const { db, sent } = await run({ rows })
+    expect(db.ran('regulation_relevance')[0].filters).toContainEqual(['not', 'relevance_reason', 'like', 'NOT_RELEVANT:%'])
+    expect(db.ran('match_alert_items', 'select')).toHaveLength(3)
+    expect(sent[0].subject).toBe('250 new developments for Harbor Capital')
+    expect(sent[0].text).toContain('…and 225 more on your dashboard.')
   })
 })
 

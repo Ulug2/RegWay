@@ -4,10 +4,10 @@
 // request (e.g. during an SEC rate-limit window) hung the whole invocation
 // forever. Added a 45s AbortSignal, confirmed via real logs that a stalled
 // request now times out and the run still completes and records its outcome
-// in `sync_runs`. Still not on a cron schedule (see migration
-// 0015_unschedule_sec_admin_proceedings.sql) — that was a separate decision,
-// not blocked on this fix; re-enable deliberately, not as a side effect of
-// reading this comment.
+// in `sync_runs`. Back on a timer since migration 0021 (unscheduled in
+// 0015 while it hung); every 3 hours since migration 0031. Each new item
+// costs an AI call, so this is one of the jobs that spends without anyone
+// asking.
 //
 // Pulls new SEC Administrative Proceedings (the SEC's in-house enforcement
 // track — orders instituting proceedings, settled orders, notices — as

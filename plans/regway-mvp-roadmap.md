@@ -109,17 +109,11 @@ so ask the owner first (item 17a).
 - Citations attached to the sentences they support.*
 
 ### Known defects (S each unless marked)
-- **Failing-source banner is vague and ungrammatical**: "Regulator feeds
-  (U.S., UK and EU) hasn't updated…" when one feed of eleven is down. It
-  should name the feed (`Dashboard.tsx`, `SOURCE_LABELS` in `data.ts`).
 - **Source names live in three places**: `SOURCE_LABELS` (`data.ts`),
   `SOURCE_NAMES` (`duplicates.ts`), the landing page's list.
 - **Old locations with a full state name are misread**:
   `parseLegacyLocation("Miami, Florida")` gives city Miami, country
   Florida. Affects rows with `hq_location` but no `profile.hq`.
-- **Feed summaries show raw HTML entities**: an FCA card read "…These
-  include:&nbsp;Guidance focused…". Not reproduced since; `_shared/rss.ts`.
-- **Some enforcement cards repeat the title as the summary.**
 - **After stopping a chat answer, the empty bubble stays** until the next
   message. (Chat file: ask the owner first, see item 17a.)
 - **The one-year staleness threshold is defined twice** (client
@@ -137,7 +131,6 @@ so ask the owner first (item 17a).
   published as" links until they load.
 - **Companies with no HQ location** get much weaker scan results; consider
   requiring it when a company is added (needs the owner's yes).
-- **`supabase/README.md` is out of date**: it lists 6 of the 17 functions.
 
 ### Code health
 - **Formatting** (S, one person, when no other branches are open):

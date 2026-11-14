@@ -19,11 +19,15 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { generateImpacts } from '../_shared/impact.ts'
 import { handleOptions, json } from '../_shared/cors.ts'
-import { resolveFirmContext } from '../_shared/relevance.ts'
+import { checkRateLimit, resolveFirmContext } from '../_shared/relevance.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
 const MAX_REFRESHED = 10
+// apply-profile-changes calls this with the service key (no limit). A
+// signed-in user calling it directly forces up to 10 Sonnet analyses a
+// call, so they get a few calls an hour, not an open tap on the AI budget.
+const USER_CALLS_PER_HOUR = 6
 
 Deno.serve(async req => {
   const preflight = handleOptions(req)
@@ -33,7 +37,7 @@ Deno.serve(async req => {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
     const ctx = await resolveFirmContext(req, admin)
     if (ctx instanceof Response) return ctx
-    const { firmId } = ctx
+    const { firmId, rateLimitClient } = ctx
 
     const body = await req.json().catch(() => ({}))
     const scope = body.scope as 'firm' | 'fund' | 'company' | undefined
@@ -52,6 +56,10 @@ Deno.serve(async req => {
       .map(r => r.regulation_id)
 
     if (regulationIds.length === 0) return json({ queued: 0 })
+
+    if (rateLimitClient && !(await checkRateLimit(rateLimitClient, 'refresh-entity-impacts', USER_CALLS_PER_HOUR, 60))) {
+      return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
+    }
 
     EdgeRuntime.waitUntil(generateImpacts(regulationIds, firmId, MAX_REFRESHED, { force: true }))
 

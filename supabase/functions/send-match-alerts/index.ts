@@ -36,6 +36,7 @@ const MAX_ROWS = 2000
 // More than this in one email is a backlog, not an alert: the email lists
 // the newest and says how many more are on the dashboard.
 const MAX_HEADLINES = 25
+const ID_CHUNK = 100
 
 type Row = {
   id: string
@@ -74,6 +75,9 @@ Deno.serve(async req => {
     .select('id, firm_id, fund_id, portfolio_company_id, relevance_reason, dismissed_at, created_at, regulations(id, title, agency, published_date, duplicate_of), funds(name), portfolio_companies(name)')
     .gt('created_at', hoursAgo(LOOKBACK_HOURS))
     .is('dismissed_at', null)
+    // Rejections outnumber matches many times over after a catch-up run:
+    // left in, they could push real matches past MAX_ROWS.
+    .not('relevance_reason', 'like', 'NOT_RELEVANT:%')
     .order('created_at', { ascending: false })
     .limit(MAX_ROWS)
   if (error) return json({ error: `regulation_relevance: ${error.message}` }, 500)
@@ -115,12 +119,18 @@ Deno.serve(async req => {
 
       const fresh = person.alerts_since ? candidates.filter(r => r.created_at > person.alerts_since!) : candidates
       if (!fresh.length) continue
-      const { data: done, error: doneError } = await admin.from('match_alert_items').select('relevance_id').eq('user_id', person.user_id).in('relevance_id', fresh.map(r => r.id))
-      if (doneError) {
-        failures.push(`sent items for ${person.user_id}: ${doneError.message}`)
+      // Chunked: the ids travel in the query string.
+      const already = new Set<string>()
+      let lookupError: string | null = null
+      for (let i = 0; i < fresh.length && !lookupError; i += ID_CHUNK) {
+        const { data: done, error: doneError } = await admin.from('match_alert_items').select('relevance_id').eq('user_id', person.user_id).in('relevance_id', fresh.slice(i, i + ID_CHUNK).map(r => r.id))
+        if (doneError) lookupError = doneError.message
+        for (const d of (done ?? []) as { relevance_id: string }[]) already.add(d.relevance_id)
+      }
+      if (lookupError) {
+        failures.push(`sent items for ${person.user_id}: ${lookupError}`)
         continue
       }
-      const already = new Set((done ?? []).map((d: { relevance_id: string }) => d.relevance_id))
       const unsent = fresh.filter(r => !already.has(r.id))
       if (!unsent.length) continue
 
@@ -142,7 +152,7 @@ Deno.serve(async req => {
       }
       const result = await sendEmail({ to: [person.email], ...email })
       if (!result.sent) {
-        failures.push(`${person.email}: ${result.reason}`)
+        failures.push(`user ${person.user_id}: ${result.reason}`)
         continue
       }
       // Every unsent match counts as emailed, including those past
@@ -150,7 +160,8 @@ Deno.serve(async req => {
       const { error: recordError } = await admin
         .from('match_alert_items')
         .upsert(unsent.map(r => ({ relevance_id: r.id, user_id: person.user_id, firm_id: firmId, resend_id: result.id })), { onConflict: 'relevance_id,user_id', ignoreDuplicates: true })
-      if (recordError) failures.push(`recording for ${person.email}: ${recordError.message}`)
+      // Sent but not recorded: the next run would send it again, so say so.
+      if (recordError) failures.push(`recording for user ${person.user_id}: ${recordError.message}`)
       if (isNew) {
         newPeople++
         await admin.from('email_preferences').upsert({ user_id: person.user_id }, { onConflict: 'user_id', ignoreDuplicates: true })
@@ -159,6 +170,8 @@ Deno.serve(async req => {
     }
   }
 
+  // Recorded in sync_runs, which every signed-in user can read: user ids
+  // only, never an email address.
   const summary = { firms: byFirm.size, emails: sent.length, newPeople, failures }
   if (!dryRun && (sent.length || failures.length)) {
     await recordSyncRun(admin, SOURCE, failures.length === 0, `${sent.length} alert emails${failures.length ? `; failed: ${failures.join('; ')}` : ''}`, summary)
