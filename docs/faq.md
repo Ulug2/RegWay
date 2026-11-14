@@ -142,5 +142,5 @@ a contact address).
 **Owner to answer.**
 
 ### How do I contact you?
-**Owner to answer:** the contact address (`CONTACT_EMAIL` in
-`src/components/InfoPage.tsx` is unset).
+Email team@regwayai.com. The same address is at the end of the Legal and
+Privacy pages (`CONTACT_EMAIL` in `src/components/InfoPage.tsx`).

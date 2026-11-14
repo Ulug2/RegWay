@@ -11,9 +11,9 @@ import { User, UsersThree } from './icons'
 // changes (a new source, a new kind of stored data), change the page.
 //
 // The Legal and Privacy pages are plain descriptions written by the team,
-// not documents drafted by a lawyer. CONTACT_EMAIL is shown on them once it
-// is set.
-const CONTACT_EMAIL: string | null = null
+// not documents drafted by a lawyer. CONTACT_EMAIL is shown at the end of
+// both (set by the owner, 2026-11-14).
+const CONTACT_EMAIL: string | null = 'team@regwayai.com'
 const UPDATED = 'October 8, 2026'
 
 const TITLES: Record<PageSlug, string> = {
