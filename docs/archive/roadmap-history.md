@@ -25,8 +25,11 @@
   nothing recorded on a failed send, service key only); migration applied
   to the local database, `ai_status()` callable with the service key and
   the table hidden from signed-in users; `pnpm test:all`.
-- Not checked: a real email through Resend; the hosted database and the
-  deployed function (the owner applies 0042, sets the secret and deploys).
+- Live 2026-11-14: `RESEND_API_KEY` set, function deployed, 0042 applied
+  to the hosted database. A test email (`{ "test": true }`) was accepted by
+  Resend. The first scheduled run (20:18 UTC) found a real outage, out of
+  credit since 2026-11-07 (no AI call has worked since 2026-11-04), and
+  emailed team@regwayai.com once.
 ### Contact address on the public pages (2026-11-14)
 - `CONTACT_EMAIL` in `InfoPage.tsx` is team@regwayai.com, so Legal and
   Privacy end with a Contact section; the FAQ answer says the same.
