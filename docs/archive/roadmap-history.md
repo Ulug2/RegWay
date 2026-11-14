@@ -16,6 +16,89 @@
   remain unparsed.
 - Checked: focused unit tests for state names, abbreviations, country pairs,
   ambiguous names and three-part locations; `pnpm test:all`.
+### Syncs locked to the service key; a pause switch for automatic AI (2026-11-14)
+- The six sync functions accepted the public key (in every browser), so
+  anyone could run them as often as they liked, and
+  `sync-sec-admin-proceedings` spends AI credit on each new item. They now
+  accept only the service key (`requireServiceKey`, `_shared/cors.ts`);
+  migration 0044 reschedules their timers to send it from Vault. Checked
+  live: a public-key call gets 401.
+- `AUTOMATIC_AI=off` (`_shared/ai/switch.ts`): pauses company scans,
+  background analyses, the matchers, duplicate grouping's AI step, the SEC
+  proceedings reader and the after-edit re-checks; the chat, opening a
+  development, re-checks and firm research stay on. Set in production
+  2026-11-14 after opening the dashboard spent $4.80 of a fresh top-up.
+- `docs/onboarding.md`: contributors put `AUTOMATIC_AI=off` beside their
+  key; the local sync example uses the local service key.
+- Checked: 14 new unit tests (every sync refuses the public key; every
+  paused job makes no AI call), 544 unit tests in all.
+
+### Bug sweep and the system guide (2026-11-14)
+- **AI outage email sent every 30 minutes** (5 emails on 2026-11-14): it
+  keyed an outage on `ai_status().since`, which moves forward with its
+  7-day window. Now an outage counts as emailed when an email went out
+  after the last AI call that worked (PR #58, deployed).
+- **Alerts would have skipped the first matches after launch**: a person
+  was "registered" only when there was something to send, and then sent
+  nothing. Someone with no setting now has alerts on (PR #56, deployed).
+- **Alert job robustness**: asks only for real matches (rejections could
+  push them past the 2,000-row cap after a catch-up) and looks up what was
+  sent in chunks of 100 (deployed).
+- **Email addresses in `sync_runs`** (which every signed-in user can
+  read): a failed alert send recorded the address. Now the user id only
+  (deployed; none had been written).
+- **`refresh-entity-impacts` had no rate limit**: any signed-in user could
+  call it repeatedly, each call forcing up to 10 Sonnet analyses. Direct
+  user calls are now limited to 6 an hour (apply-profile-changes uses the
+  service key, unlimited). Needs deploying.
+- **Feed text encoded twice** showed as "&nbsp;" / "&amp;" on cards (FCA):
+  `_shared/rss.ts` decodes a second time when the first pass left an
+  entity behind.
+- **Enforcement cards repeated the title as the summary**: SEC litigation
+  releases fall back to the start of the release, FINRA items to no
+  summary.
+- **A blank page after a deploy**: a tab opened before the deploy asked for
+  files that no longer exist when it opened a screen. A failed screen load
+  now reloads the page once (`src/lib/lazyScreen.ts`). The browser tests
+  for the loading skeletons (PR #52) never slowed the screen down (their
+  file pattern matched only built files, the tests run on the dev server);
+  they now match both.
+- Out-of-date docs: `supabase/README.md` (6 of 21 functions, `db push`
+  warning), the SEC proceedings schedule comment.
+- New: `docs/regway-system-guide.md`, the whole system in one document.
+- Production check (2026-11-14): a temporary, labelled match on H.I.G.
+  and 40 real company-scan matches (the owner had just topped up the AI
+  credit and opened the dashboard) went out in one alert email at 22:55;
+  41 items recorded in `match_alert_items`. The test match was removed.
+
+### Item 12, Phase 3: match alert emails (2026-11-14)
+Decided by the owner 2026-11-14: every match counts ("high priority" =
+anything matched to the firm, a fund or a company); on for everyone, off in
+Profile; the email lists headlines and sends people to the dashboard.
+- `send-match-alerts` (every 30 minutes at :25/:55, after run-matching;
+  migration 0043): one email per person per run, only when something new
+  matched. One line per development with what it applies to ("Applies to
+  Harbor Capital, Fund II"), its agency and date, a link to its page, and
+  "Open your dashboard". Over 25 headlines: the newest 25 and "…and N
+  more". No AI call.
+- Left out: Skeptic rejections and other `NOT_RELEVANT` rows, dismissed
+  matches, later versions of a development, a firm's first 24 hours of
+  matching (seen on the dashboard while setting up), matches before the
+  person's `alerts_since`, and anything already emailed
+  (`match_alert_items`). Someone with no setting yet has alerts on; a
+  run looks back 48 hours only, so history never arrives as one email.
+- Profile → Account → **Email alerts**: On / Off (`EmailAlerts.tsx`).
+  Turning on starts from now. The onboarding question's "coming soon"
+  help text now points there.
+- `alert_recipients(firm)`: the firm's people with their sign-in email,
+  service role only. `match_alerts` runs are recorded in `sync_runs` but
+  never shown in the dashboard's failing-source notice.
+- Checked: 11 unit tests (grouping, what is left out, first-time people,
+  failed sends, dry run, HTML escaping), 2 browser tests for the setting,
+  the migration on the local database (own row only, recipients refused to
+  signed-in users), `pnpm test:all`.
+- Not checked: a real alert email (needs the hosted database, the deployed
+  function and a new match; the AI was out of credit on 2026-11-14).
 
 ### 17a.3: an email to the owner when the AI stops working (2026-11-14)
 - `ai-outage-email` (every 15 minutes, migration 0042) reads `ai_status()`,

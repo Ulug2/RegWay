@@ -13,6 +13,7 @@ import CompaniesProfile from './profile/CompaniesProfile'
 import DismissedRegulations from './profile/DismissedRegulations'
 import HiddenByReview from './profile/HiddenByReview'
 import FoundOnWeb from './profile/FoundOnWeb'
+import EmailAlerts from './profile/EmailAlerts'
 
 export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio' | 'research' | 'dismissed' | 'hidden'
 
@@ -267,6 +268,8 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
             )}
             {emailError && <div className="text-[13px] mt-3" role="alert" style={{ color: 'var(--warning)' }}>{emailError}</div>}
           </div>
+
+          <EmailAlerts />
 
           {/* Password */}
           <div className="glass-card p-6 sm:p-7">

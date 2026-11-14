@@ -5,7 +5,7 @@
 // profile"). Free, no key required. Runs daily (migration 0023):
 //
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-travel-advisories \
-//     -H "Authorization: Bearer <SERVICE_ROLE_OR_ANON_KEY>"
+//     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 //
 // One feed item per country, re-issued in place whenever the advisory is
 // reviewed. A row's identity is (countries, level), so a level change (e.g.
@@ -15,7 +15,7 @@
 // country under either one from run to run.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { handleOptions, json } from '../_shared/cors.ts'
+import { handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { countryByName, extractCountries } from '../_shared/countries.ts'
 import { parseRssItems } from '../_shared/rss.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
@@ -60,6 +60,8 @@ function parseAdvisory(title: string) {
 Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
+  const refused = requireServiceKey(req)
+  if (refused) return refused
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 

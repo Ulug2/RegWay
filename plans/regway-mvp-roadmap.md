@@ -109,14 +109,8 @@ so ask the owner first (item 17a).
 - Citations attached to the sentences they support.*
 
 ### Known defects (S each unless marked)
-- **Failing-source banner is vague and ungrammatical**: "Regulator feeds
-  (U.S., UK and EU) hasn't updated…" when one feed of eleven is down. It
-  should name the feed (`Dashboard.tsx`, `SOURCE_LABELS` in `data.ts`).
 - **Source names live in three places**: `SOURCE_LABELS` (`data.ts`),
   `SOURCE_NAMES` (`duplicates.ts`), the landing page's list.
-- **Feed summaries show raw HTML entities**: an FCA card read "…These
-  include:&nbsp;Guidance focused…". Not reproduced since; `_shared/rss.ts`.
-- **Some enforcement cards repeat the title as the summary.**
 - **After stopping a chat answer, the empty bubble stays** until the next
   message. (Chat file: ask the owner first, see item 17a.)
 - **The one-year staleness threshold is defined twice** (client
@@ -134,7 +128,6 @@ so ask the owner first (item 17a).
   published as" links until they load.
 - **Companies with no HQ location** get much weaker scan results; consider
   requiring it when a company is added (needs the owner's yes).
-- **`supabase/README.md` is out of date**: it lists 6 of the 17 functions.
 
 ### Code health
 - **Formatting** (S, one person, when no other branches are open):
@@ -284,12 +277,14 @@ spend, and the owner has said no alert is wanted for now.
   matcher.
 
 ### Product decisions waiting on the owner
-- **Email alerts and the Morning Brief** (item 12, Phase 3; M). The
-  company address is team@regwayai.com (owner, 2026-11-14). Still waiting
-  for a sending service (for example Resend) to send automatic email from
-  it. "High priority" = any development matched to the firm, one of its
-  funds or one of its portfolio companies (owner, 2026-11-14). The per-fund
-  notification preference is stored; nothing sends.
+- **The Morning Brief** (item 12, Phase 3; M). Decided by the owner
+  2026-11-14: every morning at 7 am in each person's own time zone, an
+  email listing the headline of every match since the last brief, sending
+  people to the dashboard. Needs each person's time zone (not stored
+  today: save the browser's on sign-in) and an on/off beside "Email
+  alerts" in Profile → Account. Reuse `_shared/email.ts` and the layout in
+  `_shared/matchAlerts.ts`. The match alert emails are built (history,
+  2026-11-14).
 - **Public pages** (About, Sources, Legal, Privacy): not yet read by the
   owner, not written by a lawyer. Contact address: team@regwayai.com
   (2026-11-14). No company name or governing law. Privacy names

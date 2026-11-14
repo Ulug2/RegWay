@@ -4,10 +4,10 @@
 // request (e.g. during an SEC rate-limit window) hung the whole invocation
 // forever. Added a 45s AbortSignal, confirmed via real logs that a stalled
 // request now times out and the run still completes and records its outcome
-// in `sync_runs`. Still not on a cron schedule (see migration
-// 0015_unschedule_sec_admin_proceedings.sql) — that was a separate decision,
-// not blocked on this fix; re-enable deliberately, not as a side effect of
-// reading this comment.
+// in `sync_runs`. Back on a timer since migration 0021 (unscheduled in
+// 0015 while it hung); every 3 hours since migration 0031. Each new item
+// costs an AI call, so this is one of the jobs that spends without anyone
+// asking.
 //
 // Pulls new SEC Administrative Proceedings (the SEC's in-house enforcement
 // track — orders instituting proceedings, settled orders, notices — as
@@ -24,14 +24,15 @@
 // runs synchronously rather than in the background (see processItems below).
 //
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-sec-admin-proceedings \
-//     -H "Authorization: Bearer <SERVICE_ROLE_OR_ANON_KEY>"
+//     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { corsHeaders, handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { parseRssItems, type FeedItem } from '../_shared/rss.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
 import { AnthropicError, callClaude, toolInput, type ClaudeResponse } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
+import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 const SOURCE = 'sec_admin_proceedings'
 const ADMIN_PROCEEDINGS_RSS = 'https://www.sec.gov/enforcement-litigation/administrative-proceedings/rss'
@@ -177,6 +178,10 @@ async function processItems(admin: SupabaseClient, newItems: FeedItem[]) {
 Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
+  const refused = requireServiceKey(req)
+  if (refused) return refused
+  // Each new item is read by Claude: wait until automatic AI work resumes.
+  if (automaticAiPaused()) return json({ paused: true })
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 

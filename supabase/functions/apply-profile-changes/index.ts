@@ -21,6 +21,7 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
+import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
@@ -148,6 +149,8 @@ Deno.serve(async req => {
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   if (req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') !== key) return json({ error: 'Service key required' }, 401)
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, key)
+  // The edits stay queued and are handled once automatic AI work resumes.
+  if (automaticAiPaused()) return json({ paused: true })
 
   // Respond at once: cron doesn't wait, and the matchers take a minute or
   // more. A run with nothing due leaves no record.

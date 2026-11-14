@@ -40,6 +40,7 @@ import {
 } from '../_shared/duplicates.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
 import { fetchPlainText } from '../_shared/text.ts'
+import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
@@ -161,7 +162,8 @@ async function run(admin: SupabaseClient, dryRun: boolean): Promise<RunStats> {
   for (const document of documents) {
     const candidates = neverAnnounced(document) ? [] : announcementsFor(document, announcements)
     if (candidates.length === 0) checked.add(document.id)
-    else if (toCompare.length < MAX_AI_CALLS) toCompare.push({ document, candidates })
+    // Paused: left unchecked, so a later run compares it.
+    else if (!automaticAiPaused() && toCompare.length < MAX_AI_CALLS) toCompare.push({ document, candidates })
     else stats.backlog = true
   }
 

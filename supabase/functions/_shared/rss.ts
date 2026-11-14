@@ -17,13 +17,23 @@ export interface FeedItem {
 const NAMED_ENTITIES: Record<string, string> = { nbsp: ' ', quot: '"', apos: "'", lt: '<', gt: '>' }
 
 // Decodes the HTML entities feeds use in titles/descriptions (&#8220;,
-// &#x2019;, &quot;, ...). `&amp;` goes last so "&amp;#8220;" isn't decoded twice.
-const decodeEntities = (s: string) =>
+// &#x2019;, &quot;, ...). `&amp;` goes last within a pass so "&amp;#8220;"
+// isn't decoded twice by one pass.
+const decodeOnce = (s: string) =>
   s
     .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/&(nbsp|quot|apos|lt|gt);/g, (_, name) => NAMED_ENTITIES[name])
     .replace(/&amp;/g, '&')
+
+// Some feeds encode their HTML twice (the FCA's: "&amp;nbsp;"), which one
+// pass leaves as a visible "&nbsp;" in the summary. A second pass runs only
+// when the first left an entity behind.
+const LEFT_OVER_ENTITY = /&(nbsp|quot|apos|lt|gt|amp|#\d+|#x[0-9a-f]+);/i
+const decodeEntities = (s: string) => {
+  const once = decodeOnce(s)
+  return LEFT_OVER_ENTITY.test(once) ? decodeOnce(once) : once
+}
 
 // A CDATA section's content is literal text; left wrapped, the tag stripper
 // below reads "<![CDATA[Do not travel<p>" as one tag and drops the opening

@@ -23,6 +23,7 @@ import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { resolveFirmContext, loadFirmEntities, describe, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, type Verdict, forgetRejections, requestScheduledRematch } from '../_shared/relevance.ts'
 import { callClaude, toolInput } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
+import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 const MODEL = MODEL_FOR.enforcementJudge
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
@@ -82,6 +83,8 @@ Deno.serve(async (req) => {
     const unevaluated = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
 
     if (unevaluated.length === 0) return json({ evaluated: 0, relevant: 0 })
+    // Judged once the owner resumes automatic AI work (_shared/ai/switch.ts).
+    if (automaticAiPaused()) return json({ evaluated: 0, relevant: 0, paused: true })
 
     if (rateLimitClient && !reevaluate && !(await checkRateLimit(rateLimitClient, 'match-enforcement-relevance', 15, 60))) return rateLimited()
 

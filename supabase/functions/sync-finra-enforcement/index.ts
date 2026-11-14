@@ -16,10 +16,10 @@
 // FINRA-specific official feed exists.
 //
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-finra-enforcement \
-//     -H "Authorization: Bearer <SERVICE_ROLE_OR_ANON_KEY>"
+//     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
-import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
+import { corsHeaders, handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { fetchPlainText } from '../_shared/text.ts'
 import { parseRssItems } from '../_shared/rss.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
@@ -54,6 +54,8 @@ function extractNarrative(pageText: string): string {
 Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
+  const refused = requireServiceKey(req)
+  if (refused) return refused
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
@@ -90,7 +92,8 @@ Deno.serve(async req => {
         title: item.title,
         agency: 'Financial Industry Regulatory Authority (FINRA)',
         jurisdiction: 'Federal',
-        summary: (item.description || item.title).slice(0, 600),
+        // No description: no summary, rather than the title twice on the card.
+        summary: item.description && item.description !== item.title ? item.description.slice(0, 600) : null,
         published_date: new Date(item.pubDate).toISOString().slice(0, 10),
         effective_date: null,
         source_url: item.link,

@@ -42,9 +42,17 @@ describe('parseRssItems', () => {
     expect(item.description).toBe('')
   })
 
-  it('decodes an entity once, not twice', () => {
-    const [item] = parseRssItems(feed(`<item><title>Q&amp;amp;A on &amp;#8220;fees&amp;#8221;</title><link>https://x.test</link><pubDate>Fri, 02 Oct 2026</pubDate></item>`))
-    expect(item.title).toBe('Q&amp;A on &#8220;fees&#8221;')
+  // A feed that encodes its text twice used to show "&amp;" and "&nbsp;"
+  // on the card (an FCA summary read "These include:&nbsp;Guidance").
+  it('decodes text a feed encoded twice', () => {
+    const [item] = parseRssItems(feed(`<item><title>Q&amp;amp;A on &amp;#8220;fees&amp;#8221;</title><link>https://x.test</link><pubDate>Fri, 02 Oct 2026</pubDate><description>These include:&amp;nbsp;Guidance focused on &amp;lt;b&amp;gt;fees&amp;lt;/b&amp;gt;</description></item>`))
+    expect(item.title).toBe('Q&A on \u201cfees\u201d')
+    expect(item.description).toBe('These include: Guidance focused on fees')
+  })
+
+  it('keeps an ampersand that is text, decoded once', () => {
+    const [item] = parseRssItems(feed(`<item><title>Mergers &amp; Acquisitions: 5 &lt; 6</title><link>https://x.test</link><pubDate>Fri, 02 Oct 2026</pubDate></item>`))
+    expect(item.title).toBe('Mergers & Acquisitions: 5 < 6')
   })
 
   it('skips items missing a title, link or date, and keeps the rest', () => {
