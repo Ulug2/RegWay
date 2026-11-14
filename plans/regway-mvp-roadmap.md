@@ -56,9 +56,6 @@ owner before changing `supabase/functions/regway-ai-chat/`, `_shared/ai/`,
    wrongdoing).
 2. **The Skeptic for company web-scan results** (M): review before they
    are saved; today the backfill skips them (`source = 'ai_search'`).
-3. **An email to the owner when the AI stops working** (S): with the email
-   alerts, once there is an email provider. The dashboard banner
-   (migration 0038) shows only to someone who opens it.
 - Known borderline rejection, never applied: the EU Customs Code for
   A.L.A. S.p.A. (a backfill review, so it is not in the Hidden list).
 

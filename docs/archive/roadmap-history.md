@@ -9,6 +9,24 @@
 >
 > New entries go directly below this box, newest first.
 
+### 17a.3: an email to the owner when the AI stops working (2026-11-14)
+- `ai-outage-email` (every 15 minutes, migration 0042) reads `ai_status()`,
+  the same check as the dashboard banner, and emails team@regwayai.com once
+  per outage: why it fails and what to do (top up, check the key, wait).
+  An outage is keyed by when it began; `ai_outage_emails` records each one
+  emailed (service role only). A failed send is not recorded, so the next
+  run tries again. No AI call.
+- `_shared/email.ts`: the one way RegWay sends email, through Resend
+  (regwayai.com verified there 2026-11-14), from alerts@regwayai.com. The
+  email alerts will use it.
+- Settings: `RESEND_API_KEY` (secret), `ALERT_EMAIL_TO` (default
+  team@regwayai.com), `EMAIL_FROM` (optional).
+- Checked: 8 unit tests (one email per outage, nothing while the AI works,
+  nothing recorded on a failed send, service key only); migration applied
+  to the local database, `ai_status()` callable with the service key and
+  the table hidden from signed-in users; `pnpm test:all`.
+- Not checked: a real email through Resend; the hosted database and the
+  deployed function (the owner applies 0042, sets the secret and deploys).
 ### Contact address on the public pages (2026-11-14)
 - `CONTACT_EMAIL` in `InfoPage.tsx` is team@regwayai.com, so Legal and
   Privacy end with a Contact section; the FAQ answer says the same.

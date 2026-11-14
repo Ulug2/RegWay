@@ -36,7 +36,10 @@ data travels; the code and the roadmap have the detail.
   job uses. New AI work uses these; nothing calls the API directly.
   A failed call is recorded too (`ok = false`, with why in `error`), and
   `ai_status()` (migration 0038) turns repeated failures into a banner on
-  the dashboard ("the AI service account has run out of credit").
+  the dashboard ("the AI service account has run out of credit"), and
+  `ai-outage-email` emails the owner once per outage.
+- **Email.** Sent through Resend from the regwayai.com domain, only via
+  `_shared/email.ts` (needs the `RESEND_API_KEY` secret).
 - **Scheduled jobs.** `pg_cron` runs inside the database and calls
   functions over HTTP on a timer. The schedules are written in migrations.
 
