@@ -112,6 +112,7 @@ function seed(): Record<string, Row[]> {
     regulation_flags: [],
     regulation_notes: [],
     sync_runs: [{ source: 'federal_register', ok: true, ran_at: recently() }],
+    email_preferences: [],
     regway_ai_conversations: [],
     regway_ai_messages: [],
     // Web research on the firm (item 18): runs and what they proposed.
@@ -200,7 +201,13 @@ export class MockBackend {
       return rows.length === 1 ? { json: rows[0] } : { status: 406, json: { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned', details: `The result contains ${rows.length} rows` } }
     }
     if (method === 'POST') {
-      for (const row of Array.isArray(body) ? body : [body]) this.tables[table].push({ ...row })
+      // An upsert (?on_conflict=…) replaces the row with the same key.
+      const keys = query.get('on_conflict')?.split(',') ?? []
+      for (const row of Array.isArray(body) ? body : [body]) {
+        const existing = keys.length ? this.tables[table].find(r => keys.every(k => r[k] === row[k])) : undefined
+        if (existing) Object.assign(existing, row)
+        else this.tables[table].push({ ...row })
+      }
       return { status: 201, json: null }
     }
     const targets = new Set(this.select(table, query))

@@ -658,8 +658,9 @@ const SOURCE_LABELS: Record<string, string> = {
 }
 
 // Recorded in sync_runs but not a data source: a failed run delays the
-// grouping of duplicates, it doesn't leave anything missing.
-const NOT_DATA_SOURCES = new Set(['duplicates', 'profile_changes'])
+// grouping of duplicates or an alert email, it doesn't leave anything
+// missing from the dashboard.
+const NOT_DATA_SOURCES = new Set(['duplicates', 'profile_changes', 'match_alerts'])
 
 // A source is "failing" when its most recent recorded sync run didn't
 // succeed — shown so an empty or stale-looking dashboard reads as a stated
@@ -852,3 +853,26 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   if (error) throw error
 }
 
+
+// Email alerts (migration 0043): on unless the person turned them off. No
+// row yet means on; send-match-alerts creates the row the first time it
+// sees the person.
+export async function fetchMatchAlerts(): Promise<boolean> {
+  const { data, error } = await supabase.from('email_preferences').select('match_alerts').maybeSingle()
+  if (error) throw error
+  return (data as { match_alerts: boolean } | null)?.match_alerts ?? true
+}
+
+// Turning alerts back on starts from now, so the matches made while they
+// were off don't arrive as one long email.
+export async function setMatchAlerts(on: boolean): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not signed in')
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('email_preferences')
+    .upsert({ user_id: user.id, match_alerts: on, updated_at: now, ...(on ? { alerts_since: now } : {}) }, { onConflict: 'user_id' })
+  if (error) throw error
+}

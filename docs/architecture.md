@@ -39,7 +39,9 @@ data travels; the code and the roadmap have the detail.
   the dashboard ("the AI service account has run out of credit"), and
   `ai-outage-email` emails the owner once per outage.
 - **Email.** Sent through Resend from the regwayai.com domain, only via
-  `_shared/email.ts` (needs the `RESEND_API_KEY` secret).
+  `_shared/email.ts` (needs the `RESEND_API_KEY` secret):
+  `ai-outage-email` to the owner, `send-match-alerts` to each person when
+  something new matches (off in Profile → Account).
 - **Scheduled jobs.** `pg_cron` runs inside the database and calls
   functions over HTTP on a timer. The schedules are written in migrations.
 

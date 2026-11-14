@@ -9,6 +9,35 @@
 >
 > New entries go directly below this box, newest first.
 
+### Item 12, Phase 3: match alert emails (2026-11-14)
+Decided by the owner 2026-11-14: every match counts ("high priority" =
+anything matched to the firm, a fund or a company); on for everyone, off in
+Profile; the email lists headlines and sends people to the dashboard.
+- `send-match-alerts` (every 30 minutes at :25/:55, after run-matching;
+  migration 0043): one email per person per run, only when something new
+  matched. One line per development with what it applies to ("Applies to
+  Harbor Capital, Fund II"), its agency and date, a link to its page, and
+  "Open your dashboard". Over 25 headlines: the newest 25 and "…and N
+  more". No AI call.
+- Left out: Skeptic rejections and other `NOT_RELEVANT` rows, dismissed
+  matches, later versions of a development, a firm's first 24 hours of
+  matching (seen on the dashboard while setting up), matches before the
+  person's `alerts_since`, and anything already emailed
+  (`match_alert_items`). Someone with no setting yet has alerts on; a
+  run looks back 48 hours only, so history never arrives as one email.
+- Profile → Account → **Email alerts**: On / Off (`EmailAlerts.tsx`).
+  Turning on starts from now. The onboarding question's "coming soon"
+  help text now points there.
+- `alert_recipients(firm)`: the firm's people with their sign-in email,
+  service role only. `match_alerts` runs are recorded in `sync_runs` but
+  never shown in the dashboard's failing-source notice.
+- Checked: 11 unit tests (grouping, what is left out, first-time people,
+  failed sends, dry run, HTML escaping), 2 browser tests for the setting,
+  the migration on the local database (own row only, recipients refused to
+  signed-in users), `pnpm test:all`.
+- Not checked: a real alert email (needs the hosted database, the deployed
+  function and a new match; the AI was out of credit on 2026-11-14).
+
 ### 17a.3: an email to the owner when the AI stops working (2026-11-14)
 - `ai-outage-email` (every 15 minutes, migration 0042) reads `ai_status()`,
   the same check as the dashboard banner, and emails team@regwayai.com once
