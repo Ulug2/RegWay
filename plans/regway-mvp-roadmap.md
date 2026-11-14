@@ -287,12 +287,14 @@ spend, and the owner has said no alert is wanted for now.
   matcher.
 
 ### Product decisions waiting on the owner
-- **Email alerts and the Morning Brief** (item 12, Phase 3; M). The
-  company address is team@regwayai.com (owner, 2026-11-14). Still waiting
-  for a sending service (for example Resend) to send automatic email from
-  it. "High priority" = any development matched to the firm, one of its
-  funds or one of its portfolio companies (owner, 2026-11-14). The per-fund
-  notification preference is stored; nothing sends.
+- **The Morning Brief** (item 12, Phase 3; M). Decided by the owner
+  2026-11-14: every morning at 7 am in each person's own time zone, an
+  email listing the headline of every match since the last brief, sending
+  people to the dashboard. Needs each person's time zone (not stored
+  today: save the browser's on sign-in) and an on/off beside "Email
+  alerts" in Profile → Account. Reuse `_shared/email.ts` and the layout in
+  `_shared/matchAlerts.ts`. The match alert emails are built (history,
+  2026-11-14).
 - **Public pages** (About, Sources, Legal, Privacy): not yet read by the
   owner, not written by a lawyer. Contact address: team@regwayai.com
   (2026-11-14). No company name or governing law. Privacy names

@@ -13,6 +13,8 @@ export interface Email {
   to: string[]
   subject: string
   text: string
+  // Optional HTML version; `text` is always sent too, for plain-text readers.
+  html?: string
 }
 
 export type SendResult = { sent: true; id: string } | { sent: false; reason: string }
@@ -25,7 +27,7 @@ export async function sendEmail(email: Email): Promise<SendResult> {
     const res = await fetch(RESEND_EMAILS_URL, {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: Deno.env.get('EMAIL_FROM') || DEFAULT_FROM, to: email.to, subject: email.subject, text: email.text }),
+      body: JSON.stringify({ from: Deno.env.get('EMAIL_FROM') || DEFAULT_FROM, to: email.to, subject: email.subject, text: email.text, ...(email.html ? { html: email.html } : {}) }),
       signal: AbortSignal.timeout(15_000),
     })
     const body = await res.json().catch(() => ({}))
