@@ -3,7 +3,7 @@ import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
 import { fromRow, metaOf, toRow, type Answers, type ProfileMeta, type Scope } from './questionnaire'
 import type { Finding, FoundEntity, ResearchRun } from './research'
-import { firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
+import { asSaved, firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
 import { collapseDuplicates, isAnnouncement, isOfficialDocument, versionsOf, SOURCE_NAMES } from './duplicates'
 import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, PublishedVersion, Regulation, RegulationNote } from './types'
 
@@ -418,7 +418,11 @@ export const rescanRequested = (c: { last_scanned_at: string | null }) => !!c.la
 export async function saveCompanyAnswers(firmId: string, previous: PortfolioCompany, answers: Answers, meta?: ProfileMeta): Promise<void> {
   const row = toRow('company', answers, { previous, meta })
   const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
-  const rescan = !same(previous.hq_location, row.hq_location) || !same(previous.sectors, row.sectors) || !same(previous.regions, row.regions)
+  // Compared with the old row as it would be saved today, not its raw text:
+  // an old "Miami, Florida" is now saved as "Miami, Florida, United States",
+  // which is the same place and must not pay for a new scan.
+  const before = (asSaved('company', previous as unknown as Record<string, unknown>) ?? {}) as Record<string, unknown>
+  const rescan = !same(before.hq_location, row.hq_location) || !same(before.sectors, row.sectors) || !same(before.regions, row.regions)
   const { error } = await supabase
     .from('portfolio_companies')
     .update(rescan && previous.last_scanned_at ? { ...row, last_scanned_at: RESCAN_REQUESTED } : row)
@@ -428,7 +432,7 @@ export async function saveCompanyAnswers(firmId: string, previous: PortfolioComp
   // Spec §3: a changed location or supplier fact must cause geopolitical
   // matches to be reconsidered, not just future ones.
   const locationChanged =
-    !same(previous.hq_location, row.hq_location) ||
+    !same(before.hq_location, row.hq_location) ||
     LOCATION_FIELDS.some(f => !same(recorded(previous.profile?.[f]), recorded(answers[f])))
   queueProfileWork(firmId, {
     scope: 'company',

@@ -277,20 +277,47 @@ export function formatLocation(l: LocationValue | undefined): string {
 }
 
 // "New York, NY" or "New York, New York" -> {city: New York, state: New York, country: United States}
+// Old free-text locations, as people typed them: a ZIP after the state
+// ("Miami, FL 33131"), dotted codes ("Washington, D.C."), the US written
+// several ways ("U.S.", "USA"), and other countries by their common names
+// ("UK", "france") are all read; a country is given its name from COUNTRIES.
+// Two-letter codes are read as US states even where they are also country
+// codes ("Toronto, CA" is California): the old column held US addresses.
+const US_NAMES = new Set(['US', 'USA', 'UNITED STATES', 'UNITED STATES OF AMERICA', 'AMERICA'])
+const COUNTRY_ALIASES: Record<string, string> = { UK: 'United Kingdom', 'GREAT BRITAIN': 'United Kingdom', BRITAIN: 'United Kingdom', ENGLAND: 'United Kingdom', UAE: 'United Arab Emirates' }
+
+const isUS = (text: string) => US_NAMES.has(text.replace(/\./g, '').trim().toUpperCase())
+
+function usState(text: string): string | undefined {
+  const bare = text.replace(/\s+\d{5}(-\d{4})?$/, '').trim()
+  return STATE_ABBR[bare.replace(/\./g, '').toUpperCase()] ?? US_STATES.find(name => name.toLowerCase() === bare.toLowerCase())
+}
+
+function countryName(text: string): string {
+  const alias = COUNTRY_ALIASES[text.replace(/\./g, '').trim().toUpperCase()]
+  return alias ?? COUNTRIES.find(c => c.toLowerCase() === text.toLowerCase()) ?? text
+}
+
 export function parseLegacyLocation(text: string | null | undefined): LocationValue | undefined {
   if (!text) return undefined
   const parts = text.split(',').map(p => p.trim()).filter(Boolean)
   if (parts.length !== 2 && parts.length !== 3) return undefined
-  if (parts.length === 3 && !['US', 'USA', 'UNITED STATES'].includes(parts[2].toUpperCase())) return undefined
+  const [city, second, third] = parts
+
+  if (parts.length === 3) {
+    if (isUS(third)) {
+      const state = usState(second)
+      return state ? { country: 'United States', state, city } : undefined
+    }
+    // "Toronto, Ontario, Canada": a region and a country.
+    return { country: countryName(third), state: second, city }
+  }
 
   // In a city/state pair, "Georgia" means the U.S. state, not the country.
-  const state = STATE_ABBR[parts[1].toUpperCase()]
-    ?? US_STATES.find(name => name.toLowerCase() === parts[1].toLowerCase())
-  if (state) {
-    return { country: 'United States', state, city: parts[0] }
-  }
-  if (parts.length === 3) return undefined
-  return { country: parts[1], state: '', city: parts[0] }
+  const state = usState(second)
+  if (state) return { country: 'United States', state, city }
+  if (isUS(second)) return { country: 'United States', state: '', city }
+  return { country: countryName(second), state: '', city }
 }
 
 const matchOption = (options: string[] | undefined, value: string | undefined) =>

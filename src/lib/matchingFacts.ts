@@ -45,7 +45,10 @@ function differs(keys: FactKeys, before: Row | null | undefined, after: Row): bo
 // rows written before a question existed) keep facts in a different shape
 // (e.g. only `hq_location`, no `profile.hq`), which would read as a change
 // on every first save.
-const asSaved = (scope: 'firm' | 'fund' | 'company', row: Row | null | undefined): Row | null =>
+// A row as saving it unchanged would write it: old free-text columns come
+// back in today's format ("Miami, Florida" → "Miami, Florida, United
+// States"), so comparing against this tells a real edit from a reformat.
+export const asSaved = (scope: 'firm' | 'fund' | 'company', row: Row | null | undefined): Row | null =>
   row ? { ...row, ...toRow(scope, fromRow(scope, row as Parameters<typeof fromRow>[1])) } : null
 
 export const matchingFactsChanged = (scope: 'firm' | 'fund' | 'company', before: Row | null | undefined, after: Row) =>

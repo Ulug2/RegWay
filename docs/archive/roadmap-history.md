@@ -9,6 +9,36 @@
 >
 > New entries go directly below this box, newest first.
 
+### Bug sweep, round 2 (2026-11-14)
+- **From `/code-review ultra`, run 1** (it reviewed PR #57, the legacy location
+  parser): saving an old company whose location read "Miami, Florida" now
+  rewrote it as "Miami, Florida, United States", and the raw-text
+  comparison took that for a move, so any edit paid for a new scan and a
+  geopolitical re-check. Company saves now compare against the old row as
+  it would be saved today (`asSaved`). The parser also reads ZIPs after
+  the state, "D.C.", the US written several ways, common country names
+  ("UK", "france") and "City, Region, Country". Two-letter codes stay US
+  states ("Toronto, CA" is California): the old column held US addresses.
+- **Company re-scans brought rejected matches back**: a weekly re-scan
+  overwrote the reason on a match the company already had, and a document
+  a user's re-check had rejected (that deletes the company's row and keeps
+  a "not relevant" one) was simply inserted again. A re-scan now leaves an
+  existing match as it is, skips a document the firm rejected, and still
+  asks for a missing analysis of an existing match (free when it exists).
+- **A partly failed profile-edit follow-up repeated what had worked**:
+  after one failed call, `apply-profile-changes` put every job back, so the
+  next run re-judged and re-analysed (and paid) again. Now only the failed
+  jobs go back. Found by the second review: only a fresh re-check forgets
+  rejections (an analysis retry beside a continuation used to restart it),
+  a full geopolitical batch no longer starts the other matchers, and a
+  retry that can't be saved is reported.
+- Checked and found sound: the chat's Markdown renderer (escapes all text,
+  only http(s) links), the sign-out cache wipe, the chat's conversation
+  ownership (the user's own session, so RLS applies).
+- Left for later: the server still starts a second analysis of a
+  development while the first is being written (needs a lock table; rare
+  while `AUTOMATIC_AI=off`).
+
 ### Legacy locations with full U.S. state names (2026-11-14)
 - `parseLegacyLocation` now recognizes full state names regardless of case,
   including District of Columbia, while preserving city/country pairs.
@@ -16,6 +46,7 @@
   remain unparsed.
 - Checked: focused unit tests for state names, abbreviations, country pairs,
   ambiguous names and three-part locations; `pnpm test:all`.
+
 ### Syncs locked to the service key; a pause switch for automatic AI (2026-11-14)
 - The six sync functions accepted the public key (in every browser), so
   anyone could run them as often as they liked, and
@@ -121,6 +152,7 @@ Profile; the email lists headlines and sends people to the dashboard.
   Resend. The first scheduled run (20:18 UTC) found a real outage, out of
   credit since 2026-11-07 (no AI call has worked since 2026-11-04), and
   emailed team@regwayai.com once.
+
 ### Contact address on the public pages (2026-11-14)
 - `CONTACT_EMAIL` in `InfoPage.tsx` is team@regwayai.com, so Legal and
   Privacy end with a Contact section; the FAQ answer says the same.
@@ -605,6 +637,7 @@ billed per token generated, not per token allowed, so a lower ceiling saves
 nothing and risks cutting answers off.
 
 ### 7. Copilot: change the AI's scope from inside the chat — done
+
 ### 8. Copilot: chat sidebar, closable session context, attached files — done
 Built together, 2026-10-05; see Completed, "Copilot: focus switching and
 chat sidebar".

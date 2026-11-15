@@ -187,7 +187,27 @@ Deno.serve(async (req) => {
 
       if (regError || !reg) continue
 
-      await admin.from('regulation_relevance').upsert(
+      // What the firm already has on this document. A match the company
+      // already has is left as it is (a re-scan used to overwrite its
+      // reason), and a document the firm rejected (the Skeptic, or a user's
+      // re-check, which deletes the company's row and keeps a "not
+      // relevant" one) is not brought back.
+      const { data: existing } = await admin
+        .from('regulation_relevance')
+        .select('portfolio_company_id, relevance_reason')
+        .eq('firm_id', company.firm_id)
+        .eq('regulation_id', reg.id)
+      const own = (existing ?? []).find(r => r.portfolio_company_id === company.id)
+      const rejected = (existing ?? []).some(r => r.relevance_reason?.startsWith('NOT_RELEVANT:'))
+      if (own) {
+        // Its analysis may never have been written (a failed background
+        // run): asking again costs nothing when it exists.
+        if (!own.relevance_reason?.startsWith('NOT_RELEVANT:')) insertedIds.push(reg.id)
+        continue
+      }
+      if (rejected) continue
+
+      const { error: linkError } = await admin.from('regulation_relevance').upsert(
         {
           regulation_id: reg.id,
           firm_id: company.firm_id,
@@ -196,10 +216,9 @@ Deno.serve(async (req) => {
           // (scans before 2026-10-04 stored only this).
           relevance_reason: item.why_it_applies?.trim() || `AI web-search scan for ${company.name} (${sectorDescriptor}, ${locationDescriptor})`,
         },
-        { onConflict: 'regulation_id,firm_id,portfolio_company_id,fund_id' },
+        { onConflict: 'regulation_id,firm_id,portfolio_company_id,fund_id', ignoreDuplicates: true },
       )
-
-      insertedIds.push(reg.id)
+      if (!linkError) insertedIds.push(reg.id)
     }
 
     // Mark the scan complete even when it found nothing, so the app doesn't

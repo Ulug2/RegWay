@@ -86,35 +86,55 @@ async function applyFirm(admin: SupabaseClient, key: string, firmId: string, cha
   if (!claimed?.length) return
 
   // Only continuation rows left: judge the next batch, forget nothing.
-  const reevaluate = changes.some(c => !c.continuing)
-  const jobs: Promise<{ evaluated?: number }>[] = []
+  // Only a fresh re-check forgets rejections: an analysis or geopolitical
+  // retry sitting beside a continuation must not make it start over.
+  const reevaluate = changes.some(c => c.rediscover && !c.continuing)
+  type Kind = 'rediscover' | 'geopolitical' | 'impacts'
+  const jobs: { kind: Kind; change?: Change; promise: Promise<{ evaluated?: number }> }[] = []
   if (changes.some(c => c.rediscover)) {
-    jobs.push(call('match-relevance', { firmId, reevaluate }, key), call('match-enforcement-relevance', { firmId, reevaluate }, key))
+    jobs.push({ kind: 'rediscover', promise: call('match-relevance', { firmId, reevaluate }, key) }, { kind: 'rediscover', promise: call('match-enforcement-relevance', { firmId, reevaluate }, key) })
   }
-  if (changes.some(c => c.geopolitical && !c.continuing)) jobs.push(call('match-geopolitical-relevance', { firmId, reevaluate: true }, key))
-  const matcherJobs = jobs.length
+  if (changes.some(c => c.geopolitical && !c.continuing)) jobs.push({ kind: 'geopolitical', promise: call('match-geopolitical-relevance', { firmId, reevaluate: true }, key) })
 
   const entities = new Map(changes.filter(c => c.refresh_impacts).map(c => [`${c.scope}:${c.entity_id ?? ''}`, c]))
-  for (const c of entities.values()) jobs.push(call('refresh-entity-impacts', { firmId, scope: c.scope, ...(c.entity_id ? { entityId: c.entity_id } : {}) }, key))
+  for (const c of entities.values()) jobs.push({ kind: 'impacts', change: c, promise: call('refresh-entity-impacts', { firmId, scope: c.scope, ...(c.entity_id ? { entityId: c.entity_id } : {}) }, key) })
   stats.calls += jobs.length
 
-  let results: { evaluated?: number }[]
-  try {
-    results = await Promise.all(jobs)
-  } catch (err) {
-    // Put back for the next run, a limited number of times (the AI provider
-    // refusing calls would otherwise be retried every minute for good).
-    const message = (err as Error).message.slice(0, 200)
+  const settled = await Promise.allSettled(jobs.map(j => j.promise))
+  const failed = jobs.filter((_, i) => settled[i].status === 'rejected')
+  for (const [i, result] of settled.entries()) {
+    if (result.status !== 'rejected') continue
+    const message = `${(result.reason as Error).message}`.slice(0, 200)
     if (!stats.errors.includes(message)) stats.errors.push(message)
-    await admin.from('profile_changes').insert(changes.map(({ id: _id, ...c }) => ({ ...c, rounds: rounds + 1 })))
-    return
+  }
+
+  // Only what failed goes back for the next run, a limited number of
+  // times (the AI provider refusing calls would otherwise be retried every
+  // minute for good). Putting back everything after one failure made the
+  // next run repeat, and pay for, the calls that had worked.
+  if (failed.length) {
+    const retry: Omit<Change, 'id'>[] = []
+    const base = { firm_id: firmId, refresh_impacts: false, rediscover: false, geopolitical: false, rounds: rounds + 1, changed_at: cutoff }
+    // Retried as it was: a fresh re-check stays fresh, since the failure may
+    // have come before the matcher forgot anything (a gateway or network
+    // error). The cost: when one matcher worked and the other failed, the
+    // one that worked judges its first batch again.
+    if (failed.some(j => j.kind === 'rediscover')) retry.push({ ...base, scope: 'firm', entity_id: null, rediscover: true, continuing: !reevaluate })
+    if (failed.some(j => j.kind === 'geopolitical')) retry.push({ ...base, scope: 'firm', entity_id: null, geopolitical: true, continuing: false })
+    for (const j of failed.filter(j => j.kind === 'impacts')) retry.push({ ...base, scope: j.change!.scope, entity_id: j.change!.entity_id, refresh_impacts: true, continuing: false })
+    const { error: retryError } = await admin.from('profile_changes').insert(retry)
+    // The claimed rows are gone: losing the retries too must at least show.
+    if (retryError) stats.errors.push(`retry not saved: ${retryError.message}`.slice(0, 200))
   }
 
   // A full batch may have left more behind: one more row, due at once.
-  const backlog = results.slice(0, matcherJobs).some(r => (r.evaluated ?? 0) >= MATCHER_BATCH)
-  if (backlog) {
+  // Only the rediscover matchers continue (a geopolitical re-check is one
+  // call: it never sets a continuation going).
+  const backlog = jobs.some((j, i) => j.kind === 'rediscover' && settled[i].status === 'fulfilled' && ((settled[i] as PromiseFulfilledResult<{ evaluated?: number }>).value.evaluated ?? 0) >= MATCHER_BATCH)
+  if (backlog && !failed.some(j => j.kind === 'rediscover')) {
     stats.continued++
-    await admin.from('profile_changes').insert({ firm_id: firmId, scope: 'firm', rediscover: true, continuing: true, rounds: rounds + 1, changed_at: cutoff })
+    const { error: backlogError } = await admin.from('profile_changes').insert({ firm_id: firmId, scope: 'firm', rediscover: true, continuing: true, rounds: rounds + 1, changed_at: cutoff })
+    if (backlogError) stats.errors.push(`continuation not saved: ${backlogError.message}`.slice(0, 200))
   }
 }
 
