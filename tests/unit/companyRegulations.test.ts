@@ -30,6 +30,8 @@ const found = (n: number, over: Record<string, unknown> = {}) => ({
 interface State {
   accessible?: boolean // RLS: is this the caller's own firm's company?
   allowed?: boolean
+  // Regulations the company is already linked to: the upsert writes nothing.
+  linked?: string[]
 }
 
 async function scan(state: State, items: unknown[], request = post('company-regulations', { token: 'user-jwt', body: { companyId: COMPANY.id } })) {
@@ -38,6 +40,10 @@ async function scan(state: State, items: unknown[], request = post('company-regu
     if (q.table === 'portfolio_companies' && q.op === 'select') return state.accessible === false ? { data: null, error: { code: 'PGRST116' } } : { data: COMPANY }
     if (q.table === 'check_rate_limit') return { data: state.allowed ?? true }
     if (q.table === 'regulations' && q.op === 'upsert') return { data: { id: `reg-${++stored}` } }
+    if (q.table === 'regulation_relevance' && q.op === 'upsert') {
+      const id = (q.payload as { regulation_id: string }).regulation_id
+      return { data: state.linked?.includes(id) ? [] : [{ id: `rel-${id}` }] }
+    }
   })
   setClient(db)
   const { handler, background } = await loadHandler('company-regulations')
@@ -155,5 +161,14 @@ describe('company-regulations', () => {
     const res = await handler(post('company-regulations', { token: 'user-jwt', body: { companyId: COMPANY.id } }))
     expect(res.status).toBe(500)
     expect(db.ran('portfolio_companies', 'update')).toEqual([])
+  })
+
+  // A re-scan used to overwrite the reason on a match the company already
+  // had, which brought back matches the Skeptic or a re-check had rejected.
+  it('leaves a match the company already has as it is, and analyses only new ones', async () => {
+    const { res, db, queued } = await scan({ linked: ['reg-1'] }, [found(1), found(2)])
+    expect(await res.json()).toEqual({ found: 2, stored: 1 })
+    expect(db.ran('regulation_relevance', 'upsert').every(q => (q.options as { ignoreDuplicates?: boolean }).ignoreDuplicates === true)).toBe(true)
+    expect(queued).toEqual([{ regulationId: 'reg-2', firmId: FIRM_ID, force: false }])
   })
 })

@@ -187,19 +187,26 @@ Deno.serve(async (req) => {
 
       if (regError || !reg) continue
 
-      await admin.from('regulation_relevance').upsert(
-        {
-          regulation_id: reg.id,
-          firm_id: company.firm_id,
-          portfolio_company_id: company.id,
-          // The model's reason when it gave one; the scan descriptor otherwise
-          // (scans before 2026-10-04 stored only this).
-          relevance_reason: item.why_it_applies?.trim() || `AI web-search scan for ${company.name} (${sectorDescriptor}, ${locationDescriptor})`,
-        },
-        { onConflict: 'regulation_id,firm_id,portfolio_company_id,fund_id' },
-      )
+      // Only a new match is written. One the company already has is left as
+      // it is: a re-scan used to overwrite its reason, which brought back
+      // matches the Skeptic or a user's re-check had rejected.
+      const { data: added } = await admin
+        .from('regulation_relevance')
+        .upsert(
+          {
+            regulation_id: reg.id,
+            firm_id: company.firm_id,
+            portfolio_company_id: company.id,
+            // The model's reason when it gave one; the scan descriptor otherwise
+            // (scans before 2026-10-04 stored only this).
+            relevance_reason: item.why_it_applies?.trim() || `AI web-search scan for ${company.name} (${sectorDescriptor}, ${locationDescriptor})`,
+          },
+          { onConflict: 'regulation_id,firm_id,portfolio_company_id,fund_id', ignoreDuplicates: true },
+        )
+        .select('id')
 
-      insertedIds.push(reg.id)
+      // Analyses only for new matches (an existing one has its own, or was rejected).
+      if (added?.length) insertedIds.push(reg.id)
     }
 
     // Mark the scan complete even when it found nothing, so the app doesn't

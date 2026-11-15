@@ -120,7 +120,8 @@ describe('apply-profile-changes', () => {
   it('puts the changes back after a failure, and gives up after six runs', async () => {
     const failed = await run([change('a', { rediscover: true })], { 'match-relevance': { fail: 'Anthropic API error: 400 credit balance is too low' } })
     expect(failed.inserted).toHaveLength(1)
-    expect(failed.inserted[0]).toMatchObject({ firm_id: 'hig', rediscover: true, refresh_impacts: true, rounds: 1 })
+    // Only the re-check goes back: the analyses were rewritten fine.
+    expect(failed.inserted[0]).toMatchObject({ firm_id: 'hig', rediscover: true, refresh_impacts: false, continuing: true, rounds: 1 })
     expect(failed.inserted[0]).not.toHaveProperty('id')
     expect(failed.recorded[0].ok).toBe(false)
     expect(failed.recorded[0].detail).toContain('credit balance is too low')
@@ -129,5 +130,13 @@ describe('apply-profile-changes', () => {
     expect(spent.made).toEqual([])
     expect(spent.db.ran('profile_changes', 'delete')).toHaveLength(1)
     expect(spent.inserted).toEqual([])
+  })
+
+  // Putting everything back after one failure made the next run repeat, and
+  // pay for, the calls that had worked.
+  it('after a partial failure, retries only what failed', async () => {
+    const result = await run([change('a', { rediscover: true, scope: 'company', entity_id: 'co-1' })], { 'refresh-entity-impacts': { fail: 'timeout' } })
+    expect(result.made.map(m => m.fn).sort()).toEqual(['match-enforcement-relevance', 'match-relevance', 'refresh-entity-impacts'])
+    expect(result.inserted).toEqual([expect.objectContaining({ scope: 'company', entity_id: 'co-1', refresh_impacts: true, rediscover: false, geopolitical: false, rounds: 1 })])
   })
 })

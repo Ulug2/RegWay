@@ -87,32 +87,44 @@ async function applyFirm(admin: SupabaseClient, key: string, firmId: string, cha
 
   // Only continuation rows left: judge the next batch, forget nothing.
   const reevaluate = changes.some(c => !c.continuing)
-  const jobs: Promise<{ evaluated?: number }>[] = []
+  type Kind = 'rediscover' | 'geopolitical' | 'impacts'
+  const jobs: { kind: Kind; change?: Change; promise: Promise<{ evaluated?: number }> }[] = []
   if (changes.some(c => c.rediscover)) {
-    jobs.push(call('match-relevance', { firmId, reevaluate }, key), call('match-enforcement-relevance', { firmId, reevaluate }, key))
+    jobs.push({ kind: 'rediscover', promise: call('match-relevance', { firmId, reevaluate }, key) }, { kind: 'rediscover', promise: call('match-enforcement-relevance', { firmId, reevaluate }, key) })
   }
-  if (changes.some(c => c.geopolitical && !c.continuing)) jobs.push(call('match-geopolitical-relevance', { firmId, reevaluate: true }, key))
-  const matcherJobs = jobs.length
+  if (changes.some(c => c.geopolitical && !c.continuing)) jobs.push({ kind: 'geopolitical', promise: call('match-geopolitical-relevance', { firmId, reevaluate: true }, key) })
 
   const entities = new Map(changes.filter(c => c.refresh_impacts).map(c => [`${c.scope}:${c.entity_id ?? ''}`, c]))
-  for (const c of entities.values()) jobs.push(call('refresh-entity-impacts', { firmId, scope: c.scope, ...(c.entity_id ? { entityId: c.entity_id } : {}) }, key))
+  for (const c of entities.values()) jobs.push({ kind: 'impacts', change: c, promise: call('refresh-entity-impacts', { firmId, scope: c.scope, ...(c.entity_id ? { entityId: c.entity_id } : {}) }, key) })
   stats.calls += jobs.length
 
-  let results: { evaluated?: number }[]
-  try {
-    results = await Promise.all(jobs)
-  } catch (err) {
-    // Put back for the next run, a limited number of times (the AI provider
-    // refusing calls would otherwise be retried every minute for good).
-    const message = (err as Error).message.slice(0, 200)
+  const settled = await Promise.allSettled(jobs.map(j => j.promise))
+  const failed = jobs.filter((_, i) => settled[i].status === 'rejected')
+  for (const [i, result] of settled.entries()) {
+    if (result.status !== 'rejected') continue
+    const message = `${(result.reason as Error).message}`.slice(0, 200)
     if (!stats.errors.includes(message)) stats.errors.push(message)
-    await admin.from('profile_changes').insert(changes.map(({ id: _id, ...c }) => ({ ...c, rounds: rounds + 1 })))
-    return
+  }
+
+  // Only what failed goes back for the next run, a limited number of
+  // times (the AI provider refusing calls would otherwise be retried every
+  // minute for good). Putting back everything after one failure made the
+  // next run repeat, and pay for, the calls that had worked.
+  if (failed.length) {
+    const retry: Omit<Change, 'id'>[] = []
+    const base = { firm_id: firmId, refresh_impacts: false, rediscover: false, geopolitical: false, rounds: rounds + 1, changed_at: cutoff }
+    // As a continuation: the matcher forgets rejections before it calls the
+    // AI, so they are already forgotten, and forgetting again would throw
+    // away what the matcher that worked has just judged.
+    if (failed.some(j => j.kind === 'rediscover')) retry.push({ ...base, scope: 'firm', entity_id: null, rediscover: true, continuing: true })
+    if (failed.some(j => j.kind === 'geopolitical')) retry.push({ ...base, scope: 'firm', entity_id: null, geopolitical: true, continuing: false })
+    for (const j of failed.filter(j => j.kind === 'impacts')) retry.push({ ...base, scope: j.change!.scope, entity_id: j.change!.entity_id, refresh_impacts: true, continuing: false })
+    await admin.from('profile_changes').insert(retry)
   }
 
   // A full batch may have left more behind: one more row, due at once.
-  const backlog = results.slice(0, matcherJobs).some(r => (r.evaluated ?? 0) >= MATCHER_BATCH)
-  if (backlog) {
+  const backlog = jobs.some((j, i) => j.kind !== 'impacts' && settled[i].status === 'fulfilled' && ((settled[i] as PromiseFulfilledResult<{ evaluated?: number }>).value.evaluated ?? 0) >= MATCHER_BATCH)
+  if (backlog && !failed.some(j => j.kind === 'rediscover')) {
     stats.continued++
     await admin.from('profile_changes').insert({ firm_id: firmId, scope: 'firm', rediscover: true, continuing: true, rounds: rounds + 1, changed_at: cutoff })
   }
