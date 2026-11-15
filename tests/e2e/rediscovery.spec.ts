@@ -73,4 +73,21 @@ test.describe('AI work after a profile edit', () => {
     await page.waitForLoadState('networkidle')
     expect(backend.called('POST', 'functions/v1/company-regulations')).toEqual([])
   })
+
+  // Found by the code review (2026-11-14): an old "City, Fullstate" location
+  // is now saved as "City, State, United States". Compared as raw text,
+  // that looked like a move, so any edit paid for a new scan and re-check.
+  test("an old company's reformatted location is not a move", async ({ page, backend }) => {
+    const aero = backend.tables.portfolio_companies.find(c => c.id === 'co-aero')!
+    Object.assign(aero, { hq_location: 'Miami, Florida', regions: ['United States'] })
+    await openProfile(page, 'Portfolio Companies')
+    await page.getByRole('button', { name: /Aero Logistics/ }).click()
+    await page.getByPlaceholder('https://').first().fill('https://aero.example')
+    await save(page, backend, 'portfolio_companies')
+
+    const patch = backend.called('PATCH', 'rest/v1/portfolio_companies').at(-1)!
+    expect(patch.body.hq_location).toBe('Miami, Florida, United States')
+    expect(patch.body.last_scanned_at).toBeUndefined()
+    expect(requested(backend).at(-1)).toMatchObject({ scope: 'company', entity_id: 'co-aero', geopolitical: false })
+  })
 })

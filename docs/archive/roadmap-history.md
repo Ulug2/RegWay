@@ -10,6 +10,15 @@
 > New entries go directly below this box, newest first.
 
 ### Bug sweep, round 2 (2026-11-14)
+- **From `/code-review ultra`** (it reviewed PR #57, the legacy location
+  parser): saving an old company whose location read "Miami, Florida" now
+  rewrote it as "Miami, Florida, United States", and the raw-text
+  comparison took that for a move, so any edit paid for a new scan and a
+  geopolitical re-check. Company saves now compare against the old row as
+  it would be saved today (`asSaved`). The parser also reads ZIPs after
+  the state, "D.C.", the US written several ways, common country names
+  ("UK", "france") and "City, Region, Country". Two-letter codes stay US
+  states ("Toronto, CA" is California): the old column held US addresses.
 - **Company re-scans brought rejected matches back**: a weekly re-scan
   overwrote the reason on a match the company already had, so a match the
   Skeptic or a user's re-check had rejected reappeared. A re-scan now
@@ -34,6 +43,7 @@
   remain unparsed.
 - Checked: focused unit tests for state names, abbreviations, country pairs,
   ambiguous names and three-part locations; `pnpm test:all`.
+
 ### Syncs locked to the service key; a pause switch for automatic AI (2026-11-14)
 - The six sync functions accepted the public key (in every browser), so
   anyone could run them as often as they liked, and
@@ -139,6 +149,7 @@ Profile; the email lists headlines and sends people to the dashboard.
   Resend. The first scheduled run (20:18 UTC) found a real outage, out of
   credit since 2026-11-07 (no AI call has worked since 2026-11-04), and
   emailed team@regwayai.com once.
+
 ### Contact address on the public pages (2026-11-14)
 - `CONTACT_EMAIL` in `InfoPage.tsx` is team@regwayai.com, so Legal and
   Privacy end with a Contact section; the FAQ answer says the same.
@@ -623,6 +634,7 @@ billed per token generated, not per token allowed, so a lower ceiling saves
 nothing and risks cutting answers off.
 
 ### 7. Copilot: change the AI's scope from inside the chat — done
+
 ### 8. Copilot: chat sidebar, closable session context, attached files — done
 Built together, 2026-10-05; see Completed, "Copilot: focus switching and
 chat sidebar".
