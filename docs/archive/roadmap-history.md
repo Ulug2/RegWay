@@ -10,7 +10,7 @@
 > New entries go directly below this box, newest first.
 
 ### Bug sweep, round 2 (2026-11-14)
-- **From `/code-review ultra`** (it reviewed PR #57, the legacy location
+- **From `/code-review ultra`, run 1** (it reviewed PR #57, the legacy location
   parser): saving an old company whose location read "Miami, Florida" now
   rewrote it as "Miami, Florida, United States", and the raw-text
   comparison took that for a move, so any edit paid for a new scan and a
@@ -20,15 +20,18 @@
   ("UK", "france") and "City, Region, Country". Two-letter codes stay US
   states ("Toronto, CA" is California): the old column held US addresses.
 - **Company re-scans brought rejected matches back**: a weekly re-scan
-  overwrote the reason on a match the company already had, so a match the
-  Skeptic or a user's re-check had rejected reappeared. A re-scan now
-  writes only new matches (`ignoreDuplicates`) and queues analyses only for
-  those.
+  overwrote the reason on a match the company already had, and a document
+  a user's re-check had rejected (that deletes the company's row and keeps
+  a "not relevant" one) was simply inserted again. A re-scan now leaves an
+  existing match as it is, skips a document the firm rejected, and still
+  asks for a missing analysis of an existing match (free when it exists).
 - **A partly failed profile-edit follow-up repeated what had worked**:
   after one failed call, `apply-profile-changes` put every job back, so the
   next run re-judged and re-analysed (and paid) again. Now only the failed
-  jobs go back, and a re-check goes back as a continuation (nothing
-  forgotten twice).
+  jobs go back. Found by the second review: only a fresh re-check forgets
+  rejections (an analysis retry beside a continuation used to restart it),
+  a full geopolitical batch no longer starts the other matchers, and a
+  retry that can't be saved is reported.
 - Checked and found sound: the chat's Markdown renderer (escapes all text,
   only http(s) links), the sign-out cache wipe, the chat's conversation
   ownership (the user's own session, so RLS applies).
