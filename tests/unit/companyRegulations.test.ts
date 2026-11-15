@@ -30,8 +30,10 @@ const found = (n: number, over: Record<string, unknown> = {}) => ({
 interface State {
   accessible?: boolean // RLS: is this the caller's own firm's company?
   allowed?: boolean
-  // Regulations the company is already linked to: the upsert writes nothing.
+  // Regulations the company is already linked to.
   linked?: string[]
+  // Regulations the firm rejected (a "not relevant" row, no company row).
+  rejected?: string[]
 }
 
 async function scan(state: State, items: unknown[], request = post('company-regulations', { token: 'user-jwt', body: { companyId: COMPANY.id } })) {
@@ -40,9 +42,11 @@ async function scan(state: State, items: unknown[], request = post('company-regu
     if (q.table === 'portfolio_companies' && q.op === 'select') return state.accessible === false ? { data: null, error: { code: 'PGRST116' } } : { data: COMPANY }
     if (q.table === 'check_rate_limit') return { data: state.allowed ?? true }
     if (q.table === 'regulations' && q.op === 'upsert') return { data: { id: `reg-${++stored}` } }
-    if (q.table === 'regulation_relevance' && q.op === 'upsert') {
-      const id = (q.payload as { regulation_id: string }).regulation_id
-      return { data: state.linked?.includes(id) ? [] : [{ id: `rel-${id}` }] }
+    if (q.table === 'regulation_relevance' && q.op === 'select') {
+      const id = q.filters.find(f => f[0] === 'eq' && f[1] === 'regulation_id')?.[2] as string
+      if (state.linked?.includes(id)) return { data: [{ portfolio_company_id: COMPANY.id, relevance_reason: 'Applies.' }] }
+      if (state.rejected?.includes(id)) return { data: [{ portfolio_company_id: null, relevance_reason: 'NOT_RELEVANT: re-checked' }] }
+      return { data: [] }
     }
   })
   setClient(db)
@@ -165,10 +169,18 @@ describe('company-regulations', () => {
 
   // A re-scan used to overwrite the reason on a match the company already
   // had, which brought back matches the Skeptic or a re-check had rejected.
-  it('leaves a match the company already has as it is, and analyses only new ones', async () => {
-    const { res, db, queued } = await scan({ linked: ['reg-1'] }, [found(1), found(2)])
+  it('leaves a match the company already has as it is (its analysis is asked for, in case it is missing)', async () => {
+    const { db, queued } = await scan({ linked: ['reg-1'] }, [found(1), found(2)])
+    expect(db.ran('regulation_relevance', 'upsert').map(q => (q.payload as { regulation_id: string }).regulation_id)).toEqual(['reg-2'])
+    expect(queued.map(q => q.regulationId)).toEqual(['reg-1', 'reg-2'])
+  })
+
+  // A user's re-check deletes the company's row and keeps a "not relevant"
+  // one: the next re-scan must not bring the match back.
+  it('does not bring back a document the firm rejected', async () => {
+    const { res, db, queued } = await scan({ rejected: ['reg-1'] }, [found(1), found(2)])
     expect(await res.json()).toEqual({ found: 2, stored: 1 })
-    expect(db.ran('regulation_relevance', 'upsert').every(q => (q.options as { ignoreDuplicates?: boolean }).ignoreDuplicates === true)).toBe(true)
-    expect(queued).toEqual([{ regulationId: 'reg-2', firmId: FIRM_ID, force: false }])
+    expect(db.ran('regulation_relevance', 'upsert').map(q => (q.payload as { regulation_id: string }).regulation_id)).toEqual(['reg-2'])
+    expect(queued.map(q => q.regulationId)).toEqual(['reg-2'])
   })
 })

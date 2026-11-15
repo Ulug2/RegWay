@@ -120,8 +120,9 @@ describe('apply-profile-changes', () => {
   it('puts the changes back after a failure, and gives up after six runs', async () => {
     const failed = await run([change('a', { rediscover: true })], { 'match-relevance': { fail: 'Anthropic API error: 400 credit balance is too low' } })
     expect(failed.inserted).toHaveLength(1)
-    // Only the re-check goes back: the analyses were rewritten fine.
-    expect(failed.inserted[0]).toMatchObject({ firm_id: 'hig', rediscover: true, refresh_impacts: false, continuing: true, rounds: 1 })
+    // Only the re-check goes back (the analyses were rewritten fine), still
+    // fresh: the failure may have come before anything was forgotten.
+    expect(failed.inserted[0]).toMatchObject({ firm_id: 'hig', rediscover: true, refresh_impacts: false, continuing: false, rounds: 1 })
     expect(failed.inserted[0]).not.toHaveProperty('id')
     expect(failed.recorded[0].ok).toBe(false)
     expect(failed.recorded[0].detail).toContain('credit balance is too low')
@@ -138,5 +139,17 @@ describe('apply-profile-changes', () => {
     const result = await run([change('a', { rediscover: true, scope: 'company', entity_id: 'co-1' })], { 'refresh-entity-impacts': { fail: 'timeout' } })
     expect(result.made.map(m => m.fn).sort()).toEqual(['match-enforcement-relevance', 'match-relevance', 'refresh-entity-impacts'])
     expect(result.inserted).toEqual([expect.objectContaining({ scope: 'company', entity_id: 'co-1', refresh_impacts: true, rediscover: false, geopolitical: false, rounds: 1 })])
+  })
+
+  // Found by the code review: an analysis retry beside a continuation made
+  // the continuation start over and pay for its first batch again.
+  it('an analysis retry does not make a continuation forget its verdicts again', async () => {
+    const result = await run([change('a', { rediscover: true, continuing: true, refresh_impacts: false }), change('b', { refresh_impacts: true, rounds: 1 })])
+    expect(result.made.filter(m => m.fn === 'match-relevance')).toEqual([expect.objectContaining({ reevaluate: false })])
+  })
+
+  it('a full geopolitical batch does not start the other matchers', async () => {
+    const result = await run([change('a', { geopolitical: true, refresh_impacts: false })], { 'match-geopolitical-relevance': { evaluated: 40 } })
+    expect(result.inserted).toEqual([])
   })
 })
