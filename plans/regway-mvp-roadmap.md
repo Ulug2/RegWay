@@ -261,8 +261,6 @@ spend, and the owner has said no alert is wanted for now.
   (30 to 70 seconds on first open).
 - **The announcement-to-rule link has no review step**: the links go live
   at once (all 8 so far were read and correct). No unlink control.
-- **The server does not refuse a second analysis request** for the same
-  development while the first is running (the client does).
 - **`regulation_impacts.created_at` keeps its first value** when an
   analysis is regenerated. Needs an `updated_at` (a migration).
 - **Matchers do not read fact provenance**; only analyses and chat are told
