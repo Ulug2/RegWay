@@ -12,11 +12,27 @@
 //   POST /functions/v1/regulation-impact   { "regulationId", "firmId", "force"? }
 //   Authorization: Bearer <service key>
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { generateImpact } from '../_shared/impact.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
+
+// When another invocation is already writing the analysis (a matcher's
+// background job, another user, another tab), the user's request waits for
+// it rather than paying for a second one. An analysis takes 30-70 s.
+const WAIT_MS = 90_000
+const POLL_MS = 3_000
+
+async function waitForImpact(admin: SupabaseClient, regulationId: string, firmId: string): Promise<unknown | null> {
+  const deadline = Date.now() + WAIT_MS
+  while (Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, POLL_MS))
+    const { data } = await admin.from('regulation_impacts').select('content').eq('regulation_id', regulationId).eq('firm_id', firmId).maybeSingle()
+    if (data?.content) return data.content
+  }
+  return null
+}
 
 Deno.serve(async req => {
   const preflight = handleOptions(req)
@@ -81,6 +97,11 @@ Deno.serve(async req => {
     }
 
     const status = await generateImpact(admin, regulationId, membership.firm_id, { force: !!force })
+    if (status === 'in_progress') {
+      const content = await waitForImpact(admin, regulationId, membership.firm_id)
+      if (!content) return json({ error: 'The analysis is still being written. Try again in a minute.' }, 503)
+      return json({ status: 'exists', content })
+    }
     const { data: impact } = await admin
       .from('regulation_impacts')
       .select('content')

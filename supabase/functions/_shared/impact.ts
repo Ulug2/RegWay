@@ -71,22 +71,53 @@ async function loadRegulationText(reg: RegulationTextSource): Promise<string | n
 
 const listOfStrings = { type: 'array', items: { type: 'string' } }
 
+export type ImpactStatus = 'created' | 'exists' | 'awaiting_publication' | 'in_progress'
+
+async function hasImpact(admin: SupabaseClient, regulationId: string, firmId: string): Promise<boolean> {
+  const { data: existing } = await admin
+    .from('regulation_impacts')
+    .select('id')
+    .eq('regulation_id', regulationId)
+    .eq('firm_id', firmId)
+    .maybeSingle()
+  return !!existing
+}
+
+// `in_progress`: another invocation is writing this analysis right now
+// (migration 0045). Nothing is spent; a forced request is passed on to it as
+// a rerun, which it starts once it finishes.
 export async function generateImpact(
   admin: SupabaseClient,
   regulationId: string,
   firmId: string,
   opts: { force?: boolean } = {},
-): Promise<'created' | 'exists' | 'awaiting_publication'> {
-  if (!opts.force) {
-    const { data: existing } = await admin
-      .from('regulation_impacts')
-      .select('id')
-      .eq('regulation_id', regulationId)
-      .eq('firm_id', firmId)
-      .maybeSingle()
-    if (existing) return 'exists'
-  }
+): Promise<ImpactStatus> {
+  if (!opts.force && (await hasImpact(admin, regulationId, firmId))) return 'exists'
 
+  const job = { p_regulation_id: regulationId, p_firm_id: firmId }
+  const { data: claimed, error: claimError } = await admin.rpc('claim_impact_job', { ...job, p_force: !!opts.force })
+  // Without the claim table (a function deployed before its migration) the
+  // analysis is still written, as before the lock existed.
+  if (claimError) console.error('impact claim failed', regulationId, claimError.message)
+  else if (claimed !== true) return 'in_progress'
+
+  try {
+    // Another invocation may have finished it between the check and the claim.
+    if (!opts.force && (await hasImpact(admin, regulationId, firmId))) return 'exists'
+    return await writeImpact(admin, regulationId, firmId)
+  } finally {
+    if (!claimError) {
+      const { data, error } = await admin.rpc('release_impact_job', job)
+      // An unreleased claim goes stale after 5 minutes and is taken over.
+      if (error) console.error('impact release failed', regulationId, error.message)
+      // A forced rewrite asked for while this one was being written: start
+      // it in its own invocation, as the matchers do.
+      if (data === true) await generateImpacts([regulationId], firmId, 1, { force: true })
+    }
+  }
+}
+
+async function writeImpact(admin: SupabaseClient, regulationId: string, firmId: string): Promise<'created' | 'awaiting_publication'> {
   const [{ data: reg }, { data: firm }, { data: funds }, { data: companies }, { data: links }, { data: holdings }] = await Promise.all([
     admin.from('regulations').select('id, source, title, agency, jurisdiction, summary, published_date, effective_date, source_url, raw, category, on_public_inspection').eq('id', regulationId).single(),
     admin.from('firms').select('name, hq_location, jurisdictions, profile, profile_meta').eq('id', firmId).single(),

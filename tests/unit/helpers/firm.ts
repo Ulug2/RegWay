@@ -23,6 +23,9 @@ export interface FirmState {
 export function firmQueries(q: Query, state: FirmState = {}): Result | undefined {
   if (q.table === 'firm_members') return { data: state.member === false ? null : { firm_id: FIRM_ID } }
   if (q.table === 'check_rate_limit') return { data: state.allowed ?? true }
+  // No other invocation is writing the analysis (migration 0045).
+  if (q.table === 'claim_impact_job') return { data: true }
+  if (q.table === 'release_impact_job') return { data: false }
   if (q.table === 'firms') return { data: state.firmExists === false ? null : firm }
   if (q.table === 'funds') return { data: funds }
   if (q.table === 'portfolio_companies' && q.op === 'select') return { data: companies }
