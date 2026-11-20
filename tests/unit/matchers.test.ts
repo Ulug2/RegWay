@@ -11,6 +11,8 @@ import { SERVICE_KEY } from './helpers/setup'
 interface State extends FirmState {
   candidates?: Record<string, unknown>[]
   evaluated?: string[]
+  // Unjudged documents older than the newest-200 window (migration 0046).
+  older?: Record<string, unknown>[]
 }
 
 const rule = (id: string, title: string) => ({ id, title, agency: 'Securities and Exchange Commission', jurisdiction: 'SEC · Federal', summary: `${title} summary.`, raw: null })
@@ -19,7 +21,9 @@ function database(state: State): Resolver {
   return (q: Query) => {
     const shared = firmQueries(q, state)
     if (shared) return shared
-    if (q.table === 'regulations') return { data: state.candidates ?? [] }
+    if (q.table === 'unjudged_regulations') return { data: (state.older ?? []).map(r => r.id) }
+    // The older documents, read by id; the window otherwise.
+    if (q.table === 'regulations') return { data: q.filters.some(f => f[0] === 'in' && f[1] === 'id') ? state.older : (state.candidates ?? []) }
     if (q.table === 'regulation_relevance' && q.op === 'select') return { data: (state.evaluated ?? []).map(regulation_id => ({ regulation_id })) }
   }
 }
@@ -139,6 +143,31 @@ describe.each(['match-relevance', 'match-enforcement-relevance'])('%s', name => 
     expect(text).not.toContain('40. [')
   })
 
+  it('fills the batch with older unjudged documents the newest-200 window no longer reaches', async () => {
+    const older = [rule('old-1', 'Custody rule from October'), rule('old-2', 'Marketing rule from October')]
+    const { model, db } = await run(name, { candidates: three, evaluated: ['reg-a'], older }, [])
+    const text = promptText(model[0])
+    // Window first, newest first; then the older ones.
+    expect(text).toContain('1. [Securities and Exchange Commission] Truck driver hours')
+    expect(text).toContain('2. [Securities and Exchange Commission] Custody rule from October')
+    expect(text).toContain('3. [Securities and Exchange Commission] Marketing rule from October')
+    const [lookup] = db.ran('unjudged_regulations')
+    expect(lookup.payload).toMatchObject({ p_firm_id: FIRM_ID, p_category: name === 'match-relevance' ? 'regulatory' : 'enforcement', p_limit: 38, p_exclude_ids: ['reg-a', 'reg-b', 'reg-c'] })
+    expect(text).not.toContain('4. [')
+  })
+
+  it('judges older documents even when the window has nothing left', async () => {
+    const { model } = await run(name, { candidates: three, evaluated: ['reg-a', 'reg-b', 'reg-c'], older: [rule('old-1', 'Custody rule from October')] }, [])
+    expect(model).toHaveLength(1)
+    expect(promptText(model[0])).toContain('0. [Securities and Exchange Commission] Custody rule from October')
+  })
+
+  it('does not look further back when the window fills the batch', async () => {
+    const many = Array.from({ length: 55 }, (_, i) => rule(`reg-${i}`, `Rule ${i}`))
+    const { db } = await run(name, { candidates: many, older: [rule('old-1', 'Old')] }, [])
+    expect(db.ran('unjudged_regulations')).toEqual([])
+  })
+
   it("describes the firm, its funds and its companies to the model", async () => {
     const { model } = await run(name, { candidates: three }, [])
     const text = promptText(model[0])
@@ -185,6 +214,11 @@ describe('match-relevance candidates', () => {
     expect(hasFilter(query, 'in', 'source', ['federal_register', 'sec_news', 'ftc_news', 'cfpb_news', 'esma_news', 'eur_lex'])).toBe(true)
     expect(hasFilter(query, 'eq', 'category', 'regulatory')).toBe(true)
     expect(hasFilter(query, 'limit', 200)).toBe(true)
+  })
+
+  it('looks further back with the same source filter', async () => {
+    const { db } = await run('match-relevance', { candidates: three }, [])
+    expect(db.ran('unjudged_regulations')[0].payload).toMatchObject({ p_sources: ['federal_register', 'sec_news', 'ftc_news', 'cfpb_news', 'esma_news', 'eur_lex'], p_countries: null })
   })
 })
 
