@@ -9,6 +9,53 @@
 >
 > New entries go directly below this box, newest first.
 
+### Security audit, first pass (2026-11-21)
+- **Any signed-in user could join any firm whose id they knew**, and then
+  read and change everything it holds. The rule meant to let a new user
+  claim only an unclaimed firm checked "no members yet" with a query that
+  itself ran under the access rules, so it saw only the user's own
+  memberships and every firm looked unclaimed. Reproduced on a local
+  database with two accounts. Firm ids are random and appear nowhere
+  another firm can read, and production showed no sign of use (every firm
+  has one member, added within a second of the firm). Fixed in migration
+  0047: only the user who created a firm may claim it, while it has no
+  members, and a user belongs to one firm at most.
+- **Members could change columns the server trusts** (a firm's
+  `created_at`, which bounds how far back the matchers look since 0046; the
+  fund or company a match belongs to) and **link rows to another firm's**
+  (a fund holding with another firm's company, a note or message under
+  another user). Now column grants and stricter rules.
+- **Defence in depth:** signed-out callers lost all table and function
+  rights; signed-in users lost rights on server-only tables; `regulations`'
+  rule no longer uses the deprecated `auth.role()`; the logo bucket takes
+  only PNG, JPEG, WebP or GIF up to 2 MB (production held 2 PNGs).
+- **Security headers** in `vercel.json` (issue #40): HSTS, `nosniff`, no
+  framing, referrer and permissions policies, and a Content-Security-Policy
+  in report-only mode, checked against the built site with no violations
+  on the signed-out pages.
+- **Dev tools:** Vite and the Tailwind plugin updated within range; `pnpm
+  audit` went from 15 advisories (all in the dev server's dependencies) to
+  none.
+- **Reviewed and found sound:** every function's caller check (firm from
+  the session, timer jobs need the service key), the chat's Markdown
+  renderer, alert email escaping, outbound fetches (only feed addresses,
+  never a user's), secrets (none in the repository or its history; timer
+  jobs read the key from the vault).
+- **Verified** with a local SQL script: every attack above refused, and
+  onboarding, editing, hiding a match, notes, flags, chat, findings and the
+  server functions still work. Migration 0047 applied to production the
+  same day, before the pull request was opened.
+- **Daily spend caps** (migration 0048). Sign-up is open and the AI limits
+  were per user, so more accounts meant more spending with no ceiling.
+  Every AI call now first checks the last 24 hours' estimated spend: $15
+  for one firm, $40 for RegWay (the busiest day so far was $5.82; the
+  average $0.84). A firm at its cap gets "today's spending limit" and
+  nobody else notices; RegWay at its cap shows the dashboard banner and
+  sends the owner the outage email.
+- **`/cso`** (gstack's static audit), run on a copy of the branch: its one
+  finding was the missing spend caps. Partial coverage: no scanners
+  offline, skill files outside its snapshot.
+
 ### Duplicate analyses and the matchers' 200-document window (2026-11-20)
 - **A second analysis of the same development could start while the first
   was being written** (30-70 s): the matcher's background job and a user

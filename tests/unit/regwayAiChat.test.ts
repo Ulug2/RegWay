@@ -22,12 +22,15 @@ interface State {
   refocusTarget?: { id: string; name: string } | null
   // Web research the firm has not confirmed (firm_findings, pending).
   findings?: unknown[]
+  // What the spend-cap check answers: 'firm', 'total', or under the caps.
+  spendCap?: 'firm' | 'total'
 }
 
 function database(state: State): Resolver {
   return (q: Query) => {
     if (q.table === 'firm_members') return { data: state.member === false ? null : { firm_id: FIRM, firms: { name: 'H.I.G. Capital', hq_location: 'Miami, Florida', jurisdictions: ['United States'], profile: state.firmProfile ?? {} } } }
     if (q.table === 'check_rate_limit') return { data: state.allowed ?? true }
+    if (q.table === 'ai_spend_check') return { data: state.spendCap ?? null }
     if (q.table === 'regway_ai_conversations') {
       if (q.op === 'select') return { data: state.conversation ?? null }
       if (q.op === 'insert') return state.idTaken ? { error: { code: '23505' } } : {}
@@ -361,6 +364,15 @@ describe('regway-ai-chat', () => {
     expect(JSON.parse(text).error).toContain('run out of credit')
     expect(db.ran('regway_ai_messages', 'insert')).toEqual([])
     expect(db.ran('usage_events', 'insert')[0].payload).toMatchObject({ function_name: 'regway-ai-chat', ok: false, error: expect.stringMatching(/^credit: Anthropic API error: 400/) })
+  })
+
+  it("stops at the firm's daily spend cap before calling the model, and says so plainly", async () => {
+    const { res, text, calls, db } = await chat({ spendCap: 'firm' }, { message: 'hi' })
+    expect(res.status).toBe(502)
+    expect(JSON.parse(text).error).toContain("today's spending limit")
+    expect(calls).toEqual([])
+    expect(db.ran('ai_spend_check', 'rpc')[0].payload).toMatchObject({ p_firm_id: FIRM })
+    expect(db.ran('regway_ai_messages', 'insert')).toEqual([])
   })
 
   it('removes a conversation that an unanswered first message would have started', async () => {

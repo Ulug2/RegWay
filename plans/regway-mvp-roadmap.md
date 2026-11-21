@@ -187,10 +187,28 @@ matching cost and the quality of matches from the newer agencies.
 
 ## Owner and lead
 
-### 16g. Security verification audit (L) — not started
+### 16g. Security verification audit (L) — in progress
 RegWay holds what a firm would not want seen: which companies each fund
 holds, where they operate, and the questions people ask about them. To work
 through before more firms use it, most serious first:
+
+**First pass done 2026-11-21** (migration 0047, security headers; details in
+the history): items 1, 2, 3, 6 and 7 below were reviewed. Fixed: any
+signed-in user who knew a firm's id could add themselves to it (no sign it
+was ever used); members could change columns the server trusts; rows could
+point at another firm's fund or company; signed-out callers had table
+rights; the logo bucket took any file; no security headers. Still open:
+the two-account tests in CI (issue #12), item 4 (sign-in settings to check
+in the dashboard: sign-up open or invite-only, email confirmation, leaked-
+password check, password length), item 5, item 8 onwards, switching the
+Content-Security-Policy from report-only to enforced after a week without
+reports in the browser console, and CAPTCHA on sign-up and sign-in
+(Cloudflare Turnstile; the owner creates the keys).
+
+**Spend caps done 2026-11-21** (migration 0048): AI calls are refused once
+the last 24 hours reach $15 for one firm or $40 for RegWay (secrets
+`AI_FIRM_DAILY_CAP_USD`, `AI_TOTAL_DAILY_CAP_USD`). The `/cso` run that day
+(static, partial: no scanners, skill files excluded) found nothing else.
 
 1. **Who can read what (row-level security).** Every table: can a signed-in
    user of firm A read or change firm B's rows? Includes `firms`, `funds`,

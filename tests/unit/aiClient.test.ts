@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { aiFailure, AnthropicError, callClaude, streamClaude, textOf, toolInput } from '../../supabase/functions/_shared/ai/client.ts'
+import { afterEach, describe, expect, it } from 'vitest'
+import { aiFailure, AnthropicError, callClaude, SpendCapError, streamClaude, textOf, toolInput } from '../../supabase/functions/_shared/ai/client.ts'
 import { AiOutputError, runTool, type ToolSpec } from '../../supabase/functions/_shared/ai/structured.ts'
 import { fakeClient } from './helpers/fakeSupabase'
 import { jsonResponse, stubFetch } from './helpers/handler'
+import { setEnv } from './helpers/setup'
 
 const REQUEST = { model: 'claude-haiku-4-5', max_tokens: 100, messages: [{ role: 'user', content: 'hi' }] }
 const OK = { content: [{ type: 'text', text: 'Hello' }], usage: { input_tokens: 10, output_tokens: 5 } }
@@ -112,6 +113,66 @@ describe('streamClaude', () => {
   it('reports a refused request as an error before any stream is returned', async () => {
     answers(() => new Response('bad', { status: 400 }))
     await expect(streamClaude(REQUEST)).rejects.toThrow('Anthropic API error: 400 bad')
+  })
+})
+
+describe('spend caps', () => {
+  afterEach(() => {
+    setEnv('AI_FIRM_DAILY_CAP_USD', undefined)
+    setEnv('AI_TOTAL_DAILY_CAP_USD', undefined)
+  })
+
+  // A database whose cap check answers `verdict` ('firm', 'total' or null).
+  const capped = (verdict: string | null) => fakeClient(q => (q.op === 'rpc' && q.table === 'ai_spend_check' ? { data: verdict } : undefined))
+  const usageFor = (db: ReturnType<typeof fakeClient>) => ({ admin: db as never, functionName: 'match-relevance', firmId: 'firm-1' })
+
+  it('asks for the firm and both caps before sending, and sends when under them', async () => {
+    const calls = answers(() => jsonResponse(OK))
+    const db = capped(null)
+    await callClaude(REQUEST, { usage: usageFor(db) })
+    expect(db.ran('ai_spend_check', 'rpc')[0].payload).toEqual({ p_firm_id: 'firm-1', p_firm_cap: 15, p_total_cap: 40 })
+    expect(calls).toHaveLength(1)
+  })
+
+  it('takes the caps from the function secrets', async () => {
+    answers(() => jsonResponse(OK))
+    setEnv('AI_FIRM_DAILY_CAP_USD', '2.5')
+    setEnv('AI_TOTAL_DAILY_CAP_USD', 'not a number')
+    const db = capped(null)
+    await callClaude(REQUEST, { usage: usageFor(db) })
+    expect(db.ran('ai_spend_check', 'rpc')[0].payload).toMatchObject({ p_firm_cap: 2.5, p_total_cap: 40 })
+  })
+
+  it("refuses a call over the firm's cap without sending it or telling every firm the AI is down", async () => {
+    const calls = answers(() => jsonResponse(OK))
+    const db = capped('firm')
+    const err = await callClaude(REQUEST, { usage: usageFor(db) }).catch(e => e)
+    expect(err).toBeInstanceOf(SpendCapError)
+    expect(aiFailure(err)).toBe('spend_cap')
+    expect(calls).toHaveLength(0)
+    expect(db.ran('usage_events', 'insert')).toHaveLength(0)
+  })
+
+  it('refuses a call over the cap for all of RegWay and records it, so the AI status and the owner hear of it', async () => {
+    const calls = answers(() => jsonResponse(OK))
+    const db = capped('total')
+    await expect(callClaude(REQUEST, { usage: usageFor(db) })).rejects.toBeInstanceOf(SpendCapError)
+    expect(calls).toHaveLength(0)
+    expect(db.ran('usage_events', 'insert')[0].payload).toMatchObject({ ok: false, error: expect.stringMatching(/^spend_cap: /) })
+  })
+
+  it('lets the call through when the check itself fails', async () => {
+    const calls = answers(() => jsonResponse(OK))
+    const db = fakeClient(q => (q.op === 'rpc' ? { error: { message: 'connection reset' } } : undefined))
+    await expect(callClaude(REQUEST, { usage: usageFor(db) })).resolves.toMatchObject({ content: OK.content })
+    expect(calls).toHaveLength(1)
+  })
+
+  it('checks a streamed call too, before it starts', async () => {
+    const calls = answers(() => jsonResponse(OK))
+    const db = capped('firm')
+    await expect(streamClaude(REQUEST, { spend: usageFor(db) })).rejects.toBeInstanceOf(SpendCapError)
+    expect(calls).toHaveLength(0)
   })
 })
 

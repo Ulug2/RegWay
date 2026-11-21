@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
         system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5, cache_control: { type: 'ephemeral' } }],
         messages: [...historyMessages(history), { role: 'user', content: userContent }],
-      })
+      }, { spend: { admin, functionName: 'regway-ai-chat', firmId: membership.firm_id } })
     } catch (err) {
       // Nothing was answered, so a conversation this message would have
       // started shouldn't appear in the user's history.
