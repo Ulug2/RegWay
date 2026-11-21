@@ -173,6 +173,7 @@ keep them.
 | `firm_members` | Which user belongs to which firm (one firm per user today). |
 | `regulation_relevance` | **The matches.** One row per (document, firm, fund or company). `relevance_reason` is the one-sentence why; it starts `NOT_RELEVANT:` for a rejection (kept so it isn't judged again), `NOT_RELEVANT: Reviewed:` when the Skeptic rejected it. `via_holdings` marks a fund row computed from holdings. `dismissed_at` when the user dismissed it. |
 | `regulation_impacts` | The written analysis per (document, firm). |
+| `regulation_impact_jobs` | Analyses being written right now, so a second request doesn't pay for the same one (§7.5). |
 | `regulation_flags`, `regulation_notes` | The user's flags and notes on a development. |
 | `regway_ai_conversations`, `regway_ai_messages` | The chat: conversations (with their focus: firm, fund, company or development) and messages (with the check's note, `review`). |
 | `firm_research_runs`, `firm_findings` | Web research on the firm and its proposals waiting to be confirmed. |
@@ -226,7 +227,12 @@ AI failing now), `restore_reviewed_match`, `alert_recipients`.
    by, minus every document already judged for this firm. UK and EU items
    only for a firm connected to those regions. Geopolitical items only when
    they name a country the firm or a company is connected to (or no country
-   at all, when anything is outside the US).
+   at all, when anything is outside the US). When fewer than 40 are left in
+   that window, older documents with no verdict fill the batch, newest
+   first, through the same filters (`unjudged_regulations`, migration
+   0046), so nothing that fell out of the window is skipped forever. Only
+   documents collected since the firm joined: a new firm starts from the
+   newest 200, not the whole archive.
 
 4. **Judge (AI).** Up to 40 candidates at a time go to the matcher's judge
    with the firm's recorded facts. The judge returns, for every item:
@@ -378,6 +384,14 @@ of what the measure does and what it means for each matched entity, from
 up to 60,000 characters of the document's text and the entity's recorded
 facts. Stored in `regulation_impacts`. Rewritten after a profile edit to a
 matched entity (`refresh-entity-impacts`).
+
+One analysis per development and firm is written at a time: the writer
+claims a row in `regulation_impact_jobs` before calling the AI and removes
+it after (migration 0045). A second request meanwhile spends nothing. A
+user opening the development waits up to 90 s for the analysis being
+written; a forced rewrite (after a profile edit or re-check) is passed to
+the writer, which starts it once it finishes. A claim left by an
+invocation the platform killed is taken over after 5 minutes.
 
 ### 7.6 The company scanner
 

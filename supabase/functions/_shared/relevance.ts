@@ -240,3 +240,52 @@ export async function requestScheduledRematch(admin: SupabaseClient, firmId: str
   const { error } = await admin.from('scheduled_matching_firms').update({ requested_at: new Date().toISOString() }).eq('firm_id', firmId)
   if (error) throw error
 }
+
+// Each matcher reads the newest 200 documents of its kind. Anything that fell
+// out of that window before it was judged (matching paused for weeks, a
+// burst of new documents) would never be judged. When the window has fewer
+// than a batch left, this fills the batch with the newest older documents
+// the firm has no verdict on, among those collected since the firm joined
+// (so a new firm is not judged against the whole archive). The filters must
+// match the caller's own window query; see migration 0046. Never throws: a
+// failure here only means the backlog waits for the next run.
+export interface BacklogFilter {
+  category: 'regulatory' | 'enforcement' | 'geopolitical'
+  columns: string
+  sources?: string[]
+  skipSources?: string[]
+  countries?: string[]
+  includeGlobal?: boolean
+}
+
+export async function olderUnjudged<T extends { id: string }>(
+  admin: SupabaseClient,
+  firmId: string,
+  filter: BacklogFilter,
+  windowIds: string[],
+  wanted: number,
+): Promise<T[]> {
+  if (wanted <= 0) return []
+  try {
+    const { data: ids, error } = await admin.rpc('unjudged_regulations', {
+      p_firm_id: firmId,
+      p_category: filter.category,
+      p_limit: wanted,
+      p_sources: filter.sources ?? null,
+      p_skip_sources: filter.skipSources?.length ? filter.skipSources : null,
+      p_countries: filter.countries ?? null,
+      p_include_global: filter.includeGlobal ?? false,
+      p_exclude_ids: windowIds,
+    })
+    if (error) throw error
+    const order = ((ids ?? []) as string[]).filter(id => typeof id === 'string')
+    if (order.length === 0) return []
+    const { data: rows, error: rowsError } = await admin.from('regulations').select(filter.columns).in('id', order)
+    if (rowsError) throw rowsError
+    const byId = new Map(((rows ?? []) as unknown as T[]).map(r => [r.id, r]))
+    return order.map(id => byId.get(id)).filter((r): r is T => !!r)
+  } catch (err) {
+    console.error('older unjudged documents not loaded', filter.category, (err as Error).message)
+    return []
+  }
+}

@@ -32,4 +32,16 @@ describe('match-geopolitical-relevance candidates', () => {
     // Nothing matched the pre-filter: no AI call.
     expect(model).toEqual([])
   })
+
+  it('looks further back than the newest 200 through the same pre-filter', async () => {
+    const { db } = await run()
+    expect(db.ran('unjudged_regulations')[0].payload).toMatchObject({
+      p_firm_id: FIRM_ID,
+      p_category: 'geopolitical',
+      p_limit: 40,
+      p_skip_sources: ['uk_sanctions', 'ofsi'],
+      p_countries: ['Italy'],
+      p_include_global: true,
+    })
+  })
 })

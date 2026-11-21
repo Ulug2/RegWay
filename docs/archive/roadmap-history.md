@@ -9,6 +9,30 @@
 >
 > New entries go directly below this box, newest first.
 
+### Duplicate analyses and the matchers' 200-document window (2026-11-20)
+- **A second analysis of the same development could start while the first
+  was being written** (30-70 s): the matcher's background job and a user
+  opening the item, or two users, each paid for one. The writer now claims
+  a row in `regulation_impact_jobs` (migration 0045) before calling the
+  AI. A second request spends nothing: a user's waits for the first
+  analysis (up to 90 s, then "try again"), a matcher's is dropped, and a
+  forced rewrite is handed to the writer as a rerun, so a profile edit is
+  never lost. The claim is released even when writing fails, and taken
+  over after 5 minutes if its invocation was killed.
+- **Each matcher read only its newest 200 documents**, so anything that
+  fell out of that window unjudged (a long pause, like the four weeks from
+  18 October, or a burst of new documents) was never judged. When fewer than a batch are
+  left in the window, `unjudged_regulations` (migration 0046) fills it with
+  older documents the firm has no verdict on, through each matcher's own
+  filters, newest first. Only documents collected since the firm joined, so
+  a new firm is not judged against the whole archive. Batch size and timer
+  unchanged (40 per matcher per run); what costs more is only the documents
+  that used to be skipped, at the usual price per document.
+- Verified: both SQL functions against the local database (claim, refusal,
+  rerun, stale takeover; source, country and exclusion filters; the
+  joined-date bound; refused for signed-in users). The 12 new unit tests
+  fail on the old code.
+
 ### Bug sweep, round 2 (2026-11-14)
 - **From `/code-review ultra`, run 1** (it reviewed PR #57, the legacy location
   parser): saving an old company whose location read "Miami, Florida" now

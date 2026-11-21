@@ -43,7 +43,7 @@ import { CANDIDATE_COLUMNS, judgeGeopolitical, type Candidate } from '../_shared
 import { syncHoldingsRollup } from '../_shared/holdings.ts'
 import { applySkeptic } from '../_shared/verdictReview.ts'
 import { geopoliticalSourcesOutside } from '../_shared/regulatorFeeds.ts'
-import { buildRelevanceRows, checkRateLimit, loadFirmEntities, requestScheduledRematch, resolveFirmContext, upsertRelevanceRows, type CompanyRow, type FirmRow, type FundRow } from '../_shared/relevance.ts'
+import { buildRelevanceRows, checkRateLimit, loadFirmEntities, olderUnjudged, requestScheduledRematch, resolveFirmContext, upsertRelevanceRows, type CompanyRow, type FirmRow, type FundRow } from '../_shared/relevance.ts'
 import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 const FUNCTION_NAME = 'match-geopolitical-relevance'
@@ -118,8 +118,8 @@ async function evaluateNew(
   rateLimitClient: SupabaseClient | null,
 ): Promise<EvaluationResult | Response> {
   const footprints = [firmFootprint(firm), ...companies.map(companyFootprint)]
-  const candidates = await loadCandidates(admin, footprints, geopoliticalSourcesOutside({ firm, funds, companies }))
-  if (candidates.length === 0) return { evaluated: 0, relevantIds: [], candidates: 0 }
+  const skipSources = geopoliticalSourcesOutside({ firm, funds, companies })
+  const candidates = await loadCandidates(admin, footprints, skipSources)
 
   const { data: alreadyEvaluated, error: evaluatedError } = await admin
     .from('regulation_relevance')
@@ -129,7 +129,15 @@ async function evaluateNew(
   if (evaluatedError) throw evaluatedError
 
   const evaluatedIds = new Set((alreadyEvaluated ?? []).map(r => r.regulation_id))
-  const unevaluated = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
+  const recent = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
+  // Older items the window no longer reaches fill the rest of the batch,
+  // through the same pre-filter as loadCandidates.
+  const includeGlobal = hasForeignExposure(footprints)
+  const countries = foreignCountries(footprints)
+  const older = countries.length || includeGlobal
+    ? await olderUnjudged<Candidate>(admin, firmId, { category: 'geopolitical', columns: CANDIDATE_COLUMNS, skipSources, countries, includeGlobal }, candidates.map(c => c.id), BATCH_SIZE - recent.length)
+    : []
+  const unevaluated = [...recent, ...older]
   if (unevaluated.length === 0) return { evaluated: 0, relevantIds: [], candidates: candidates.length }
   // Judged once the owner resumes automatic AI work (_shared/ai/switch.ts).
   if (automaticAiPaused()) return { evaluated: 0, relevantIds: [], candidates: candidates.length }

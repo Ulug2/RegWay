@@ -20,7 +20,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { generateImpacts } from '../_shared/impact.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
-import { resolveFirmContext, loadFirmEntities, describe, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, type Verdict, forgetRejections, requestScheduledRematch } from '../_shared/relevance.ts'
+import { resolveFirmContext, loadFirmEntities, describe, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, type Verdict, forgetRejections, requestScheduledRematch, olderUnjudged } from '../_shared/relevance.ts'
 import { callClaude, toolInput } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
 import { automaticAiPaused } from '../_shared/ai/switch.ts'
@@ -52,14 +52,14 @@ Deno.serve(async (req) => {
 
     // Enforcement items not yet evaluated for this firm (no relevance row of
     // any kind — including the "not relevant" marker rows, see below).
-    const { data: candidates } = await admin
+    const columns = 'id, title, agency, summary, raw'
+    const { data: newest } = await admin
       .from('regulations')
-      .select('id, title, agency, summary, raw')
+      .select(columns)
       .eq('category', 'enforcement')
       .order('published_date', { ascending: false })
       .limit(200)
-
-    if (!candidates || candidates.length === 0) return json({ evaluated: 0, relevant: 0 })
+    const candidates = newest ?? []
 
     // After an edit to a fact this matcher uses: judge the recent items it
     // had rejected again (this window only). One batch per call: the caller
@@ -80,7 +80,10 @@ Deno.serve(async (req) => {
       .in('regulation_id', candidates.map(c => c.id))
 
     const evaluatedIds = new Set((alreadyEvaluated ?? []).map(r => r.regulation_id))
-    const unevaluated = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
+    const recent = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
+    // Older cases the window no longer reaches fill the rest of the batch.
+    const older = await olderUnjudged<(typeof candidates)[number]>(admin, firmId, { category: 'enforcement', columns }, candidates.map(c => c.id), BATCH_SIZE - recent.length)
+    const unevaluated = [...recent, ...older]
 
     if (unevaluated.length === 0) return json({ evaluated: 0, relevant: 0 })
     // Judged once the owner resumes automatic AI work (_shared/ai/switch.ts).
