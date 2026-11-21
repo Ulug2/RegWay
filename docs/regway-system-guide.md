@@ -507,9 +507,25 @@ removes them (`supabase/seed.sql`) so it never calls production.
 - **Access rules (RLS) on every table.** A user reads and changes only their
   own firm's rows (`auth_firm_id()`). Internal tables (`usage_events`,
   `verdict_reviews`, `rate_limit_events`, `ai_outage_emails`,
-  `match_alert_items`, `scheduled_matching_firms`) have no rules at all, so
-  only the server can touch them. Documents (`regulations`) are readable by
-  any signed-in user: they are public.
+  `match_alert_items`, `scheduled_matching_firms`, `regulation_impact_jobs`)
+  have no rules and no table rights for signed-in users, so only the server
+  can touch them. Documents (`regulations`) are readable by any signed-in
+  user: they are public. Signed-out callers have no rights on any table
+  (migration 0047).
+- **Joining a firm.** One firm per user (unique index). Only the user who
+  created a firm (`firms.created_by`) may claim it, and only while it has no
+  members; the check is `private.can_claim_firm`, in a schema the API does
+  not expose. Inviting colleagues will need its own server function.
+- **Columns members may change** are listed per table (column grants), so a
+  member cannot change what the server trusts: a firm's `created_at`, or
+  which fund or company a match belongs to. A new column the app edits
+  needs a `grant update (column)` in its migration. Fund holdings must link
+  a fund and a company of the member's own firm; notes, flags and chat
+  messages must be the member's own.
+- **New tables and functions.** Supabase gives signed-in users rights on
+  every new table and function: a server-only table needs `revoke all ...
+  from authenticated` and every new function `revoke ... from public, anon`
+  then a `grant` to whoever calls it (see 0045 to 0047).
 - **Functions check their caller.** User-facing functions take the user's
   session and work out the firm from it; a user can never name another
   firm. Every job the timers run (the syncs, `run-matching`,
@@ -524,9 +540,16 @@ removes them (`supabase/seed.sql`) so it never calls production.
 - **Rate limits** on every AI-spending function a user can trigger
   (`check_rate_limit`: 3 a day for web research, 6 to 30 an hour for the
   rest).
-- **Not done yet** (roadmap 16g, the security audit): two-account access
-  tests (issue #12), sign-in rate limits of our own, security headers
-  (issue #40), an audit log, an outside test.
+- **The browser.** The chat's Markdown renderer escapes all HTML and makes
+  only `http(s)` links. Company logos: PNG, JPEG, WebP or GIF up to 2 MB,
+  enforced by the bucket. `vercel.json` sets HSTS, `nosniff`, no framing, a
+  referrer policy and a Content-Security-Policy in report-only mode. The
+  policy allows one inline script by its hash (the theme script in
+  `index.html`): changing that script means updating the hash, or the
+  policy will block it once enforced.
+- **Not done yet** (roadmap 16g): two-account access tests in CI (issue
+  #12), sign-in rate limits of our own, enforcing the CSP, spend caps, an
+  audit log, an outside test.
 
 ---
 
