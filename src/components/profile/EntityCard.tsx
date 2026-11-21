@@ -25,6 +25,9 @@ interface EntityCardProps {
 }
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
+// The logo bucket accepts these and nothing else (migration 0047). No SVG:
+// it can carry script.
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
 
 function LogoUpload({ title, logoUrl, onUpload }: { title: string; logoUrl: string | null | undefined; onUpload: (file: File) => Promise<void> }) {
   const [busy, setBusy] = useState(false)
@@ -34,8 +37,8 @@ function LogoUpload({ title, logoUrl, onUpload }: { title: string; logoUrl: stri
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file')
+    if (!LOGO_TYPES.includes(file.type)) {
+      setError('Please choose a PNG, JPEG, WebP or GIF image')
       return
     }
     if (file.size > MAX_LOGO_BYTES) {
@@ -66,7 +69,7 @@ function LogoUpload({ title, logoUrl, onUpload }: { title: string; logoUrl: stri
         {/* The input stays in the tab order (visually hidden), so the keyboard reaches it. */}
         <label className="btn-tool cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--primary)]" style={{ fontSize: 13, color: 'var(--primary)' }}>
           {busy ? 'Uploading…' : logoUrl ? 'Change logo' : 'Upload logo'}
-          <input type="file" accept="image/*" onChange={pick} disabled={busy} className="sr-only" />
+          <input type="file" accept={LOGO_TYPES.join(',')} onChange={pick} disabled={busy} className="sr-only" />
         </label>
         {error && <div className="text-xs mt-1.5" role="alert" style={{ color: 'var(--warning)' }}>{error}</div>}
       </div>
