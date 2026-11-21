@@ -560,9 +560,17 @@ also removes the jobs there.
   policy allows one inline script by its hash (the theme script in
   `index.html`): changing that script means updating the hash, or the
   policy will block it once enforced.
+- **CAPTCHA** (Cloudflare Turnstile). Sign-up, sign-in, the password-reset
+  email and the profile page's password check each send a fresh Turnstile
+  token (`src/lib/captcha.ts`, `useCaptcha`); Supabase checks it once CAPTCHA
+  protection is on in its dashboard (the secret key lives only there). The
+  widget is invisible unless Cloudflare wants a click. The public site key
+  is the Vercel variable `VITE_TURNSTILE_SITE_KEY`; without it (local, tests)
+  there is no widget and no token. Turning protection on before a build
+  with the widget is live locks everyone out; turning it off undoes that.
 - **Not done yet** (roadmap 16g): two-account access tests in CI (issue
-  #12), sign-in rate limits of our own and CAPTCHA, enforcing the CSP, an
-  audit log, an outside test.
+  #12), sign-in rate limits of our own, enforcing the CSP, an audit log, an
+  outside test.
 
 ---
 
