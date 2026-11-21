@@ -94,9 +94,13 @@ Every 30 minutes the Federal Register sync runs, and 10 minutes later
 `run-matching` runs the three matchers for each firm enrolled in
 `scheduled_matching_firms` (migrations 0026, 0029; today only H.I.G.). It
 spends AI money, so it only accepts the service key, which its cron job
-reads from Vault. Set it once per project (never in a migration):
+reads from Vault. Every job calls `private.call_function(name)` (migration
+0050), which reads the project's address and service key from Vault and
+calls nothing if either is missing, so a local database's jobs stay quiet.
+Set both once per project (never in a migration):
 
 ```sql
+select vault.create_secret('https://<project ref>.supabase.co', 'project_url');
 select vault.create_secret('<service key>', 'service_role_key');
 ```
 

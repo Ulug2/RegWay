@@ -484,8 +484,11 @@ listing every match since the last brief.
 
 ## 11. Timers
 
-All in the database (`cron.job`), written in migrations. A local database
-removes them (`supabase/seed.sql`) so it never calls production.
+All in the database (`cron.job`), written in migrations. Each calls
+`private.call_function(name)`, which reads the project's address and
+service key from Vault and calls nothing if either is missing (migration
+0050), so a local database never calls production; `supabase/seed.sql`
+also removes the jobs there.
 
 | Job | When | Calls | AI? |
 |---|---|---|---|

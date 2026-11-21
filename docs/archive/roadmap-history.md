@@ -55,6 +55,15 @@
 - **`/cso`** (gstack's static audit), run on a copy of the branch: its one
   finding was the missing spend caps. Partial coverage: no scanners
   offline, skill files outside its snapshot.
+- **Local databases called production** (migration 0050). Every timer job
+  had the hosted address written into it; `seed.sql` removed the jobs, but
+  a migration applied later with `supabase migration up` scheduled them
+  again, and a laptop had been calling production's sync functions every
+  half hour since 2026-11-20 (40 calls, all refused since 0044). Jobs now
+  read the address and key from Vault and call nothing without them. In
+  production, `project_url` goes into Vault before 0050 is applied (0050
+  refuses to run on a database with the key but no address). Tested
+  locally: no secrets, no request; with both, the call reaches the gateway.
 
 ### Duplicate analyses and the matchers' 200-document window (2026-11-20)
 - **A second analysis of the same development could start while the first
