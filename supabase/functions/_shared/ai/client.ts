@@ -9,6 +9,9 @@
 // - `callClaude` returns the parsed response; `streamClaude` returns the
 //   streaming Response for the caller to read (the chat), with the timeout
 //   covering only the wait for it to start.
+// - Before either sends anything, the spend caps are checked: a call that
+//   would go past today's cap for the firm, or for all of RegWay, is refused
+//   with SpendCapError (migration 0048).
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 import { mergeUsage, recordUsage, type UsageTotals } from '../usage.ts'
@@ -44,6 +47,7 @@ export interface UsageTarget {
 }
 
 export interface CallOptions {
+  // Records the call's cost, and checks the spend caps before it is sent.
   usage?: UsageTarget
   // Default: under the platform's ~150 s limit, so a stalled request fails
   // with an error instead of hanging the whole invocation.
@@ -63,11 +67,52 @@ export class AnthropicError extends Error {
   }
 }
 
+// A call refused before it was sent: the last 24 hours' estimated spend has
+// reached the cap for this firm, or for all of RegWay ('total').
+export class SpendCapError extends Error {
+  constructor(readonly scope: 'firm' | 'total') {
+    super(`AI spend cap reached (${scope})`)
+    this.name = 'SpendCapError'
+  }
+}
+
+// Caps in USD per rolling 24 hours, from the function secrets
+// AI_FIRM_DAILY_CAP_USD and AI_TOTAL_DAILY_CAP_USD. The defaults sit well
+// above what RegWay has spent so far (November 2026: $0.84 a day on
+// average; the most one firm spent in a day, onboarding, was $5.68).
+const DEFAULT_FIRM_CAP_USD = 15
+const DEFAULT_TOTAL_CAP_USD = 40
+
+function capUsd(name: string, fallback: number): number {
+  const value = Number(Deno.env.get(name))
+  return Number.isFinite(value) && value > 0 ? value : fallback
+}
+
+// Throws SpendCapError when a cap is reached. A failed check lets the call
+// through (and says so in the log): the caps guard against abuse, and an
+// unreadable database should not also stop every AI call.
+export async function checkSpend(target: UsageTarget): Promise<void> {
+  const { data, error } = await target.admin.rpc('ai_spend_check', {
+    p_firm_id: target.firmId ?? null,
+    p_firm_cap: capUsd('AI_FIRM_DAILY_CAP_USD', DEFAULT_FIRM_CAP_USD),
+    p_total_cap: capUsd('AI_TOTAL_DAILY_CAP_USD', DEFAULT_TOTAL_CAP_USD),
+  })
+  if (error) {
+    console.error('spend cap check failed; the call goes ahead', target.functionName, error.message)
+    return
+  }
+  if (data === 'firm' || data === 'total') {
+    console.warn('AI spend cap reached', data, target.functionName, target.firmId ?? '')
+    throw new SpendCapError(data)
+  }
+}
+
 // Why a call failed, in the words the dashboard's AI status (migration 0038)
 // and the chat's error use. Null when the caller stopped it on purpose.
-export type AiFailure = 'credit' | 'auth' | 'rate_limited' | 'unavailable' | 'timeout' | 'other'
+export type AiFailure = 'credit' | 'auth' | 'rate_limited' | 'unavailable' | 'timeout' | 'spend_cap' | 'other'
 
 export function aiFailure(err: unknown): AiFailure | null {
+  if (err instanceof SpendCapError) return 'spend_cap'
   const name = (err as Error)?.name
   if (name === 'TimeoutError') return 'timeout'
   if (name === 'AbortError') return null
@@ -89,14 +134,19 @@ export const AI_FAILURE_MESSAGES: Record<AiFailure, string> = {
   rate_limited: 'The AI service is busy right now. Please try again in a minute.',
   unavailable: 'The AI service is not responding right now. Please try again in a few minutes.',
   timeout: 'The AI service took too long to answer. Please try again.',
+  spend_cap: "RegWay AI has reached today's spending limit. It will work again within 24 hours.",
   other: 'The AI service could not answer this request.',
 }
 
 // A failed call, recorded beside the ones that worked: what the dashboard's
-// AI status reads.
+// AI status reads. A firm reaching its own cap is not recorded: the status
+// is the same for every firm, so one firm's refusals would tell all of them
+// that the AI is down. Reaching the cap for all of RegWay is, so the
+// dashboard says so and the owner gets the outage email.
 export async function recordFailure(target: UsageTarget, model: string, err: unknown): Promise<void> {
   const failure = aiFailure(err)
   if (!failure) return
+  if (err instanceof SpendCapError && err.scope === 'firm') return
   await recordUsage(target.admin, { functionName: target.functionName, firmId: target.firmId, model, ok: false, error: `${failure}: ${String((err as Error)?.message ?? err).slice(0, 300)}` })
 }
 
@@ -143,6 +193,7 @@ export async function callClaude(request: ClaudeRequest, opts: CallOptions = {})
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS)
   let res: Response
   try {
+    if (opts.usage) await checkSpend(opts.usage)
     res = await send(request, opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout)
   } catch (err) {
     if (opts.usage) await recordFailure(opts.usage, request.model, err)
@@ -155,8 +206,9 @@ export async function callClaude(request: ClaudeRequest, opts: CallOptions = {})
 
 // For a streamed reply: the timeout applies until the response starts, then
 // the stream is the caller's to read (and to record usage from, since it
-// arrives in the stream's events).
-export async function streamClaude(request: ClaudeRequest, opts: Omit<CallOptions, 'usage'> = {}): Promise<Response> {
+// arrives in the stream's events). `spend` is checked against the caps first.
+export async function streamClaude(request: ClaudeRequest, opts: Omit<CallOptions, 'usage'> & { spend?: UsageTarget } = {}): Promise<Response> {
+  if (opts.spend) await checkSpend(opts.spend)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(new DOMException('The request timed out', 'TimeoutError')), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS)
   try {

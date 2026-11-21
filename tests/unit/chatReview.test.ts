@@ -197,6 +197,7 @@ describe('stopping during the check', () => {
     setClient(db)
     const { handler } = await loadHandler('regway-ai-chat')
     let aborted = 0
+    let started = 0
     // The two checks hang until they are cancelled.
     const hang = () => new Promise<Response>(() => {})
     stubFetch((url, init) => {
@@ -205,6 +206,7 @@ describe('stopping during the check', () => {
       const tool = body.tool_choice?.name
       if (!tool) return new Response(ANSWER)
       if (tool === 'submit_claims') return jsonResponse({ content: [{ type: 'tool_use', name: 'submit_claims', input: { claims: FOUND } }] })
+      started++
       init!.signal!.addEventListener('abort', () => aborted++)
       return hang()
     })
@@ -213,6 +215,8 @@ describe('stopping during the check', () => {
     const decoder = new TextDecoder()
     let seen = ''
     while (!seen.includes('regway_status')) seen += decoder.decode((await reader.read()).value)
+    // Both checks under way (each first asks the spend cap), then stop.
+    while (started < 2) await new Promise(resolve => setTimeout(resolve, 1))
     await reader.cancel()
 
     expect(aborted).toBe(2)
