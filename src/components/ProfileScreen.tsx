@@ -7,6 +7,8 @@ import Chip from './Chip'
 import PageHeader from './PageHeader'
 import { CheckCircle } from './icons'
 import PasswordInput from './PasswordInput'
+import { useCaptcha } from '../lib/useCaptcha'
+import { passwordErrorMessage } from '../lib/password'
 import FirmProfile from './profile/FirmProfile'
 import FundsProfile from './profile/FundsProfile'
 import CompaniesProfile from './profile/CompaniesProfile'
@@ -81,6 +83,8 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [resetLinkSent, setResetLinkSent] = useState(false)
+  // Both the password check and the reset email need a CAPTCHA token each.
+  const captcha = useCaptcha()
 
   useEffect(() => {
     getFirmId().then(async id => {
@@ -133,7 +137,8 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
   // signs the user out to sign in again. That makes control of the inbox
   // part of every change.
   const sendResetLink = async () => {
-    const { error } = await supabase.auth.resetPasswordForEmail(accountEmail, { redirectTo: window.location.origin })
+    const captchaToken = await captcha.getToken()
+    const { error } = await supabase.auth.resetPasswordForEmail(accountEmail, { redirectTo: window.location.origin, captchaToken })
     if (error) throw error
     setResetLinkSent(true)
     setCurrentPassword('')
@@ -150,11 +155,12 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
     }
     setPasswordLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: accountEmail, password: currentPassword })
-      if (error) throw new Error(error.code === 'invalid_credentials' ? 'Your current password is incorrect' : error.message)
+      const captchaToken = await captcha.getToken()
+      const { error } = await supabase.auth.signInWithPassword({ email: accountEmail, password: currentPassword, options: { captchaToken } })
+      if (error) throw error.code === 'invalid_credentials' ? new Error('Your current password is incorrect') : error
       await sendResetLink()
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Failed to send the link')
+      setPasswordError(passwordErrorMessage(err, 'Failed to send the link'))
     } finally {
       setPasswordLoading(false)
     }
@@ -168,7 +174,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
     try {
       await sendResetLink()
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Failed to send the reset link')
+      setPasswordError(passwordErrorMessage(err, 'Failed to send the reset link'))
     } finally {
       setPasswordLoading(false)
     }
@@ -296,6 +302,8 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
               </div>
             )}
             {passwordError && <div className="text-[13px] mt-3" role="alert" style={{ color: 'var(--warning)' }}>{passwordError}</div>}
+            {/* Cloudflare's checkbox, only when it wants one (src/lib/captcha.ts). */}
+            <div ref={captcha.ref} />
           </div>
 
           {/* Sign out */}

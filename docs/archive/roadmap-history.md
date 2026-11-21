@@ -9,6 +9,25 @@
 >
 > New entries go directly below this box, newest first.
 
+### CAPTCHA on sign-up, sign-in and password reset (2026-11-21)
+- **Cloudflare Turnstile**, loaded from Cloudflare's script (no new
+  package). Each Supabase call that CAPTCHA protects gets its own fresh
+  token: sign-up, sign-in, the reset email, and the profile page's password
+  check followed by its reset email (two tokens in a row). The widget is
+  invisible unless Cloudflare wants a click; a failure reads "We couldn't
+  confirm you're a person". No site key (local, tests): no widget.
+- **Content-Security-Policy** (still report-only) allows
+  `challenges.cloudflare.com` for the script and its frame.
+- **Verified** in a real browser against a local database with Cloudflare's
+  test keys: the passing key signs in and sends the token; the blocking key
+  shows the message and sends nothing; the click key shows the checkbox
+  under the form; the profile password change sends a token on all three
+  calls. A first attempt failed in the browser (React mounts twice in
+  development and Cloudflare refuses a second widget in one element); each
+  widget now gets its own element. 10 unit tests.
+- **Owner's steps:** site key in Vercel (Production and Preview), then after this is live,
+  CAPTCHA protection on in Supabase with the secret key.
+
 ### Security audit, first pass (2026-11-21)
 - **Any signed-in user could join any firm whose id they knew**, and then
   read and change everything it holds. The rule meant to let a new user

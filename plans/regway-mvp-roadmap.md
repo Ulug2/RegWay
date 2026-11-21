@@ -202,8 +202,12 @@ the two-account tests in CI (issue #12), item 4 (sign-in settings to check
 in the dashboard: sign-up open or invite-only, email confirmation, leaked-
 password check, password length), item 5, item 8 onwards, switching the
 Content-Security-Policy from report-only to enforced after a week without
-reports in the browser console, and CAPTCHA on sign-up and sign-in
-(Cloudflare Turnstile; the owner creates the keys).
+reports in the browser console.
+
+**CAPTCHA built 2026-11-21** (Cloudflare Turnstile on sign-up, sign-in and
+password reset). Waits on the owner: after the pull request is merged and
+live, switch on CAPTCHA protection in the Supabase dashboard with the
+Turnstile secret key.
 
 **Spend caps done 2026-11-21** (migration 0048): AI calls are refused once
 the last 24 hours reach $15 for one firm or $40 for RegWay (secrets

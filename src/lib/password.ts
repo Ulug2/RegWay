@@ -3,6 +3,8 @@
 // required characters, and leaked-password protection when enabled); keep
 // these in line with the project's Auth settings so the two never disagree.
 
+import { CAPTCHA_FAILED_MESSAGE } from './captcha'
+
 export const PASSWORD_MIN_LENGTH = 8
 
 export interface PasswordRule {
@@ -39,5 +41,6 @@ export function passwordErrorMessage(err: unknown, fallback: string): string {
     return 'This password is too weak. Use at least 8 characters with uppercase and lowercase letters, a number and a symbol.'
   }
   if (e?.code === 'same_password') return 'The new password must be different from your current one.'
+  if (e?.code === 'captcha_failed') return CAPTCHA_FAILED_MESSAGE
   return e?.message || fallback
 }

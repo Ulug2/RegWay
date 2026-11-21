@@ -4,6 +4,7 @@ import PasswordInput from './PasswordInput'
 import PasswordRequirements from './PasswordRequirements'
 import { X } from './icons'
 import { passwordErrorMessage, passwordProblem } from '../lib/password'
+import { useCaptcha } from '../lib/useCaptcha'
 
 // Sign in, create an account, or ask for a reset link. Shown inside the
 // landing page (it slides out beside the hero), not as its own screen.
@@ -25,6 +26,7 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
   const [checkEmail, setCheckEmail] = useState(false)
   const [resetSent, setResetSent] = useState(false)
   const id = useId()
+  const captcha = useCaptcha()
 
   // Escape closes the form, as the × does.
   useEffect(() => {
@@ -46,16 +48,18 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
     setLoading(true)
     try {
       if (mode === 'forgot') {
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+        const captchaToken = await captcha.getToken()
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin, captchaToken })
         if (resetError) throw resetError
         setResetSent(true)
         return
       }
       if (mode === 'sign-up') {
+        const captchaToken = await captcha.getToken()
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: window.location.origin, captchaToken },
         })
         if (signUpError) throw signUpError
         if (!data.session) {
@@ -64,7 +68,8 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
           return
         }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+        const captchaToken = await captcha.getToken()
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
         if (signInError) throw signInError
       }
       await onAuthenticated()
@@ -203,6 +208,8 @@ export default function AuthPanel({ onAuthenticated, initialMode = 'sign-up', on
             )}
           </>
         )}
+        {/* Cloudflare's checkbox, only when it wants one (src/lib/captcha.ts). */}
+        <div ref={captcha.ref} className="flex justify-center" />
     </div>
   )
 }
