@@ -2,9 +2,9 @@
 -- and `supabase db reset`. `supabase db push` does not run it (unless given
 -- `--include-seed`: never do that against the hosted project).
 --
--- The migrations schedule the sync and matching jobs with the hosted
--- project's address written into them, so a fresh local database would call
--- the production functions every minute. Remove those jobs here. To pull
+-- The migrations schedule the sync and matching jobs. Since 0050 they call
+-- nothing without the project's address in Vault (a local database has
+-- none); before 0050 they called production. Remove them anyway. To pull
 -- data into a local database, call the local function by hand instead (see
 -- docs/onboarding.md).
 --

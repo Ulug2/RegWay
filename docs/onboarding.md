@@ -175,7 +175,9 @@ The first run downloads Docker images and takes a few minutes. What it does:
 2. Runs every file in `supabase/migrations/` in order. That builds the
    tables and access rules, exactly as production has them.
 3. Runs `supabase/seed.sql`, which switches off the timers (in production
-   they call the real server functions; a laptop must not).
+   they call the real server functions; a laptop must not). Timers that a
+   later `supabase migration up` creates again call nothing either: they
+   need the project's address in Vault, which a laptop does not have.
 4. Runs `supabase/seeds/demo-firm.sql`, which loads the H.I.G. test firm:
    its profile, funds, companies, the developments matched to it with
    their reasons and analyses, and a sign-in for you:

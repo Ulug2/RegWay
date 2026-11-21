@@ -156,9 +156,10 @@ Neither can reach a real project or the AI.
 There is no shared staging environment. Migrations and functions are
 applied to production by the owner, by hand, after a merge.
 
-The migrations write the hosted project's address into the scheduled jobs.
-`supabase/seed.sql` removes those jobs from a local database so it does not
-call production; do not remove that file.
+The scheduled jobs read the project's own address and service key from
+Vault (`private.call_function`, migration 0050) and call nothing when either
+is missing, so a local database never calls production. `supabase/seed.sql`
+also removes the jobs from a local database; do not remove that file.
 
 ## Where decisions are recorded
 
