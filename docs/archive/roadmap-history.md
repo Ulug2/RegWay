@@ -43,7 +43,18 @@
   jobs read the key from the vault).
 - **Verified** with a local SQL script: every attack above refused, and
   onboarding, editing, hiding a match, notes, flags, chat, findings and the
-  server functions still work.
+  server functions still work. Migration 0047 applied to production the
+  same day, before the pull request was opened.
+- **Daily spend caps** (migration 0048). Sign-up is open and the AI limits
+  were per user, so more accounts meant more spending with no ceiling.
+  Every AI call now first checks the last 24 hours' estimated spend: $15
+  for one firm, $40 for RegWay (the busiest day so far was $5.82; the
+  average $0.84). A firm at its cap gets "today's spending limit" and
+  nobody else notices; RegWay at its cap shows the dashboard banner and
+  sends the owner the outage email.
+- **`/cso`** (gstack's static audit), run on a copy of the branch: its one
+  finding was the missing spend caps. Partial coverage: no scanners
+  offline, skill files outside its snapshot.
 
 ### Duplicate analyses and the matchers' 200-document window (2026-11-20)
 - **A second analysis of the same development could start while the first

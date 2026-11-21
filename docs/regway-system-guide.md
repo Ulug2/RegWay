@@ -535,11 +535,21 @@ removes them (`supabase/seed.sql`) so it never calls production.
   public key, so anyone could run them.)
 - **Secrets** (Supabase function secrets, never in the repository):
   `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, the service key; switches
-  `SKEPTIC_MODE`, `CHAT_REVIEW`. The timers read the service key from the
+  `SKEPTIC_MODE`, `CHAT_REVIEW`; caps `AI_FIRM_DAILY_CAP_USD`,
+  `AI_TOTAL_DAILY_CAP_USD`. The timers read the service key from the
   database vault.
 - **Rate limits** on every AI-spending function a user can trigger
   (`check_rate_limit`: 3 a day for web research, 6 to 30 an hour for the
   rest).
+- **Spend caps** (migration 0048). Before any AI call is sent,
+  `_shared/ai/client.ts` asks `ai_spend_check` whether the last 24 hours'
+  estimated spend in `usage_events` has reached the firm's cap (default
+  $15) or RegWay's (default $40). Over either, the call is refused
+  (`SpendCapError`). A firm at its cap is not recorded as an AI failure
+  (the AI status is shared by every firm); RegWay at its cap is, so the
+  dashboard banner shows it and the owner gets the outage email. If the
+  check itself fails, the call goes ahead. Sign-up is open, so the per-user
+  limits alone had no ceiling.
 - **The browser.** The chat's Markdown renderer escapes all HTML and makes
   only `http(s)` links. Company logos: PNG, JPEG, WebP or GIF up to 2 MB,
   enforced by the bucket. `vercel.json` sets HSTS, `nosniff`, no framing, a
@@ -548,7 +558,7 @@ removes them (`supabase/seed.sql`) so it never calls production.
   `index.html`): changing that script means updating the hash, or the
   policy will block it once enforced.
 - **Not done yet** (roadmap 16g): two-account access tests in CI (issue
-  #12), sign-in rate limits of our own, enforcing the CSP, spend caps, an
+  #12), sign-in rate limits of our own and CAPTCHA, enforcing the CSP, an
   audit log, an outside test.
 
 ---
@@ -712,6 +722,12 @@ Sidekick's `guard.ts` is plain TypeScript with no browser code; it moves to
 `_shared/security/` with small changes for Deno.
 
 ### 17.3 Spend caps checked before every AI call
+
+**Partly done 2026-11-21** (§12, migration 0048): a rolling 24-hour cap per
+firm and for all of RegWay, checked in `callClaude` and `streamClaude`.
+Still to do from the plan below: a monthly cap, the reserve for
+click-started work, and pricing an unknown model at the highest known
+price.
 
 RegWay ran out of AI credit for almost a month, and opening the dashboard
 once started $4.80 of work nobody asked for (§16). `AUTOMATIC_AI` (§13) is a
