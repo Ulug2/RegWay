@@ -289,6 +289,16 @@ export function aiReply(text: string, citations: { url: string; title: string }[
 // The link in a password-reset email, as Supabase redirects it back to the app.
 export const RECOVERY_LINK = `/#access_token=${ACCESS_TOKEN}&expires_in=3600&refresh_token=recovery-refresh&token_type=bearer&type=recovery`
 
+// Scrolls the page down like a mouse wheel. A phone (mobile WebKit) has no
+// wheel, so there it scrolls the window instead.
+export async function scrollDown(page: Page, dy: number) {
+  try {
+    await page.mouse.wheel(0, dy)
+  } catch {
+    await page.evaluate(d => window.scrollBy(0, d), dy)
+  }
+}
+
 export async function signIn(page: Page) {
   await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(session())] as const)
 }
