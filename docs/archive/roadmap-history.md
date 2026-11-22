@@ -9,6 +9,24 @@
 >
 > New entries go directly below this box, newest first.
 
+### Account flows run end to end; local email links fixed (2026-11-22)
+- **Run against a local database with its mail catcher (Mailpit):** on
+  Profile, a wrong current password is refused ("Your current password is
+  incorrect"); the right one sends "Reset your RegWay password"; its link
+  opens "Set a new password"; saving signs the user out; the new password
+  signs in and the old one is refused; reusing the same password is
+  refused. An email change sends the confirmation to the new address and
+  the notice names it. Not run: clicking both email-change confirmations
+  (local setting `double_confirm_changes`).
+- **Local email links opened a dead page**: `supabase/config.toml` sent
+  them to `127.0.0.1:3000`, but `pnpm dev` serves `localhost:8443`, which
+  was not an allowed redirect. Now `site_url` and the redirect list name
+  8443. The local email limit went from 2 to 30 an hour, so the flows can
+  be tried more than twice. Local only: production's settings are in the
+  Supabase dashboard.
+- **Found:** Profile's account email loads after the page (roadmap, Known
+  defects).
+
 ### Source names in one place (2026-11-21)
 - The names RegWay shows for its sources were in three files. All three
   lists are now in `src/lib/sourceList.ts`: the public list (landing and

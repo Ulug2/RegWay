@@ -138,8 +138,11 @@ so ask the owner first (item 17a).
   were not checked on a phone; Profile, the development page, tablet
   widths, Safari and Firefox were not looked at after the redesign. No
   accessibility review is recorded.
-- **Account flows never run end to end**: email change (confirmation
-  email) and password change on the Profile Account tab.
+- **Profile's account email loads after the page** (S): for the moment
+  before it arrives, "Update Password" sends an empty email (Supabase's
+  "missing email or phone" is shown), and an address typed into the Email
+  field can be replaced by the loaded one. Found 2026-11-22 running the
+  account flows end to end.
 
 ### 16h. Sources that need their own feed (M each; the owner approves each)
 The Federal Register is read for 64 agencies, plus SEC, FTC and CFPB
