@@ -96,7 +96,7 @@ Deno.serve(async req => {
       if (!allowed) return json({ error: 'Rate limit exceeded. Please try again later.' }, 429)
     }
 
-    const status = await generateImpact(admin, regulationId, membership.firm_id, { force: !!force })
+    const status = await generateImpact(admin, regulationId, membership.firm_id, { force: !!force, interactive: true })
     if (status === 'in_progress') {
       const content = await waitForImpact(admin, regulationId, membership.firm_id)
       if (!content) return json({ error: 'The analysis is still being written. Try again in a minute.' }, 503)

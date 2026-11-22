@@ -90,7 +90,9 @@ export async function generateImpact(
   admin: SupabaseClient,
   regulationId: string,
   firmId: string,
-  opts: { force?: boolean } = {},
+  // `interactive`: a person opened the development and is waiting (the
+  // spend caps' reserve, _shared/ai/client.ts); otherwise background work.
+  opts: { force?: boolean; interactive?: boolean } = {},
 ): Promise<ImpactStatus> {
   if (!opts.force && (await hasImpact(admin, regulationId, firmId))) return 'exists'
 
@@ -104,7 +106,7 @@ export async function generateImpact(
   try {
     // Another invocation may have finished it between the check and the claim.
     if (!opts.force && (await hasImpact(admin, regulationId, firmId))) return 'exists'
-    return await writeImpact(admin, regulationId, firmId)
+    return await writeImpact(admin, regulationId, firmId, !!opts.interactive)
   } finally {
     if (!claimError) {
       const { data, error } = await admin.rpc('release_impact_job', job)
@@ -117,7 +119,7 @@ export async function generateImpact(
   }
 }
 
-async function writeImpact(admin: SupabaseClient, regulationId: string, firmId: string): Promise<'created' | 'awaiting_publication'> {
+async function writeImpact(admin: SupabaseClient, regulationId: string, firmId: string, interactive: boolean): Promise<'created' | 'awaiting_publication'> {
   const [{ data: reg }, { data: firm }, { data: funds }, { data: companies }, { data: links }, { data: holdings }] = await Promise.all([
     admin.from('regulations').select('id, source, title, agency, jurisdiction, summary, published_date, effective_date, source_url, raw, category, on_public_inspection').eq('id', regulationId).single(),
     admin.from('firms').select('name, hq_location, jurisdictions, profile, profile_meta').eq('id', firmId).single(),
@@ -245,7 +247,7 @@ ${entities.join('\n')}`,
         ],
       },
     ],
-  }, { usage: { admin, functionName: 'regulation-impact', firmId } })
+  }, { usage: { admin, functionName: 'regulation-impact', firmId, interactive } })
 
   const analysis = toolInput<Omit<ImpactContent, 'text_truncated'>>(result, 'submit_impact_analysis')
   if (!analysis) throw new Error('Model returned no structured analysis')
