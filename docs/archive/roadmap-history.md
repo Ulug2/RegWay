@@ -9,6 +9,16 @@
 >
 > New entries go directly below this box, newest first.
 
+### Source names in one place (2026-11-21)
+- The names RegWay shows for its sources were in three files. All three
+  lists are now in `src/lib/sourceList.ts`: the public list (landing and
+  Sources pages), `PUBLISHER_NAMES` ("Also published as", keyed by a
+  document's source; was `SOURCE_NAMES` in `duplicates.ts`) and
+  `FEED_LABELS` (the failing-feed notice, keyed by a sync job; was
+  `SOURCE_LABELS` in `data.ts`). Same names, so nothing on screen changes.
+- **`tests/unit/sourceList.test.ts`** reads the sync functions' code and
+  fails when a job or a document source they write has no name. Checked by
+  deleting OFSI's name: the test failed.
 ### Server function access tests (2026-11-21, issue #13)
 - `tests/unit/functionAccess.test.ts` (56 tests) calls every server
   function as an attacker would, with two firms in a fake database that

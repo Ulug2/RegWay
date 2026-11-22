@@ -1,4 +1,5 @@
 import type { PublishedVersion, Regulation } from './types'
+import { PUBLISHER_NAMES } from './sourceList'
 
 // One development, one card (roadmap item 15). The same development can be
 // stored more than once: an agency's announcement and the Federal Register
@@ -58,29 +59,10 @@ export function versionsOf(item: Pick<Regulation, 'id' | 'duplicate_of'>, versio
     .sort((a, b) => (a.published_date ?? '').localeCompare(b.published_date ?? ''))
 }
 
-export const SOURCE_NAMES: Record<string, string> = {
-  federal_register: 'Federal Register',
-  sec_news: 'SEC announcement',
-  ftc_news: 'FTC announcement',
-  cfpb_news: 'CFPB announcement',
-  sec_enforcement: 'SEC litigation release',
-  sec_admin_proceedings: 'SEC administrative proceeding',
-  finra_enforcement: 'FINRA',
-  state_travel_advisories: 'State Department',
-  fca_publications: 'FCA',
-  pra_publications: 'Bank of England (PRA)',
-  uk_legislation: 'legislation.gov.uk',
-  uk_sanctions: 'legislation.gov.uk',
-  ofsi: 'OFSI',
-  esma_news: 'ESMA',
-  eur_lex: 'EUR-Lex',
-  eu_sanctions: 'EUR-Lex',
-}
-
 // Where a version was published, as a short name: the source RegWay took it
 // from, or the site a company scan found it on.
 export function publisherName(version: Pick<PublishedVersion, 'source' | 'source_url'>): string {
-  const named = SOURCE_NAMES[version.source]
+  const named = PUBLISHER_NAMES[version.source]
   if (named) return named
   try {
     return new URL(version.source_url).hostname.replace(/^www\./, '')

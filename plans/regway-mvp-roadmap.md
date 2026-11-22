@@ -109,8 +109,6 @@ so ask the owner first (item 17a).
 - Citations attached to the sentences they support.*
 
 ### Known defects (S each unless marked)
-- **Source names live in three places**: `SOURCE_LABELS` (`data.ts`),
-  `SOURCE_NAMES` (`duplicates.ts`), the landing page's list.
 - **After stopping a chat answer, the empty bubble stays** until the next
   message. (Chat file: ask the owner first, see item 17a.)
 - **"JWT issued at future"**: the database now and then refuses a newly
