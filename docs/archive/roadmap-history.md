@@ -9,6 +9,15 @@
 >
 > New entries go directly below this box, newest first.
 
+### Browser tests on Safari's engine and a phone, nightly (2026-11-22)
+- Decided by the owner: desktop Chrome on every pull request (as before);
+  WebKit (Safari) on a desktop and on an iPhone 14 screen once a night, at
+  06:00 UTC, and by hand from the Actions tab. A nightly failure does not
+  block merging; GitHub emails whoever last edited the workflow.
+- **Verified:** the same command run locally: 328 passed, 80 skipped
+  (tests marked desktop-only or Chrome-only), in 28 minutes on a loaded
+  machine. The workflow itself first runs after merge.
+
 ### Profile waits for the account email (2026-11-22)
 - Profile loads the account's email after the page appears. Until it
   arrived, "Update Password" sent an empty email (Supabase's "missing

@@ -136,9 +136,12 @@ so ask the owner first (item 17a).
   issue #18.)
 - **Phone widths and other browsers** (S, findings only): the browser tests
   now run on Firefox, WebKit (Safari) and an iPhone with `ALL_BROWSERS=1`
-  (issue #17, part 1). Still to do: look at every screen at phone and
-  tablet width in both themes, fix what is off, and decide which browsers
-  CI runs (the owner's). No accessibility review is recorded.
+  (issue #17, part 1). CI runs desktop Chrome on every pull request and
+  WebKit plus the phone every night (owner, 2026-11-22;
+  `.github/workflows/nightly-browsers.yml`). Still to do: look at every
+  screen at phone and tablet width in both themes (`capture.spec.ts` takes
+  them; 4 of 142 were looked at) and fix what is off. No accessibility
+  review is recorded.
 
 ### 16h. Sources that need their own feed (M each; the owner approves each)
 The Federal Register is read for 64 agencies, plus SEC, FTC and CFPB

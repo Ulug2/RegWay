@@ -109,6 +109,12 @@ tests run the edge functions' code against a fake database client and a
 stubbed `fetch` (`tests/unit/helpers`). Browser tests start their own dev
 server on port 8444 pointed at a mock Supabase (`tests/e2e/mockBackend.ts`).
 
+CI runs the browser tests in desktop Chrome on every pull request. Each
+night (`.github/workflows/nightly-browsers.yml`) they also run in Safari's
+engine on a desktop and an iPhone-sized screen. To run Firefox, WebKit and
+the phone locally: `pnpm exec playwright install firefox webkit` once, then
+`ALL_BROWSERS=1 pnpm test:e2e`.
+
 ## Checks
 
 ```bash
