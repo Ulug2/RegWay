@@ -9,6 +9,16 @@
 >
 > New entries go directly below this box, newest first.
 
+### Profile waits for the account email (2026-11-22)
+- Profile loads the account's email after the page appears. Until it
+  arrived, "Update Password" sent an empty email (Supabase's "missing
+  email or phone" was shown), and the loaded address replaced one the user
+  had already typed into the Email field. Now the button waits for the
+  account, and a typed address is kept.
+- **Verified:** a browser test holds back the account lookup: the button
+  is disabled, the typed address survives the load. It fails on the old
+  code. `pnpm test:all` passes (668 unit, 177 browser).
+
 ### Account flows run end to end; local email links fixed (2026-11-22)
 - **Run against a local database with its mail catcher (Mailpit):** on
   Profile, a wrong current password is refused ("Your current password is

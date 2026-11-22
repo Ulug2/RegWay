@@ -177,6 +177,27 @@ test.describe('changing the password from Profile', () => {
     await expect(page.getByRole('status')).toHaveCount(0)
   })
 
+  test('waits for the account before checking a password, and keeps an address typed meanwhile', async ({ page }) => {
+    await signIn(page)
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Dana')
+    // From here the account is slow to arrive.
+    let release!: () => void
+    const held = new Promise<void>(resolve => (release = resolve))
+    await page.route('**/auth/v1/user', async route => {
+      if (route.request().method() === 'GET') await held
+      await route.fallback()
+    })
+    await page.getByTitle('Profile', { exact: true }).click()
+    await expect(page.getByPlaceholder('Current password')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Update Password' })).toBeDisabled()
+    await page.locator('#account-email').fill('new@harbor.test')
+
+    release()
+    await expect(page.getByRole('button', { name: 'Update Password' })).toBeEnabled()
+    await expect(page.locator('#account-email')).toHaveValue('new@harbor.test')
+  })
+
   test('the whole way round: link, new password, signed out, sign in with it', async ({ page, backend }) => {
     await openAccount(page)
     await page.getByPlaceholder('Current password').fill('correct-password')

@@ -73,6 +73,9 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
   const [nameSaved, setNameSaved] = useState(false)
 
   const [email, setEmail] = useState(() => readCache<string>('account:email') ?? '')
+  // What the Email field showed before the account loaded: a different value
+  // by then is the user's typing, which the loaded address must not replace.
+  const shownEmail = useRef(email)
   // The address the account signs in with now; `email` is the editable field.
   const [accountEmail, setAccountEmail] = useState(() => readCache<string>('account:email') ?? '')
   const [emailLoading, setEmailLoading] = useState(false)
@@ -97,7 +100,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
     supabase.auth.getUser().then(({ data }) => {
       const current = data.user?.email ?? ''
       setAccountEmail(current)
-      setEmail(current)
+      setEmail(typed => (typed === shownEmail.current ? current : typed))
       writeCache('account:email', current)
     })
   }, [])
@@ -289,7 +292,8 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
               />
             </div>
             <div className="flex items-center gap-4 flex-wrap">
-              <button className="btn-primary" onClick={updatePassword} disabled={passwordLoading}>
+              {/* Until the account has loaded there is no address to check the password against. */}
+              <button className="btn-primary" onClick={updatePassword} disabled={passwordLoading || !accountEmail}>
                 {passwordLoading ? 'Please wait…' : 'Update Password'}
               </button>
               <button type="button" className="link text-[13px]" onClick={forgotPassword} disabled={passwordLoading || !accountEmail}>
