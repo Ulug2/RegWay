@@ -113,8 +113,6 @@ so ask the owner first (item 17a).
   `SOURCE_NAMES` (`duplicates.ts`), the landing page's list.
 - **After stopping a chat answer, the empty bubble stays** until the next
   message. (Chat file: ask the owner first, see item 17a.)
-- **The one-year staleness threshold is defined twice** (client
-  `questionnaire.ts`, server `entityFacts.ts`).
 - **"JWT issued at future"**: the database now and then refuses a newly
   started function's first query. `sync-regulator-feeds` and
   `group-duplicates` retry; the other functions fail the run.

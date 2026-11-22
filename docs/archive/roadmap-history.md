@@ -9,6 +9,17 @@
 >
 > New entries go directly below this box, newest first.
 
+### One age for a stale fact (2026-11-21, issue #37)
+- The one-year age after which a fact is due for re-confirmation was
+  written twice: `STALE_AFTER_DAYS` in `src/lib/questionnaire.ts` (Profile's
+  prompts) and again in `supabase/functions/_shared/entityFacts.ts` (what
+  the AI is told). The server now imports the browser's constant, as
+  `_shared/research/fields.ts` already imports the questionnaire.
+- **Verified** by `tests/unit/staleAge.test.ts`: facts confirmed 1, 364,
+  366 and 800 days ago read the same in both, and the test fails if the two
+  ever differ. Deno's type check passes. Same value, so no deploy is
+  needed; the next deploy of a function using `entityFacts.ts` picks it up.
+
 ### CAPTCHA on sign-up, sign-in and password reset (2026-11-21)
 - **Cloudflare Turnstile**, loaded from Cloudflare's script (no new
   package). Each Supabase call that CAPTCHA protects gets its own fresh
