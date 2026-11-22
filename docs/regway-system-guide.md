@@ -540,7 +540,8 @@ also removes the jobs there.
   `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, the service key; switches
   `SKEPTIC_MODE`, `CHAT_REVIEW`; caps `AI_FIRM_DAILY_CAP_USD`,
   `AI_TOTAL_DAILY_CAP_USD`, `AI_FIRM_MONTHLY_CAP_USD`,
-  `AI_TOTAL_MONTHLY_CAP_USD`, `AI_INTERACTIVE_RESERVE`. The timers read the service key from the
+  `AI_TOTAL_MONTHLY_CAP_USD`, `AI_INTERACTIVE_RESERVE`; `AI_TRACES` (on
+  unless `off`). The timers read the service key from the
   database vault.
 - **Rate limits** on every AI-spending function a user can trigger
   (`check_rate_limit`: 3 a day for web research, 6 to 30 an hour for the
@@ -562,6 +563,12 @@ also removes the jobs there.
   shows it and the owner gets the outage email. If the check itself fails,
   the call goes ahead. Sign-up is open, so the per-user limits alone had
   no ceiling.
+- **Outside text in prompts** (§17.2): documents, web pages, search
+  results and attached files reach the AI inside an `<untrusted_content>`
+  fence the text can't close, with a rule in every such prompt that the
+  fence holds material, never instructions. A free local scan warns beside
+  the fence when the text reads like orders to an AI. Fence tags the model
+  copies back are removed from everything stored or shown.
 - **The browser.** The chat's Markdown renderer escapes all HTML and makes
   only `http(s)` links. Company logos: PNG, JPEG, WebP or GIF up to 2 MB,
   enforced by the bucket. `vercel.json` sets HSTS, `nosniff`, no framing, a
@@ -720,6 +727,17 @@ matches the Skeptic hid, so over-rejection is invisible.
 
 ### 17.2 Fence outside text in every prompt
 
+**Built 2026-11-22** (`_shared/security/guard.ts`, §12). Every AI job that
+reads outside text fences it: the three judges, the Skeptic (matches and
+chat answers), the analyses, announcement matching, the company scan's and
+firm research's extraction (the search's notes), the citation check, and
+the chat (matched list, unconfirmed web findings, an attached text file).
+A PDF can't be fenced as text, so the chat's PDFs and the SEC proceedings
+extraction are told the rule in words, as are the web searches. Differs
+from the plan below: a flagged text is logged (`console.warn` in the
+function's log) and warned about beside the fence, but not yet recorded in
+`usage_events` or shown to the owner.
+
 Federal Register text, SEC PDFs, regulator announcements, company web pages
 and web search results all reach the judges, the Skeptic, the analyst, the
 researchers and the chat as plain text. Nothing marks them as data, so a
@@ -838,6 +856,26 @@ badly ("how many German companies had sanctions matches this month?").
 - Only a scanned PDF (no text layer) goes to Sonnet as today.
 
 ### 17.9 Run traces for every AI decision
+
+**Storage built 2026-11-22** (migration 0052, `_shared/ai/trace.ts`): every
+AI call sent with a usage target (every job but the chat's streamed
+answer, which is kept in its messages) stores its request and answer in
+`ai_traces`, for 30 days (a daily timer deletes older rows; a firm's go
+with the firm). Very long strings are cut at 60,000 characters and PDF
+data is replaced by its size. Service role only. Off with the secret
+`AI_TRACES=off`. Read them in SQL for now, for example the judge batches
+behind one development:
+
+```sql
+select created_at, function_name, request, response
+from ai_traces
+where function_name like 'match-relevance%' and request::text like '%<title words>%'
+order by created_at desc;
+```
+
+Still to do from the plan below: the owner-only page, and exporting a
+trace into the test set (17.1). The Skeptic's review is its own trace
+(`…/skeptic`); the final rows are in `regulation_relevance`.
 
 `usage_events` records cost and `verdict_reviews` records the Skeptic, but
 not what the judge was told. When a match is wrong, nobody can see why.

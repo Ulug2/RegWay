@@ -4,6 +4,7 @@
 // background for newly relevant regulations so it's ready before anyone opens
 // the regulation.
 
+import { FENCE_RULE, untrusted } from './security/guard.ts'
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { withoutCoveredDuplicates } from './duplicates.ts'
 import { COMPANY_FACTS, COMPANY_UNKNOWNS, FACT_MARKERS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from './entityFacts.ts'
@@ -169,7 +170,7 @@ async function writeImpact(admin: SupabaseClient, regulationId: string, firmId: 
     tool_choice: { type: 'tool', name: 'submit_impact_analysis' },
     // Identical for every firm analyzing this same category of item — its
     // own cache breakpoint, separate from the per-regulation text below.
-    system: [{ type: 'text', text: prompt.system, cache_control: { type: 'ephemeral' } }],
+    system: [{ type: 'text', text: `${prompt.system}\n\n${FENCE_RULE}`, cache_control: { type: 'ephemeral' } }],
     tools: [
       {
         name: 'submit_impact_analysis',
@@ -231,12 +232,12 @@ async function writeImpact(admin: SupabaseClient, regulationId: string, firmId: 
             // here again once many firms share the same developments.
             type: 'text',
             text: `${prompt.documentLabel}
-Title: ${reg.title}
 Agency: ${reg.agency ?? 'n/a'} · Jurisdiction: ${reg.jurisdiction ?? 'n/a'}
 Published: ${reg.published_date ?? 'n/a'} · Effective: ${reg.effective_date ?? 'n/a'}
+${untrusted(reg.agency ?? reg.source_url ?? 'the publisher', `Title: ${reg.title}
 Official summary: ${reg.summary ?? 'none'}
 TEXT${truncated ? ' (first portion only — the document is longer)' : ''}:
-${text}`,
+${text}`)}`,
           },
           {
             type: 'text',

@@ -5,6 +5,7 @@
 // fetching anything. Whether the rule reaches the firm's own entities is the
 // Skeptic's question, not this one.
 
+import { FENCE_RULE, untrusted } from '../security/guard.ts'
 import type { CallOptions } from '../ai/client.ts'
 import { MODEL_FOR } from '../ai/models.ts'
 import { runTool, type ToolSpec } from '../ai/structured.ts'
@@ -83,8 +84,10 @@ export async function checkCitations(input: { claims: string[]; citations: Cited
           role: 'user',
           content: `Check the part of each claim that is about the rule or development itself (what it requires, whom it covers, whether it is proposed or final, its dates) against the passages the answer quoted from its sources. Ignore the part about the firm's own entities: that is checked elsewhere. Judge only from the quoted passages, not from what you know.
 
+${FENCE_RULE}
+
 SOURCES
-${sources.map((s, i) => `${i + 1}. ${s.title} (${s.url})\n${s.quotes.map(q => `   "${q.slice(0, QUOTE_CHARS)}"`).join('\n') || '   (no passage quoted)'}`).join('\n')}
+${sources.map((s, i) => `${i + 1}. ${s.url}\n${untrusted(s.url, `Title: ${s.title}\n${s.quotes.map(q => `"${q.slice(0, QUOTE_CHARS)}"`).join('\n') || '(no passage quoted)'}`)}`).join('\n')}
 
 CLAIMS
 ${input.claims.map((c, i) => `${i}. ${c}`).join('\n')}`,

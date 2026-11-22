@@ -5,7 +5,9 @@
 // - A refused or overloaded request (429, 5xx, 529) is tried once more after
 //   a short wait; any other error (a bad request, no credit) is not.
 // - With `usage`, a successful call is recorded in `usage_events` under the
-//   caller's function name (_shared/usage.ts).
+//   caller's function name (_shared/usage.ts), and what it was sent and
+//   answered in `ai_traces` for 30 days (./trace.ts); a call that was sent
+//   and failed is traced too.
 // - `callClaude` returns the parsed response; `streamClaude` returns the
 //   streaming Response for the caller to read (the chat), with the timeout
 //   covering only the wait for it to start.
@@ -17,6 +19,9 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { mergeUsage, recordUsage, type UsageTotals } from '../usage.ts'
+import { stripFence, stripFenceDeep } from '../security/guard.ts'
+
+import { recordTrace } from './trace.ts'
 
 export const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages'
 
@@ -249,15 +254,28 @@ async function send(request: ClaudeRequest, signal: AbortSignal): Promise<Respon
 export async function callClaude(request: ClaudeRequest, opts: CallOptions = {}): Promise<ClaudeResponse> {
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS)
   let res: Response
+  if (opts.usage) {
+    try {
+      await checkSpend(opts.usage)
+    } catch (err) {
+      await recordFailure(opts.usage, request.model, err)
+      throw err
+    }
+  }
   try {
-    if (opts.usage) await checkSpend(opts.usage)
     res = await send(request, opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout)
   } catch (err) {
-    if (opts.usage) await recordFailure(opts.usage, request.model, err)
+    if (opts.usage) {
+      await recordFailure(opts.usage, request.model, err)
+      await recordTrace(opts.usage.admin, { ...traceTarget(opts.usage), model: request.model, request, error: String((err as Error)?.message ?? err) })
+    }
     throw err
   }
   const result = (await res.json()) as ClaudeResponse
-  if (opts.usage) await recordCall(opts.usage, request.model, result.usage)
+  if (opts.usage) {
+    await recordCall(opts.usage, request.model, result.usage)
+    await recordTrace(opts.usage.admin, { ...traceTarget(opts.usage), model: request.model, request, response: result })
+  }
   return result
 }
 
@@ -277,6 +295,8 @@ export async function streamClaude(request: ClaudeRequest, opts: Omit<CallOption
   }
 }
 
+const traceTarget = (t: UsageTarget) => ({ functionName: t.functionName, firmId: t.firmId })
+
 async function recordCall(target: UsageTarget, model: string, raw: Record<string, unknown> | undefined): Promise<void> {
   const totals: UsageTotals = {}
   mergeUsage(totals, raw)
@@ -284,16 +304,19 @@ async function recordCall(target: UsageTarget, model: string, raw: Record<string
 }
 
 // The input of the named tool call in a response (a forced tool_choice
-// call's structured answer), or undefined if the model made none.
+// call's structured answer), or undefined if the model made none. Any
+// fence tag the model copied back is removed (_shared/security/guard.ts).
 export function toolInput<T = Record<string, unknown>>(response: ClaudeResponse, name?: string): T | undefined {
   const block = (response.content ?? []).find(b => b.type === 'tool_use' && (!name || b.name === name))
-  return block?.input as T | undefined
+  return block ? stripFenceDeep(block.input as T) : undefined
 }
 
-// The response's text blocks, joined.
+// The response's text blocks, joined, without fence tags.
 export function textOf(response: ClaudeResponse, separator = '\n'): string {
-  return (response.content ?? [])
-    .filter(b => b.type === 'text' && typeof b.text === 'string')
-    .map(b => b.text)
-    .join(separator)
+  return stripFence(
+    (response.content ?? [])
+      .filter(b => b.type === 'text' && typeof b.text === 'string')
+      .map(b => b.text)
+      .join(separator),
+  )
 }

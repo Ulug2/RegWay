@@ -31,6 +31,7 @@
 //   POST /functions/v1/regway-ai-chat   { "message": "...", "conversationId"?: "<uuid>", "context"?: AiContext, "refocus"?: Refocus, "attachment"?: { "name": string, "mimeType": string, "content": string (text) | "base64Data": string (pdf) } }
 //   Authorization: Bearer <user session access_token>
 
+import { stripFence, untrusted } from '../_shared/security/guard.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { AI_FAILURE_MESSAGES, aiFailure, recordFailure, streamClaude } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
@@ -157,7 +158,8 @@ Deno.serve(async (req) => {
     if (attachment?.base64Data) {
       userContent.push({ type: 'document', source: { type: 'base64', media_type: attachment.mimeType || 'application/pdf', data: attachment.base64Data } })
     }
-    const textWithAttachment = focusNote + (attachment?.content ? `${message}\n\n--- Attached file: ${attachment.name} ---\n${attachment.content}` : message)
+    // An attached file is outside text like any other (_shared/security/guard.ts).
+    const textWithAttachment = focusNote + (attachment?.content ? `${message}\n\nAttached file:\n${untrusted(`the attached file ${attachment.name}`, attachment.content)}` : message)
     userContent.push({ type: 'text', text: textWithAttachment })
 
     let anthropicRes: Response
@@ -208,7 +210,7 @@ Deno.serve(async (req) => {
           .from('regway_ai_messages')
           .insert([
             { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'user', content: message, created_at: askedAt.toISOString() },
-            { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'assistant', content: answer.text, citations: answer.citations, created_at: answeredAt.toISOString() },
+            { firm_id: membership.firm_id, user_id: user.id, conversation_id: conversationId ?? null, role: 'assistant', content: stripFence(answer.text), citations: answer.citations, created_at: answeredAt.toISOString() },
           ])
           .select('id, role'),
         conversationId
