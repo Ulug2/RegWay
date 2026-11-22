@@ -746,7 +746,10 @@ where request::text like '%RegWay''s scan:%'
 order by created_at desc;
 ```
 
-Not yet shown to the owner in the app.
+The warning sits after the fenced text, so for a document long enough to be
+cut in the trace (over 60,000 characters in one block, possible for an
+analysis) it can be lost there; the function's log still has it. Not yet
+shown to the owner in the app.
 
 Federal Register text, SEC PDFs, regulator announcements, company web pages
 and web search results all reach the judges, the Skeptic, the analyst, the
