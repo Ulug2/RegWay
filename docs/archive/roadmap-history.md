@@ -17,6 +17,19 @@
 - **Verified:** the same command run locally: 328 passed, 80 skipped
   (tests marked desktop-only or Chrome-only), in 28 minutes on a loaded
   machine. The workflow itself first runs after merge.
+### Server functions on the app's supabase-js (2026-11-22)
+- The server functions imported `@supabase/supabase-js@2.45.4` from esm.sh,
+  which `pnpm audit` never saw and which failed CI once when esm.sh was
+  down. They now import `npm:@supabase/supabase-js@2.116.0`, the version
+  the app installs. A unit test (`functionImports.test.ts`) fails if any
+  function, or the unit tests' fake client, drifts from the version in
+  `pnpm-lock.yaml`; changing it means deploying every function.
+- **Verified:** function type checks pass; 674 unit tests pass (the new
+  test fails on a planted mismatch). On a local database, five service
+  functions ran (profile changes, duplicates, alerts, outage email, travel
+  advisories saved 51 advisories), a signed-in call passed its account and
+  database steps, and a bad token was refused. Then deployed to production
+  (all 21 functions) by the owner's request.
 
 ### Profile waits for the account email (2026-11-22)
 - Profile loads the account's email after the page appears. Until it

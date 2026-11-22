@@ -15,7 +15,7 @@
 //   POST /functions/v1/research-firm   { "firmId": "<uuid>" }
 //   Authorization: Bearer <service key>
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { AI_FAILURE_MESSAGES, aiFailure } from '../_shared/ai/client.ts'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { checkRateLimit, resolveFirmContext } from '../_shared/relevance.ts'

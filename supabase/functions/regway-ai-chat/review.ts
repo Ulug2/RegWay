@@ -14,7 +14,7 @@
 // A step that fails is labelled as not checked; nothing is made up in its
 // place. Switched on by the CHAT_REVIEW secret ("on"); off by default.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { findApplicabilityClaims, type ApplicabilityClaim } from '../_shared/roles/claimGate.ts'
 import { checkCitations, distinctSources, type CitationFinding, type CitedSource } from '../_shared/roles/citationCheck.ts'
 import type { FirmRecord } from '../_shared/roles/entityContext.ts'

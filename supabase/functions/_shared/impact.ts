@@ -4,7 +4,7 @@
 // background for newly relevant regulations so it's ready before anyone opens
 // the regulation.
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { withoutCoveredDuplicates } from './duplicates.ts'
 import { COMPANY_FACTS, COMPANY_UNKNOWNS, FACT_MARKERS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from './entityFacts.ts'
 import { federalRegisterTextUrls, type FederalRegisterDocumentRef } from './federalRegister.ts'

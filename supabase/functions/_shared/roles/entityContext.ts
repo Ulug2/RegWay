@@ -4,7 +4,7 @@
 // every role describes an entity from the same facts and marks the same
 // gaps as "not recorded".
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { COMPANY_FACTS, COMPANY_UNKNOWNS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from '../entityFacts.ts'
 import { companyFootprint, describeFootprint, firmFootprint } from '../footprint.ts'
 import { EU_MEMBERS } from '../regulatorFeeds.ts'

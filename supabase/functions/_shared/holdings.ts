@@ -14,7 +14,7 @@
 // direct verdict about the fund itself (via_holdings = false) is never
 // overwritten. User dismissals are kept.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 
 type Category = 'regulatory' | 'enforcement' | 'geopolitical'
 

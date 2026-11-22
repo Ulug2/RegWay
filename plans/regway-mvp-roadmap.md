@@ -80,17 +80,14 @@ Ready-to-take versions of these, with acceptance criteria, are in
   holds. The data is already there: `fund_holdings` records which fund
   holds which company (`fetchHoldings` in `src/lib/data.ts`), and a company
   can sit in more than one fund.
-  - **To design first** (a sketch on the issue before code): where the
-    control goes and what it looks like. Options: a row of fund chips above
-    the company list ("All funds" first); a dropdown beside the level
-    buttons; or grouping the list under fund headings with no control at
-    all. Follow `DESIGN.md`; check phone width, where a row of chips for
-    many funds must scroll or wrap.
-  - **To decide**: where companies with no fund recorded appear (suggested:
-    under "All funds" and under their own "No fund recorded" choice, so
-    they are never hidden); whether the choice is kept in the address so a
-    reload and a shared link keep it; whether opening a fund's page should
-    offer "see this fund's companies" as a way in.
+  - **Decided by the owner 2026-11-22** (issue #11): a row of fund chips
+    above the company list, "All funds" first, scrolling sideways on a
+    phone; companies with no fund recorded appear under "All funds" and
+    under their own "No fund recorded" chip (shown only when there are
+    any); the chosen fund is kept in the address (`?fund=`), so a reload
+    and a shared link keep it. The owner's answer replaces the sketch on
+    the issue. Still open: whether a fund's page offers "see this fund's
+    companies".
   - **Done when**: choosing a fund narrows the list, "All funds" restores
     it, a company in two funds shows under both, companies without a fund
     stay reachable, and browser tests cover each.
@@ -129,11 +126,6 @@ so ask the owner first (item 17a).
 - **Formatting** (S, one person, when no other branches are open):
   `oxfmt --check` fails on about 157 files, so formatting is not a required
   check. Format everything once, then add the check to CI.
-- **The functions' supabase-js** (S, then a deploy of every function): the
-  server functions import `@supabase/supabase-js@2.45.4` from esm.sh, which
-  `pnpm audit` never sees (the browser has `^2.116.0`). Move them to one
-  newer pinned version. (`pnpm audit` itself is clean since 2026-11-21,
-  issue #18.)
 - **Phone widths and other browsers** (S, findings only): the browser tests
   now run on Firefox, WebKit (Safari) and an iPhone with `ALL_BROWSERS=1`
   (issue #17, part 1). CI runs desktop Chrome on every pull request and
@@ -153,6 +145,11 @@ enforcement pages, court decisions, Congress.gov, Regulations.gov dockets,
 the Unified Agenda. Compared against the owner's source registry document
 (`Regway_US_Regulatory_Source_Master_Registry_Comprehensive_V2`, kept by
 the owner; ask for it if your task needs it).
+
+Research issues: #41 (NAIC, DOJ, HHS OIG, EPA and CFPB enforcement;
+started 2026-11-22), #42 (Congress.gov, Regulations.gov, the Unified
+Agenda; waits on an api.data.gov key held by the owner, never in the
+repository), #15 (MSRB, PCAOB, CFTC and OFAC; the owner's).
 
 Also open here:
 - **Review CFTC and OFAC coverage** (S to look, M to build; owner,
@@ -186,6 +183,32 @@ Also open here:
 Each new feed adds documents the matcher pays to judge. Watch H.I.G.'s
 matching cost and the quality of matches from the newer agencies.
 
+### 19. Features adopted from Sidekick (owner 2026-11-22: build them all)
+The plan, with what each changes and why, is in
+`docs/regway-system-guide.md` §17. Each ships as its own pull request with
+unit tests; none may be tested against the real AI by a contributor (the
+owner runs anything that costs money). These change what the AI is asked,
+so they are the owner's (item 17a's rule), approved as a set on
+2026-11-22. Deploying the changed functions is a separate step the owner
+asks for.
+1. **Scored test set for matching** (M, §17.1). Code: the scoring command
+   (`pnpm eval:matching`, prints the cost and asks before calling the AI)
+   and prompt snapshots (a unit test that fails when a judge, Skeptic or
+   chat prompt changes by accident). Owner: hand-marking the right verdict
+   for about 150 documents, and running it.
+2. **Fence outside text in every prompt** (S–M, §17.2).
+3. **The rest of the spend caps** (S, §17.3): a monthly cap, a reserve for
+   click-started work, an unknown model priced at the highest known price.
+4. **Citation check in code first** (S–M, §17.4).
+5. **The Skeptic must show evidence to reject** (S, §17.5). Merge only
+   after the test set (1) shows recall up and precision not down.
+6. **Learn facts from what users type** (M, §17.6).
+7. **Chat queries the firm's data** (M, §17.7). Touches
+   `regway-ai-chat`, where issues #38 and #39 also work: check with them.
+8. **Read SEC PDFs with code first** (S, §17.8). Adds pdf.js, a new
+   dependency (owner's review).
+9. **Run traces for every AI decision** (M, §17.9).
+
 ## Owner and lead
 
 ### 16g. Security verification audit (L) — in progress
@@ -205,10 +228,9 @@ password check, password length), item 5, item 8 onwards, switching the
 Content-Security-Policy from report-only to enforced after a week without
 reports in the browser console.
 
-**CAPTCHA built 2026-11-21** (Cloudflare Turnstile on sign-up, sign-in and
-password reset). Waits on the owner: after the pull request is merged and
-live, switch on CAPTCHA protection in the Supabase dashboard with the
-Turnstile secret key.
+**CAPTCHA live 2026-11-22** (Cloudflare Turnstile on sign-up, sign-in and
+password reset): built 2026-11-21, switched on in the Supabase dashboard by
+the owner, who then signed up on regwayai.com with it.
 
 **Function access tests done 2026-11-21** (item 2, issue #13):
 `tests/unit/functionAccess.test.ts` calls all 21 functions as an attacker
@@ -218,6 +240,7 @@ would. Nothing found.
 the last 24 hours reach $15 for one firm or $40 for RegWay (secrets
 `AI_FIRM_DAILY_CAP_USD`, `AI_TOTAL_DAILY_CAP_USD`). The `/cso` run that day
 (static, partial: no scanners, skill files excluded) found nothing else.
+The rest of the spend-cap plan is Sidekick item 3 below.
 
 1. **Who can read what (row-level security).** Every table: can a signed-in
    user of firm A read or change firm B's rows? Includes `firms`, `funds`,
@@ -342,8 +365,9 @@ spend, and the owner has said no alert is wanted for now.
 | "Last confirmed over a year ago" reaching the AI | Unit tests only; nothing on H.I.G. is that old | — |
 | Saving a confirmation or a document label on real data | In Settings, as the H.I.G. user | free |
 
-Deployed functions other than the ones redeployed on 2026-10-08 were
-compared with the code by deploy time, not line by line.
+All 21 functions were deployed from `main` on 2026-11-22 (commit
+4d9e3af, the supabase-js upgrade), so production matched the repository
+that day.
 
 ### Team setup — owner
 - `main` is protected by a ruleset (pull request with one approval and

@@ -13,7 +13,7 @@
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-regulator-feeds \
 //     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { extractCountries } from '../_shared/countries.ts'
 import { HOME_COUNTRIES, JURISDICTION, REGULATOR_FEEDS, type RegulatorFeed } from '../_shared/regulatorFeeds.ts'
