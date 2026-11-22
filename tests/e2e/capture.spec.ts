@@ -5,7 +5,7 @@ import { FIRM_ID, REGS, aiReply, regulation, relevance, signIn, test, todayAt } 
 // unless asked for.
 //
 //   CAPTURE=landing pnpm exec playwright test capture   the product picture on the landing page (public/landing/)
-//   CAPTURE=screens pnpm exec playwright test capture   every screen, light and dark, into test-results/screens/
+//   CAPTURE=screens pnpm exec playwright test capture   every screen, light and dark, desktop, tablet and phone, into test-results/screens/
 //   CAPTURE=og pnpm exec playwright test capture        the picture shown when a link to the site is shared (public/og.jpg)
 //
 // Run the first one again whenever the company page changes how it looks.
@@ -14,7 +14,18 @@ const MODE = process.env.CAPTURE
 const OUT = process.env.CAPTURE_DIR ?? 'test-results/screens'
 
 const settle = (page: Page) => page.waitForTimeout(700)
-const shot = (page: Page, name: string, fullPage = true) => page.screenshot({ path: `${OUT}/${name}.png`, fullPage })
+// CAPTURE=screens takes every screen at each of these widths (issue #17).
+const SIZES = [
+  ['desktop', { width: 1440, height: 900 }],
+  ['tablet', { width: 768, height: 1024 }],
+  ['phone', { width: 390, height: 844 }],
+] as const
+const shot = async (page: Page, name: string, fullPage = true) => {
+  // A page wider than the screen scrolls sideways on a phone: say so.
+  const wider = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  if (wider > 0) console.warn(`WIDER ${name}: ${wider}px wider than the screen`)
+  await page.screenshot({ path: `${OUT}/${name}.png`, fullPage })
+}
 
 const ANALYSIS = {
   overview: 'CMS is updating hospital outpatient payment rates for 2027.',
@@ -82,88 +93,106 @@ for (const scheme of ['light', 'dark'] as const) {
     })
   })
 
-  test.describe(`screens, ${scheme}`, () => {
-    test.skip(MODE !== 'screens', 'CAPTURE=screens only')
-    test.use({ colorScheme: scheme, viewport: { width: 1440, height: 900 } })
+  // Desktop keeps the names it always had; tablet and phone are prefixed.
+  for (const [size, viewport] of SIZES) {
+    const prefix = size === 'desktop' ? scheme : `${scheme}-${size}`
+    test.describe(`screens, ${scheme}, ${size}`, () => {
+      test.skip(MODE !== 'screens', 'CAPTURE=screens only')
+      test.use({ colorScheme: scheme, viewport })
 
-    test('landing', async ({ page }) => {
-      await page.goto('/')
-      await settle(page)
-      await shot(page, `${scheme}-landing-fold`, false)
-      // Scroll through, so every section has revealed itself.
-      await page.evaluate(async () => {
-        for (let y = 0; y < document.body.scrollHeight; y += 400) {
-          window.scrollTo(0, y)
-          await new Promise(r => setTimeout(r, 120))
-        }
-        window.scrollTo(0, 0)
+      test('landing', async ({ page }) => {
+        await page.goto('/')
+        await settle(page)
+        await shot(page, `${prefix}-landing-fold`, false)
+        // Scroll through, so every section has revealed itself.
+        await page.evaluate(async () => {
+          for (let y = 0; y < document.body.scrollHeight; y += 400) {
+            window.scrollTo(0, y)
+            await new Promise(r => setTimeout(r, 120))
+          }
+          window.scrollTo(0, 0)
+        })
+        await settle(page)
+        await shot(page, `${prefix}-landing-full`)
+        await page.getByRole('banner').getByRole('button', { name: 'Sign In' }).click()
+        await settle(page)
+        await shot(page, `${prefix}-landing-signin`, false)
       })
-      await settle(page)
-      await shot(page, `${scheme}-landing-full`)
-      await page.getByRole('banner').getByRole('button', { name: 'Sign In' }).click()
-      await settle(page)
-      await shot(page, `${scheme}-landing-signin`, false)
+
+      test('signed in', async ({ page, backend }) => {
+        backend.tables.regulation_impacts.push({ regulation_id: REGS.medicare.id, firm_id: FIRM_ID, content: ANALYSIS })
+        await signIn(page)
+        await page.goto('/')
+        await page.getByRole('button', { name: 'General Partners' }).waitFor()
+        await settle(page)
+        await shot(page, `${prefix}-dashboard`)
+        await page.getByRole('button', { name: 'General Partners' }).click()
+        await page.getByRole('button', { name: 'All days' }).click()
+        await settle(page)
+        await shot(page, `${prefix}-dashboard-firm`)
+
+        await page.getByRole('button', { name: 'Portfolio Companies' }).click()
+        await settle(page)
+        await shot(page, `${prefix}-dashboard-companies`, false)
+        await page.getByRole('button', { name: 'GetixHealth Healthcare' }).click()
+        await settle(page)
+        await shot(page, `${prefix}-company`)
+        await page.getByText(REGS.medicare.title).click()
+        await settle(page)
+        await shot(page, `${prefix}-detail`)
+        await page.getByRole('button', { name: 'Impact Cards' }).click()
+        await page.getByRole('button', { name: 'Add Note' }).click()
+        await settle(page)
+        await shot(page, `${prefix}-detail-cards`)
+
+        await page.goto('/')
+        await page.getByTitle('Profile', { exact: true }).click()
+        await settle(page)
+        await shot(page, `${prefix}-account`)
+        await page.getByRole('button', { name: 'Firm', exact: true }).click()
+        await settle(page)
+        await page.getByRole('button', { name: /Harbor Capital/ }).first().click().catch(() => {})
+        await settle(page)
+        await shot(page, `${prefix}-profile-firm`)
+        for (const tab of ['Funds', 'Portfolio Companies', 'Found on the Web', 'Dismissed', 'Hidden']) {
+          await page.getByRole('button', { name: tab, exact: true }).click()
+          await settle(page)
+          await shot(page, `${prefix}-profile-${tab.toLowerCase().replace(/ /g, '-')}`)
+        }
+      })
+
+      test('public pages', async ({ page }) => {
+        for (const slug of ['about', 'sources', 'legal', 'privacy']) {
+          await page.goto(`/${slug}`)
+          await settle(page)
+          await shot(page, `${prefix}-${slug}`)
+        }
+      })
+
+      test('chat', async ({ page, backend }) => {
+        backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('The rule raises outpatient rates by **2.6%**.\n\n- GetixHealth bills these codes\n- Update the charge master before January', [{ url: 'https://example.com/rule', title: 'Federal Register' }]) })
+        await signIn(page)
+        await page.goto('/')
+        await page.getByRole('button', { name: 'General Partners' }).waitFor()
+        await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
+        await settle(page)
+        await shot(page, `${prefix}-chat-empty`, false)
+        // The placeholder is shorter on a narrow screen.
+        await page.getByPlaceholder(/^Ask RegWay AI( about regulatory| …|…)/).last().fill('What changes for GetixHealth?')
+        await page.keyboard.press('Enter')
+        await page.waitForTimeout(2500)
+        await shot(page, `${prefix}-chat`, false)
+      })
+
+      test('onboarding', async ({ page, backend }) => {
+        backend.tables.firm_members = []
+        await signIn(page)
+        await page.goto('/')
+        await settle(page)
+        await shot(page, `${prefix}-onboarding`, false)
+      })
     })
-
-    test('signed in', async ({ page, backend }) => {
-      backend.tables.regulation_impacts.push({ regulation_id: REGS.medicare.id, firm_id: FIRM_ID, content: ANALYSIS })
-      await signIn(page)
-      await page.goto('/')
-      await page.getByRole('button', { name: 'General Partners' }).waitFor()
-      await settle(page)
-      await shot(page, `${scheme}-dashboard`)
-      await page.getByRole('button', { name: 'General Partners' }).click()
-      await page.getByRole('button', { name: 'All days' }).click()
-      await settle(page)
-      await shot(page, `${scheme}-dashboard-firm`)
-
-      await page.getByRole('button', { name: 'Portfolio Companies' }).click()
-      await settle(page)
-      await shot(page, `${scheme}-dashboard-companies`, false)
-      await page.getByRole('button', { name: 'GetixHealth Healthcare' }).click()
-      await settle(page)
-      await shot(page, `${scheme}-company`)
-      await page.getByText(REGS.medicare.title).click()
-      await settle(page)
-      await shot(page, `${scheme}-detail`)
-      await page.getByRole('button', { name: 'Impact Cards' }).click()
-      await page.getByRole('button', { name: 'Add Note' }).click()
-      await settle(page)
-      await shot(page, `${scheme}-detail-cards`)
-
-      await page.goto('/')
-      await page.getByTitle('Profile', { exact: true }).click()
-      await settle(page)
-      await shot(page, `${scheme}-account`)
-      await page.getByRole('button', { name: 'Firm', exact: true }).click()
-      await settle(page)
-      await page.getByRole('button', { name: /Harbor Capital/ }).first().click().catch(() => {})
-      await settle(page)
-      await shot(page, `${scheme}-profile-firm`)
-    })
-
-    test('chat', async ({ page, backend }) => {
-      backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('The rule raises outpatient rates by **2.6%**.\n\n- GetixHealth bills these codes\n- Update the charge master before January', [{ url: 'https://example.com/rule', title: 'Federal Register' }]) })
-      await signIn(page)
-      await page.goto('/')
-      await page.getByRole('button', { name: 'General Partners' }).waitFor()
-      await page.getByPlaceholder(/Ask RegWay AI about/).first().click()
-      await settle(page)
-      await shot(page, `${scheme}-chat-empty`, false)
-      await page.getByPlaceholder(/fund exposure/).fill('What changes for GetixHealth?')
-      await page.keyboard.press('Enter')
-      await page.waitForTimeout(2500)
-      await shot(page, `${scheme}-chat`, false)
-    })
-
-    test('onboarding', async ({ page, backend }) => {
-      backend.tables.firm_members = []
-      await signIn(page)
-      await page.goto('/')
-      await settle(page)
-      await shot(page, `${scheme}-onboarding`, false)
-    })
-  })
+  }
 }
 
 test.describe('screens, phone', () => {
