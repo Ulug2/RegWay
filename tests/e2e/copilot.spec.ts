@@ -1,6 +1,11 @@
 import type { Page } from '@playwright/test'
 import { aiReply, expect, signIn, test, USER, FIRM_ID, type MockBackend } from './mockBackend'
 
+// These use the computer layout, where the session context sits beside the
+// chat. On a phone it opens over the chat from a button: 'the chat on a
+// phone' below covers that.
+const DESKTOP_CONTEXT = 'computer layout; the phone layout is covered by "the chat on a phone"'
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 const chatCalls = (backend: MockBackend) => backend.called('POST', 'functions/v1/regway-ai-chat').map(c => c.body)
@@ -175,7 +180,8 @@ test.describe('closing the chat while an answer is being written', () => {
 })
 
 test.describe('suggested questions', () => {
-  test('are about the company the chat is focused on', async ({ page }) => {
+  test('are about the company the chat is focused on', async ({ page, isMobile }) => {
+    test.skip(isMobile, DESKTOP_CONTEXT)
     await openCopilot(page)
     await expect(page.getByRole('button', { name: 'What fund deadlines are coming up?' })).toBeVisible()
     await page.getByRole('complementary', { name: 'Session context' }).getByRole('button', { name: /GetixHealth/ }).click()
@@ -275,7 +281,8 @@ test.describe('chat sidebar and session context', () => {
     await expect(page.getByRole('complementary', { name: 'Chats' }).getByText('Brand new question')).toBeVisible()
   })
 
-  test('picking a company before the first message starts the chat focused on it', async ({ page, backend }) => {
+  test('picking a company before the first message starts the chat focused on it', async ({ page, backend, isMobile }) => {
+    test.skip(isMobile, DESKTOP_CONTEXT)
     backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('About GetixHealth.') })
     await openCopilot(page)
     await context(page).getByRole('button', { name: 'GetixHealth' }).click()
@@ -289,7 +296,8 @@ test.describe('chat sidebar and session context', () => {
     expect(call.refocus).toBeUndefined()
   })
 
-  test('switching focus mid-chat sends the switch once, with the next message', async ({ page, backend }) => {
+  test('switching focus mid-chat sends the switch once, with the next message', async ({ page, backend, isMobile }) => {
+    test.skip(isMobile, DESKTOP_CONTEXT)
     backend.functions['regway-ai-chat'] = ({ message }) => ({ sse: aiReply(`Answer to: ${message}`) })
     await openCopilot(page)
     await ask(page, 'Firm question')
@@ -313,7 +321,8 @@ test.describe('chat sidebar and session context', () => {
     expect(third.refocus).toEqual({ type: 'firm' })
   })
 
-  test('the session context panel closes and reopens, and lists attached files', async ({ page, backend }) => {
+  test('the session context panel closes and reopens, and lists attached files', async ({ page, backend, isMobile }) => {
+    test.skip(isMobile, DESKTOP_CONTEXT)
     backend.functions['regway-ai-chat'] = () => ({ sse: aiReply('Read it.') })
     await openCopilot(page)
     await expect(context(page).getByText('None attached')).toBeVisible()
@@ -330,7 +339,8 @@ test.describe('chat sidebar and session context', () => {
     await expect(context(page)).toBeVisible()
   })
 
-  test('funds and companies are listed the moment the chat opens, from what the app already loaded', async ({ page }) => {
+  test('funds and companies are listed the moment the chat opens, from what the app already loaded', async ({ page, isMobile }) => {
+    test.skip(isMobile, DESKTOP_CONTEXT)
     await signIn(page)
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Dana')
@@ -344,7 +354,8 @@ test.describe('chat sidebar and session context', () => {
     await expect(context(page).getByRole('button', { name: 'GetixHealth' })).toBeVisible({ timeout: 1_000 })
   })
 
-  test('the funds and the companies lists fold away separately', async ({ page }) => {
+  test('the funds and the companies lists fold away separately', async ({ page, isMobile }) => {
+    test.skip(isMobile, DESKTOP_CONTEXT)
     await openCopilot(page)
     await context(page).getByRole('button', { name: 'Hide Active Funds' }).click()
     await expect(context(page).getByRole('button', { name: /Harbor Fund II/ })).toHaveCount(0)

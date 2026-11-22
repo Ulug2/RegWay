@@ -1,6 +1,9 @@
 import type { Page } from '@playwright/test'
 import { FIRM_ID, REGS, expect, signIn, test } from './mockBackend'
 
+// The button's wording is shorter on a phone.
+const WRONG_MATCH = /^(This match looks wrong|Wrong match)\?$/
+
 const ANALYSIS = {
   overview: 'CMS is updating hospital outpatient payment rates for 2027.',
   scope: 'Hospitals paid under the outpatient system.',
@@ -68,7 +71,7 @@ test.describe('a development’s page', () => {
     backend.functions['rematch-regulation'] = () => ({ json: { relevant: false, reason: 'GetixHealth no longer bills Medicare, so the rule creates no obligation.', verdicts: [{ entity: 'GetixHealth', relevant: false, reason: 'GetixHealth no longer bills Medicare, so the rule creates no obligation.' }] } })
     await openCompanyItem(page)
 
-    await page.getByRole('button', { name: 'This match looks wrong?' }).click()
+    await page.getByRole('button', { name: WRONG_MATCH }).click()
     await page.getByPlaceholder(/what's wrong with this match/).fill('We stopped billing Medicare in 2025.')
     await page.getByRole('button', { name: 'Re-check this match' }).click()
 
@@ -94,7 +97,7 @@ test.describe('a development’s page', () => {
     await page.getByRole('button', { name: 'General Partners' }).click()
     await page.getByText(REGS.tariff.title).click()
 
-    await page.getByRole('button', { name: 'This match looks wrong?' }).click()
+    await page.getByRole('button', { name: WRONG_MATCH }).click()
     await page.getByRole('button', { name: 'Re-check this match' }).click()
     await expect(page.getByText('Re-checked: still considered relevant.')).toBeVisible()
     await expect(page.getByText('Aero Logistics · relevant')).toBeVisible()
@@ -108,7 +111,7 @@ test.describe('a development’s page', () => {
     await page.getByRole('button', { name: 'General Partners' }).click()
     await page.getByText(REGS.adviserCase.title).click()
     await expect(page.getByRole('heading', { name: REGS.adviserCase.title })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'This match looks wrong?' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: WRONG_MATCH })).toHaveCount(0)
   })
 })
 

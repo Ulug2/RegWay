@@ -26,6 +26,22 @@
   Supabase dashboard.
 - **Found:** Profile's account email loads after the page (roadmap, Known
   defects).
+### Browser tests on Firefox, Safari's engine and a phone (2026-11-22, issue #17 part 1)
+- `ALL_BROWSERS=1 pnpm test:e2e` adds Firefox, WebKit and an iPhone 14 to
+  desktop Chrome (`playwright.config.ts`); CI still runs Chrome only.
+- **Firefox:** every test passed. **WebKit:** one skipped (Safari's Tab
+  reaches only form fields unless the user turns on "Press Tab to
+  highlight each item"). **Phone:** 17 failures, all from tests written for
+  the computer layout, none from the app: the header's "Get Started" is
+  hidden on a phone by design (the hero's is right below), the re-check
+  button reads "Wrong match?", the chats list has its own close button,
+  mobile WebKit has no mouse wheel (`scrollDown` in `mockBackend.ts`), and
+  six chat tests use the side-by-side session context (skipped on a phone;
+  "the chat on a phone" covers that layout, and passed).
+- **Verified:** all four browsers, 760 tests: 681 passed and 64 skipped in
+  21.7 minutes while the machine was also busy; the 15 that timed out
+  under that load passed when run again alone. Chrome alone takes 3.5 to
+  5 minutes.
 
 ### Source names in one place (2026-11-21)
 - The names RegWay shows for its sources were in three files. All three
