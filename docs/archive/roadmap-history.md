@@ -25,6 +25,23 @@
   tests pass; looked at in light and dark at 1280 px and 390 px with 8
   funds. Not decided: whether a fund's own page links to "see this fund's
   companies".
+### The matching score command (2026-11-22, Sidekick item 1)
+- `pnpm eval:matching <set.json> [--skeptic] [--yes]` (Deno,
+  `scripts/eval-matching.ts`) runs RegWay's own regulatory and
+  geopolitical judges, and with `--skeptic` the Skeptic, over a
+  hand-marked set, exactly as the matchers call them, with no database;
+  scores precision and recall over (document, entity) pairs, documents
+  exactly right, and the cost from the AI client's own usage rows; lists
+  each mistake with the marker's reason. It checks the set first (unknown
+  entity names, repeated ids, funds on geopolitical items), prints the
+  estimated cost and asks before sending anything. Results go in
+  `plans/eval-history.md`. The key is read from
+  `supabase/functions/.env`.
+- **Verified:** 7 unit tests with the AI stubbed (the arithmetic; the
+  set's checks; the estimate; a run through the real judges scoring a
+  stubbed answer, models and cost included); `deno check` passes; run for
+  real up to the question and declined: nothing sent. Never run against
+  the real AI. The real set is the owner's to mark.
 ### What each AI call was sent and answered, kept 30 days (2026-11-22, Sidekick item 9, storage)
 - Migration 0052 adds `ai_traces` (service role only; deleted with the
   firm; a daily timer, `ai-traces-30-days`, deletes rows older than 30

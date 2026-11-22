@@ -172,13 +172,14 @@ owner runs anything that costs money). These change what the AI is asked,
 so they are the owner's (item 17a's rule), approved as a set on
 2026-11-22. Deploying the changed functions is a separate step the owner
 asks for.
-1. **Scored test set for matching** (M, §17.1). Code: the scoring command
-   (`pnpm eval:matching`, prints the cost and asks before calling the AI)
-   and prompt snapshots (a unit test that fails when a judge, Skeptic or
-   chat prompt changes by accident). Owner: hand-marking the right verdict
-   for about 150 documents, and running it. **Prompt snapshots built
-   2026-11-22** (`tests/unit/prompts/`, 16 prompts; the SEC proceedings
-   extraction is not covered yet). The scoring command is still to do.
+1. **Scored test set for matching** (M, §17.1). Built 2026-11-22: the
+   prompt snapshots (`tests/unit/prompts/`) and the scoring command
+   (`pnpm eval:matching <set.json> [--skeptic]`: prints the estimated cost
+   and asks before calling the AI; results go in `plans/eval-history.md`).
+   Owner: mark the right verdict for about 150 documents for H.I.G. in the
+   format of `tests/eval/matching-set.json`, and run it. Not covered yet:
+   the enforcement judge (not exported from its function) and the SEC
+   proceedings extraction's prompt.
 2. **Fence outside text in every prompt** (S–M, §17.2): built 2026-11-22
    (history). Left: record a flagged text in `usage_events` and show it to
    the owner; deploy (changes what every AI job is sent).
