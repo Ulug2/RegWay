@@ -22,9 +22,10 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',
   },
-  // Desktop Chrome always. ALL_BROWSERS=1 adds Firefox, Safari's engine
-  // (WebKit) and a phone (issue #17); CI installs only Chrome, so they run
-  // by hand: `pnpm exec playwright install firefox webkit` once, then
+  // Desktop Chrome always (every pull request). ALL_BROWSERS=1 adds Firefox,
+  // Safari's engine (WebKit) and a phone (issue #17); WebKit and the phone
+  // run nightly in CI (.github/workflows/nightly-browsers.yml). By hand:
+  // `pnpm exec playwright install firefox webkit` once, then
   // `ALL_BROWSERS=1 pnpm test:e2e`.
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
