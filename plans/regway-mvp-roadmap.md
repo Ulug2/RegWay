@@ -213,7 +213,9 @@ asks for.
    `regway-ai-chat`, where issues #38 and #39 also work: check with them.
 8. **Read SEC PDFs with code first** (S, §17.8). Adds pdf.js, a new
    dependency (owner's review).
-9. **Run traces for every AI decision** (M, §17.9).
+9. **Run traces for every AI decision** (M, §17.9): storage built
+   2026-11-22 (migration 0052, history). Left: the owner-only page, export
+   to the test set. Waits on the owner: apply 0052, then deploy.
 
 ## Owner and lead
 

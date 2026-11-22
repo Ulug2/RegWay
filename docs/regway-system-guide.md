@@ -540,7 +540,8 @@ also removes the jobs there.
   `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, the service key; switches
   `SKEPTIC_MODE`, `CHAT_REVIEW`; caps `AI_FIRM_DAILY_CAP_USD`,
   `AI_TOTAL_DAILY_CAP_USD`, `AI_FIRM_MONTHLY_CAP_USD`,
-  `AI_TOTAL_MONTHLY_CAP_USD`, `AI_INTERACTIVE_RESERVE`. The timers read the service key from the
+  `AI_TOTAL_MONTHLY_CAP_USD`, `AI_INTERACTIVE_RESERVE`; `AI_TRACES` (on
+  unless `off`). The timers read the service key from the
   database vault.
 - **Rate limits** on every AI-spending function a user can trigger
   (`check_rate_limit`: 3 a day for web research, 6 to 30 an hour for the
@@ -855,6 +856,26 @@ badly ("how many German companies had sanctions matches this month?").
 - Only a scanned PDF (no text layer) goes to Sonnet as today.
 
 ### 17.9 Run traces for every AI decision
+
+**Storage built 2026-11-22** (migration 0052, `_shared/ai/trace.ts`): every
+AI call sent with a usage target (every job but the chat's streamed
+answer, which is kept in its messages) stores its request and answer in
+`ai_traces`, for 30 days (a daily timer deletes older rows; a firm's go
+with the firm). Very long strings are cut at 60,000 characters and PDF
+data is replaced by its size. Service role only. Off with the secret
+`AI_TRACES=off`. Read them in SQL for now, for example the judge batches
+behind one development:
+
+```sql
+select created_at, function_name, request, response
+from ai_traces
+where function_name like 'match-relevance%' and request::text like '%<title words>%'
+order by created_at desc;
+```
+
+Still to do from the plan below: the owner-only page, and exporting a
+trace into the test set (17.1). The Skeptic's review is its own trace
+(`…/skeptic`); the final rows are in `regulation_relevance`.
 
 `usage_events` records cost and `verdict_reviews` records the Skeptic, but
 not what the judge was told. When a match is wrong, nobody can see why.

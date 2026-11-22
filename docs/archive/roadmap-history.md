@@ -9,6 +9,21 @@
 >
 > New entries go directly below this box, newest first.
 
+### What each AI call was sent and answered, kept 30 days (2026-11-22, Sidekick item 9, storage)
+- Migration 0052 adds `ai_traces` (service role only; deleted with the
+  firm; a daily timer, `ai-traces-30-days`, deletes rows older than 30
+  days). `_shared/ai/client.ts` stores the request and the answer (content
+  and stop reason) after every call sent with a usage target, and the
+  error for one that was sent and failed; nothing for a call refused by a
+  spend cap. `_shared/ai/trace.ts` cuts strings over 60,000 characters and
+  replaces PDF data with its size; a failure to store never breaks the
+  call. `AI_TRACES=off` turns it off.
+- **Verified:** 8 unit tests (stored as sent; failed calls; refused calls
+  and switched off store nothing; a missing table doesn't break the call;
+  shortening); all unit tests pass; the migration ran on a local database,
+  the timer is scheduled, its delete keeps a fresh row and removes a
+  31-day-old one, and signed-out callers are refused. Not applied in
+  production, not deployed. No page yet.
 ### Outside text fenced in every prompt (2026-11-22, Sidekick item 2)
 - `_shared/security/guard.ts` (from Sidekick's `guard.ts`): `untrusted()`
   wraps outside text in an `<untrusted_content source="…">` fence it can't
