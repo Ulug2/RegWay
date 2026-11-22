@@ -701,6 +701,14 @@ first, because it is how every later item proves it helped.
 
 ### 17.1 A scored test set for matching
 
+**Tools built 2026-11-22; the set itself is the owner's.** Prompt snapshots
+(`tests/unit/promptSnapshots.test.ts`); `pnpm eval:matching` runs the
+regulatory and geopolitical judges, with and without the Skeptic, over a
+set in the format of `tests/eval/matching-set.json` (four invented
+documents), and prints precision, recall, documents exactly right, cost
+and each mistake. It estimates the cost and asks before sending anything.
+Not covered yet: the enforcement judge.
+
 Today accuracy is measured by hand ("10 of 11 right" after the Skeptic,
 §7.4). That counts only the matches a user saw. Nothing measures the real
 matches the Skeptic hid, so over-rejection is invisible.

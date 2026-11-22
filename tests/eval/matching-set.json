@@ -1,0 +1,64 @@
+{
+  "name": "EXAMPLE (format only)",
+  "notes": "Four invented documents showing the format. Replace with about 150 documents from the regulations table, each with the right answer for H.I.G. marked by hand, and H.I.G.'s profile as it stood on the day of marking (system guide §17.1). Run: pnpm eval:matching tests/eval/<file>.json --skeptic",
+  "firm": {
+    "name": "Harbor Capital",
+    "hq_location": "Miami, Florida",
+    "jurisdictions": ["United States"],
+    "profile": { "firm_type": "Private equity", "adviser_registration": "SEC-registered" }
+  },
+  "funds": [
+    { "name": "Harbor Fund I", "structure": "Delaware LP", "jurisdictions": ["United States"], "profile": { "strategy": "Buyout" } }
+  ],
+  "companies": [
+    { "name": "GetixHealth", "hq_location": "Houston, Texas", "sectors": ["Healthcare"], "regions": ["United States"], "offerings": "Revenue cycle management for hospitals", "profile": {} },
+    { "name": "Aero Logistics", "hq_location": "Naples, Italy", "sectors": ["Aerospace"], "regions": ["Italy"], "offerings": "Aircraft parts", "profile": {} }
+  ],
+  "holdings": [
+    { "fund": "Harbor Fund I", "company": "GetixHealth" },
+    { "fund": "Harbor Fund I", "company": "Aero Logistics" }
+  ],
+  "documents": [
+    {
+      "id": "ex-form-pf",
+      "category": "regulatory",
+      "title": "Form PF; Reporting Requirements for Private Fund Advisers",
+      "agency": "Securities and Exchange Commission",
+      "jurisdiction": "Federal",
+      "summary": "Amends Form PF to require large private fund advisers to file current reports within 72 hours of certain events.",
+      "expected": [{ "scope": "firm" }],
+      "why": "The firm is an SEC-registered private fund adviser."
+    },
+    {
+      "id": "ex-medicare",
+      "category": "regulatory",
+      "title": "Medicare Program; Hospital Outpatient Prospective Payment System Update",
+      "agency": "Centers for Medicare & Medicaid Services",
+      "jurisdiction": "Federal",
+      "summary": "Updates payment rates and billing requirements for hospital outpatient services.",
+      "expected": [{ "scope": "company", "name": "GetixHealth" }],
+      "why": "GetixHealth runs revenue cycle management (billing) for hospitals."
+    },
+    {
+      "id": "ex-truck-hours",
+      "category": "regulatory",
+      "title": "Hours of Service of Drivers",
+      "agency": "Federal Motor Carrier Safety Administration",
+      "jurisdiction": "Federal",
+      "summary": "Changes the limits on driving time for commercial truck drivers.",
+      "expected": [],
+      "why": "No entity operates trucks."
+    },
+    {
+      "id": "ex-italy-tariff",
+      "category": "geopolitical",
+      "title": "Section 232 Tariff on Aircraft Parts From Italy",
+      "agency": "Office of the United States Trade Representative",
+      "summary": "Imposes a 25% tariff on aircraft parts imported from Italy.",
+      "countries": ["Italy"],
+      "published_date": "2026-11-01",
+      "expected": [{ "scope": "company", "name": "Aero Logistics" }],
+      "why": "Aero Logistics makes aircraft parts in Naples."
+    }
+  ]
+}
