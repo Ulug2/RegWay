@@ -799,6 +799,14 @@ cited. Code can answer part of that for free and can't be fooled:
 
 ### 17.5 The Skeptic must show evidence to reject
 
+**Built 2026-11-22, not merged until measured** (pull request held for the
+test set, 17.1): a reject or move names the checklist item (`check`) and
+quotes its `evidence`; code looks for the quote, word for word (case,
+spacing, curly quotes ignored; at least 12 characters), in the recorded
+facts and the match's own document. Without it the match is kept, its
+reason followed by "The reviewer doubted this: …", and `verdict_reviews`
+records the keep with the reason "Doubted, no evidence quoted: …".
+
 A critic that can overrule freely will over-reject. Sidekick's math
 double-check may only overrule an answer with evidence from code; the same
 rule for the Skeptic:

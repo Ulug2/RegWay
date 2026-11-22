@@ -22,8 +22,8 @@ const items: VerdictUnderReview[] = [
 ]
 
 const reviews = [
-  { index: 0, decision: 'reject', scope: 'firm', entity_name: '', reason: 'An approval of a state program creates no obligation for the firm.', unsupported_assumptions: ['portfolio companies with air emissions in Florida'] },
-  { index: 1, decision: 'move', scope: 'company', entity_name: 'aero logistics', reason: 'Aero Logistics is recorded as operating in Italy.', unsupported_assumptions: [] },
+  { index: 0, decision: 'reject', scope: 'firm', entity_name: '', reason: 'An approval of a state program creates no obligation for the firm.', check: 5, evidence: 'Florida air permit program approval', unsupported_assumptions: ['portfolio companies with air emissions in Florida'] },
+  { index: 1, decision: 'move', scope: 'company', entity_name: 'aero logistics', reason: 'Aero Logistics is recorded as operating in Italy.', check: 2, evidence: 'Naples, Italy', unsupported_assumptions: [] },
   { index: 2, decision: 'keep', scope: 'company', entity_name: 'GetixHealth', reason: 'Recorded revenue cycle management activity.', unsupported_assumptions: [] },
 ]
 
@@ -229,5 +229,57 @@ describe('regionFact', () => {
     const { regionFact } = await import('../../supabase/functions/_shared/roles/entityContext.ts')
     expect(regionFact(['Italy', 'United Kingdom', 'France', 'Italy'])).toBe('located in the EU (Italy, France); and in the UK, which is not in the EU')
     expect(regionFact(['United States'])).toBe('')
+  })
+})
+
+describe('the Skeptic must show evidence to reject (system guide §17.5)', () => {
+  const run = async (review: Record<string, unknown>) => {
+    const db = fakeClient()
+    stubModel({ submit_reviews: { reviews: [{ index: 0, scope: 'firm', entity_name: '', unsupported_assumptions: [], ...review }] } })
+    const [result] = await reviewVerdicts({ record: record(), category: 'regulatory', items: [items[0]] }, { admin: db as never, functionName: 'match-relevance/skeptic', firmId: FIRM_ID })
+    return result
+  }
+  const reject = { decision: 'reject', reason: 'A program approval binds no one.' }
+
+  it('applies a rejection whose quote is in the document or in what is recorded', async () => {
+    expect((await run({ ...reject, check: 5, evidence: 'Florida air permit program approval' })).decision).toBe('reject')
+    expect((await run({ ...reject, check: 1, evidence: 'hq_location: Miami, Florida' })).decision).toBe('reject')
+  })
+
+  it('ignores case, spacing, curly quotes and the quote marks around it', async () => {
+    expect((await run({ ...reject, check: 5, evidence: '“florida  AIR permit program approval”' })).decision).toBe('reject')
+  })
+
+  it('keeps the match, with the doubt, when the quote is not there, is too short, or names no check', async () => {
+    for (const bad of [
+      { check: 5, evidence: 'This approval creates no new obligations for anyone.' },
+      { check: 5, evidence: 'Florida' },
+      { check: 0, evidence: 'Florida air permit program approval' },
+      { check: 12, evidence: 'Florida air permit program approval' },
+      { check: 5 },
+    ]) {
+      expect(await run({ ...reject, ...bad })).toMatchObject({ decision: 'keep', scope: 'firm', entity_name: null, doubt: 'A program approval binds no one.' })
+    }
+  })
+
+  it('a move needs evidence too', async () => {
+    expect(await run({ decision: 'move', scope: 'company', entity_name: 'Aero Logistics', reason: 'Runs through Aero.', check: 2, evidence: 'operates somewhere in Europe' })).toMatchObject({ decision: 'keep', scope: 'firm', doubt: 'Runs through Aero.' })
+  })
+
+  it('the kept match shows the doubt beside its reason, and the audit row says why it was kept', async () => {
+    setEnv('SKEPTIC_MODE', 'on')
+    const db = fakeClient()
+    stubModel({ submit_reviews: { reviews: [{ index: 0, scope: 'firm', entity_name: '', unsupported_assumptions: [], ...reject, check: 5, evidence: 'not in the text at all, anywhere' }] } })
+    const [verdict] = await applySkeptic(db as never, {
+      firmId: FIRM_ID,
+      category: 'regulatory',
+      entities,
+      candidates: [{ id: 'reg-air', title: 'Florida air permit program approval', agency: 'Environmental Protection Agency', summary: 'Approves a state program.' }],
+      verdicts: [{ index: 0, relevant: true, reason: 'H.I.G. is headquartered in Florida.', scope: 'firm', entity_name: null }],
+      functionName: 'match-relevance',
+      record: record(),
+    })
+    expect(verdict).toMatchObject({ relevant: true, reason: 'H.I.G. is headquartered in Florida. The reviewer doubted this: A program approval binds no one.' })
+    expect(db.ran('verdict_reviews', 'insert')[0].payload).toEqual([expect.objectContaining({ decision: 'keep', reason: 'Doubted, no evidence quoted: A program approval binds no one.' })])
   })
 })

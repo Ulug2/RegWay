@@ -207,7 +207,8 @@ asks for.
    `_shared/ai/client.ts`); a later migration then drops `ai_spend_check`.
 4. **Citation check in code first** (S–M, §17.4).
 5. **The Skeptic must show evidence to reject** (S, §17.5). Merge only
-   after the test set (1) shows recall up and precision not down.
+   after the test set (1) shows recall up and precision not down. Built
+   2026-11-22 in a pull request held for that measurement.
 6. **Learn facts from what users type** (M, §17.6).
 7. **Chat queries the firm's data** (M, §17.7). Touches
    `regway-ai-chat`, where issues #38 and #39 also work: check with them.

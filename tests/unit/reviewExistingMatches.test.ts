@@ -35,7 +35,7 @@ function database(state: State) {
 
 const REVIEWS = {
   reviews: [
-    { index: 0, decision: 'reject', scope: 'firm', entity_name: '', reason: 'A state program approval binds no one here.', unsupported_assumptions: [] },
+    { index: 0, decision: 'reject', scope: 'firm', entity_name: '', reason: 'A state program approval binds no one here.', check: 5, evidence: 'Florida air permit program approval', unsupported_assumptions: [] },
     { index: 1, decision: 'keep', scope: 'company', entity_name: 'GetixHealth', reason: 'Recorded billing activity.', unsupported_assumptions: [] },
   ],
 }
@@ -134,6 +134,14 @@ describe('review-existing-matches', () => {
     expect(updates[0].payload).toEqual({ relevance_reason: 'Aero Logistics serves defense manufacturers. Depends on facts not recorded: whether Aero Logistics ships defense articles.' })
     expect(hasFilter(updates[0], 'eq', 'id', 'rel-itar')).toBe(true)
     expect(json).toMatchObject({ applied: 1, skipped: 1, appliedIds: ['rev-3'] })
+  })
+
+  it('a keep recorded because a rejection quoted no evidence shows the doubt beside the reason', async () => {
+    const stored = [
+      { id: 'rev-5', relevance_id: 'rel-pf', regulation_id: 'reg-pf', decision: 'keep', scope: 'firm', entity_name: null, reason: 'Doubted, no evidence quoted: Form PF may not apply below the threshold.', unsupported_assumptions: [], original: { reason: 'H.I.G. files Form PF.' } },
+    ]
+    const { db } = await call({ stored }, { firmId: FIRM_ID, apply: ['rev-5'] })
+    expect(db.ran('regulation_relevance', 'update')[0].payload).toEqual({ relevance_reason: 'H.I.G. files Form PF. The reviewer doubted this: Form PF may not apply below the threshold.' })
   })
 
   it('reviews again only what this round has not reviewed, when given the time it started', async () => {

@@ -28,6 +28,10 @@ export function skepticMode(): SkepticMode {
 // The marker a rejected match is stored with, after "NOT_RELEVANT: ".
 export const REVIEWED_PREFIX = 'Reviewed: '
 
+// How a kept match whose rejection quoted no evidence is recorded in
+// `verdict_reviews.reason` (system guide §17.5).
+export const DOUBT_PREFIX = 'Doubted, no evidence quoted: '
+
 export interface ReviewCandidate {
   id: string
   title: string
@@ -85,7 +89,7 @@ export const reviewRow = (
   model: MODEL_FOR.skeptic,
   ...('error' in review
     ? { decision: 'failed' as const, scope: null, entity_name: null, reason: review.error, unsupported_assumptions: [] }
-    : { decision: review.decision, scope: review.scope, entity_name: review.entity_name, reason: review.reason, unsupported_assumptions: review.unsupported_assumptions }),
+    : { decision: review.decision, scope: review.scope, entity_name: review.entity_name, reason: review.doubt ? `${DOUBT_PREFIX}${review.doubt}` : review.reason, unsupported_assumptions: review.unsupported_assumptions }),
 })
 
 // The verdict a review leaves behind.
@@ -93,10 +97,17 @@ export const reviewRow = (
 // where the firm reads why it is shown.
 export const dependsOnNote = (unrecorded: string[]): string => (unrecorded.length ? `Depends on facts not recorded: ${unrecorded.join('; ')}.` : '')
 
+// What a kept match adds to its reason: the facts it depends on, and a
+// doubt the Skeptic raised without evidence.
+export function keptNote(review: { reason: string; unsupported_assumptions?: string[]; doubt?: string }): string {
+  const doubt = review.doubt ?? (review.reason.startsWith(DOUBT_PREFIX) ? review.reason.slice(DOUBT_PREFIX.length) : '')
+  return [dependsOnNote(review.unsupported_assumptions ?? []), doubt ? `The reviewer doubted this: ${doubt}` : ''].filter(Boolean).join(' ')
+}
+
 export function applyReview(verdict: Verdict, review: VerdictReview): Verdict {
   if (review.decision === 'reject') return { ...verdict, relevant: false, reason: `${REVIEWED_PREFIX}${review.reason}` }
   if (review.decision === 'move') return { ...verdict, scope: review.scope, entity_name: review.entity_name, reason: review.reason }
-  const note = dependsOnNote(review.unsupported_assumptions)
+  const note = keptNote(review)
   return note ? { ...verdict, reason: `${verdict.reason} ${note}` } : verdict
 }
 
