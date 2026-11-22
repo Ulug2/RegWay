@@ -4,7 +4,8 @@ import { callFunction } from './functions'
 import { fromRow, metaOf, toRow, type Answers, type ProfileMeta, type Scope } from './questionnaire'
 import type { Finding, FoundEntity, ResearchRun } from './research'
 import { asSaved, firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
-import { collapseDuplicates, isAnnouncement, isOfficialDocument, versionsOf, SOURCE_NAMES } from './duplicates'
+import { collapseDuplicates, isAnnouncement, isOfficialDocument, versionsOf } from './duplicates'
+import { FEED_LABELS, PUBLISHER_NAMES } from './sourceList'
 import type { AiContext, Firm, Fund, FundHolding, ImpactContent, MatchedRegulation, PortfolioCompany, PublishedVersion, Regulation, RegulationNote } from './types'
 
 export async function getFirmId(): Promise<string | null> {
@@ -649,18 +650,6 @@ export async function restoreHiddenMatch(relevanceId: string): Promise<void> {
 // Data source health
 // ---------------------------------------------------------------------------
 
-const SOURCE_LABELS: Record<string, string> = {
-  federal_register: 'Federal Register',
-  sec_enforcement: 'SEC litigation releases',
-  finra_enforcement: 'FINRA enforcement',
-  sec_admin_proceedings: 'SEC administrative proceedings',
-  state_travel_advisories: 'State Department travel advisories',
-  // sync-regulator-feeds: SEC, FTC, CFPB, FCA, PRA, UK legislation, ESMA, EUR-Lex.
-  regulator_feeds: 'Regulator feeds (U.S., UK and EU)',
-  // run-matching: the scheduled AI matching of new developments to firms.
-  matching: 'Automatic matching',
-}
-
 // Recorded in sync_runs but not a data source: a failed run delays the
 // grouping of duplicates or an alert email, it doesn't leave anything
 // missing from the dashboard.
@@ -685,11 +674,11 @@ export async function fetchFailingSources(): Promise<string[]> {
         !!feed && typeof feed === 'object' && 'source' in feed && typeof feed.source === 'string' &&
         'failures' in feed && typeof feed.failures === 'number' && feed.failures >= 3)
       if (feeds.length) {
-        names.push(...feeds.map(feed => SOURCE_NAMES[feed.source] ?? feed.source))
+        names.push(...feeds.map(feed => PUBLISHER_NAMES[feed.source] ?? feed.source))
         continue
       }
     }
-    names.push(SOURCE_LABELS[source] ?? source)
+    names.push(FEED_LABELS[source] ?? source)
   }
   return [...new Set(names)]
 }

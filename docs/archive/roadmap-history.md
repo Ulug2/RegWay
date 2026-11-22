@@ -9,6 +9,17 @@
 >
 > New entries go directly below this box, newest first.
 
+### Source names in one place (2026-11-21)
+- The names RegWay shows for its sources were in three files. All three
+  lists are now in `src/lib/sourceList.ts`: the public list (landing and
+  Sources pages), `PUBLISHER_NAMES` ("Also published as", keyed by a
+  document's source; was `SOURCE_NAMES` in `duplicates.ts`) and
+  `FEED_LABELS` (the failing-feed notice, keyed by a sync job; was
+  `SOURCE_LABELS` in `data.ts`). Same names, so nothing on screen changes.
+- **`tests/unit/sourceList.test.ts`** reads the sync functions' code and
+  fails when a job or a document source they write has no name. Checked by
+  deleting OFSI's name: the test failed.
+
 ### One age for a stale fact (2026-11-21, issue #37)
 - The one-year age after which a fact is due for re-confirmation was
   written twice: `STALE_AFTER_DAYS` in `src/lib/questionnaire.ts` (Profile's
