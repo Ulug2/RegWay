@@ -33,7 +33,7 @@ import { generateImpacts } from '../_shared/impact.ts'
 import { loadFirmEntities, type CompanyRow, type FundRow } from '../_shared/relevance.ts'
 import { firmRecord, loadHoldings, type EntityScope, type FirmRecord } from '../_shared/roles/entityContext.ts'
 import { reviewVerdicts, type ReviewCategory, type VerdictUnderReview } from '../_shared/roles/skeptic.ts'
-import { asDocument, dependsOnNote, REVIEWED_PREFIX, reviewRow, type ReviewCandidate } from '../_shared/verdictReview.ts'
+import { asDocument, keptNote, REVIEWED_PREFIX, reviewRow, type ReviewCandidate } from '../_shared/verdictReview.ts'
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
 
@@ -151,7 +151,7 @@ async function applyOne(admin: SupabaseClient, firmId: string, review: StoredRev
     return true
   }
   if (review.decision === 'keep') {
-    const note = dependsOnNote(review.unsupported_assumptions ?? [])
+    const note = keptNote(review)
     if (!note || !review.original?.reason) return false
     const { error } = await admin.from('regulation_relevance').update({ relevance_reason: `${review.original.reason} ${note}` }).eq('id', review.relevance_id).eq('firm_id', firmId)
     if (error) throw error

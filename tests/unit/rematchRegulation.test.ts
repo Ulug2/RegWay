@@ -168,7 +168,7 @@ describe('rematch-regulation with the Skeptic on', () => {
 
   it("sends the re-check's verdict through the same second pass as a new match", async () => {
     setEnv('SKEPTIC_MODE', 'on')
-    const reviews = [{ index: 0, decision: 'reject', scope: 'company', entity_name: 'GetixHealth', reason: 'Billing Medicare is not recorded for GetixHealth.', unsupported_assumptions: ['bills Medicare'] }]
+    const reviews = [{ index: 0, decision: 'reject', scope: 'company', entity_name: 'GetixHealth', reason: 'Billing Medicare is not recorded for GetixHealth.', check: 1, evidence: 'Revenue cycle management', unsupported_assumptions: ['bills Medicare'] }]
     const { res, db, model, analysisCalls } = await recheck({ reviews }, stillRelevant)
     expect(model.map(m => m.tool)).toEqual(['submit_verdicts', 'submit_reviews'])
     const [upsert] = db.ran('regulation_relevance', 'upsert')

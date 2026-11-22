@@ -61,6 +61,35 @@ export interface VerdictReview {
   entity_name: string | null
   reason: string
   unsupported_assumptions: string[]
+  // For a reject or move: the checklist item that fails, and words copied
+  // from the recorded facts or the document that show it.
+  check?: number
+  evidence?: string
+  // A reject or move that quoted no evidence found word for word is kept
+  // instead (system guide §17.5); this is the doubt it raised, shown to the
+  // firm beside the match.
+  doubt?: string
+}
+
+// Text compared loosely: case, spacing, curly quotes and dashes ignored.
+const normalised = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+// Shorter than this, a quote proves nothing ("not", "Italy").
+export const MIN_EVIDENCE_CHARS = 12
+
+// Whether `evidence` appears word for word in one of the texts the Skeptic
+// was shown. Surrounding quote marks and ellipses are not part of it.
+export function evidenceFound(evidence: string | undefined, sources: string[]): boolean {
+  const quote = normalised((evidence ?? '').replace(/^[\s"'\u201c\u2018.…]+|[\s"'\u201d\u2019.…]+$/g, ''))
+  if (quote.length < MIN_EVIDENCE_CHARS) return false
+  return sources.some(source => normalised(source).includes(quote))
 }
 
 export type ReviewCategory = 'regulatory' | 'geopolitical'
@@ -84,7 +113,9 @@ Decide for each match:
 - "move": the connection is real and supported by recorded facts, but it runs through a different entity than the one named. Give that entity's scope and its exact name as listed, and a reason that names the recorded fact it rests on.
 - "reject": a check fails on what is recorded: the measure is aimed at a different kind of entity or activity than anything recorded for it (a medical billing company and a rule for laboratories), the document is administrative (check 5), or the jurisdiction does not reach it; and no other entity's recorded facts support it either. A missing fact is a reason to reject only when nothing recorded points towards it.
 
-Write each reason as one sentence a compliance officer can check against the recorded facts: name the fact and the measure. For a rejection, say which check failed. Never add a fact that is not recorded. ${FACT_MARKERS}`
+Write each reason as one sentence a compliance officer can check against the recorded facts: name the fact and the measure. For a rejection, say which check failed. Never add a fact that is not recorded. ${FACT_MARKERS}
+
+For "reject" or "move", also give "check", the number of the item on the list above that fails, and "evidence": words copied exactly, character for character, from what is recorded above or from the match's document (for a fact that is not recorded, copy the words that say so, such as "suppliers: NOT RECORDED"). A rejection or move whose evidence is not found word for word is not applied: the match is kept, and your doubt is shown to the firm beside it. For "keep", give check 0 and empty evidence.`
 
 const TOOL: ToolSpec = {
   name: 'submit_reviews',
@@ -102,9 +133,11 @@ const TOOL: ToolSpec = {
             scope: { type: 'string', enum: ['firm', 'fund', 'company'], description: 'Where the match stands after the review: the original entity for keep or reject, the new one for move.' },
             entity_name: { type: 'string', description: 'Exact fund or company name as listed when scope is fund or company, else empty string.' },
             reason: { type: 'string', description: 'One sentence naming the recorded fact and the measure, or the check that failed.' },
+            check: { type: 'integer', description: 'For reject or move: the number of the checklist item that fails. 0 for keep.' },
+            evidence: { type: 'string', description: 'For reject or move: words copied exactly from the recorded facts or the document that show it. Empty for keep.' },
             unsupported_assumptions: { type: 'array', items: { type: 'string' }, description: 'Facts the match depends on that are not recorded, each phrased as a question of fact ("whether A.L.A. ships defense articles"). Empty if none.' },
           },
-          required: ['index', 'decision', 'scope', 'entity_name', 'reason', 'unsupported_assumptions'],
+          required: ['index', 'decision', 'scope', 'entity_name', 'reason', 'check', 'evidence', 'unsupported_assumptions'],
         },
       },
     },
@@ -174,8 +207,16 @@ ${describeRecord(record, { footprints: category === 'geopolitical' })}`,
   )
 
   const byIndex = new Map(items.map(i => [i.index, i]))
+  const recorded = describeRecord(record, { footprints: true })
   return answer.reviews.map(r => {
     const original = byIndex.get(r.index)!
+    // A reject or move must rest on words that are really there: the
+    // recorded facts, or this match's own document.
+    const d = original.document
+    const check = Number(r.check)
+    if ((r.decision === 'reject' || r.decision === 'move') && !(check >= 1 && check <= 9 && evidenceFound(r.evidence, [recorded, d.title, d.summary ?? '']))) {
+      return { ...r, decision: 'keep' as const, scope: original.scope, entity_name: original.entity_name, doubt: r.reason, unsupported_assumptions: r.unsupported_assumptions ?? [] }
+    }
     if (r.decision !== 'move') {
       // Keep and reject stay on the entity the matcher named.
       return { ...r, scope: original.scope, entity_name: original.entity_name, unsupported_assumptions: r.unsupported_assumptions ?? [] }
