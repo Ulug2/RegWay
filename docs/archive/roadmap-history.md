@@ -9,6 +9,24 @@
 >
 > New entries go directly below this box, newest first.
 
+### The matching score command (2026-11-22, Sidekick item 1)
+- `pnpm eval:matching <set.json> [--skeptic] [--yes]` (Deno,
+  `scripts/eval-matching.ts`) runs RegWay's own regulatory and
+  geopolitical judges, and with `--skeptic` the Skeptic, over a
+  hand-marked set, exactly as the matchers call them, with no database;
+  scores precision and recall over (document, entity) pairs, documents
+  exactly right, and the cost from the AI client's own usage rows; lists
+  each mistake with the marker's reason. It checks the set first (unknown
+  entity names, repeated ids, funds on geopolitical items), prints the
+  estimated cost and asks before sending anything. Results go in
+  `plans/eval-history.md`. The key is read from
+  `supabase/functions/.env`.
+- **Verified:** 7 unit tests with the AI stubbed (the arithmetic; the
+  set's checks; the estimate; a run through the real judges scoring a
+  stubbed answer, models and cost included); `deno check` passes; run for
+  real up to the question and declined: nothing sent. Never run against
+  the real AI. The real set is the owner's to mark.
+
 ### Prompt snapshots (2026-11-22, Sidekick item 1, part)
 - `tests/unit/promptSnapshots.test.ts` runs each AI job once with fixed
   inputs and a fixed date, and compares what it would send (model,
