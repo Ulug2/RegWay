@@ -199,14 +199,6 @@ asks for.
    format of `tests/eval/matching-set.json`, and run it. Not covered yet:
    the enforcement judge (not exported from its function) and the SEC
    proceedings extraction's prompt.
-2. **Fence outside text in every prompt** (S–M, §17.2).
-1. **Scored test set for matching** (M, §17.1). Code: the scoring command
-   (`pnpm eval:matching`, prints the cost and asks before calling the AI)
-   and prompt snapshots (a unit test that fails when a judge, Skeptic or
-   chat prompt changes by accident). Owner: hand-marking the right verdict
-   for about 150 documents, and running it. **Prompt snapshots built
-   2026-11-22** (`tests/unit/prompts/`, 16 prompts; the SEC proceedings
-   extraction is not covered yet). The scoring command is still to do.
 2. **Fence outside text in every prompt** (S–M, §17.2): built 2026-11-22
    (history). Left: record a flagged text in `usage_events` and show it to
    the owner; deploy (changes what every AI job is sent).
