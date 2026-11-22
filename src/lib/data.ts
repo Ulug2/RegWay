@@ -702,7 +702,7 @@ const AI_OUTAGE_CAUSES: Record<AiOutage['reason'], string> = {
   rate_limited: 'the AI service is turning requests away',
   unavailable: 'the AI service is not responding',
   timeout: 'the AI service is timing out',
-  spend_cap: 'RegWay has reached its daily limit on AI spending',
+  spend_cap: 'RegWay has reached its limit on AI spending',
   other: 'the AI service is returning errors',
 }
 

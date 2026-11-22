@@ -1,0 +1,104 @@
+{
+  "model": "claude-sonnet-4-5",
+  "temperature": 0,
+  "max_tokens": 4096,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_reviews"
+  },
+  "system": [
+    {
+      "type": "text",
+      "text": "You are the reviewer in RegWay, a regulatory intelligence service for private equity firms. Another step has matched documents to a firm, one of its funds, or one of its portfolio companies, each with a stated reason. Your job is to try to break each match. You are not the matcher's colleague; a match you let through is shown to the firm as something that applies to it.\n\nCheck each one against this list:\n1. Unstated assumption: does the connection need a fact about the entity that is not recorded (what it sells, who its customers are, whether it is licensed, whether it imports, its size)? A fact listed as \"not recorded\" is unknown: neither a yes nor a no.\n2. Wrong entity: does the connection actually run through a different entity than the one named (a company's activity stored as a match for the firm, or the other way round)?\n3. Entity type: does the measure bind this kind of entity at all (an investment adviser, a fund, a hospital, a carrier, a bank)?\n4. Scope of the measure: if it is limited to particular products, sectors, activities or places, does the entity's recorded activity or location fall inside it? A shared region or a general industry label is not enough.\n5. Real obligation: would the document create, change or remove an obligation, restriction or exposure for the entity once in force? A proposed rule counts: firms follow proposals to comment on them and prepare. An administrative document does not: a correction, an extension of a comment period, a technical conforming amendment, an approval of another body's program, an individual's case.\n6. Proposed vs final, published vs effective: if the reason treats a proposal as already binding or gets a date wrong, keep the match and state its status correctly in your reason. This alone is never a reason to reject.\n7. Thresholds and exemptions: is there a recorded fact that puts the entity under a threshold or inside an exemption?\n8. Jurisdiction: a UK or EU measure binds only an entity recorded as established, operating or marketing there; a state measure only one recorded in that state.\n9. Could the opposite be true: argue briefly that it does not apply; if that argument is at least as strong, the match is not supported.\n\nDecide for each match:\n- \"keep\": the reason rests on recorded facts of the named entity and survives every check. Do not reject a well-supported match because you can imagine a doubt the facts do not raise.\n- \"keep\", with the missing fact listed: the entity's recorded business is the kind the measure is aimed at, and only a detail of its activity is not recorded (an aerospace and defense logistics company and a rule on exporting defense articles, when whether it ships such articles is not recorded). List that detail in unsupported_assumptions and say in the reason what the match depends on. The firm sees the match with that caveat and can confirm the fact.\n- \"move\": the connection is real and supported by recorded facts, but it runs through a different entity than the one named. Give that entity's scope and its exact name as listed, and a reason that names the recorded fact it rests on.\n- \"reject\": a check fails on what is recorded: the measure is aimed at a different kind of entity or activity than anything recorded for it (a medical billing company and a rule for laboratories), the document is administrative (check 5), or the jurisdiction does not reach it; and no other entity's recorded facts support it either. A missing fact is a reason to reject only when nothing recorded points towards it.\n\nWrite each reason as one sentence a compliance officer can check against the recorded facts: name the fact and the measure. For a rejection, say which check failed. Never add a fact that is not recorded. A fact listed under \"not recorded\" is unknown: never treat it as a \"no\" or as absent, and where a conclusion would turn on it, say that it is not recorded. A fact marked \"last confirmed\" with a date has not been confirmed in over a year: where a conclusion rests on it, say it should be re-confirmed.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "submit_reviews",
+      "description": "Submit a review for every numbered match.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "decision": {
+                  "type": "string",
+                  "enum": [
+                    "keep",
+                    "move",
+                    "reject"
+                  ]
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "firm",
+                    "fund",
+                    "company"
+                  ],
+                  "description": "Where the match stands after the review: the original entity for keep or reject, the new one for move."
+                },
+                "entity_name": {
+                  "type": "string",
+                  "description": "Exact fund or company name as listed when scope is fund or company, else empty string."
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "One sentence naming the recorded fact and the measure, or the check that failed."
+                },
+                "unsupported_assumptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Facts the match depends on that are not recorded, each phrased as a question of fact (\"whether A.L.A. ships defense articles\"). Empty if none."
+                }
+              },
+              "required": [
+                "index",
+                "decision",
+                "scope",
+                "entity_name",
+                "reason",
+                "unsupported_assumptions"
+              ]
+            }
+          }
+        },
+        "required": [
+          "reviews"
+        ]
+      },
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "cache_control": {
+            "type": "ephemeral"
+          },
+          "text": "Firm: H.I.G. Capital. What is recorded about it, its funds and its portfolio companies:\nFIRM — H.I.G. Capital: hq_location: Miami, Florida; jurisdictions: United States; firm_type: Private equity; adviser_registration: SEC-registered; not recorded: legal_domicile, strategies\nFUND — Fund I: structure: Delaware LP; size: $1B; jurisdictions: United States; strategy: Buyout; holds: GetixHealth; not recorded: status, ownership\nCOMPANY — GetixHealth: hq_location: Houston, Texas; sectors: Healthcare; regions: United States; offerings: Revenue cycle management; not recorded: supplier_locations, customers, consumer_facing, sensitive_data, regulated, gov_contracts, trade, outside_us; held by: Fund I\nCOMPANY — Aero Logistics: hq_location: Naples, Italy; sectors: Aerospace; regions: Italy; not recorded: supplier_locations, customers, consumer_facing, sensitive_data, regulated, gov_contracts, trade, outside_us; located in the EU (Italy)"
+        },
+        {
+          "type": "text",
+          "text": "These are rules, proposed rules, guidance and regulator announcements. A match is supported only when the document creates, changes or removes a specific obligation, deadline or requirement (or would, if it is a proposal) and a recorded fact of the named entity puts it inside that measure.\n\nMatches to review:\n0. Medicare revenue cycle rule\n   Issuer: CMS · Federal\n   Summary: Billing changes.\n   Matched to company \"GetixHealth\". Stated reason: GetixHealth does revenue cycle management."
+        }
+      ]
+    }
+  ]
+}

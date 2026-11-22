@@ -1,0 +1,71 @@
+{
+  "model": "claude-sonnet-4-5",
+  "max_tokens": 2048,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_regulations"
+  },
+  "tools": [
+    {
+      "name": "submit_regulations",
+      "description": "Submit the structured list of distinct regulations found.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "agency": {
+                  "type": "string"
+                },
+                "jurisdiction": {
+                  "type": "string"
+                },
+                "published_date": {
+                  "type": "string",
+                  "description": "YYYY-MM-DD or empty string if unknown"
+                },
+                "effective_date": {
+                  "type": "string",
+                  "description": "YYYY-MM-DD or empty string if unknown"
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "One plain-language sentence"
+                },
+                "why_it_applies": {
+                  "type": "string",
+                  "description": "One sentence naming the company exactly as given: which known fact about it (its sector, location, or a stated activity) this item reaches, as the findings support it. Don't assert facts about the company that weren't given, and don't hedge with \"may\" or \"could\": if the link depends on an assumption, leave the item out."
+                },
+                "source_url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title",
+                "agency",
+                "jurisdiction",
+                "summary",
+                "source_url"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "Convert these regulatory findings for GetixHealth into the structured tool call. Refer to the company only as \"GetixHealth\". Only include items that have a real source_url from the findings below — never fabricate one, and leave out items whose connection to GetixHealth rests on an assumption about what it does.\n\nFound nothing new."
+    }
+  ]
+}

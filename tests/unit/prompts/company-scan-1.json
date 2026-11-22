@@ -1,0 +1,17 @@
+{
+  "model": "claude-sonnet-4-5",
+  "max_tokens": 2048,
+  "tools": [
+    {
+      "type": "web_search_20250305",
+      "name": "web_search",
+      "max_uses": 5
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "Search for regulatory changes published or proposed in the last 90 days that would create compliance obligations for GetixHealth, a company in the \"Healthcare\" sector headquartered in Houston, Texas. Include federal, state/local, and (if applicable) foreign regulators. For each distinct item found, report: the exact rule or document title, the issuing regulator/agency, the jurisdiction, the publication or effective date, a one-sentence plain-language summary, which of the company's known facts (sector, location, activity) it applies to, and the official source URL. Only include items you found real sources for — do not invent items. Known facts about the company — website https://getixhealth.test; what it does: Revenue cycle management; operates in: United States."
+    }
+  ]
+}

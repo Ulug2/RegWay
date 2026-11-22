@@ -1,0 +1,80 @@
+{
+  "model": "claude-haiku-4-5",
+  "temperature": 0,
+  "max_tokens": 4096,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_verdicts"
+  },
+  "tools": [
+    {
+      "name": "submit_verdicts",
+      "description": "Submit a relevance verdict for every numbered regulation.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "verdicts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "relevant": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "One sentence: why this does or does not affect the firm"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "firm",
+                    "fund",
+                    "company"
+                  ]
+                },
+                "entity_name": {
+                  "type": "string",
+                  "description": "Exact fund or company name if scope is fund/company, else empty string"
+                }
+              },
+              "required": [
+                "index",
+                "relevant",
+                "reason",
+                "scope"
+              ]
+            }
+          }
+        },
+        "required": [
+          "verdicts"
+        ]
+      },
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "cache_control": {
+            "type": "ephemeral"
+          },
+          "text": "Firm: H.I.G. Capital, headquartered in Miami, Florida, operating in: United States.\nFirm profile — firm type: Private equity; adviser registration: SEC-registered.\n\nFunds:\n- Fund I (Delaware LP, jurisdictions: United States; strategy: Buyout)\n\nPortfolio companies:\n- GetixHealth (sectors: Healthcare, regions: United States; does: Revenue cycle management)\n- Aero Logistics (sectors: Aerospace, regions: Italy)\n\nFor each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like \"may have,\" \"could be exposed to,\" or \"might apply,\" mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just \"this firm is generally in a regulated industry.\" Some items are a regulator's own announcement of a proposal, rule, guidance or relief rather than the published document: judge them by the measure they announce. An item marked United Kingdom or European Union binds only an entity established, authorised, marketing or operating there: mark it relevant only when the facts above record that connection for the entity you name."
+        },
+        {
+          "type": "text",
+          "text": "0. [Trade Representative] Battery import rule — Tariffs on batteries.\n\nA user has flagged the previous verdict for this regulation as possibly incorrect and provided this correction: \"We do not import batteries.\". Weigh it against the firm/fund/company facts above — if it changes your assessment, say so in your reason; if the stated correction doesn't actually change whether this regulation applies, explain why not."
+        }
+      ]
+    }
+  ]
+}

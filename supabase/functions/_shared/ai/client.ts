@@ -9,9 +9,11 @@
 // - `callClaude` returns the parsed response; `streamClaude` returns the
 //   streaming Response for the caller to read (the chat), with the timeout
 //   covering only the wait for it to start.
-// - Before either sends anything, the spend caps are checked: a call that
-//   would go past today's cap for the firm, or for all of RegWay, is refused
-//   with SpendCapError (migration 0048).
+// - Before either sends anything, the spend caps are checked: a call made
+//   once the firm, or all of RegWay, has reached its cap for the last 24
+//   hours or for this month is refused with SpendCapError (migrations 0048,
+//   0051). Background work stops earlier, keeping a share of each cap for
+//   what people start by a click.
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { mergeUsage, recordUsage, type UsageTotals } from '../usage.ts'
@@ -44,6 +46,10 @@ export interface UsageTarget {
   admin: SupabaseClient
   functionName: string
   firmId?: string | null
+  // Started by a person's click (a chat message, opening a development, a
+  // re-check): may use the share of the caps background work leaves free.
+  // When not given, decided by the function's name (INTERACTIVE_FUNCTIONS).
+  interactive?: boolean
 }
 
 export interface CallOptions {
@@ -67,43 +73,93 @@ export class AnthropicError extends Error {
   }
 }
 
-// A call refused before it was sent: the last 24 hours' estimated spend has
-// reached the cap for this firm, or for all of RegWay ('total').
+// A call refused before it was sent: the estimated spend has reached a cap
+// for this firm, or for all of RegWay ('total'), over the last 24 hours
+// ('day') or this calendar month (UTC). `reserve`: background work refused
+// because only the share kept for people's clicks is left.
 export class SpendCapError extends Error {
-  constructor(readonly scope: 'firm' | 'total') {
-    super(`AI spend cap reached (${scope})`)
+  constructor(
+    readonly scope: 'firm' | 'total',
+    readonly period: 'day' | 'month' = 'day',
+    readonly reserve = false,
+  ) {
+    super(`AI spend cap reached (${scope}, ${period}${reserve ? ', the rest is kept for people' : ''})`)
     this.name = 'SpendCapError'
   }
 }
 
-// Caps in USD per rolling 24 hours, from the function secrets
-// AI_FIRM_DAILY_CAP_USD and AI_TOTAL_DAILY_CAP_USD. The defaults sit well
-// above what RegWay has spent so far (November 2026: $0.84 a day on
-// average; the most one firm spent in a day, onboarding, was $5.68).
-const DEFAULT_FIRM_CAP_USD = 15
-const DEFAULT_TOTAL_CAP_USD = 40
+// Caps in USD, from function secrets; the defaults sit well above what
+// RegWay has spent so far (November 2026: $0.84 a day on average, about $25
+// a month; the most one firm spent in a day, onboarding, was $5.68).
+export interface Caps {
+  firmDay: number
+  totalDay: number
+  firmMonth: number
+  totalMonth: number
+  // Share of each cap background work leaves for click-started work.
+  reserve: number
+}
 
-function capUsd(name: string, fallback: number): number {
-  const value = Number(Deno.env.get(name))
-  return Number.isFinite(value) && value > 0 ? value : fallback
+function envNumber(name: string, fallback: number, ok: (n: number) => boolean): number {
+  const raw = Deno.env.get(name)
+  const value = Number(raw)
+  return raw !== undefined && raw !== '' && Number.isFinite(value) && ok(value) ? value : fallback
+}
+
+export function spendCaps(): Caps {
+  const positive = (n: number) => n > 0
+  return {
+    firmDay: envNumber('AI_FIRM_DAILY_CAP_USD', 15, positive),
+    totalDay: envNumber('AI_TOTAL_DAILY_CAP_USD', 40, positive),
+    firmMonth: envNumber('AI_FIRM_MONTHLY_CAP_USD', 100, positive),
+    totalMonth: envNumber('AI_TOTAL_MONTHLY_CAP_USD', 300, positive),
+    reserve: envNumber('AI_INTERACTIVE_RESERVE', 0.2, n => n >= 0 && n < 1),
+  }
+}
+
+// What ai_spend_totals (migration 0051) returns.
+export interface Spend {
+  firm_day: number
+  total_day: number
+  firm_month: number
+  total_month: number
+}
+
+// Functions whose every AI call is started by a person.
+const INTERACTIVE_FUNCTIONS = /^(regway-ai-chat|rematch-regulation|research-firm)([/:]|$)/
+
+export const isInteractive = (target: Pick<UsageTarget, 'functionName' | 'interactive'>) => target.interactive ?? INTERACTIVE_FUNCTIONS.test(target.functionName)
+
+// The cap a call would go past, or null. Everything-together caps first: a
+// month before a day, so the reason given is the one that lasts longest.
+export function overCap(spend: Spend, caps: Caps, interactive: boolean): SpendCapError | null {
+  const share = interactive ? 1 : 1 - caps.reserve
+  const checks: [number, number, 'firm' | 'total', 'day' | 'month'][] = [
+    [spend.total_month, caps.totalMonth, 'total', 'month'],
+    [spend.total_day, caps.totalDay, 'total', 'day'],
+    [spend.firm_month, caps.firmMonth, 'firm', 'month'],
+    [spend.firm_day, caps.firmDay, 'firm', 'day'],
+  ]
+  for (const [spent, cap, scope, period] of checks) {
+    if (Number(spent) >= cap * share) return new SpendCapError(scope, period, Number(spent) < cap)
+  }
+  return null
 }
 
 // Throws SpendCapError when a cap is reached. A failed check lets the call
 // through (and says so in the log): the caps guard against abuse, and an
 // unreadable database should not also stop every AI call.
 export async function checkSpend(target: UsageTarget): Promise<void> {
-  const { data, error } = await target.admin.rpc('ai_spend_check', {
-    p_firm_id: target.firmId ?? null,
-    p_firm_cap: capUsd('AI_FIRM_DAILY_CAP_USD', DEFAULT_FIRM_CAP_USD),
-    p_total_cap: capUsd('AI_TOTAL_DAILY_CAP_USD', DEFAULT_TOTAL_CAP_USD),
-  })
-  if (error) {
-    console.error('spend cap check failed; the call goes ahead', target.functionName, error.message)
+  const { data, error } = await target.admin.rpc('ai_spend_totals', { p_firm_id: target.firmId ?? null })
+  const spend = (Array.isArray(data) ? data[0] : data) as Spend | null
+  if (error || !spend) {
+    console.error('spend cap check failed; the call goes ahead', target.functionName, error?.message ?? 'no totals')
     return
   }
-  if (data === 'firm' || data === 'total') {
-    console.warn('AI spend cap reached', data, target.functionName, target.firmId ?? '')
-    throw new SpendCapError(data)
+  const refused = overCap(spend, spendCaps(), isInteractive(target))
+  if (refused) {
+    console.warn('AI spend cap reached', refused.scope, refused.period, refused.reserve ? 'reserve' : '', target.functionName, target.firmId ?? '')
+    throw refused
   }
 }
 
@@ -134,19 +190,20 @@ export const AI_FAILURE_MESSAGES: Record<AiFailure, string> = {
   rate_limited: 'The AI service is busy right now. Please try again in a minute.',
   unavailable: 'The AI service is not responding right now. Please try again in a few minutes.',
   timeout: 'The AI service took too long to answer. Please try again.',
-  spend_cap: "RegWay AI has reached today's spending limit. It will work again within 24 hours.",
+  spend_cap: 'RegWay AI has reached its spending limit for now. Please try again later.',
   other: 'The AI service could not answer this request.',
 }
 
 // A failed call, recorded beside the ones that worked: what the dashboard's
 // AI status reads. A firm reaching its own cap is not recorded: the status
 // is the same for every firm, so one firm's refusals would tell all of them
-// that the AI is down. Reaching the cap for all of RegWay is, so the
+// that the AI is down. Nor is background work stopped to keep the reserve:
+// people can still use the AI. Reaching a cap for all of RegWay is, so the
 // dashboard says so and the owner gets the outage email.
 export async function recordFailure(target: UsageTarget, model: string, err: unknown): Promise<void> {
   const failure = aiFailure(err)
   if (!failure) return
-  if (err instanceof SpendCapError && err.scope === 'firm') return
+  if (err instanceof SpendCapError && (err.scope === 'firm' || err.reserve)) return
   await recordUsage(target.admin, { functionName: target.functionName, firmId: target.firmId, model, ok: false, error: `${failure}: ${String((err as Error)?.message ?? err).slice(0, 300)}` })
 }
 

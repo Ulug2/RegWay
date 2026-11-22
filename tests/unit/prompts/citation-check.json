@@ -1,0 +1,63 @@
+{
+  "model": "claude-haiku-4-5",
+  "temperature": 0,
+  "max_tokens": 1500,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_citation_checks"
+  },
+  "tools": [
+    {
+      "name": "submit_citation_checks",
+      "description": "Submit a finding for every numbered claim.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "supported",
+                    "contradicted",
+                    "not_in_sources"
+                  ],
+                  "description": "supported: a quoted passage says what the claim says about the rule. contradicted: a quoted passage says otherwise. not_in_sources: no quoted passage covers it."
+                },
+                "source": {
+                  "type": "integer",
+                  "description": "Number of the source that supports or contradicts it, or 0."
+                },
+                "note": {
+                  "type": "string",
+                  "description": "One sentence: what the source says, where it differs from the claim, or that no source covers it."
+                }
+              },
+              "required": [
+                "index",
+                "status",
+                "source",
+                "note"
+              ]
+            }
+          }
+        },
+        "required": [
+          "findings"
+        ]
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "Check the part of each claim that is about the rule or development itself (what it requires, whom it covers, whether it is proposed or final, its dates) against the passages the answer quoted from its sources. Ignore the part about the firm's own entities: that is checked elsewhere. Judge only from the quoted passages, not from what you know.\n\nSOURCES\n1. Form PF (https://www.federalregister.gov/d/2026-1)\n   \"The Commission is proposing amendments to Form PF.\"\n\nCLAIMS\n0. Form PF amendments are final."
+    }
+  ]
+}
