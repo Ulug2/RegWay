@@ -210,6 +210,10 @@ password reset). Waits on the owner: after the pull request is merged and
 live, switch on CAPTCHA protection in the Supabase dashboard with the
 Turnstile secret key.
 
+**Function access tests done 2026-11-21** (item 2, issue #13):
+`tests/unit/functionAccess.test.ts` calls all 21 functions as an attacker
+would. Nothing found.
+
 **Spend caps done 2026-11-21** (migration 0048): AI calls are refused once
 the last 24 hours reach $15 for one firm or $40 for RegWay (secrets
 `AI_FIRM_DAILY_CAP_USD`, `AI_TOTAL_DAILY_CAP_USD`). The `/cso` run that day

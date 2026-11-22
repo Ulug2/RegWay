@@ -76,11 +76,23 @@ export function fakeClient(resolve: Resolver = () => {}, user: { id: string } | 
 // test sets this before invoking the handler. Kept on globalThis because
 // handler tests reload modules, which would otherwise give the function its
 // own copy of this file.
-const slot = globalThis as unknown as { __fakeSupabase?: FakeClient }
+const slot = globalThis as unknown as { __fakeSupabase?: FakeClient; __fakeSessions?: Record<string, FakeClient> }
 export const setClient = (client: FakeClient) => {
   slot.__fakeSupabase = client
+  slot.__fakeSessions = undefined
 }
-export const createClient = () => (slot.__fakeSupabase ??= fakeClient())
+// Optional: the client a function gets when it creates one with a caller's
+// own `Authorization` header, keyed by that header ('Bearer <token>'). Lets
+// a test give each session its own view of the data, as the access rules
+// do; without it every client is the one `setClient` set.
+export const setSessionClients = (sessions: Record<string, FakeClient>) => {
+  slot.__fakeSessions = sessions
+}
+export const createClient = (_url?: string, _key?: string, options?: { global?: { headers?: Record<string, string> } }) => {
+  const authorization = options?.global?.headers?.Authorization
+  const session = authorization ? slot.__fakeSessions?.[authorization] : undefined
+  return session ?? (slot.__fakeSupabase ??= fakeClient())
+}
 export type SupabaseClient = FakeClient
 
 export const hasFilter = (q: Query, ...filter: unknown[]) => q.filters.some(f => f.length === filter.length && f.every((v, i) => JSON.stringify(v) === JSON.stringify(filter[i])))
