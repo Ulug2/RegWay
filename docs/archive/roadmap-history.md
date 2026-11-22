@@ -9,6 +9,23 @@
 >
 > New entries go directly below this box, newest first.
 
+### Account flows run end to end; local email links fixed (2026-11-22)
+- **Run against a local database with its mail catcher (Mailpit):** on
+  Profile, a wrong current password is refused ("Your current password is
+  incorrect"); the right one sends "Reset your RegWay password"; its link
+  opens "Set a new password"; saving signs the user out; the new password
+  signs in and the old one is refused; reusing the same password is
+  refused. An email change sends the confirmation to the new address and
+  the notice names it. Not run: clicking both email-change confirmations
+  (local setting `double_confirm_changes`).
+- **Local email links opened a dead page**: `supabase/config.toml` sent
+  them to `127.0.0.1:3000`, but `pnpm dev` serves `localhost:8443`, which
+  was not an allowed redirect. Now `site_url` and the redirect list name
+  8443. The local email limit went from 2 to 30 an hour, so the flows can
+  be tried more than twice. Local only: production's settings are in the
+  Supabase dashboard.
+- **Found:** Profile's account email loads after the page (roadmap, Known
+  defects).
 ### Browser tests on Firefox, Safari's engine and a phone (2026-11-22, issue #17 part 1)
 - `ALL_BROWSERS=1 pnpm test:e2e` adds Firefox, WebKit and an iPhone 14 to
   desktop Chrome (`playwright.config.ts`); CI still runs Chrome only.
