@@ -10,7 +10,8 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 // search. A single source of truth for the cost ESTIMATE stored alongside
 // each row — real enough to spot trends and spikes, not a billing
 // reconciliation (Anthropic's own invoice is authoritative). A model not
-// listed is priced as Sonnet 4.5, the app's default.
+// listed is priced at the highest known price for each kind of token, so a
+// model nobody priced yet can't spend around the caps (Sidekick §17.3).
 interface Prices {
   input: number
   cacheWrite: number
@@ -23,6 +24,8 @@ const PRICES: Record<string, Prices> = {
   'claude-haiku-4-5': { input: 1.0, cacheWrite: 1.25, cacheRead: 0.1, output: 5.0 },
 }
 const PRICE_PER_WEB_SEARCH = 0.01
+const highest = (key: keyof Prices) => Math.max(...Object.values(PRICES).map(p => p[key]))
+export const UNKNOWN_MODEL_PRICES: Prices = { input: highest('input'), cacheWrite: highest('cacheWrite'), cacheRead: highest('cacheRead'), output: highest('output') }
 
 export interface UsageTotals {
   inputTokens?: number
@@ -33,7 +36,7 @@ export interface UsageTotals {
 }
 
 export function estimateCostUsd(model: string, u: UsageTotals): number {
-  const p = PRICES[model] ?? SONNET_4_5
+  const p = PRICES[model] ?? UNKNOWN_MODEL_PRICES
   return (
     ((u.inputTokens ?? 0) / 1_000_000) * p.input +
     ((u.cacheCreationInputTokens ?? 0) / 1_000_000) * p.cacheWrite +

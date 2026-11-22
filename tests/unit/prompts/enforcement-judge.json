@@ -1,0 +1,80 @@
+{
+  "model": "claude-sonnet-4-5",
+  "temperature": 0,
+  "max_tokens": 4096,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_verdicts"
+  },
+  "tools": [
+    {
+      "name": "submit_verdicts",
+      "description": "Submit a relevance verdict for every numbered enforcement case.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "verdicts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "relevant": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "One sentence naming the specific factual overlap (same instrument, customer type, or practice) between the case and this entity's own activity. Never state or imply the entity is involved in the case."
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "firm",
+                    "fund",
+                    "company"
+                  ]
+                },
+                "entity_name": {
+                  "type": "string",
+                  "description": "Exact fund or company name if scope is fund/company, else empty string"
+                }
+              },
+              "required": [
+                "index",
+                "relevant",
+                "reason",
+                "scope"
+              ]
+            }
+          }
+        },
+        "required": [
+          "verdicts"
+        ]
+      },
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "cache_control": {
+            "type": "ephemeral"
+          },
+          "text": "Firm: H.I.G. Capital, headquartered in Miami, Florida.\nFirm profile — firm type: Private equity; adviser registration: SEC-registered.\n\nFunds:\n- Fund I (Delaware LP; strategy: Buyout)\n\nPortfolio companies:\n- GetixHealth (sectors: Healthcare, regions: United States; does: Revenue cycle management)\n- Aero Logistics (sectors: Aerospace, regions: Italy)\n\nBelow are numbered SEC and FINRA enforcement actions (litigation releases, administrative proceedings, and disciplinary actions) against named respondents/defendants who are NOT this firm, its funds, or its portfolio companies. Some are contested and pending (allegations only); others are settled or concluded (the source's stated findings, often via a consent order where the respondent neither admits nor denies them) — treat each with whatever certainty its own text states, never more.\n\nFor each one, decide whether it is meaningfully relevant background awareness for this firm, a fund, or a portfolio company — meaning the alleged conduct (the instrument sold, the customer type targeted, the practice used, the role played) genuinely overlaps with that specific entity's own described activity. A shared label like \"both are in financial services\" or \"both are private funds\" is NOT sufficient — you must be able to name the specific concrete practice or activity in common. Be strict: most enforcement actions will not be relevant to most entities. If you cannot point to a real overlap in what was actually done, mark it not relevant.\n\nNever write a reason that could be read as saying the firm, a fund, or a portfolio company did something wrong, was investigated, or is connected to the people or entities named in the case — they are not. The only permissible relevance is \"this case involves conduct, an instrument, or a practice similar to what this entity does,\" stated neutrally."
+        },
+        {
+          "type": "text",
+          "text": "0. [Securities and Exchange Commission] SEC Charges Private Fund Adviser Over Fee Disclosures — Undisclosed monitoring fees."
+        }
+      ]
+    }
+  ]
+}

@@ -539,20 +539,29 @@ also removes the jobs there.
 - **Secrets** (Supabase function secrets, never in the repository):
   `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, the service key; switches
   `SKEPTIC_MODE`, `CHAT_REVIEW`; caps `AI_FIRM_DAILY_CAP_USD`,
-  `AI_TOTAL_DAILY_CAP_USD`. The timers read the service key from the
+  `AI_TOTAL_DAILY_CAP_USD`, `AI_FIRM_MONTHLY_CAP_USD`,
+  `AI_TOTAL_MONTHLY_CAP_USD`, `AI_INTERACTIVE_RESERVE`. The timers read the service key from the
   database vault.
 - **Rate limits** on every AI-spending function a user can trigger
   (`check_rate_limit`: 3 a day for web research, 6 to 30 an hour for the
   rest).
-- **Spend caps** (migration 0048). Before any AI call is sent,
-  `_shared/ai/client.ts` asks `ai_spend_check` whether the last 24 hours'
-  estimated spend in `usage_events` has reached the firm's cap (default
-  $15) or RegWay's (default $40). Over either, the call is refused
-  (`SpendCapError`). A firm at its cap is not recorded as an AI failure
-  (the AI status is shared by every firm); RegWay at its cap is, so the
-  dashboard banner shows it and the owner gets the outage email. If the
-  check itself fails, the call goes ahead. Sign-up is open, so the per-user
-  limits alone had no ceiling.
+- **Spend caps** (migrations 0048, 0051). Before any AI call is sent,
+  `_shared/ai/client.ts` reads `ai_spend_totals`: the estimated spend in
+  `usage_events` over the last 24 hours and since the start of the calendar
+  month (UTC), for the firm and for all of RegWay. Caps: $15 a firm and $40
+  in all a day, $100 a firm and $300 in all a month (defaults; the secrets
+  above change them). At a cap the call is refused (`SpendCapError`).
+  Background work (matching, scans, pre-written analyses, grouping) stops
+  at 80% of each cap, keeping the rest for what a person starts by a click:
+  a chat message, opening a development, a re-check, firm research
+  (`AI_INTERACTIVE_RESERVE`, default 0.2). A model with no listed price is
+  counted at the highest known price, so it can't spend around the caps.
+  A firm at its cap, or background work stopped for the reserve, is not
+  recorded as an AI failure (the AI status is shared by every firm, and
+  people can still use the AI); RegWay at a cap is, so the dashboard banner
+  shows it and the owner gets the outage email. If the check itself fails,
+  the call goes ahead. Sign-up is open, so the per-user limits alone had
+  no ceiling.
 - **The browser.** The chat's Markdown renderer escapes all HTML and makes
   only `http(s)` links. Company logos: PNG, JPEG, WebP or GIF up to 2 MB,
   enforced by the bucket. `vercel.json` sets HSTS, `nosniff`, no framing, a
@@ -734,11 +743,12 @@ Sidekick's `guard.ts` is plain TypeScript with no browser code; it moves to
 
 ### 17.3 Spend caps checked before every AI call
 
-**Partly done 2026-11-21** (§12, migration 0048): a rolling 24-hour cap per
-firm and for all of RegWay, checked in `callClaude` and `streamClaude`.
-Still to do from the plan below: a monthly cap, the reserve for
-click-started work, and pricing an unknown model at the highest known
-price.
+**Built 2026-11-22** (§12, migrations 0048 and 0051): daily and monthly
+caps per firm and for all of RegWay, the reserve for click-started work,
+and an unknown model priced at the highest known price. Differences from
+the plan below: the secrets keep the names chosen in 0048
+(`AI_FIRM_DAILY_CAP_USD` and so on); the banner shows the existing
+spend-cap message rather than a new "AI paused" one.
 
 RegWay ran out of AI credit for almost a month, and opening the dashboard
 once started $4.80 of work nobody asked for (§16). `AUTOMATIC_AI` (§13) is a

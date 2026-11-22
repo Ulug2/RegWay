@@ -1,0 +1,79 @@
+{
+  "model": "claude-sonnet-4-5",
+  "temperature": 0,
+  "max_tokens": 4096,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_verdicts"
+  },
+  "tools": [
+    {
+      "name": "submit_verdicts",
+      "description": "Submit a relevance verdict for every numbered geopolitical development.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "verdicts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "relevant": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "One or two sentences: the recorded location fact, whether the connection is direct or indirect, and the possible effect stated conditionally. Never imply the entity is sanctioned or prohibited from anything."
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "firm",
+                    "company"
+                  ]
+                },
+                "entity_name": {
+                  "type": "string",
+                  "description": "Exact portfolio company name if scope is company, else empty string"
+                }
+              },
+              "required": [
+                "index",
+                "relevant",
+                "reason",
+                "scope"
+              ]
+            }
+          }
+        },
+        "required": [
+          "verdicts"
+        ]
+      },
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "cache_control": {
+            "type": "ephemeral"
+          },
+          "text": "Firm: H.I.G. Capital. Recorded location footprints:\n- H.I.G. Capital (firm): does: Private equity; headquarters: United States\n- GetixHealth (company): does: Healthcare, Revenue cycle management; headquarters: United States; operates in: United States; key suppliers: NOT RECORDED\n- Aero Logistics (company): does: Aerospace; headquarters: Italy; operates in: Italy; key suppliers: NOT RECORDED\n\nBelow are numbered geopolitical developments from official government sources. Most are U.S.: OFAC sanctions actions and regulations, BIS export controls, USTR trade actions, presidential sanctions/tariff documents, and State Department travel advisories (levels 3-4). Some are UK sanctions (UK sanctions regulations, OFSI general licences and notices) or EU sanctions (the Council's restrictive measures); the issuer in brackets says which.\n\nA UK or EU sanctions measure binds people and businesses in the UK or the EU, and business done there. For one of those, a recorded connection to the affected country is not enough on its own: the same entity must also be recorded as headquartered, having facilities or operating in the UK (for a UK measure) or in an EU member state (for an EU measure). Name both facts in the reason, or mark it not relevant.\n\nFor each development, decide whether it has a supported connection to the firm or a specific portfolio company through a recorded location: where the entity is headquartered or domiciled, where its facilities are, where it operates, or where its key suppliers are. \"Overlapping profile facts\" lists the exact matches already found; base your verdict on those and on the footprints above, never on assumed facts.\n\nMark relevant only when you can name the specific recorded fact and how the development could plausibly reach it (illustrative only: \"Direct: Harbor Logistics (does: consumer-goods freight forwarding) operates in Vietnam; this tariff action covers consumer goods imported from Vietnam, which could affect the volumes it handles there. How much of that volume is U.S.-bound is not recorded.\"). Mark not relevant when:\n- the only link is a shared region or a general \"international\" footprint with no recorded country in common, or\n- the measure targets named persons/entities and nothing recorded suggests the entity deals with them. In particular, for a designation of named persons, entities, or vessels (e.g. a \"Notice of OFAC Sanctions Action\" adding names to the SDN List), the countries named are the sanctions program's country or where the designees are located; neither is a measure on the country. A designation under a country's program, or a designee located in a country, where an entity operates or is headquartered is NOT a connection, so mark it not relevant, or\n- the development is administrative (a general license renewal, a procedural/penalty-schedule update) and creates no new restriction on any recorded location.\n\nFor a measure limited to particular products, goods, or sectors (a tariff on aircraft parts, export controls on semiconductors, a manufacturing-sector investigation), the entity's recorded activity (\"does: ...\") must fall within what the measure covers, in addition to any location link. For a global measure (no country named), mark relevant only if it targets a type of activity a specific entity's recorded footprint actually involves (e.g. a tariff on imports and the company has recorded foreign suppliers). Foreign facilities or operations alone are not import activity: a global import measure (a tariff, duty, or de minimis change) needs recorded foreign suppliers or recorded import activity. If supplier locations are NOT RECORDED for a company, do not assume it has or lacks suppliers anywhere.\n\nThe connection itself must rest on recorded facts; only its possible effect may be conditional. If the connection depends on an unrecorded assumption about what the entity does (\"if it exports these materials\", \"if it involves ICT products\"), mark it not relevant. Continuations or renewals of an existing national emergency that add no new measure are administrative.\n\nLanguage rules for every reason (these are hard rules):\n- Never state or imply that an entity is sanctioned, designated, prohibited from a transaction, or in violation. Presence in an affected country does not establish any of that.\n- If a measure names an organization whose name resembles a portfolio company, do NOT treat that as the same entity. Mark not relevant unless a recorded location independently supports a connection, and then say the identity is unconfirmed.\n- Say which kind of connection it is: \"direct\" (the entity's own headquarters, facilities, or operations) or \"indirect\" (a supplier location).\n- State the possible effect conditionally (\"could affect\", \"if it sources from\") and name what is unknown.\n\nScope: \"company\" (with the exact company name) for a portfolio company's connection; \"firm\" only for the firm's own headquarters/domicile. Never use \"fund\": a fund's exposure is derived automatically from the companies it is recorded as holding, so judge companies and the firm only. Return at least one verdict for every numbered development; add one verdict per additional company the same development connects to."
+        },
+        {
+          "type": "text",
+          "text": "0. [Trade Representative, 2026-11-01] Section 232 Tariff on Aircraft Parts From Italy\n   Countries named: Italy\n   Overlapping profile facts: Aero Logistics (company) — headquarters: Italy; Aero Logistics (company) — operations: Italy\n   Summary: A tariff."
+        }
+      ]
+    }
+  ]
+}

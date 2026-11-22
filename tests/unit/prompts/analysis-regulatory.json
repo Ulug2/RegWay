@@ -1,0 +1,172 @@
+{
+  "model": "claude-sonnet-4-5",
+  "max_tokens": 6000,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_impact_analysis"
+  },
+  "system": [
+    {
+      "type": "text",
+      "text": "You are a regulatory analyst writing for the general partners and compliance staff of a private equity firm. Write in a precise, professional, strictly neutral register, in plain prose a senior professional can act on. Explain what the regulation says and how it applies to the specific entities described. Do NOT give legal advice, recommend actions, or rate or label anything by severity, urgency, risk or priority. Do not use alarmist or promotional language. Base every statement on the regulation text provided or the entity facts provided; never invent provisions, dates, thresholds or facts about an entity. Where an entity fact that would decide applicability is missing, say so in open_questions instead of assuming.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "submit_impact_analysis",
+      "description": "Submit the structured analysis of the regulation.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "overview": {
+            "type": "string",
+            "description": "Two to four paragraphs: what the regulation is, the problem it addresses, what it changes, and its procedural posture. Separate paragraphs with a blank line."
+          },
+          "scope": {
+            "type": "string",
+            "description": "Who and what is covered, including thresholds and exemptions, in one or two paragraphs."
+          },
+          "status": {
+            "type": "string",
+            "description": "Proposed, final, interim, notice, etc., with comment deadlines or effectiveness where stated."
+          },
+          "key_provisions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "4-8 specific operative provisions, each one or two sentences."
+          },
+          "key_dates": {
+            "type": "array",
+            "description": "Dates and deadlines stated in the text (publication, effective, compliance, comment).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "label",
+                "date",
+                "note"
+              ]
+            }
+          },
+          "impacts": {
+            "type": "array",
+            "description": "One entry for the firm and one for each fund/company listed that the regulation actually touches. Omit entities it does not touch.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entity_type": {
+                  "type": "string",
+                  "enum": [
+                    "firm",
+                    "fund",
+                    "company"
+                  ]
+                },
+                "entity_name": {
+                  "type": "string"
+                },
+                "headline": {
+                  "type": "string",
+                  "description": "One neutral sentence: how the regulation relates to this entity."
+                },
+                "how_it_applies": {
+                  "type": "string",
+                  "description": "One or two paragraphs connecting specific provisions to specific facts about this entity."
+                },
+                "obligations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Concrete requirements that would apply, each tied to a provision. Empty if none."
+                },
+                "timeline": {
+                  "type": "string",
+                  "description": "Relevant dates for this entity, or an empty string."
+                },
+                "operational_areas": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Functions or workflows touched (e.g. investor reporting, marketing, custody, data handling)."
+                },
+                "open_questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Facts not provided that would determine whether the overlap is meaningful."
+                }
+              },
+              "required": [
+                "entity_type",
+                "entity_name",
+                "headline",
+                "how_it_applies",
+                "obligations",
+                "timeline",
+                "operational_areas",
+                "open_questions"
+              ]
+            }
+          },
+          "considerations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Neutral points a reader may wish to confirm with counsel (interpretive ambiguities, pending rulemakings, cross-references). Not recommendations."
+          },
+          "limitations": {
+            "type": "string",
+            "description": "One or two sentences on what this analysis rests on (e.g. text truncated, profile information missing)."
+          }
+        },
+        "required": [
+          "overview",
+          "scope",
+          "status",
+          "key_provisions",
+          "key_dates",
+          "impacts",
+          "considerations",
+          "limitations"
+        ]
+      },
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "REGULATION\nTitle: A development\nAgency: Securities and Exchange Commission · Jurisdiction: Federal\nPublished: 2026-11-20 · Effective: n/a\nOfficial summary: What it does.\nTEXT:\nThe full text of the development."
+        },
+        {
+          "type": "text",
+          "text": "Why it was matched to this firm: GetixHealth bills Medicare.\n\nENTITIES (use only these facts. A fact listed under \"not recorded\" is unknown: never treat it as a \"no\" or as absent, and where a conclusion would turn on it, say that it is not recorded. A fact marked \"last confirmed\" with a date has not been confirmed in over a year: where a conclusion rests on it, say it should be re-confirmed.)\nFIRM — H.I.G. Capital: hq_location: Miami, Florida; jurisdictions: United States; firm_type: Private equity; adviser_registration: SEC-registered; not recorded: legal_domicile, strategies\nCOMPANY — GetixHealth: hq_location: Houston, Texas; sectors: Healthcare; regions: United States; offerings: Revenue cycle management; not recorded: supplier_locations, customers, consumer_facing, sensitive_data, regulated, gov_contracts, trade, outside_us"
+        }
+      ]
+    }
+  ]
+}

@@ -17,6 +17,35 @@
 - **Verified:** the same command run locally: 328 passed, 80 skipped
   (tests marked desktop-only or Chrome-only), in 28 minutes on a loaded
   machine. The workflow itself first runs after merge.
+### Prompt snapshots (2026-11-22, Sidekick item 1, part)
+- `tests/unit/promptSnapshots.test.ts` runs each AI job once with fixed
+  inputs and a fixed date, and compares what it would send (model,
+  temperature, token limit, instructions, tools, messages) with a file in
+  `tests/unit/prompts/`: the three judges (and a re-check with a note), the
+  Skeptic on matches and on a chat answer, the claim gate, the citation
+  check, announcement matching, the three analyses, the company scan's
+  two calls, firm research's search, and the chat's instructions. An
+  intended change is recorded with `-u`; CONTRIBUTING says how.
+- **Verified:** changing one word in the Skeptic's instructions fails the
+  test; the files are identical under UTC and Tokyo time. Not covered: the
+  SEC proceedings PDF extraction, and firm research's second call (it is
+  only made once pages were read).
+### Spend caps: monthly, a reserve for people, unknown models (2026-11-22)
+- Sidekick item 3 (system guide §17.3). Migration 0051 adds
+  `ai_spend_totals` (the last 24 hours and this calendar month, per firm
+  and in all); `_shared/ai/client.ts` decides: $15 / $40 a day and $100 /
+  $300 a month by default, background work stopping at 80% so a click
+  still works, a model without a price counted at the highest known price.
+  New secrets: `AI_FIRM_MONTHLY_CAP_USD`, `AI_TOTAL_MONTHLY_CAP_USD`,
+  `AI_INTERACTIVE_RESERVE`. Opening a development marks its analysis as
+  click-started; the chat, re-checks and firm research are by name.
+- **Verified:** unit tests for each cap, the reserve (background refused at
+  four fifths, a click let through), the order of reasons, the secrets,
+  pricing, and the chat refusing at the cap. The migration ran on a local
+  database with sample rows (24 hours, earlier this month, 40 days ago,
+  no firm) and refuses signed-in callers. Not applied in production, not
+  deployed.
+
 ### Server functions on the app's supabase-js (2026-11-22)
 - The server functions imported `@supabase/supabase-js@2.45.4` from esm.sh,
   which `pnpm audit` never saw and which failed CI once when esm.sh was
