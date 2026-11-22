@@ -134,10 +134,11 @@ so ask the owner first (item 17a).
   `pnpm audit` never sees (the browser has `^2.116.0`). Move them to one
   newer pinned version. (`pnpm audit` itself is clean since 2026-11-21,
   issue #18.)
-- **Phone widths and other browsers** (S, findings only): the newer screens
-  were not checked on a phone; Profile, the development page, tablet
-  widths, Safari and Firefox were not looked at after the redesign. No
-  accessibility review is recorded.
+- **Phone widths and other browsers** (S, findings only): the browser tests
+  now run on Firefox, WebKit (Safari) and an iPhone with `ALL_BROWSERS=1`
+  (issue #17, part 1). Still to do: look at every screen at phone and
+  tablet width in both themes, fix what is off, and decide which browsers
+  CI runs (the owner's). No accessibility review is recorded.
 - **Account flows never run end to end**: email change (confirmation
   email) and password change on the Profile Account tab.
 

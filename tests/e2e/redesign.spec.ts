@@ -1,4 +1,4 @@
-import { FIRM_ID, REGS, aiReply, daysAgoAt, expect, regulation, relevance, signIn, test } from './mockBackend'
+import { FIRM_ID, REGS, aiReply, daysAgoAt, expect, regulation, relevance, scrollDown, signIn, test } from './mockBackend'
 
 // Behaviour the redesign added or changed (docs/notes/redesign.md). How things
 // look is checked by eye, with `CAPTURE=screens` (see capture.spec.ts).
@@ -34,7 +34,10 @@ test.describe('landing page', () => {
 })
 
 test.describe('signed in', () => {
-  test('the keyboard can skip to the content, and focus is visible', async ({ page }) => {
+  test('the keyboard can skip to the content, and focus is visible', async ({ page, browserName }) => {
+    // Safari's Tab reaches only form fields unless "Press Tab to highlight
+    // each item" is switched on, and a phone has no Tab key.
+    test.skip(browserName === 'webkit', 'Safari does not Tab to links by default')
     await signIn(page)
     await page.goto('/')
     await expect(page.getByRole('button', { name: 'General Partners' })).toBeVisible()
@@ -67,7 +70,7 @@ test.describe('signed in', () => {
     await page.getByRole('button', { name: 'General Partners' }).click()
     await page.getByRole('button', { name: 'All days' }).click()
     await page.getByText('Long list rule 2', { exact: true }).scrollIntoViewIfNeeded()
-    await page.mouse.wheel(0, 900)
+    await scrollDown(page, 900)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(600)
     const before = await page.evaluate(() => window.scrollY)
 
@@ -244,10 +247,11 @@ test.describe('the chat', () => {
 
   test('past conversations show at once when the sidebar is reopened', async ({ page }) => {
     await openChat(page)
-    await page.getByRole('button', { name: 'Chats' }).click()
+    await page.getByRole('button', { name: 'Show chats' }).click()
     await expect(page.getByRole('searchbox', { name: 'Search conversations' })).toBeVisible()
     await expect(page.getByRole('status', { name: 'Loading conversations' })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Chats' }).click()
+    // On a phone the list covers the header and has its own close button.
+    await page.getByRole('button', { name: 'Hide chats' }).last().click()
     await expect(page.getByRole('searchbox', { name: 'Search conversations' })).toHaveCount(0)
     await page.evaluate(() => {
       ;(window as unknown as { __sawLoading: boolean }).__sawLoading = false
@@ -255,7 +259,7 @@ test.describe('the chat', () => {
         if (document.querySelector('[aria-label="Loading conversations"]')) (window as unknown as { __sawLoading: boolean }).__sawLoading = true
       }).observe(document, { childList: true, subtree: true })
     })
-    await page.getByRole('button', { name: 'Chats' }).click()
+    await page.getByRole('button', { name: 'Show chats' }).click()
     await expect(page.getByRole('searchbox', { name: 'Search conversations' })).toBeVisible()
     expect(await page.evaluate(() => (window as unknown as { __sawLoading: boolean }).__sawLoading)).toBe(false)
   })

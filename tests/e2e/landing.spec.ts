@@ -27,7 +27,7 @@ test.describe('landing page', () => {
     await expect(page.getByText('Welcome back')).toHaveCount(0)
     await expect(heading(page)).toBeVisible()
 
-    await page.getByRole('banner').getByRole('button', { name: 'Get Started' }).click()
+    await page.getByRole('button', { name: 'Get Started' }).first().click()
     await expect(page.getByText('Create your account')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByText('Create your account')).toHaveCount(0)

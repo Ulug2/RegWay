@@ -22,7 +22,20 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Desktop Chrome always. ALL_BROWSERS=1 adds Firefox, Safari's engine
+  // (WebKit) and a phone (issue #17); CI installs only Chrome, so they run
+  // by hand: `pnpm exec playwright install firefox webkit` once, then
+  // `ALL_BROWSERS=1 pnpm test:e2e`.
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    ...(process.env.ALL_BROWSERS
+      ? [
+          { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+          { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+          { name: 'phone', use: { ...devices['iPhone 14'] } },
+        ]
+      : []),
+  ],
   webServer: {
     command: 'pnpm exec vite',
     url: `http://localhost:${PORT}`,

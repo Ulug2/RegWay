@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { FIRM_ID, REGS, USER, daysAgoAt, expect, signIn, test, todayAt, type MockBackend } from './mockBackend'
+import { FIRM_ID, REGS, USER, daysAgoAt, expect, scrollDown, signIn, test, todayAt, type MockBackend } from './mockBackend'
 
 const titles = (page: Page) => page.locator('.glass-card-light .font-semibold.mb-2')
 
@@ -285,7 +285,7 @@ test.describe('dashboard chrome', () => {
     expect(await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight * 3)).toBe(true)
 
     await expect(aiInput(page)).toBeInViewport()
-    await page.mouse.wheel(0, 2500)
+    await scrollDown(page, 2500)
     await expect(aiInput(page)).toBeInViewport()
     // The page header stays put as well.
     await expect(page.getByRole('switch', { name: 'Dark mode' })).toBeInViewport()
@@ -301,7 +301,7 @@ test.describe('dashboard chrome', () => {
   test('the input still opens the chat from the middle of a long list', async ({ page, backend }) => {
     longList(backend)
     await openFirmList(page)
-    await page.mouse.wheel(0, 2500)
+    await scrollDown(page, 2500)
     await aiInput(page).click()
     await expect(page.getByText('RegWay AI Copilot')).toBeVisible()
   })
