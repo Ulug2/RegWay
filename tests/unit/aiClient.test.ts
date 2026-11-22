@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { aiFailure, AnthropicError, callClaude, SpendCapError, streamClaude, textOf, toolInput } from '../../supabase/functions/_shared/ai/client.ts'
+import { aiFailure, AnthropicError, callClaude, isInteractive, overCap, SpendCapError, spendCaps, streamClaude, textOf, toolInput, type Spend, type UsageTarget } from '../../supabase/functions/_shared/ai/client.ts'
 import { AiOutputError, runTool, type ToolSpec } from '../../supabase/functions/_shared/ai/structured.ts'
 import { fakeClient } from './helpers/fakeSupabase'
 import { jsonResponse, stubFetch } from './helpers/handler'
@@ -117,35 +117,97 @@ describe('streamClaude', () => {
 })
 
 describe('spend caps', () => {
+  const SECRETS = ['AI_FIRM_DAILY_CAP_USD', 'AI_TOTAL_DAILY_CAP_USD', 'AI_FIRM_MONTHLY_CAP_USD', 'AI_TOTAL_MONTHLY_CAP_USD', 'AI_INTERACTIVE_RESERVE']
   afterEach(() => {
-    setEnv('AI_FIRM_DAILY_CAP_USD', undefined)
-    setEnv('AI_TOTAL_DAILY_CAP_USD', undefined)
+    for (const name of SECRETS) setEnv(name, undefined)
   })
 
-  // A database whose cap check answers `verdict` ('firm', 'total' or null).
-  const capped = (verdict: string | null) => fakeClient(q => (q.op === 'rpc' && q.table === 'ai_spend_check' ? { data: verdict } : undefined))
-  const usageFor = (db: ReturnType<typeof fakeClient>) => ({ admin: db as never, functionName: 'match-relevance', firmId: 'firm-1' })
+  const NONE: Spend = { firm_day: 0, total_day: 0, firm_month: 0, total_month: 0 }
+  // A database whose ai_spend_totals answers these totals (as Postgres
+  // returns numerics: strings).
+  const spending = (over: Partial<Spend>) =>
+    fakeClient(q => (q.op === 'rpc' && q.table === 'ai_spend_totals' ? { data: [Object.fromEntries(Object.entries({ ...NONE, ...over }).map(([k, v]) => [k, String(v)]))] } : undefined))
+  const usageFor = (db: ReturnType<typeof fakeClient>, extra: Partial<UsageTarget> = {}) => ({ admin: db as never, functionName: 'match-relevance', firmId: 'firm-1', ...extra })
 
-  it('asks for the firm and both caps before sending, and sends when under them', async () => {
+  describe('the defaults and the secrets', () => {
+    it('defaults: $15 a firm and $40 in all a day, $100 and $300 a month, a fifth kept for people', () => {
+      expect(spendCaps()).toEqual({ firmDay: 15, totalDay: 40, firmMonth: 100, totalMonth: 300, reserve: 0.2 })
+    })
+
+    it('reads the secrets, ignoring ones that are not a usable number', () => {
+      setEnv('AI_FIRM_DAILY_CAP_USD', '2.5')
+      setEnv('AI_TOTAL_DAILY_CAP_USD', 'not a number')
+      setEnv('AI_TOTAL_MONTHLY_CAP_USD', '-5')
+      setEnv('AI_FIRM_MONTHLY_CAP_USD', '50')
+      setEnv('AI_INTERACTIVE_RESERVE', '0')
+      expect(spendCaps()).toEqual({ firmDay: 2.5, totalDay: 40, firmMonth: 50, totalMonth: 300, reserve: 0 })
+      setEnv('AI_INTERACTIVE_RESERVE', '1')
+      expect(spendCaps().reserve).toBe(0.2)
+    })
+  })
+
+  describe('deciding', () => {
+    const caps = { firmDay: 10, totalDay: 40, firmMonth: 100, totalMonth: 300, reserve: 0.2 }
+    const verdict = (spend: Partial<Spend>, interactive: boolean) => {
+      const err = overCap({ ...NONE, ...spend }, caps, interactive)
+      return err && `${err.scope} ${err.period}${err.reserve ? ' reserve' : ''}`
+    }
+
+    it('lets a call through under every cap', () => {
+      expect(verdict({ firm_day: 7.9, total_day: 31, firm_month: 79, total_month: 239 }, false)).toBeNull()
+    })
+
+    it('refuses at each cap, whoever started the call', () => {
+      for (const interactive of [true, false]) {
+        expect(verdict({ firm_day: 10 }, interactive)).toBe('firm day')
+        expect(verdict({ firm_month: 100 }, interactive)).toBe('firm month')
+        expect(verdict({ total_day: 40 }, interactive)).toBe('total day')
+        expect(verdict({ total_month: 300 }, interactive)).toBe('total month')
+      }
+    })
+
+    it('stops background work at four fifths of a cap, and lets a click use the rest', () => {
+      expect(verdict({ firm_day: 8 }, false)).toBe('firm day reserve')
+      expect(verdict({ total_month: 240 }, false)).toBe('total month reserve')
+      expect(verdict({ firm_day: 9.99, total_month: 299 }, true)).toBeNull()
+    })
+
+    it('names the cap for everyone first, and a month before a day', () => {
+      expect(verdict({ firm_day: 10, firm_month: 100, total_day: 40, total_month: 300 }, true)).toBe('total month')
+      expect(verdict({ firm_day: 10, firm_month: 100 }, true)).toBe('firm month')
+    })
+  })
+
+  describe('which work is started by a person', () => {
+    it('the chat, a re-check and firm research, by their names', () => {
+      for (const name of ['regway-ai-chat', 'regway-ai-chat/claims', 'rematch-regulation', 'research-firm:search']) expect(isInteractive({ functionName: name })).toBe(true)
+      for (const name of ['match-relevance', 'match-relevance/skeptic', 'regulation-impact', 'company-regulations:search', 'group-duplicates', 'regway-ai-chatter']) expect(isInteractive({ functionName: name })).toBe(false)
+    })
+
+    it('an analysis only when the caller says a person opened it', () => {
+      expect(isInteractive({ functionName: 'regulation-impact', interactive: true })).toBe(true)
+      expect(isInteractive({ functionName: 'regway-ai-chat', interactive: false })).toBe(false)
+    })
+  })
+
+  it("asks for the firm's totals before sending, and sends when under the caps", async () => {
     const calls = answers(() => jsonResponse(OK))
-    const db = capped(null)
+    const db = spending({ firm_day: 1 })
     await callClaude(REQUEST, { usage: usageFor(db) })
-    expect(db.ran('ai_spend_check', 'rpc')[0].payload).toEqual({ p_firm_id: 'firm-1', p_firm_cap: 15, p_total_cap: 40 })
+    expect(db.ran('ai_spend_totals', 'rpc')[0].payload).toEqual({ p_firm_id: 'firm-1' })
     expect(calls).toHaveLength(1)
   })
 
-  it('takes the caps from the function secrets', async () => {
+  it('asks with no firm for work done for none', async () => {
     answers(() => jsonResponse(OK))
-    setEnv('AI_FIRM_DAILY_CAP_USD', '2.5')
-    setEnv('AI_TOTAL_DAILY_CAP_USD', 'not a number')
-    const db = capped(null)
-    await callClaude(REQUEST, { usage: usageFor(db) })
-    expect(db.ran('ai_spend_check', 'rpc')[0].payload).toMatchObject({ p_firm_cap: 2.5, p_total_cap: 40 })
+    const db = spending({})
+    await callClaude(REQUEST, { usage: usageFor(db, { firmId: undefined }) })
+    expect(db.ran('ai_spend_totals', 'rpc')[0].payload).toEqual({ p_firm_id: null })
   })
 
   it("refuses a call over the firm's cap without sending it or telling every firm the AI is down", async () => {
     const calls = answers(() => jsonResponse(OK))
-    const db = capped('firm')
+    const db = spending({ firm_day: 15 })
     const err = await callClaude(REQUEST, { usage: usageFor(db) }).catch(e => e)
     expect(err).toBeInstanceOf(SpendCapError)
     expect(aiFailure(err)).toBe('spend_cap')
@@ -153,25 +215,40 @@ describe('spend caps', () => {
     expect(db.ran('usage_events', 'insert')).toHaveLength(0)
   })
 
-  it('refuses a call over the cap for all of RegWay and records it, so the AI status and the owner hear of it', async () => {
+  it('refuses a call over a cap for all of RegWay and records it, so the AI status and the owner hear of it', async () => {
     const calls = answers(() => jsonResponse(OK))
-    const db = capped('total')
+    const db = spending({ total_month: 300 })
     await expect(callClaude(REQUEST, { usage: usageFor(db) })).rejects.toBeInstanceOf(SpendCapError)
     expect(calls).toHaveLength(0)
-    expect(db.ran('usage_events', 'insert')[0].payload).toMatchObject({ ok: false, error: expect.stringMatching(/^spend_cap: /) })
+    expect(db.ran('usage_events', 'insert')[0].payload).toMatchObject({ ok: false, error: expect.stringMatching(/^spend_cap: .*total, month/) })
   })
 
-  it('lets the call through when the check itself fails', async () => {
+  it('stops background work at the reserve without saying the AI is down, while a click still goes through', async () => {
     const calls = answers(() => jsonResponse(OK))
-    const db = fakeClient(q => (q.op === 'rpc' ? { error: { message: 'connection reset' } } : undefined))
-    await expect(callClaude(REQUEST, { usage: usageFor(db) })).resolves.toMatchObject({ content: OK.content })
+    const background = spending({ total_day: 35 })
+    const err = await callClaude(REQUEST, { usage: usageFor(background) }).catch(e => e)
+    expect(err).toMatchObject({ scope: 'total', period: 'day', reserve: true })
+    expect(background.ran('usage_events', 'insert')).toHaveLength(0)
+    expect(calls).toHaveLength(0)
+
+    const click = spending({ total_day: 35 })
+    await callClaude(REQUEST, { usage: usageFor(click, { functionName: 'regway-ai-chat' }) })
     expect(calls).toHaveLength(1)
+  })
+
+  it('lets the call through when the check itself fails, or returns nothing', async () => {
+    const calls = answers(() => jsonResponse(OK))
+    const broken = fakeClient(q => (q.op === 'rpc' ? { error: { message: 'connection reset' } } : undefined))
+    await expect(callClaude(REQUEST, { usage: usageFor(broken) })).resolves.toMatchObject({ content: OK.content })
+    const empty = fakeClient(q => (q.op === 'rpc' ? { data: [] } : undefined))
+    await expect(callClaude(REQUEST, { usage: usageFor(empty) })).resolves.toMatchObject({ content: OK.content })
+    expect(calls).toHaveLength(2)
   })
 
   it('checks a streamed call too, before it starts', async () => {
     const calls = answers(() => jsonResponse(OK))
-    const db = capped('firm')
-    await expect(streamClaude(REQUEST, { spend: usageFor(db) })).rejects.toBeInstanceOf(SpendCapError)
+    const db = spending({ firm_day: 15 })
+    await expect(streamClaude(REQUEST, { spend: usageFor(db, { functionName: 'regway-ai-chat' }) })).rejects.toBeInstanceOf(SpendCapError)
     expect(calls).toHaveLength(0)
   })
 })

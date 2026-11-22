@@ -30,7 +30,10 @@ function database(state: State): Resolver {
   return (q: Query) => {
     if (q.table === 'firm_members') return { data: state.member === false ? null : { firm_id: FIRM, firms: { name: 'H.I.G. Capital', hq_location: 'Miami, Florida', jurisdictions: ['United States'], profile: state.firmProfile ?? {} } } }
     if (q.table === 'check_rate_limit') return { data: state.allowed ?? true }
-    if (q.table === 'ai_spend_check') return { data: state.spendCap ?? null }
+    if (q.table === 'ai_spend_totals') {
+      const over = 1_000_000
+      return { data: [{ firm_day: state.spendCap === 'firm' ? over : 0, total_day: state.spendCap === 'total' ? over : 0, firm_month: 0, total_month: 0 }] }
+    }
     if (q.table === 'regway_ai_conversations') {
       if (q.op === 'select') return { data: state.conversation ?? null }
       if (q.op === 'insert') return state.idTaken ? { error: { code: '23505' } } : {}
@@ -369,9 +372,9 @@ describe('regway-ai-chat', () => {
   it("stops at the firm's daily spend cap before calling the model, and says so plainly", async () => {
     const { res, text, calls, db } = await chat({ spendCap: 'firm' }, { message: 'hi' })
     expect(res.status).toBe(502)
-    expect(JSON.parse(text).error).toContain("today's spending limit")
+    expect(JSON.parse(text).error).toContain('reached its spending limit')
     expect(calls).toEqual([])
-    expect(db.ran('ai_spend_check', 'rpc')[0].payload).toMatchObject({ p_firm_id: FIRM })
+    expect(db.ran('ai_spend_totals', 'rpc')[0].payload).toEqual({ p_firm_id: FIRM })
     expect(db.ran('regway_ai_messages', 'insert')).toEqual([])
   })
 

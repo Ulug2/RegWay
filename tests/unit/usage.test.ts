@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estimateCostUsd, mergeUsage, recordUsage, type UsageTotals } from '../../supabase/functions/_shared/usage.ts'
+import { estimateCostUsd, mergeUsage, recordUsage, UNKNOWN_MODEL_PRICES, type UsageTotals } from '../../supabase/functions/_shared/usage.ts'
 import { fakeClient } from './helpers/fakeSupabase'
 
 describe('mergeUsage', () => {
@@ -37,12 +37,19 @@ describe('recordUsage', () => {
     expect((insert.payload as { estimated_cost_usd: number }).estimated_cost_usd).toBeCloseTo(22.1, 6)
   })
 
-  it('prices by model: Haiku 4.5 at a third of Sonnet 4.5, unknown models as Sonnet', () => {
+  it('prices by model: Haiku 4.5 at a third of Sonnet 4.5', () => {
     const tokens = { inputTokens: 1_000_000, cacheCreationInputTokens: 1_000_000, cacheReadInputTokens: 1_000_000, outputTokens: 1_000_000 }
     // $1 input + $1.25 cache write + $0.10 cache read + $5 output
     expect(estimateCostUsd('claude-haiku-4-5', tokens)).toBeCloseTo(7.35, 6)
     expect(estimateCostUsd('claude-sonnet-4-5', tokens)).toBeCloseTo(22.05, 6)
-    expect(estimateCostUsd('some-new-model', tokens)).toBeCloseTo(22.05, 6)
+  })
+
+  it('prices a model nobody priced at the highest known price of each kind, never less', () => {
+    expect(UNKNOWN_MODEL_PRICES).toEqual({ input: 3, cacheWrite: 3.75, cacheRead: 0.3, output: 15 })
+    for (const tokens of [{ inputTokens: 1_000_000 }, { outputTokens: 1_000_000 }, { cacheCreationInputTokens: 1_000_000 }, { cacheReadInputTokens: 1_000_000 }]) {
+      const known = Math.max(estimateCostUsd('claude-haiku-4-5', tokens), estimateCostUsd('claude-sonnet-4-5', tokens))
+      expect(estimateCostUsd('some-new-model', tokens)).toBeCloseTo(known, 9)
+    }
   })
 
   it('defaults missing counts to zero', async () => {

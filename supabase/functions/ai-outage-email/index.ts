@@ -38,7 +38,7 @@ export function outageEmail(reason: string | null, since: string): { subject: st
     rate_limited: 'Usually passes by itself. If it lasts, check the Anthropic rate limits for the account.',
     unavailable: 'Usually passes by itself. Check status.anthropic.com.',
     timeout: 'Usually passes by itself. Check status.anthropic.com.',
-    spend_cap: "RegWay reached its daily AI spending cap (AI_TOTAL_DAILY_CAP_USD, default $40 over 24 hours). Check usage_events for who spent it; if the use is genuine, raise the cap with supabase secrets set.",
+    spend_cap: "RegWay reached an AI spending cap for all firms: AI_TOTAL_DAILY_CAP_USD (default $40 over 24 hours) or AI_TOTAL_MONTHLY_CAP_USD (default $300 this calendar month, UTC); the failed calls' error says which. Check usage_events for who spent it; if the use is genuine, raise the cap with supabase secrets set.",
     other: 'Look at the failed calls: usage_events where ok = false, newest first, column error.',
   }
   const started = new Date(since).toUTCString()
