@@ -194,8 +194,10 @@ asks for.
    chat prompt changes by accident). Owner: hand-marking the right verdict
    for about 150 documents, and running it.
 2. **Fence outside text in every prompt** (S–M, §17.2).
-3. **The rest of the spend caps** (S, §17.3): a monthly cap, a reserve for
-   click-started work, an unknown model priced at the highest known price.
+3. **The rest of the spend caps** (S, §17.3): built 2026-11-22 (migration
+   0051, history). Waits on the owner: apply 0051 in production, then
+   deploy every function (they all check the caps through
+   `_shared/ai/client.ts`); a later migration then drops `ai_spend_check`.
 4. **Citation check in code first** (S–M, §17.4).
 5. **The Skeptic must show evidence to reject** (S, §17.5). Merge only
    after the test set (1) shows recall up and precision not down.
@@ -237,7 +239,7 @@ would. Nothing found.
 the last 24 hours reach $15 for one firm or $40 for RegWay (secrets
 `AI_FIRM_DAILY_CAP_USD`, `AI_TOTAL_DAILY_CAP_USD`). The `/cso` run that day
 (static, partial: no scanners, skill files excluded) found nothing else.
-The rest of the spend-cap plan is Sidekick item 3 below.
+Monthly caps and a reserve for click-started work: Sidekick item 3 below.
 
 1. **Who can read what (row-level security).** Every table: can a signed-in
    user of firm A read or change firm B's rows? Includes `firms`, `funds`,
