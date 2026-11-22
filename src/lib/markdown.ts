@@ -220,8 +220,13 @@ function renderBlock(b: Block): string {
   return `<p>${renderInline(b.text).replace(/\n/g, '<br/>')}</p>`
 }
 
+// The tags the server fences outside text with (supabase/functions/_shared/
+// security/guard.ts). A model sometimes copies one back into its answer;
+// it is removed before an answer is shown, as the server does before saving.
+const FENCE_TAG = /[<‹]\/?\s*untrusted_content\b[^>\n]*>\n?/gi
+
 export function renderMarkdownBlocks(source: string): RenderedBlock[] {
-  return parseBlocks(source.split('\n')).map(b => ({ kind: b.type, html: renderBlock(b) }))
+  return parseBlocks(source.replace(FENCE_TAG, '').split('\n')).map(b => ({ kind: b.type, html: renderBlock(b) }))
 }
 
 export function renderMarkdown(source: string): string {

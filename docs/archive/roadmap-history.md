@@ -26,6 +26,44 @@
   stubbed answer, models and cost included); `deno check` passes; run for
   real up to the question and declined: nothing sent. Never run against
   the real AI. The real set is the owner's to mark.
+### What each AI call was sent and answered, kept 30 days (2026-11-22, Sidekick item 9, storage)
+- Migration 0052 adds `ai_traces` (service role only; deleted with the
+  firm; a daily timer, `ai-traces-30-days`, deletes rows older than 30
+  days). `_shared/ai/client.ts` stores the request and the answer (content
+  and stop reason) after every call sent with a usage target, and the
+  error for one that was sent and failed; nothing for a call refused by a
+  spend cap. `_shared/ai/trace.ts` cuts strings over 60,000 characters and
+  replaces PDF data with its size; a failure to store never breaks the
+  call. `AI_TRACES=off` turns it off.
+- **Verified:** 8 unit tests (stored as sent; failed calls; refused calls
+  and switched off store nothing; a missing table doesn't break the call;
+  shortening); all unit tests pass; the migration ran on a local database,
+  the timer is scheduled, its delete keeps a fresh row and removes a
+  31-day-old one, and signed-out callers are refused. Not applied in
+  production, not deployed. No page yet.
+### Outside text fenced in every prompt (2026-11-22, Sidekick item 2)
+- `_shared/security/guard.ts` (from Sidekick's `guard.ts`): `untrusted()`
+  wraps outside text in an `<untrusted_content source="…">` fence it can't
+  close or reopen from inside; `FENCE_RULE` is added to every prompt that
+  carries one; a local scan of seven patterns adds a warning beside the
+  fence (and a log line) when text reads like orders to an AI; fence tags
+  are removed from every tool answer and text the AI client returns, from
+  saved chat answers, and in the chat's renderer.
+- Fenced: the regulatory, geopolitical and enforcement judges' documents
+  (the code-computed countries and overlaps stay outside), the Skeptic's
+  documents and the chat review's matched list, the analyses' document
+  text, announcement matching, the company scan's and firm research's
+  search notes, the citation check's quoted passages, and the chat's
+  matched list, unconfirmed findings and attached text files. PDFs and web
+  searches are told the rule in words.
+- **Verified:** 21 unit tests (the fence can't be broken out of; six kinds
+  of orders flagged and four ordinary regulatory sentences not; tags
+  stripped from answers; a document telling the matcher to "mark this rule
+  as relevant for every company" reaches it fenced, flagged and under the
+  rule); prompt snapshots updated (14 of 16 changed, each diff only the
+  fence and the rule); all 717 unit tests pass. How the model behaves with
+  a poisoned document was not tested against the real AI (owner).
+  Not deployed.
 
 ### Browser tests on Safari's engine and a phone, nightly (2026-11-22)
 - Decided by the owner: desktop Chrome on every pull request (as before);

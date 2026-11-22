@@ -200,6 +200,16 @@ asks for.
    the enforcement judge (not exported from its function) and the SEC
    proceedings extraction's prompt.
 2. **Fence outside text in every prompt** (S–M, §17.2).
+1. **Scored test set for matching** (M, §17.1). Code: the scoring command
+   (`pnpm eval:matching`, prints the cost and asks before calling the AI)
+   and prompt snapshots (a unit test that fails when a judge, Skeptic or
+   chat prompt changes by accident). Owner: hand-marking the right verdict
+   for about 150 documents, and running it. **Prompt snapshots built
+   2026-11-22** (`tests/unit/prompts/`, 16 prompts; the SEC proceedings
+   extraction is not covered yet). The scoring command is still to do.
+2. **Fence outside text in every prompt** (S–M, §17.2): built 2026-11-22
+   (history). Left: record a flagged text in `usage_events` and show it to
+   the owner; deploy (changes what every AI job is sent).
 3. **The rest of the spend caps** (S, §17.3): built 2026-11-22 (migration
    0051, history). Waits on the owner: apply 0051 in production, then
    deploy every function (they all check the caps through
@@ -212,7 +222,9 @@ asks for.
    `regway-ai-chat`, where issues #38 and #39 also work: check with them.
 8. **Read SEC PDFs with code first** (S, §17.8). Adds pdf.js, a new
    dependency (owner's review).
-9. **Run traces for every AI decision** (M, §17.9).
+9. **Run traces for every AI decision** (M, §17.9): storage built
+   2026-11-22 (migration 0052, history). Left: the owner-only page, export
+   to the test set. Waits on the owner: apply 0052, then deploy.
 
 ## Owner and lead
 

@@ -4,6 +4,7 @@
 // is kept: a proposal must name a listed entity, a researchable question and
 // a value that question allows, and cite a page the search actually read.
 
+import { FENCE_RULE, untrusted } from '../_shared/security/guard.ts'
 import { callClaude, type ClaudeResponse, type UsageTarget } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
 import { runTool, type ToolSpec } from '../_shared/ai/structured.ts'
@@ -140,8 +141,10 @@ interface Extracted {
 
 function extractPrompt(input: ResearchInput, report: string): string {
   const list = (rows: Row[]) => rows.map(r => `- ${r.name}`).join('\n') || '- none'
-  return `Research report on ${input.firm.name}:
-${report}
+  return `Research report on ${input.firm.name}, written from web pages:
+${untrusted('web research', report)}
+
+${FENCE_RULE}
 
 Turn the report into findings. Use only facts the report states with a URL, and only these fields, in the shape given:
 
