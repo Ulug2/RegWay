@@ -34,48 +34,16 @@ at a time: `src/components/Dashboard.tsx` (tasks 2, 3), `src/lib/data.ts`
 Done on 2026-10-23 by the owner ("General Partners", "Funds").
 
 ### 3. Failing-source banner: grammar and which feed
-- **Problem:** the banner reads "Regulator feeds (U.S., UK and EU) hasn't
-  updated…" when only one feed is down (roadmap 16a). Checked: the sentence
-  is built in `Dashboard.tsx:235` from labels in `data.ts` (`SOURCE_LABELS`).
-- **Expected result:** correct grammar for singular and plural names; if
-  `sync_runs.detail` says which feed failed, the banner names it (to
-  investigate: what `detail` holds for `regulator_feeds`).
-- **Done when:** unit test for the wording with one and several failing
-  sources; a browser test shows the banner.
-- **Depends on:** nothing. **Difficulty:** easy (grammar) to medium (naming
-  the feed). **New contributor:** yes.
+Done (`src/lib/sourceNotice.ts`, `tests/unit/sourceNotice.test.ts`).
 
 ### 4. One list of source names
-- **Problem:** a source's display name is defined in three places. Checked:
-  `SOURCE_LABELS` in `src/lib/data.ts:606`, `SOURCE_NAMES` in
-  `src/lib/duplicates.ts:61`, and the landing page's own list.
-- **Expected result:** one exported map, used by all three.
-- **Done when:** the two maps are gone; existing tests pass unchanged; a
-  unit test fails if a source in `REGULATOR_FEEDS` has no name.
-- **Depends on:** after task 3 merges (same file).
-- **Difficulty:** easy. **New contributor:** yes.
+Done on 2026-11-21: `src/lib/sourceList.ts`, checked by `tests/unit/sourceList.test.ts`.
 
 ### 5. Old locations written with a full state name
-- **Problem:** Checked: `parseLegacyLocation("Miami, Florida")` in
-  `src/lib/questionnaire.ts:280` returns city Miami, *country* Florida; only
-  two-letter state codes are recognised.
-- **Expected result:** full US state names are recognised as states.
-- **Done when:** unit tests for "Miami, Florida", "Miami, FL", "Paris,
-  France" and "New York, New York".
-- **Depends on:** nothing. **Difficulty:** easy. **New contributor:** yes
-  (pure function, no setup beyond `pnpm test`).
+Done (`parseLegacyLocation` reads full state names, ZIPs, D.C. and country names).
 
 ### 6. Feed summaries showing `&nbsp;` and repeated titles
-- **Problem (to investigate):** roadmap 16a reports an FCA card reading
-  "…These include:&nbsp;Guidance…" and enforcement cards whose summary
-  repeats the title. `supabase/functions/_shared/rss.ts` already decodes
-  `&nbsp;`, so the cause may be double-encoded text (`&amp;nbsp;`).
-- **Expected result:** summaries with no visible HTML entities; no summary
-  identical to its title.
-- **Done when:** a unit test in `tests/unit/rss.test.ts` reproduces each
-  case from a real feed excerpt and passes after the fix.
-- **Depends on:** nothing. Needs the owner's review (file is under
-  `supabase/`). **Difficulty:** easy. **New contributor:** yes.
+Done (double-encoded text is decoded, `tests/unit/rss.test.ts`).
 
 ### 7. Empty answer bubble after stopping the chat
 - **Problem (to investigate):** after pressing stop on a chat answer, an
@@ -157,14 +125,7 @@ Done on 2026-10-23 by the owner ("General Partners", "Funds").
   with database experience, supervised by the lead.
 
 ### 14. Dependency audit
-- **Problem:** Checked: `pnpm audit` reports 10 advisories (7 high, 3
-  moderate) on 2026-10-11, at least one through Vite's build tooling.
-- **Expected result:** a short write-up: which affect what ships to users
-  and which are build-time only; then upgrade pull requests, one per package.
-- **Done when:** `pnpm audit` is clean or each remaining advisory has a
-  written reason; all checks pass after each upgrade.
-- **Depends on:** owner's review (`package.json`).
-- **Difficulty:** medium. **New contributor:** after one merged task.
+Done on 2026-11-21: `pnpm audit` is clean (issue #18).
 
 ## C. Stay with the owner or the lead
 
