@@ -13,7 +13,7 @@
 //   would go past today's cap for the firm, or for all of RegWay, is refused
 //   with SpendCapError (migration 0048).
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { mergeUsage, recordUsage, type UsageTotals } from '../usage.ts'
 
 export const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages'

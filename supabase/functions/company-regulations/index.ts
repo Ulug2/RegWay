@@ -10,7 +10,7 @@
 // Called from the browser with the user's own session token:
 //   POST /functions/v1/company-regulations   { "companyId": "<uuid>" }
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { generateImpacts } from '../_shared/impact.ts'
 import { callClaude, textOf, toolInput } from '../_shared/ai/client.ts'

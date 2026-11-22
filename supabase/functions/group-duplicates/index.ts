@@ -17,7 +17,7 @@
 //   POST /functions/v1/group-duplicates   { "dryRun": true }  — report the links, write nothing
 //   Authorization: Bearer <service key>
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { handleOptions, json } from '../_shared/cors.ts'
 import {
   ANNOUNCEMENT_LAG_DAYS,

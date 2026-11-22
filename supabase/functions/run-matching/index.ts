@@ -29,7 +29,7 @@
 //   POST /functions/v1/run-matching   { "force": true }   — run even if nothing changed
 //   Authorization: Bearer <service key>
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'
 import { automaticAiPaused } from '../_shared/ai/switch.ts'

@@ -35,7 +35,7 @@
 //   POST /functions/v1/match-geopolitical-relevance   { "firmId": "<uuid>" }
 //   Authorization: Bearer <service role key>
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { generateImpacts } from '../_shared/impact.ts'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { companyFootprint, firmFootprint, foreignCountries, hasForeignExposure, type EntityFootprint } from '../_shared/footprint.ts'

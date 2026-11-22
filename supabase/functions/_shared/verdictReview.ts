@@ -12,7 +12,7 @@
 // verdicts pass through as the matcher gave them, and the failure is
 // recorded.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { MODEL_FOR } from './ai/models.ts'
 import type { FirmEntities, Verdict } from './relevance.ts'
 import { firmRecord, loadHoldings, type FirmRecord } from './roles/entityContext.ts'

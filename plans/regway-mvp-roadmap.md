@@ -129,11 +129,6 @@ so ask the owner first (item 17a).
 - **Formatting** (S, one person, when no other branches are open):
   `oxfmt --check` fails on about 157 files, so formatting is not a required
   check. Format everything once, then add the check to CI.
-- **The functions' supabase-js** (S, then a deploy of every function): the
-  server functions import `@supabase/supabase-js@2.45.4` from esm.sh, which
-  `pnpm audit` never sees (the browser has `^2.116.0`). Move them to one
-  newer pinned version. (`pnpm audit` itself is clean since 2026-11-21,
-  issue #18.)
 - **Phone widths and other browsers** (S, findings only): the browser tests
   now run on Firefox, WebKit (Safari) and an iPhone with `ALL_BROWSERS=1`
   (issue #17, part 1). Still to do: look at every screen at phone and

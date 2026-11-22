@@ -3,13 +3,14 @@ import path from 'node:path'
 
 // Unit tests cover the pure logic in src/lib and in the edge functions'
 // shared modules (supabase/functions/_shared). The functions are written for
-// Deno and import supabase-js by URL; here that import resolves to a fake
-// client, so no test can reach a real project.
+// Deno and import supabase-js as `npm:@supabase/supabase-js@<version>`; here
+// that import resolves to a fake client, so no test can reach a real project.
+// tests/unit/functionImports.test.ts keeps the version in step with the app's.
 export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      'https://esm.sh/@supabase/supabase-js@2.45.4': path.resolve(__dirname, './tests/unit/helpers/fakeSupabase.ts'),
+      'npm:@supabase/supabase-js@2.116.0': path.resolve(__dirname, './tests/unit/helpers/fakeSupabase.ts'),
     },
   },
   test: {

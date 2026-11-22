@@ -21,7 +21,7 @@
 // Settings: RESEND_API_KEY (secret), ALERT_EMAIL_TO (comma-separated;
 // default team@regwayai.com), EMAIL_FROM (optional, _shared/email.ts).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { AI_FAILURE_MESSAGES, type AiFailure } from '../_shared/ai/client.ts'
 import { addressesFrom, sendEmail } from '../_shared/email.ts'

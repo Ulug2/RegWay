@@ -21,7 +21,7 @@
 // and the `countries` it names (see _shared/countries.ts), which the
 // geopolitical matcher pre-filters on.
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { corsHeaders, handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { extractCountries } from '../_shared/countries.ts'
 import { federalRegisterTextUrl, federalRegisterTextUrls } from '../_shared/federalRegister.ts'
