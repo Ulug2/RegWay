@@ -9,6 +9,7 @@
 // reviewAnswer: for each applicability claim in a chat answer, say whether
 // the recorded facts carry it (regway-ai-chat/review.ts).
 
+import { FENCE_RULE, untrusted } from '../security/guard.ts'
 import { MODEL_FOR } from '../ai/models.ts'
 import { runTool, type ToolSpec } from '../ai/structured.ts'
 import type { CallOptions, UsageTarget } from '../ai/client.ts'
@@ -73,6 +74,8 @@ const CATEGORY_NOTES: Record<ReviewCategory, string> = {
 
 const SYSTEM = `You are the reviewer in RegWay, a regulatory intelligence service for private equity firms. Another step has matched documents to a firm, one of its funds, or one of its portfolio companies, each with a stated reason. Your job is to try to break each match. You are not the matcher's colleague; a match you let through is shown to the firm as something that applies to it.
 
+${FENCE_RULE}
+
 ${CHALLENGE_CHECKLIST}
 
 Decide for each match:
@@ -113,10 +116,11 @@ function itemText(item: VerdictUnderReview): string {
   const d = item.document
   const dates = [d.published_date ? `published ${d.published_date}` : '', d.effective_date ? `effective ${d.effective_date}` : ''].filter(Boolean).join(', ')
   const where = item.scope === 'firm' ? 'the firm' : `${item.scope} "${item.entity_name}"`
-  return `${item.index}. ${d.title}
-   Issuer: ${d.issuer ?? 'n/a'}${d.jurisdiction ? ` · ${d.jurisdiction}` : ''}${dates ? ` · ${dates}` : ''}${d.countries?.length ? ` · countries named: ${d.countries.join(', ')}` : ''}
-   Summary: ${(d.summary ?? 'none').slice(0, SUMMARY_CHARS)}
-   Matched to ${where}. Stated reason: ${item.reason}`
+  // The document's own words are fenced (_shared/security/guard.ts); the
+  // issuer, dates and the stated reason are RegWay's.
+  return `${item.index}. Issuer: ${d.issuer ?? 'n/a'}${d.jurisdiction ? ` · ${d.jurisdiction}` : ''}${dates ? ` · ${dates}` : ''}${d.countries?.length ? ` · countries named: ${d.countries.join(', ')}` : ''}
+   Matched to ${where}. Stated reason: ${item.reason}
+${untrusted(d.issuer ?? 'the issuer', `Title: ${d.title}\nSummary: ${(d.summary ?? 'none').slice(0, SUMMARY_CHARS)}`)}`
 }
 
 export async function reviewVerdicts(
@@ -201,6 +205,8 @@ export interface ClaimReview {
 
 const ANSWER_SYSTEM = `You are the reviewer in RegWay, a regulatory intelligence service for private equity firms. RegWay's assistant has just answered a user, and its answer claims that particular rules or developments apply (or do not apply) to the firm, its funds or its portfolio companies. Try to break each claim using only what is recorded about the entities and what RegWay has already matched to them.
 
+${FENCE_RULE}
+
 ${CHALLENGE_CHECKLIST}
 
 For each claim:
@@ -264,8 +270,8 @@ export async function reviewAnswer(
               text: `Firm: ${record.firmName}. What is recorded about it, its funds and its portfolio companies:
 ${describeRecord(record, { footprints: true })}
 
-What RegWay has matched so far:
-${input.matched || 'nothing'}`,
+What RegWay has matched so far (titles are the publishers' own words):
+${input.matched ? untrusted('RegWay\'s matched list', input.matched) : 'nothing'}`,
             },
             {
               type: 'text',

@@ -19,6 +19,7 @@
 // new document asks which of the agency's recent announcements, if any,
 // announced it.
 
+import { FENCE_RULE, untrusted } from './security/guard.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { callClaude, toolInput } from './ai/client.ts'
 import { MODEL_FOR } from './ai/models.ts'
@@ -228,12 +229,13 @@ export async function matchAnnouncement(admin: SupabaseClient, document: Version
         role: 'user',
         content: `${INSTRUCTIONS}
 
+${FENCE_RULE}
+
 FEDERAL REGISTER DOCUMENT (${document.agency ?? 'agency n/a'}, published ${document.published_date ?? 'n/a'})
-Title: ${document.title}
-Summary: ${(document.summary ?? 'none').slice(0, SUMMARY_CHARS)}
+${untrusted('the Federal Register', `Title: ${document.title}\nSummary: ${(document.summary ?? 'none').slice(0, SUMMARY_CHARS)}`)}
 
 PRESS RELEASES
-${announcements.map((a, i) => `${i + 1}. [${a.published_date ?? 'date n/a'}] ${a.title}\n   ${bodies.get(a.id) || (a.summary ?? 'no summary').slice(0, SUMMARY_CHARS)}`).join('\n')}`,
+${untrusted(`${document.agency ?? 'the agency'}'s press releases`, announcements.map((a, i) => `${i + 1}. [${a.published_date ?? 'date n/a'}] ${a.title}\n   ${bodies.get(a.id) || (a.summary ?? 'no summary').slice(0, SUMMARY_CHARS)}`).join('\n'))}`,
       },
     ],
   }, { usage: { admin, functionName: FUNCTION_NAME } })

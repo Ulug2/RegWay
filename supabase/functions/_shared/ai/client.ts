@@ -17,6 +17,7 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { mergeUsage, recordUsage, type UsageTotals } from '../usage.ts'
+import { stripFence, stripFenceDeep } from '../security/guard.ts'
 
 export const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages'
 
@@ -284,16 +285,19 @@ async function recordCall(target: UsageTarget, model: string, raw: Record<string
 }
 
 // The input of the named tool call in a response (a forced tool_choice
-// call's structured answer), or undefined if the model made none.
+// call's structured answer), or undefined if the model made none. Any
+// fence tag the model copied back is removed (_shared/security/guard.ts).
 export function toolInput<T = Record<string, unknown>>(response: ClaudeResponse, name?: string): T | undefined {
   const block = (response.content ?? []).find(b => b.type === 'tool_use' && (!name || b.name === name))
-  return block?.input as T | undefined
+  return block ? stripFenceDeep(block.input as T) : undefined
 }
 
-// The response's text blocks, joined.
+// The response's text blocks, joined, without fence tags.
 export function textOf(response: ClaudeResponse, separator = '\n'): string {
-  return (response.content ?? [])
-    .filter(b => b.type === 'text' && typeof b.text === 'string')
-    .map(b => b.text)
-    .join(separator)
+  return stripFence(
+    (response.content ?? [])
+      .filter(b => b.type === 'text' && typeof b.text === 'string')
+      .map(b => b.text)
+      .join(separator),
+  )
 }

@@ -335,7 +335,8 @@ describe('regway-ai-chat', () => {
 
   it('inlines a text attachment and sends a PDF as a document, for this turn only', async () => {
     const text = await chat({}, { message: 'Summarise', attachment: { name: 'memo.txt', mimeType: 'text/plain', content: 'Memo body.' } })
-    expect(text.request.messages[0].content).toEqual([{ type: 'text', text: 'Summarise\n\n--- Attached file: memo.txt ---\nMemo body.' }])
+    // Fenced: the file is material to read, never instructions (_shared/security/guard.ts).
+    expect(text.request.messages[0].content).toEqual([{ type: 'text', text: 'Summarise\n\nAttached file:\n<untrusted_content source="the attached file memo.txt">\nMemo body.\n</untrusted_content>' }])
     // What's saved is the message, not the file.
     expect((text.db.ran('regway_ai_messages', 'insert')[0].payload as { content: string }[])[0].content).toBe('Summarise')
 
