@@ -25,6 +25,14 @@
   tests pass; looked at in light and dark at 1280 px and 390 px with 8
   funds. Not decided: whether a fund's own page links to "see this fund's
   companies".
+### Browser tests on Safari's engine and a phone, nightly (2026-11-22)
+- Decided by the owner: desktop Chrome on every pull request (as before);
+  WebKit (Safari) on a desktop and on an iPhone 14 screen once a night, at
+  06:00 UTC, and by hand from the Actions tab. A nightly failure does not
+  block merging; GitHub emails whoever last edited the workflow.
+- **Verified:** the same command run locally: 328 passed, 80 skipped
+  (tests marked desktop-only or Chrome-only), in 28 minutes on a loaded
+  machine. The workflow itself first runs after merge.
 ### Prompt snapshots (2026-11-22, Sidekick item 1, part)
 - `tests/unit/promptSnapshots.test.ts` runs each AI job once with fixed
   inputs and a fixed date, and compares what it would send (model,
