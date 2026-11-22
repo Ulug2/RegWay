@@ -19,6 +19,28 @@
 - **`tests/unit/sourceList.test.ts`** reads the sync functions' code and
   fails when a job or a document source they write has no name. Checked by
   deleting OFSI's name: the test failed.
+### Server function access tests (2026-11-21, issue #13)
+- `tests/unit/functionAccess.test.ts` (56 tests) calls every server
+  function as an attacker would, with two firms in a fake database that
+  plays the access rules (the server key sees every row, a user's session
+  only their firm's; `setSessionClients` in `helpers/fakeSupabase.ts`).
+- **The 12 timer jobs** (the six syncs, `run-matching`, `group-duplicates`,
+  `apply-profile-changes`, `review-existing-matches`, `send-match-alerts`,
+  `ai-outage-email`) refuse no key, the public key and a user's session
+  before any query or request; the service key gets through.
+- **The 9 functions the app calls**: no sign-in, a token that is no user,
+  and a user with no firm are refused before any AI call or write. A
+  Bravo member naming Alpha everywhere it can (`firmId`, company, entity,
+  conversation, chat focus) never gets Alpha's data into an AI prompt,
+  another request or a write, and every server-key read by firm uses
+  Bravo's. Seven of the nine reached the AI with Bravo's data in the test;
+  `company-regulations` (404) and `refresh-entity-impacts` (nothing to
+  queue) refused.
+- **Checked that the tests catch the bug they are for**: with the shared
+  firm check changed to trust `firmId` from the body, 6 tests failed.
+- **Found nothing to fix.** Notes: `company-regulations` relies on the
+  access rules (it reads the company through the caller's session), and no
+  function is callable by anyone since 0044.
 
 ### One age for a stale fact (2026-11-21, issue #37)
 - The one-year age after which a fact is due for re-confirmation was
