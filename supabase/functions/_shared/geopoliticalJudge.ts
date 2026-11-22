@@ -4,6 +4,7 @@
 // by exactly the rules the original match was.
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
+import { FENCE_RULE, untrusted } from './security/guard.ts'
 import { describeFootprint, overlaps, type EntityFootprint } from './footprint.ts'
 import type { Verdict } from './relevance.ts'
 import { callClaude, toolInput } from './ai/client.ts'
@@ -27,10 +28,12 @@ function candidateLine(c: Candidate, i: number, footprints: EntityFootprint[]): 
   const where = c.countries.length ? c.countries.join(', ') : 'no specific country (global or program-wide measure)'
   const matched = c.countries.length ? overlaps(footprints, c.countries) : []
   const summary = (c.summary ?? 'no summary').slice(0, EXCERPT_CHARS)
-  return `${i}. [${c.agency ?? 'source n/a'}, ${c.published_date ?? 'date n/a'}] ${c.title}
+  // The issuer's own words are fenced (_shared/security/guard.ts); the
+  // countries and the overlap are RegWay's, worked out in code.
+  return `${i}. [${c.agency ?? 'source n/a'}, ${c.published_date ?? 'date n/a'}]
    Countries named: ${where}
    Overlapping profile facts: ${matched.length ? matched.join('; ') : 'none (global measure; judge against the footprints above)'}
-   Summary: ${summary}`
+${untrusted(c.agency ?? 'an official source', `Title: ${c.title}\nSummary: ${summary}`)}`
 }
 
 const INSTRUCTIONS = `Below are numbered geopolitical developments from official government sources. Most are U.S.: OFAC sanctions actions and regulations, BIS export controls, USTR trade actions, presidential sanctions/tariff documents, and State Department travel advisories (levels 3-4). Some are UK sanctions (UK sanctions regulations, OFSI general licences and notices) or EU sanctions (the Council's restrictive measures); the issuer in brackets says which.
@@ -54,7 +57,9 @@ Language rules for every reason (these are hard rules):
 - Say which kind of connection it is: "direct" (the entity's own headquarters, facilities, or operations) or "indirect" (a supplier location).
 - State the possible effect conditionally ("could affect", "if it sources from") and name what is unknown.
 
-Scope: "company" (with the exact company name) for a portfolio company's connection; "firm" only for the firm's own headquarters/domicile. Never use "fund": a fund's exposure is derived automatically from the companies it is recorded as holding, so judge companies and the firm only. Return at least one verdict for every numbered development; add one verdict per additional company the same development connects to.`
+Scope: "company" (with the exact company name) for a portfolio company's connection; "firm" only for the firm's own headquarters/domicile. Never use "fund": a fund's exposure is derived automatically from the companies it is recorded as holding, so judge companies and the firm only. Return at least one verdict for every numbered development; add one verdict per additional company the same development connects to.
+
+${FENCE_RULE}`
 
 // A user's dispute of an earlier verdict, appended after the developments
 // (outside the cached prefix, which stays per-firm).

@@ -562,6 +562,12 @@ also removes the jobs there.
   shows it and the owner gets the outage email. If the check itself fails,
   the call goes ahead. Sign-up is open, so the per-user limits alone had
   no ceiling.
+- **Outside text in prompts** (§17.2): documents, web pages, search
+  results and attached files reach the AI inside an `<untrusted_content>`
+  fence the text can't close, with a rule in every such prompt that the
+  fence holds material, never instructions. A free local scan warns beside
+  the fence when the text reads like orders to an AI. Fence tags the model
+  copies back are removed from everything stored or shown.
 - **The browser.** The chat's Markdown renderer escapes all HTML and makes
   only `http(s)` links. Company logos: PNG, JPEG, WebP or GIF up to 2 MB,
   enforced by the bucket. `vercel.json` sets HSTS, `nosniff`, no framing, a
@@ -719,6 +725,17 @@ matches the Skeptic hid, so over-rejection is invisible.
   $2 / $10. Switch a role only when it scores at least as well (§7).
 
 ### 17.2 Fence outside text in every prompt
+
+**Built 2026-11-22** (`_shared/security/guard.ts`, §12). Every AI job that
+reads outside text fences it: the three judges, the Skeptic (matches and
+chat answers), the analyses, announcement matching, the company scan's and
+firm research's extraction (the search's notes), the citation check, and
+the chat (matched list, unconfirmed web findings, an attached text file).
+A PDF can't be fenced as text, so the chat's PDFs and the SEC proceedings
+extraction are told the rule in words, as are the web searches. Differs
+from the plan below: a flagged text is logged (`console.warn` in the
+function's log) and warned about beside the fence, but not yet recorded in
+`usage_events` or shown to the owner.
 
 Federal Register text, SEC PDFs, regulator announcements, company web pages
 and web search results all reach the judges, the Skeptic, the analyst, the
