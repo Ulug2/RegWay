@@ -143,7 +143,7 @@ describe('regulation-impact, opened by a user', () => {
   it('falls back to the abstract for a published document whose text cannot be fetched', async () => {
     const { res, net } = await call({}, asUser(), network({ text: null }))
     expect(await res.json()).toMatchObject({ status: 'created' })
-    expect(JSON.parse(anthropicCalls(net)[0].init!.body as string).messages[0].content[0].text).toMatch(/TEXT:\nAbstract\.$/)
+    expect(JSON.parse(anthropicCalls(net)[0].init!.body as string).messages[0].content[0].text).toMatch(/TEXT:\nAbstract\.\n<\/untrusted_content>$/)
   })
 })
 

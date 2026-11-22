@@ -33,7 +33,7 @@ describe('judgeGeopolitical', () => {
     expect(developments).toContain('Overlapping profile facts: Aero Logistics (company) — headquarters: Italy')
     expect(developments).toContain('Countries named: no specific country (global or program-wide measure)')
     // Iran is named, but nothing recorded is there.
-    expect(developments).toMatch(/2\. .*Iran designations\n\s+Countries named: Iran\n\s+Overlapping profile facts: none/)
+    expect(developments).toMatch(/2\. \[.*\]\n\s+Countries named: Iran\n\s+Overlapping profile facts: none.*\n<untrusted_content source="Trade Representative">\nTitle: Iran designations\n/)
   })
 
   it('never asks the model about funds: fund exposure is derived from holdings', async () => {

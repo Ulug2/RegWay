@@ -23,6 +23,7 @@ import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { resolveFirmContext, loadFirmEntities, describe, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, type Verdict, forgetRejections, requestScheduledRematch, olderUnjudged } from '../_shared/relevance.ts'
 import { callClaude, toolInput } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
+import { FENCE_RULE, untrusted } from '../_shared/security/guard.ts'
 import { automaticAiPaused } from '../_shared/ai/switch.ts'
 
 const MODEL = MODEL_FOR.enforcementJudge
@@ -118,7 +119,7 @@ Deno.serve(async (req) => {
       const excerpt = narrative ? narrative.slice(0, CASE_EXCERPT_CHARS) : (r.summary ?? 'no summary')
       return `${r.title} — ${excerpt}`
     }
-    const caseList = unevaluated.map((r, i) => `${i}. [${r.agency ?? 'SEC/FINRA'}] ${caseExcerpt(r)}`).join('\n\n')
+    const caseList = untrusted('SEC and FINRA enforcement releases', unevaluated.map((r, i) => `${i}. [${r.agency ?? 'SEC/FINRA'}] ${caseExcerpt(r)}`).join('\n\n'))
 
     const result = await callClaude({
       model: MODEL,
@@ -178,7 +179,9 @@ Below are numbered SEC and FINRA enforcement actions (litigation releases, admin
 
 For each one, decide whether it is meaningfully relevant background awareness for this firm, a fund, or a portfolio company — meaning the alleged conduct (the instrument sold, the customer type targeted, the practice used, the role played) genuinely overlaps with that specific entity's own described activity. A shared label like "both are in financial services" or "both are private funds" is NOT sufficient — you must be able to name the specific concrete practice or activity in common. Be strict: most enforcement actions will not be relevant to most entities. If you cannot point to a real overlap in what was actually done, mark it not relevant.
 
-Never write a reason that could be read as saying the firm, a fund, or a portfolio company did something wrong, was investigated, or is connected to the people or entities named in the case — they are not. The only permissible relevance is "this case involves conduct, an instrument, or a practice similar to what this entity does," stated neutrally.`,
+Never write a reason that could be read as saying the firm, a fund, or a portfolio company did something wrong, was investigated, or is connected to the people or entities named in the case — they are not. The only permissible relevance is "this case involves conduct, an instrument, or a practice similar to what this entity does," stated neutrally.
+
+${FENCE_RULE}`,
             },
             { type: 'text', text: caseList },
           ],

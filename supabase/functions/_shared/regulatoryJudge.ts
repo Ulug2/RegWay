@@ -4,6 +4,7 @@
 // cheaper model can be compared on the exact production prompt before any
 // switch (roadmap item 6.3).
 
+import { FENCE_RULE, untrusted } from './security/guard.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { describe, type FirmEntities, type Verdict } from './relevance.ts'
 import { callClaude, toolInput } from './ai/client.ts'
@@ -66,7 +67,7 @@ export async function judgeRegulations(
   // A non-U.S. item says where it applies: the issuer's name alone ("ESMA")
   // doesn't tell the model it binds only entities connected to that place.
   const issuer = (r: RegulatoryCandidate) => (r.agency && r.jurisdiction && NON_US.has(r.jurisdiction) ? `${r.agency}, ${r.jurisdiction}` : (r.agency ?? r.jurisdiction))
-  const regList = candidates.map((r, i) => `${i}. [${issuer(r)}] ${r.title} — ${r.summary ?? 'no summary'}`).join('\n')
+  const regList = untrusted('regulators and the Federal Register', candidates.map((r, i) => `${i}. [${issuer(r)}] ${r.title} — ${r.summary ?? 'no summary'}`).join('\n'))
 
   const result = await callClaude({
     model,
@@ -124,7 +125,9 @@ ${fundList}
 Portfolio companies:
 ${companyList}
 
-For each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like "may have," "could be exposed to," or "might apply," mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just "this firm is generally in a regulated industry." Some items are a regulator's own announcement of a proposal, rule, guidance or relief rather than the published document: judge them by the measure they announce. An item marked United Kingdom or European Union binds only an entity established, authorised, marketing or operating there: mark it relevant only when the facts above record that connection for the entity you name.`,
+For each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like "may have," "could be exposed to," or "might apply," mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just "this firm is generally in a regulated industry." Some items are a regulator's own announcement of a proposal, rule, guidance or relief rather than the published document: judge them by the measure they announce. An item marked United Kingdom or European Union binds only an entity established, authorised, marketing or operating there: mark it relevant only when the facts above record that connection for the entity you name.
+
+${FENCE_RULE}`,
           },
           { type: 'text', text: regList + correctionText(opts.correction) },
         ],
