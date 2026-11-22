@@ -192,7 +192,9 @@ asks for.
    (`pnpm eval:matching`, prints the cost and asks before calling the AI)
    and prompt snapshots (a unit test that fails when a judge, Skeptic or
    chat prompt changes by accident). Owner: hand-marking the right verdict
-   for about 150 documents, and running it.
+   for about 150 documents, and running it. **Prompt snapshots built
+   2026-11-22** (`tests/unit/prompts/`, 16 prompts; the SEC proceedings
+   extraction is not covered yet). The scoring command is still to do.
 2. **Fence outside text in every prompt** (S–M, §17.2).
 3. **The rest of the spend caps** (S, §17.3): a monthly cap, a reserve for
    click-started work, an unknown model priced at the highest known price.

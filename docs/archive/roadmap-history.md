@@ -9,6 +9,20 @@
 >
 > New entries go directly below this box, newest first.
 
+### Prompt snapshots (2026-11-22, Sidekick item 1, part)
+- `tests/unit/promptSnapshots.test.ts` runs each AI job once with fixed
+  inputs and a fixed date, and compares what it would send (model,
+  temperature, token limit, instructions, tools, messages) with a file in
+  `tests/unit/prompts/`: the three judges (and a re-check with a note), the
+  Skeptic on matches and on a chat answer, the claim gate, the citation
+  check, announcement matching, the three analyses, the company scan's
+  two calls, firm research's search, and the chat's instructions. An
+  intended change is recorded with `-u`; CONTRIBUTING says how.
+- **Verified:** changing one word in the Skeptic's instructions fails the
+  test; the files are identical under UTC and Tokyo time. Not covered: the
+  SEC proceedings PDF extraction, and firm research's second call (it is
+  only made once pages were read).
+
 ### Server functions on the app's supabase-js (2026-11-22)
 - The server functions imported `@supabase/supabase-js@2.45.4` from esm.sh,
   which `pnpm audit` never saw and which failed CI once when esm.sh was

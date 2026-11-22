@@ -1,0 +1,38 @@
+{
+  "model": "claude-haiku-4-5",
+  "temperature": 0,
+  "max_tokens": 400,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_match"
+  },
+  "tools": [
+    {
+      "name": "submit_match",
+      "description": "Say which press release announced the Federal Register document.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "One sentence: what the document does and what the chosen press release announced, or why none fits."
+          },
+          "press_release": {
+            "type": "integer",
+            "description": "The number of the press release that announced this document, or 0 if none did."
+          }
+        },
+        "required": [
+          "reason",
+          "press_release"
+        ]
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "A U.S. regulator announces a rulemaking in a press release and publishes the official document in the Federal Register days or weeks later, usually under a different, more technical title.\n\nBelow is one Federal Register document, then the same agency's recent press releases, numbered from 1.\n\nDecide which press release, if any, announced this exact document: the same rule, proposal, order, exemption or request for comment. One press release can announce a package of several documents voted on together, each described in a sentence or a bullet of its text, so it is fine if other documents belong to the same press release. A press release about the same general subject that announces a different action is not a match. Most documents were never announced in a press release: if none clearly announced this one, answer 0.\n\nFEDERAL REGISTER DOCUMENT (Securities and Exchange Commission, published 2026-11-20)\nTitle: Adviser Custody Rules\nSummary: Proposed custody rules.\n\nPRESS RELEASES\n1. [2026-11-15] SEC Proposal Would Address How Advisers Can Custody Crypto Assets\n   The SEC proposed custody rules for crypto assets."
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "model": "claude-sonnet-4-5",
+  "max_tokens": 6000,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_impact_analysis"
+  },
+  "system": [
+    {
+      "type": "text",
+      "text": "You are a regulatory analyst writing for the general partners and compliance staff of a private equity firm, summarizing an SEC or FINRA enforcement action (a litigation release, administrative proceeding, or disciplinary action) as background awareness for one or more of the firm's entities. This concerns named respondents/defendants who are NOT this firm, any of its funds, or any of its portfolio companies. State the matter's procedural posture exactly as the source describes it — contested allegations if litigation is pending, or a settled/consent order's findings if the source says the respondent neither admitted nor denied them — and never characterize it as more settled or more proven than the source states. Never state or imply that the firm, a fund, or a portfolio company did anything wrong, is under investigation, or is a party to this action. The only legitimate connection to describe is a genuine, factual overlap between the conduct described and that entity's own described activity (the same instrument, customer type, or practice) — never a bare shared-industry label. Write in precise, neutral, plain prose. Do NOT give legal advice or rate severity, urgency, or risk. Base every statement on the source text or entity facts provided; never invent facts. Where a fact needed to judge the overlap is missing, say so in open_questions instead of assuming.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "submit_impact_analysis",
+      "description": "Submit the structured summary of the enforcement action.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "overview": {
+            "type": "string",
+            "description": "Two to four paragraphs: who the action names, what they are alleged or found to have done, and the case's current procedural posture. Separate paragraphs with a blank line."
+          },
+          "scope": {
+            "type": "string",
+            "description": "What conduct, instruments, and parties the action covers, in one or two paragraphs."
+          },
+          "status": {
+            "type": "string",
+            "description": "Procedural posture exactly as the source states it: litigation pending, settled/consent order, default judgment, bar/suspension imposed, etc., with the relevant forum and date."
+          },
+          "key_provisions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "4-8 specific factual points from the source (the conduct alleged or found), each one or two sentences, framed with the same certainty the source itself uses (allegation vs. finding)."
+          },
+          "key_dates": {
+            "type": "array",
+            "description": "Dates stated in the release (filing date, alleged conduct period, court deadlines).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "label",
+                "date",
+                "note"
+              ]
+            }
+          },
+          "impacts": {
+            "type": "array",
+            "description": "One entry for the firm and one for each fund/company whose own described activity genuinely overlaps with the conduct alleged. Omit entities with no real overlap.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entity_type": {
+                  "type": "string",
+                  "enum": [
+                    "firm",
+                    "fund",
+                    "company"
+                  ]
+                },
+                "entity_name": {
+                  "type": "string"
+                },
+                "headline": {
+                  "type": "string",
+                  "description": "One neutral sentence naming the specific factual overlap with this entity's own activity — never implying the entity is involved in the case."
+                },
+                "how_it_applies": {
+                  "type": "string",
+                  "description": "One or two paragraphs: what the case alleges, and the specific, concrete similarity to this entity's own described activity. Explicitly note this entity is not a party to the action."
+                },
+                "obligations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Leave empty — an enforcement action against a third party creates no obligation for this entity."
+                },
+                "timeline": {
+                  "type": "string",
+                  "description": "Relevant dates for this entity, or an empty string."
+                },
+                "operational_areas": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Functions or workflows touched (e.g. investor reporting, marketing, custody, data handling)."
+                },
+                "open_questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Facts not provided that would determine whether the overlap is meaningful."
+                }
+              },
+              "required": [
+                "entity_type",
+                "entity_name",
+                "headline",
+                "how_it_applies",
+                "obligations",
+                "timeline",
+                "operational_areas",
+                "open_questions"
+              ]
+            }
+          },
+          "considerations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Neutral notes on how this entity's situation differs from the case, or open questions about whether the overlap is meaningful. Not recommendations."
+          },
+          "limitations": {
+            "type": "string",
+            "description": "One or two sentences on what this analysis rests on (e.g. text truncated, profile information missing)."
+          }
+        },
+        "required": [
+          "overview",
+          "scope",
+          "status",
+          "key_provisions",
+          "key_dates",
+          "impacts",
+          "considerations",
+          "limitations"
+        ]
+      },
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "ENFORCEMENT ACTION (SEC or FINRA — state procedural posture exactly as the source describes it)\nTitle: A development\nAgency: Securities and Exchange Commission · Jurisdiction: Federal\nPublished: 2026-11-20 · Effective: n/a\nOfficial summary: What it does.\nTEXT:\nThe full text of the development."
+        },
+        {
+          "type": "text",
+          "text": "Why it was matched to this firm: GetixHealth bills Medicare.\n\nENTITIES (use only these facts. A fact listed under \"not recorded\" is unknown: never treat it as a \"no\" or as absent, and where a conclusion would turn on it, say that it is not recorded. A fact marked \"last confirmed\" with a date has not been confirmed in over a year: where a conclusion rests on it, say it should be re-confirmed.)\nFIRM — H.I.G. Capital: hq_location: Miami, Florida; jurisdictions: United States; firm_type: Private equity; adviser_registration: SEC-registered; not recorded: legal_domicile, strategies\nCOMPANY — GetixHealth: hq_location: Houston, Texas; sectors: Healthcare; regions: United States; offerings: Revenue cycle management; not recorded: supplier_locations, customers, consumer_facing, sensitive_data, regulated, gov_contracts, trade, outside_us"
+        }
+      ]
+    }
+  ]
+}
