@@ -735,8 +735,18 @@ the chat (matched list, unconfirmed web findings, an attached text file).
 A PDF can't be fenced as text, so the chat's PDFs and the SEC proceedings
 extraction are told the rule in words, as are the web searches. Differs
 from the plan below: a flagged text is logged (`console.warn` in the
-function's log) and warned about beside the fence, but not yet recorded in
-`usage_events` or shown to the owner.
+function's log) and warned about beside the fence. Since the traces
+(17.9), every flagged request is also kept for 30 days, so the owner can
+list them:
+
+```sql
+select created_at, function_name, firm_id
+from ai_traces
+where request::text like '%RegWay''s scan:%'
+order by created_at desc;
+```
+
+Not yet shown to the owner in the app.
 
 Federal Register text, SEC PDFs, regulator announcements, company web pages
 and web search results all reach the judges, the Skeptic, the analyst, the
