@@ -3,6 +3,10 @@
 // RegWay AI chat, so both describe an entity from the same facts: the
 // row's own columns plus the questionnaire answers stored in `profile`.
 
+// A fact not confirmed for this long is marked: the same constant the
+// Profile forms use, so the app and the AI agree on which facts are old.
+import { STALE_AFTER_DAYS } from '../../../src/lib/questionnaire.ts'
+
 // {country, state, city} objects (the questionnaire's LocationValue shape,
 // stored raw in `profile` for fields with no legacy string-column mirror)
 // get formatted like an address instead of dumped as JSON.
@@ -31,9 +35,6 @@ export const COMPANY_UNKNOWNS = ['regions', 'supplier_locations', 'customers', '
 export const FACT_MARKERS =
   'A fact listed under "not recorded" is unknown: never treat it as a "no" or as absent, and where a conclusion would turn on it, say that it is not recorded. A fact marked "last confirmed" with a date has not been confirmed in over a year: where a conclusion rests on it, say it should be re-confirmed.'
 
-// A fact not confirmed for this long is marked (the same year the Profile
-// forms use, src/lib/questionnaire.ts).
-const STALE_AFTER_DAYS = 365
 
 // The questionnaire answers a derived column is built from: `profile_meta`
 // is keyed by answer, so a column is as old as its oldest answer.
