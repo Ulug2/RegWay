@@ -1,0 +1,172 @@
+{
+  "model": "claude-sonnet-4-5",
+  "max_tokens": 6000,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_impact_analysis"
+  },
+  "system": [
+    {
+      "type": "text",
+      "text": "You are a geopolitical and trade analyst writing for the general partners and compliance staff of a private equity firm. You are explaining an official government development (a sanctions action or regulation, an export-control rule, a trade or tariff action, or a State Department travel advisory) and its possible connection to specific entities through their recorded locations: headquarters, operations, or key suppliers. State what the official source says and keep it separate from any interpretation. For each entity, name the exact recorded location fact that connects it, and say whether the connection is direct (the entity's own headquarters or operations) or indirect (a supplier location, or, for a fund, a portfolio company it holds). For a fund, write the full path (the fund holds the company, which has the recorded location fact); a fund is never connected through a company it does not hold, and companies held by the same fund are not connected to each other's developments. A presence in an affected country does not mean the entity is sanctioned, designated, or barred from any transaction — never state or imply that. If the measure names an organization whose name resembles an entity, treat the identity as unconfirmed and say so. Describe possible effects conditionally and say what is unknown (e.g. whether the company actually ships to or sources from the affected party). Where supplier locations are not recorded, say that this is unknown — never that the entity has no exposure. Do NOT give legal advice, decide whether a transaction is permitted, estimate monetary impact, or rate severity, urgency, or risk. Base every statement on the source text or entity facts provided; never invent facts.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "submit_impact_analysis",
+      "description": "Submit the structured analysis of the geopolitical development.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "overview": {
+            "type": "string",
+            "description": "Two to four paragraphs: what the official source announces, which countries, persons, sectors, or goods it covers, and what changed. Separate paragraphs with a blank line."
+          },
+          "scope": {
+            "type": "string",
+            "description": "Which countries, programs, parties, goods, or activities the measure covers, and any stated exceptions or general licenses, in one or two paragraphs."
+          },
+          "status": {
+            "type": "string",
+            "description": "What kind of action it is and where it stands, exactly as the source states it: new designation, amended regulation, general license, proposed rule, tariff proclamation, travel advisory level, etc., with dates."
+          },
+          "key_provisions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "4-8 specific points from the source (the restrictions, designations, covered goods, or advisory reasons), each one or two sentences."
+          },
+          "key_dates": {
+            "type": "array",
+            "description": "Dates stated in the source (publication, effective date, general-license expiry, advisory issue date).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "label",
+                "date",
+                "note"
+              ]
+            }
+          },
+          "impacts": {
+            "type": "array",
+            "description": "One entry for each entity named in why this was matched, and no others. Add the firm only if the match names the firm itself: the firm's U.S. headquarters is not a connection to a U.S. sanctions, import, or export measure, and a portfolio company's connection belongs to that company's entry.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entity_type": {
+                  "type": "string",
+                  "enum": [
+                    "firm",
+                    "fund",
+                    "company"
+                  ]
+                },
+                "entity_name": {
+                  "type": "string"
+                },
+                "headline": {
+                  "type": "string",
+                  "description": "One neutral sentence naming the recorded location fact and whether the connection is direct or indirect."
+                },
+                "how_it_applies": {
+                  "type": "string",
+                  "description": "One or two paragraphs: the recorded fact (e.g. \"operates a facility in X\", \"has key suppliers in Y\"; for a fund, \"holds Z, which operates in X\"), how the development could reach it, and what is not known. Never state that the entity is sanctioned or prohibited from anything."
+                },
+                "obligations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Leave empty unless the source itself imposes a requirement on a category the entity is confirmed to be in; never infer one from location alone."
+                },
+                "timeline": {
+                  "type": "string",
+                  "description": "Relevant dates for this entity, or an empty string."
+                },
+                "operational_areas": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Functions or workflows touched (e.g. investor reporting, marketing, custody, data handling)."
+                },
+                "open_questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Facts not provided that would determine whether the overlap is meaningful."
+                }
+              },
+              "required": [
+                "entity_type",
+                "entity_name",
+                "headline",
+                "how_it_applies",
+                "obligations",
+                "timeline",
+                "operational_areas",
+                "open_questions"
+              ]
+            }
+          },
+          "considerations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Neutral points to confirm: identity questions about named parties, whether the entity actually trades with the affected country or party, supplier facts not recorded. Not recommendations."
+          },
+          "limitations": {
+            "type": "string",
+            "description": "One or two sentences on what this analysis rests on (e.g. text truncated, profile information missing)."
+          }
+        },
+        "required": [
+          "overview",
+          "scope",
+          "status",
+          "key_provisions",
+          "key_dates",
+          "impacts",
+          "considerations",
+          "limitations"
+        ]
+      },
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "GEOPOLITICAL DEVELOPMENT (official U.S. government source — sanctions, export controls, trade action, or travel advisory)\nTitle: A development\nAgency: Securities and Exchange Commission · Jurisdiction: Federal\nPublished: 2026-11-20 · Effective: n/a\nOfficial summary: What it does.\nTEXT:\nThe full text of the development."
+        },
+        {
+          "type": "text",
+          "text": "Why it was matched to this firm: GetixHealth bills Medicare.\n\nENTITIES (use only these facts. A fact listed under \"not recorded\" is unknown: never treat it as a \"no\" or as absent, and where a conclusion would turn on it, say that it is not recorded. A fact marked \"last confirmed\" with a date has not been confirmed in over a year: where a conclusion rests on it, say it should be re-confirmed.)\nFIRM — H.I.G. Capital: hq_location: Miami, Florida; jurisdictions: United States; firm_type: Private equity; adviser_registration: SEC-registered; not recorded: legal_domicile, strategies\nCOMPANY — GetixHealth: hq_location: Houston, Texas; sectors: Healthcare; regions: United States; offerings: Revenue cycle management; not recorded: supplier_locations, customers, consumer_facing, sensitive_data, regulated, gov_contracts, trade, outside_us"
+        }
+      ]
+    }
+  ]
+}

@@ -98,6 +98,12 @@ Tests are part of the change:
 - Something a user sees or clicks gets a browser test in `tests/e2e/`
   (against the mock backend in `tests/e2e/mockBackend.ts`).
 - No test may call the hosted Supabase project or the Anthropic API.
+- Every prompt sent to the AI is written out in `tests/unit/prompts/` and
+  checked by `tests/unit/promptSnapshots.test.ts`. If your change alters
+  one on purpose (which needs the owner's yes, below), run
+  `pnpm vitest run tests/unit/promptSnapshots.test.ts -u` and commit the
+  changed files: the diff is what reviewers read. If it fails and you did
+  not mean to change a prompt, your change has a side effect.
 
 Screen changes follow [`DESIGN.md`](DESIGN.md): shared classes from
 `src/index.css`, icons from `src/components/icons.ts`, both themes, and a

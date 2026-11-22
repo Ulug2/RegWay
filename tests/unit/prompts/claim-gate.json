@@ -1,0 +1,66 @@
+{
+  "model": "claude-haiku-4-5",
+  "temperature": 0,
+  "max_tokens": 1500,
+  "tool_choice": {
+    "type": "tool",
+    "name": "submit_claims"
+  },
+  "tools": [
+    {
+      "name": "submit_claims",
+      "description": "List the applicability claims the answer makes about the firm, its funds or its portfolio companies.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "claim": {
+                  "type": "string",
+                  "description": "One self-contained sentence stating the claim, close to the answer's own words, naming the rule and the entity."
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "applies",
+                    "does_not_apply"
+                  ]
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "firm",
+                    "fund",
+                    "company"
+                  ]
+                },
+                "entity_name": {
+                  "type": "string",
+                  "description": "Exact fund or company name from the list, or empty string for the firm."
+                }
+              },
+              "required": [
+                "claim",
+                "kind",
+                "scope",
+                "entity_name"
+              ]
+            }
+          }
+        },
+        "required": [
+          "claims"
+        ]
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "Read the assistant's answer below. List every place where it claims that a specific rule, regulation, enforcement action, sanction or other development applies to, affects, creates an obligation for, or does not apply to the firm, one of its funds, or one of its portfolio companies (named, or meant by \"you\", \"your firm\", \"your fund\", \"the company\").\n\nDo not list:\n- explanations of what a rule says or requires in general, with no claim about these entities;\n- restatements that RegWay has matched something, without a new claim of why it applies;\n- questions, suggestions to check with counsel, or hypotheticals (\"if a company did X\").\n\nReturn at most 6 claims, the most consequential first. If there are none, return an empty list.\n\nFirm: H.I.G. Capital\nFunds: Fund I\nPortfolio companies: GetixHealth\n\nQUESTION\nDoes Form PF apply to us?\n\nANSWER\nYes: Form PF applies to H.I.G. Capital as an SEC-registered adviser."
+    }
+  ]
+}
