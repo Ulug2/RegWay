@@ -6,7 +6,7 @@
 // Read through the caller's own (RLS-scoped) client: a forged fund/company
 // id in the request can only ever narrow the caller's own firm's rows.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 
 export type MatchScope =
   | { type: 'firm' } // everything matched to the firm, its funds and companies

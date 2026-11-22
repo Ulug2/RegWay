@@ -3,7 +3,7 @@
 // silently looking like "nothing relevant found." Never throws — a failure
 // to record a run must never mask (or crash) the sync it's recording.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 
 // `stats`: optional structured outcome a later run can read back (see
 // run-matching, which decides from its last run whether a backlog remains).

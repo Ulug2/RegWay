@@ -4,7 +4,7 @@
 // with no policies, since it's internal cost telemetry, not firm-scoped
 // user data.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 
 // Anthropic list pricing per million tokens (USD), by model, and per web
 // search. A single source of truth for the cost ESTIMATE stored alongside

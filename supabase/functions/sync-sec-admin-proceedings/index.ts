@@ -26,7 +26,7 @@
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-sec-admin-proceedings \
 //     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { corsHeaders, handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { parseRssItems, type FeedItem } from '../_shared/rss.ts'
 import { recordSyncRun } from '../_shared/syncRun.ts'

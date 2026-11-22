@@ -31,7 +31,7 @@
 //   POST /functions/v1/regway-ai-chat   { "message": "...", "conversationId"?: "<uuid>", "context"?: AiContext, "refocus"?: Refocus, "attachment"?: { "name": string, "mimeType": string, "content": string (text) | "base64Data": string (pdf) } }
 //   Authorization: Bearer <user session access_token>
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { AI_FAILURE_MESSAGES, aiFailure, recordFailure, streamClaude } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'

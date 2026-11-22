@@ -22,7 +22,7 @@
 //   { "regulationId": "<uuid>", "note"?: "what's wrong with this match" }
 //   Authorization: Bearer <user session access_token>   — matches the caller's own firm
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { generateImpact } from '../_shared/impact.ts'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { companyFootprint, firmFootprint } from '../_shared/footprint.ts'

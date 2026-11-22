@@ -17,7 +17,7 @@
 //   POST /functions/v1/match-enforcement-relevance   { "firmId": "<uuid>" }
 //   Authorization: Bearer <service role key>
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { generateImpacts } from '../_shared/impact.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { resolveFirmContext, loadFirmEntities, describe, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, type Verdict, forgetRejections, requestScheduledRematch, olderUnjudged } from '../_shared/relevance.ts'

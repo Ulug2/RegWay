@@ -19,7 +19,7 @@
 // new document asks which of the agency's recent announcements, if any,
 // announced it.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { callClaude, toolInput } from './ai/client.ts'
 import { MODEL_FOR } from './ai/models.ts'
 

@@ -8,7 +8,7 @@
 // tasks. This module exists so neither duplicates the ~100 lines around that
 // difference.
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { json } from './cors.ts'
 
 export interface FirmContext {

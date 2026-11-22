@@ -3,7 +3,7 @@
 // user flagged, with their correction). One prompt, so a re-check is judged
 // by exactly the rules the original match was.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { describeFootprint, overlaps, type EntityFootprint } from './footprint.ts'
 import type { Verdict } from './relevance.ts'
 import { callClaude, toolInput } from './ai/client.ts'

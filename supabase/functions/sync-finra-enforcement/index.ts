@@ -18,7 +18,7 @@
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-finra-enforcement \
 //     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { corsHeaders, handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { fetchPlainText } from '../_shared/text.ts'
 import { parseRssItems } from '../_shared/rss.ts'

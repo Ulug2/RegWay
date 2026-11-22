@@ -21,7 +21,7 @@
 //   POST /functions/v1/send-match-alerts   { "dryRun": true }  — say what would be sent, send and write nothing
 //   Authorization: Bearer <service key>
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { sendEmail } from '../_shared/email.ts'
 import { headlinesOf, matchAlertEmail, type AlertMatch } from '../_shared/matchAlerts.ts'

@@ -1,7 +1,7 @@
 // A saved conversation: opening (or creating) it, replaying its recent turns
 // to the model, and switching what it is focused on.
 
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import type { AiContext } from './prompt.ts'
 
 // How much of a conversation is replayed to the model: the most recent

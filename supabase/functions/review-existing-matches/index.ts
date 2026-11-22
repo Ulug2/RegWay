@@ -26,7 +26,7 @@
 //
 //   Authorization: Bearer <service key>
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { syncHoldingsRollup } from '../_shared/holdings.ts'
 import { generateImpacts } from '../_shared/impact.ts'

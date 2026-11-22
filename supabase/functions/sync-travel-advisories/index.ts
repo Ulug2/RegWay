@@ -14,7 +14,7 @@
 // the page URL: the site is migrating URL schemes and serves the same
 // country under either one from run to run.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { handleOptions, json, requireServiceKey } from '../_shared/cors.ts'
 import { countryByName, extractCountries } from '../_shared/countries.ts'
 import { parseRssItems } from '../_shared/rss.ts'
