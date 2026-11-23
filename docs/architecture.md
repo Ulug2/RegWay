@@ -104,8 +104,10 @@ Again"), `research-firm` searches the web for the firm, its funds and its
 companies and stores proposals in `firm_findings` (migration 0039), each in
 a questionnaire field (`_shared/research/fields.ts` reads the questions from
 `src/lib/questionnaire.ts`) with the page it came from. A proposal enters
-the profile only when the user confirms it in Profile, "Found on the Web"
-(saved with `profile_meta` source `web` and the link). Until then only the
+the profile only when the user confirms it in Profile, "Suggested Facts"
+(saved with `profile_meta` source `web` and the link). Facts a member
+states in the chat or a re-check note are suggested there too
+(`_shared/learnFacts.ts`, migration 0054; `origin` chat or recheck). Until then only the
 chat sees it, marked unconfirmed; matching, analyses and the Skeptic read
 the confirmed profile only.
 

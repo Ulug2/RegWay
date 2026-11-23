@@ -28,7 +28,9 @@ export default function ResearchCard({ firmId, firmName, onReview }: ResearchCar
         .then(r => {
           if (!live) return
           setRun(r.run)
-          setFindings(r.findings)
+          // This card is about the web research; facts a member said are
+          // reviewed in Profile → Suggested Facts.
+          setFindings(r.findings.filter(f => f.origin === 'web'))
           if (r.run?.status === 'running') timer = setTimeout(load, POLL_MS)
         })
         .catch(() => {})

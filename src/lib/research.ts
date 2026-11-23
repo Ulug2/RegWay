@@ -22,8 +22,13 @@ export interface Finding {
   value: unknown
   // What the profile said when the research found something else.
   recorded: unknown
-  source_url: string
+  // The page, for a web finding; null for a fact a member said.
+  source_url: string | null
+  // The page's words, or the member's own words.
   quote: string
+  // web: RegWay's research; chat or recheck: a member said it (§17.6).
+  origin: 'web' | 'chat' | 'recheck'
+  created_at: string
 }
 
 export interface FoundEntity {
@@ -33,6 +38,11 @@ export interface FoundEntity {
 }
 
 export const isNewEntity = (f: Finding) => f.field === 'new_entity'
+
+export const isSaid = (f: Pick<Finding, 'origin'>) => f.origin === 'chat' || f.origin === 'recheck'
+
+// Where a fact a member said came from, in words.
+export const saidWhere = (f: Pick<Finding, 'origin'>) => (f.origin === 'chat' ? 'Said in RegWay AI' : 'Said in a re-check note')
 
 export const questionOf = (f: Finding): Question | undefined => QUESTIONS.find(q => q.scope === f.scope && q.id === f.field)
 
@@ -54,6 +64,18 @@ export function addedTo(f: Finding): string[] | null {
   if (!Array.isArray(f.value) || !Array.isArray(f.recorded)) return null
   const known = new Set(f.recorded.map(v => String(v).toLowerCase()))
   return f.value.filter(v => !known.has(String(v).toLowerCase())).map(String)
+}
+
+// A fact RegWay took from what a member typed (§17.6), as the chat and the
+// re-check announce it: saved as a suggestion, not yet in the profile.
+export type LearnedFact = Pick<Finding, 'id' | 'scope' | 'entity_id' | 'field' | 'value' | 'recorded'> & { entity?: string }
+
+// "Acme: Does not import batteries", "Acme, industry: Energy".
+export function learnedText(f: LearnedFact): string {
+  const added = addedTo(f as Finding)
+  const value = added ? added.join('; ') : showValue(f.value)
+  const label = f.field === 'notes' ? '' : `, ${(questionOf(f as Finding)?.label ?? f.field).replace(/\?$/, '').toLowerCase()}`
+  return `${f.entity || 'Your firm'}${label}: ${value}`
 }
 
 export const hostOf = (url: string) => {

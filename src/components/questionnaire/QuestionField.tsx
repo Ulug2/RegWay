@@ -6,7 +6,7 @@ import { X } from '../icons'
 
 const CHIP_LIMIT = 24
 
-function FreeTags({ id, value, onChange, placeholder }: { id: string; value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
+function FreeTags({ id, value, onChange, placeholder, sentences }: { id: string; value: string[]; onChange: (v: string[]) => void; placeholder?: string; sentences?: boolean }) {
   const [draft, setDraft] = useState('')
   const commit = () => {
     const t = draft.trim()
@@ -33,7 +33,7 @@ function FreeTags({ id, value, onChange, placeholder }: { id: string; value: str
         value={draft}
         onChange={e => setDraft(e.target.value)}
         onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ',') {
+          if (e.key === 'Enter' || (e.key === ',' && !sentences)) {
             e.preventDefault()
             commit()
           } else if (e.key === 'Backspace' && !draft && value.length) onChange(value.slice(0, -1))
@@ -253,7 +253,7 @@ export default function QuestionField({ question: q, value, onChange, flagMissin
       break
     }
     case 'tags':
-      control = <FreeTags id={id} value={(shown as string[] | undefined) ?? []} onChange={onChange} placeholder={q.placeholder} />
+      control = <FreeTags id={id} value={(shown as string[] | undefined) ?? []} onChange={onChange} placeholder={q.placeholder} sentences={q.sentences} />
       break
     case 'location':
       control = <LocationField id={id} question={q} value={(shown as LocationValue | undefined) ?? emptyLocation()} onChange={onChange} />

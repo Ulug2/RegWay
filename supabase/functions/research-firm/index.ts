@@ -48,8 +48,10 @@ async function run(admin: SupabaseClient, firmId: string, runId: string, input: 
       await finish({ status: 'unsure', note: result.note })
       return
     }
-    // What an earlier run proposed and no one decided gives way to this one.
-    await admin.from('firm_findings').update({ status: 'superseded' }).eq('firm_id', firmId).eq('status', 'pending')
+    // What an earlier run proposed and no one decided gives way to this
+    // one. Facts a member said (origin chat or recheck) are not research's
+    // to replace.
+    await admin.from('firm_findings').update({ status: 'superseded' }).eq('firm_id', firmId).eq('status', 'pending').eq('origin', 'web')
     if (result.findings.length) {
       const { error } = await admin.from('firm_findings').insert(result.findings.map(f => ({ ...f, firm_id: firmId, run_id: runId })))
       if (error) throw error

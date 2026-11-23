@@ -4,6 +4,9 @@ import { supabase } from '../lib/supabase'
 import { getFirmId, getCachedFirm, getCachedFunds, getCachedCompanies, fetchFunds, fetchPortfolioCompanies, fetchConversationMessages, discardEmptyConversation, markConversationStopped, type AnswerReview, type ConversationSummary } from '../lib/data'
 import ConversationHistory from './ConversationHistory'
 import SessionContext, { type Focus } from './SessionContext'
+import { go, profilePath } from '../lib/router'
+import type { LearnedFact } from '../lib/research'
+import LearnedFacts from './LearnedFacts'
 import { renderMarkdownBlocks } from '../lib/markdown'
 import type { Firm, Fund, PortfolioCompany, AiContext } from '../lib/types'
 import { ArrowDown, ArrowUpRight, Check, CheckCircle, Copy, PaperPlaneRight, Paperclip, SidebarSimple, Stop, TreeStructure, WarningCircle, X } from './icons'
@@ -39,6 +42,10 @@ interface Message {
   status?: string
   steps?: CheckStep[]
   review?: AnswerReview | null
+  // Facts the user's message stated, saved as suggestions for the profile
+  // (§17.6). Shown while the chat is open; the suggestions themselves wait
+  // in Profile → Suggested Facts.
+  learned?: LearnedFact[]
 }
 
 // Suggested first questions, about whatever the chat is focused on. Worded
@@ -143,11 +150,13 @@ interface SseEvent {
   type: string
   content_block?: { type: string }
   delta?: { type: string; text?: string; citation?: Citation; stop_reason?: string }
-  // RegWay's own events after the answer: regway_status, regway_review.
+  // RegWay's own events after the answer: regway_status, regway_review,
+  // regway_learned.
   step?: CheckStep['step']
   state?: CheckStep['state']
   label?: string
   review?: AnswerReview
+  facts?: LearnedFact[]
 }
 
 // Reads one SSE stream, calling onEvent for each parsed `data: {...}` line.
@@ -488,10 +497,11 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
     // The check after the answer, if one runs.
     let steps: CheckStep[] = []
     let review: AnswerReview | undefined
+    let learned: LearnedFact[] = []
     const showCheck = () =>
       setMessages(m => {
         const copy = [...m]
-        copy[copy.length - 1] = { ...copy[copy.length - 1], steps: [...steps], review }
+        copy[copy.length - 1] = { ...copy[copy.length - 1], steps: [...steps], review, learned }
         return copy
       })
 
@@ -531,7 +541,7 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
       revealed = revealEnd(target, revealed, ticks, streamDone)
       setMessages(m => {
         const copy = [...m]
-        copy[copy.length - 1] = { role: 'ai', content: target.slice(0, revealed), citations: [...citations], steps: [...steps], review }
+        copy[copy.length - 1] = { role: 'ai', content: target.slice(0, revealed), citations: [...citations], steps: [...steps], review, learned }
         return copy
       })
     }, REVEAL_INTERVAL_MS)
@@ -558,6 +568,11 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
         }
         if (evt.type === 'regway_review' && evt.review) {
           review = evt.review
+          showCheck()
+          return
+        }
+        if (evt.type === 'regway_learned' && Array.isArray(evt.facts)) {
+          learned = evt.facts
           showCheck()
           return
         }
@@ -870,6 +885,15 @@ export default function RegWayAICopilot({ onClose, context, hidden = false, onBu
                         </div>
                       )}
                       {msg.role === 'ai' && <AnswerCheck steps={msg.steps} review={msg.review} />}
+                      {msg.role === 'ai' && msg.learned && !(isTyping && i === messages.length - 1) && (
+                        <LearnedFacts
+                          facts={msg.learned}
+                          onReview={() => {
+                            handleClose()
+                            go(profilePath('research'))
+                          }}
+                        />
+                      )}
                       {msg.role === 'ai' && msg.content !== '' && !(isTyping && i === messages.length - 1) && (
                         <CopyButton text={msg.content} />
                       )}

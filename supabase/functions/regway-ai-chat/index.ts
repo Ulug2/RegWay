@@ -19,6 +19,11 @@
 // session, so repeat messages within the cache window are billed at the
 // cache rate.
 //
+// Facts the user states ("we don't import batteries") are proposed for the
+// firm's profile (_shared/learnFacts.ts, Sidekick §17.6): read while the
+// answer streams, saved as suggestions once it is saved, and announced on
+// the stream (regway_learned) so the chat can show them.
+//
 // Stop: the browser stops reading and stamps the conversation's stopped_at;
 // the function watches for that stamp (conversation.ts watchForStop), since
 // a closed connection alone does not reach it. A stopped answer is not saved
@@ -39,6 +44,7 @@ import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
 import { loadMatchedDevelopments, type MatchScope } from '../_shared/matchedDevelopments.ts'
 import type { CompanyRow, FundRow } from '../_shared/relevance.ts'
 import { firmRecord } from '../_shared/roles/entityContext.ts'
+import { proposeFacts, saveProposals } from '../_shared/learnFacts.ts'
 import { recordUsage } from '../_shared/usage.ts'
 import { historyMessages, loadHistory, openConversation, refocusNote, resolveRefocus, watchForStop, type HistoryTurn, type Refocus } from './conversation.ts'
 import { sizeProblem, systemPrompt, type AiContext, type Attachment, type EntityRow, type FirmSummary, type UnconfirmedFinding } from './prompt.ts'
@@ -135,8 +141,8 @@ Deno.serve(async (req) => {
       supabase.from('funds').select('id, name, size, structure, jurisdictions, profile, profile_meta').eq('firm_id', membership.firm_id).order('name'),
       supabase.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile, profile_meta').eq('firm_id', membership.firm_id).order('name'),
       supabase.from('fund_holdings').select('fund_id, portfolio_company_id').eq('firm_id', membership.firm_id),
-      // Web research the firm has not confirmed: for the chat only, marked.
-      supabase.from('firm_findings').select('scope, entity_id, field, value, source_url').eq('firm_id', membership.firm_id).eq('status', 'pending').order('created_at'),
+      // Suggested facts the firm has not confirmed: for the chat only, marked.
+      supabase.from('firm_findings').select('scope, entity_id, field, value, source_url, origin, quote').eq('firm_id', membership.firm_id).eq('status', 'pending').order('created_at'),
       loadMatchedDevelopments(supabase, membership.firm_id, firm?.name ?? 'the firm', scope),
     ])
 
@@ -201,8 +207,19 @@ Deno.serve(async (req) => {
     }
     const endWatch = conversationId ? watchForStop(supabase, conversationId, stoppedAt, () => void stop()) : () => {}
 
-    // Saves the exchange; returns the answer's row id.
-    const persist = async (): Promise<string | null> => {
+    // Only the user's own words; the previous answer only helps read a
+    // short reply ("No, it doesn't").
+    const lastAnswer = [...history].reverse().find(t => t.role === 'assistant')?.content
+    const learning = proposeFacts(admin, {
+      firmId: membership.firm_id,
+      text: message,
+      context: lastAnswer ? { source: "RegWay AI's earlier answer", text: lastAnswer } : null,
+      functionName: 'regway-ai-chat',
+      signal: stopReview.signal,
+    })
+
+    // Saves the exchange; returns both rows' ids.
+    const persist = async (): Promise<{ questionId: string | null; answerId: string | null }> => {
       persisted = true
       const answeredAt = new Date(Math.max(Date.now(), askedAt.getTime() + 1))
       const [saved] = await Promise.all([
@@ -219,7 +236,19 @@ Deno.serve(async (req) => {
         recordUsage(admin, { functionName: 'regway-ai-chat', firmId: membership.firm_id, model: MODEL, ...answer.usage }),
       ])
       const rows = (saved as { data: { id: string; role: string }[] | null }).data ?? []
-      return rows.find(r => r.role === 'assistant')?.id ?? null
+      return { questionId: rows.find(r => r.role === 'user')?.id ?? null, answerId: rows.find(r => r.role === 'assistant')?.id ?? null }
+    }
+
+    // What the user stated, saved as suggestions for the profile.
+    const learn = async (send: (bytes: Uint8Array) => void, questionId: string | null) => {
+      const proposals = await learning
+      if (stopped || !proposals.length) return
+      const saved = await saveProposals(admin, membership.firm_id, proposals, { origin: 'chat', ref: questionId })
+      const nameOf = (scope: string, id: string | null) =>
+        scope === 'firm' ? (firm?.name ?? 'Your firm') : (((scope === 'fund' ? funds : companies) ?? []) as { id: string; name: string }[]).find(e => e.id === id)?.name ?? ''
+      if (!saved.length) return
+      const event = { type: 'regway_learned', facts: saved.map(f => ({ ...f, entity: nameOf(f.scope, f.entity_id) })) }
+      send(sseEvent(event))
     }
 
     // After the answer: the check (review.ts), for an answer that makes a
@@ -262,7 +291,11 @@ Deno.serve(async (req) => {
           return
         }
         // Stopped before the answer ended: nothing is saved.
-        if (!stopped) await review(send, await persist())
+        if (!stopped) {
+          const { questionId, answerId } = await persist()
+          await learn(send, questionId)
+          await review(send, answerId)
+        }
         endWatch()
         try {
           controller.close()

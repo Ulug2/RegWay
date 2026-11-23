@@ -6,7 +6,7 @@
 // profile holds), so a proposal can never name a field or an option the
 // profile forms don't have.
 
-import { QUESTIONS, type Question, type Scope } from '../../../../src/lib/questionnaire.ts'
+import { QUESTIONS, isFact, type Question, type Scope } from '../../../../src/lib/questionnaire.ts'
 
 // Questions a public web page can answer. Left out: the firm's own
 // preferences (teams, goals, monitoring), and what only the firm knows
@@ -20,8 +20,14 @@ export const RESEARCHABLE: Record<Scope, string[]> = {
   ],
 }
 
-export const questionFor = (scope: Scope, field: string): Question | undefined =>
-  RESEARCHABLE[scope].includes(field) ? QUESTIONS.find(q => q.scope === scope && q.id === field) : undefined
+// Questions a member can answer by saying so (Sidekick §17.6): every fact
+// about the entity except its name, which is how it is found.
+export const SAYABLE: Record<Scope, string[]> = Object.fromEntries(
+  (['firm', 'fund', 'company'] as const).map(scope => [scope, QUESTIONS.filter(q => q.scope === scope && isFact(q) && q.id !== 'name').map(q => q.id)]),
+) as Record<Scope, string[]>
+
+export const questionFor = (scope: Scope, field: string, allowed: Record<Scope, string[]> = RESEARCHABLE): Question | undefined =>
+  allowed[scope].includes(field) ? QUESTIONS.find(q => q.scope === scope && q.id === field) : undefined
 
 // Long option lists (countries, states) are described, not listed.
 const LIST_LIMIT = 30
@@ -46,9 +52,9 @@ function shapeOf(q: Question): string {
 }
 
 // The catalogue the model chooses from, one line per question.
-export function catalogue(scope: Scope): string {
-  return RESEARCHABLE[scope]
-    .map(id => questionFor(scope, id))
+export function catalogue(scope: Scope, allowed: Record<Scope, string[]> = RESEARCHABLE): string {
+  return allowed[scope]
+    .map(id => questionFor(scope, id, allowed))
     .filter((q): q is Question => !!q)
     .map(q => `- ${q.id}: ${q.label} → ${shapeOf(q)}`)
     .join('\n')

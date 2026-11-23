@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getFirmId, getCachedFirmId, getCachedFirm, dismissRegulation, isFlagged, setFlagged as persistFlag, fetchNotes, addNote, fetchPublishedVersions, fetchRelatedEntityMatches, rematchRegulation, type RelatedEntityMatch, type RematchResult } from '../lib/data'
+import { go, profilePath } from '../lib/router'
+import LearnedFacts from './LearnedFacts'
 import { readCache, writeCache } from '../lib/cache'
 import type { MatchedRegulation, PublishedVersion, Regulation, RegulationNote, AiContext } from '../lib/types'
 import { publisherName } from '../lib/duplicates'
@@ -277,6 +279,7 @@ export default function HeadlineDetailView({ onBack, backLabel = 'Back to Dashbo
                   {!disputeResult.relevant && (
                     <p className="text-[13px]" style={{ color: 'var(--text-400)' }}>This will stop appearing on your dashboard the next time it loads.</p>
                   )}
+                  <LearnedFacts facts={disputeResult.learned ?? []} onReview={() => go(profilePath('research'))} />
                 </div>
               ) : (
                 <>

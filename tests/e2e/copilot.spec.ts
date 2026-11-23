@@ -386,6 +386,21 @@ const CAUTION = {
   },
 }
 
+// A fact the user stated, saved as a suggestion for the profile (§17.6).
+test('says when a fact the user stated was suggested for the profile, and opens it', async ({ page, backend }) => {
+  backend.functions['regway-ai-chat'] = () => ({
+    sse:
+      aiReply('The EU Battery Regulation does not reach GetixHealth.') +
+      regwayEvents({ type: 'regway_learned', facts: [{ id: 'f-1', scope: 'company', entity_id: 'co-getix', field: 'notes', value: ['Does not import batteries'], recorded: null, entity: 'GetixHealth' }] }),
+  })
+  await openCopilot(page)
+  await ask(page, "GetixHealth doesn't import batteries. Does the EU rule apply?")
+  await expect(page.getByText('Suggested for your profile: GetixHealth: Does not import batteries.')).toBeVisible()
+  await page.getByRole('button', { name: 'Review in Profile' }).click()
+  await expect(page).toHaveURL(/\/profile\/research$/)
+  await expect(page.getByRole('button', { name: 'Suggested Facts', exact: true })).toHaveAttribute('aria-pressed', 'true')
+})
+
 test.describe('the check after an answer about the firm', () => {
   test('shows each step while it runs', async ({ page, backend }) => {
     backend.functions['regway-ai-chat'] = () => ({

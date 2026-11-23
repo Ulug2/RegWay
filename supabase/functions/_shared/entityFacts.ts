@@ -13,12 +13,14 @@ import { STALE_AFTER_DAYS } from '../../../src/lib/questionnaire.ts'
 const isLocationValue = (v: unknown): v is { city?: string; state?: string; country?: string } =>
   !!v && typeof v === 'object' && !Array.isArray(v) && ('city' in v || 'state' in v || 'country' in v)
 
-export const FIRM_FACTS = ['hq_location', 'legal_domicile', 'jurisdictions', 'firm_type', 'adviser_registration', 'strategies', 'industries', 'geographies']
+// `notes`: facts in the firm's own words that fit no other question
+// (Sidekick §17.6), each quoted.
+export const FIRM_FACTS = ['hq_location', 'legal_domicile', 'jurisdictions', 'firm_type', 'adviser_registration', 'strategies', 'industries', 'geographies', 'notes']
 // `holds`: the companies a fund holds (fund_holdings), added by the caller.
-export const FUND_FACTS = ['structure', 'size', 'jurisdictions', 'status', 'strategy', 'ownership', 'industries', 'geographies', 'holds']
+export const FUND_FACTS = ['structure', 'size', 'jurisdictions', 'status', 'strategy', 'ownership', 'industries', 'geographies', 'holds', 'notes']
 export const COMPANY_FACTS = [
   'hq_location', 'sectors', 'regions', 'operating_locations', 'supplier_locations', 'offerings', 'customers', 'consumer_facing',
-  'sensitive_data', 'regulated', 'license_types', 'gov_contracts', 'trade', 'outside_us', 'foreign_countries', 'ownership',
+  'sensitive_data', 'regulated', 'license_types', 'gov_contracts', 'trade', 'outside_us', 'foreign_countries', 'ownership', 'notes',
 ]
 
 // Facts whose absence changes what can be concluded, so a blank one is
@@ -71,7 +73,9 @@ export const facts = (row: Record<string, unknown> | null | undefined, keys: str
       const formatted = isLocationValue(v)
         ? [v.city, v.state, v.country].map(x => x?.trim()).filter(Boolean).join(', ')
         : Array.isArray(v)
-          ? v.join(', ')
+          ? k === 'notes'
+            ? v.map(n => `"${n}"`).join(', ')
+            : v.join(', ')
           : typeof v === 'object'
             ? JSON.stringify(v)
             : v

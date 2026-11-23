@@ -190,13 +190,15 @@ asks for.
 4. **Citation check in code first** (S–M, §17.4).
 5. **The Skeptic must show evidence to reject** (S, §17.5). Merge only
    after the test set (1) shows recall up and precision not down.
-6. **Learn facts from what users type** (M, §17.6).
+6. **Learn facts from what users type** (M, §17.6): built 2026-11-23
+   (history). Waits on: migration 0054, then deploy `regway-ai-chat`,
+   `rematch-regulation`, `research-firm` and the functions that read
+   entity facts. Later: the judges reading notes.
 7. **Chat queries the firm's data** (M, §17.7). Touches
    `regway-ai-chat`, where issues #38 and #39 also work: check with them.
-8. **Read SEC PDFs with code first** (S, §17.8): built 2026-11-23 (pdf.js
-   through `unpdf` 2.1.0, owner approved; history). Waits on: merge and
-   deploy `sync-sec-admin-proceedings`; check its first run fills in the
-   stored orders that have no text.
+8. **Read SEC PDFs with code first** (S, §17.8): built and deployed
+   2026-11-23 (history). The first production run filled in 3 stored
+   orders; the other 39 fill in at 3 per run.
 9. **Run traces for every AI decision** (M, §17.9): storage built and
    deployed (migration 0052 applied 2026-11-23, history). Left: the
    owner-only page, export to the test set.

@@ -44,7 +44,11 @@ function database(state: State): Resolver {
     if (q.table === 'funds') return { data: state.funds ?? [{ id: 'fund-1', name: 'Fund I', size: '$1B', structure: 'Delaware LP', jurisdictions: ['United States'], profile: {} }] }
     if (q.table === 'portfolio_companies') return { data: state.companies ?? [{ id: 'co-1', name: 'GetixHealth', hq_location: 'Houston, Texas', sectors: ['Healthcare'], regions: ['United States'], offerings: null, profile: {} }] }
     if (q.table === 'fund_holdings') return { data: state.holdings ?? [] }
+    if (q.table === 'firm_findings' && q.op === 'insert') return { data: (q.payload as Record<string, unknown>[]).map((p, i) => ({ id: `learned-${i}`, ...p })) }
     if (q.table === 'firm_findings') return { data: state.findings ?? [] }
+    // What fact learning reads about the firm (_shared/learnFacts.ts).
+    if (q.table === 'firms') return { data: { id: FIRM, name: 'H.I.G. Capital', profile: {} } }
+    if (q.table === 'regway_ai_messages' && q.op === 'insert') return { data: [{ id: 'msg-question', role: 'user' }, { id: 'msg-answer', role: 'assistant' }] }
     if (q.table === 'regulation_relevance') return { data: state.matches ?? [] }
   }
 }
@@ -360,6 +364,54 @@ describe('regway-ai-chat', () => {
     expect(hasFilter(db.ran('firm_findings', 'select')[0], 'eq', 'status', 'pending')).toBe(true)
 
     expect((await chat({}, { message: 'hi' })).system).not.toContain('FOUND ON THE WEB')
+  })
+
+  it('gives the model facts a member said but no one confirmed, apart from the web research', async () => {
+    const findings = [
+      { scope: 'firm', entity_id: null, field: 'aum', value: '$25B+', source_url: 'https://adviserinfo.sec.gov/firm/1', origin: 'web' },
+      { scope: 'company', entity_id: 'co-1', field: 'notes', value: ['Does not import batteries'], source_url: null, origin: 'chat', quote: "we don't import batteries" },
+    ]
+    const { system } = await chat({ findings }, { message: 'hi' })
+    expect(system).toContain('FOUND ON THE WEB, NOT CONFIRMED BY THE FIRM')
+    expect(system).toContain('- the firm, aum: $25B+ (https://adviserinfo.sec.gov/firm/1)')
+    expect(system).toContain('SAID BY THE FIRM, NOT YET IN ITS PROFILE')
+    expect(system).toContain(`<untrusted_content source="what members of the firm said">\n- GetixHealth, notes: Does not import batteries (said in a chat: "we don't import batteries")`)
+    expect(system).not.toMatch(/public web pages">[^<]*batteries/)
+  })
+
+  // Learning facts from what the user typed (_shared/learnFacts.ts).
+  const learning = (facts: unknown[]) => (init?: RequestInit) => {
+    const body = JSON.parse(init!.body as string)
+    if (body.tool_choice?.name === 'submit_facts') {
+      return new Response(JSON.stringify({ content: [{ type: 'tool_use', name: 'submit_facts', input: { facts } }], usage: { input_tokens: 500, output_tokens: 40 } }), { headers: { 'Content-Type': 'application/json' } })
+    }
+    return streamed(REPLY)
+  }
+  const battery = { scope: 'company', entity_name: 'GetixHealth', field: 'notes', value: ['Does not import batteries'], quote: "We don't import batteries" }
+
+  it('saves a fact the user stated as a suggestion, and says so on the stream', async () => {
+    const db = fakeClient(database({}))
+    setClient(db)
+    const { handler } = await loadHandler('regway-ai-chat')
+    const calls = stubFetch((url, init) => (url.hostname === 'api.anthropic.com' ? learning([battery])(init) : undefined))
+    const res = await handler(post('regway-ai-chat', { token: 'user-jwt', body: { message: "We don't import batteries. Does the EU battery rule apply?", conversationId: CONVERSATION } }))
+    const text = await res.text()
+
+    const learn = calls.map(c => JSON.parse(c.init!.body as string)).find(b => b.tool_choice?.name === 'submit_facts')
+    expect(learn.model).toBe('claude-haiku-4-5')
+    // Only what the user typed, never the answer.
+    expect(JSON.stringify(learn.messages)).toContain("We don't import batteries.")
+    expect(JSON.stringify(learn.messages)).not.toContain('Two rules apply')
+    const [insert] = db.ran('firm_findings', 'insert')
+    expect(insert.payload).toEqual([{ scope: 'company', entity_id: 'co-1', field: 'notes', value: ['Does not import batteries'], recorded: null, quote: "We don't import batteries", firm_id: FIRM, origin: 'chat', origin_ref: 'msg-question' }])
+    expect(text).toContain('"type":"regway_learned"')
+    expect(text).toContain('"entity":"GetixHealth"')
+  })
+
+  it('spends nothing on learning when the user only asked a question', async () => {
+    const { calls, db } = await chat({}, { message: 'Does the EU battery rule apply to GetixHealth?' })
+    expect(calls).toHaveLength(1)
+    expect(db.ran('firm_findings', 'insert')).toEqual([])
   })
 
   it('reports an API failure plainly, records it, and saves nothing', async () => {

@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { readCache, writeCache, patchCache, dropCache } from './cache'
 import { callFunction } from './functions'
 import { fromRow, metaOf, toRow, type Answers, type ProfileMeta, type Scope } from './questionnaire'
-import type { Finding, FoundEntity, ResearchRun } from './research'
+import { addedTo, type Finding, type FoundEntity, type LearnedFact, type ResearchRun } from './research'
 import { asSaved, firmLocationChanged, hasMatchingFacts, matchingFactsChanged } from './matchingFacts'
 import { collapseDuplicates, isAnnouncement, isOfficialDocument, versionsOf } from './duplicates'
 import { FEED_LABELS, PUBLISHER_NAMES } from './sourceList'
@@ -546,6 +546,8 @@ export interface RematchResult {
   reason: string
   // One per entity the re-check judged, relevant ones first.
   verdicts?: { entity: string; relevant: boolean; reason: string }[]
+  // Facts the note stated, saved as suggestions for the profile (§17.6).
+  learned?: LearnedFact[]
 }
 
 // "Flag an incorrect match": re-evaluates one regulation against the firm's
@@ -718,7 +720,7 @@ export const aiOutageText = (outage: AiOutage): string =>
 export async function fetchResearch(firmId: string): Promise<{ run: ResearchRun | null; findings: Finding[] }> {
   const [runs, findings] = await Promise.all([
     supabase.from('firm_research_runs').select('id, status, note, found, started_at, finished_at').eq('firm_id', firmId).order('started_at', { ascending: false }).limit(1),
-    supabase.from('firm_findings').select('id, scope, entity_id, field, value, recorded, source_url, quote').eq('firm_id', firmId).eq('status', 'pending').order('created_at'),
+    supabase.from('firm_findings').select('id, scope, entity_id, field, value, recorded, source_url, quote, origin, created_at').eq('firm_id', firmId).eq('status', 'pending').order('created_at'),
   ])
   if (runs.error) throw runs.error
   if (findings.error) throw findings.error
@@ -742,12 +744,19 @@ const webMeta = (meta: ProfileMeta, fields: string[], url: string): ProfileMeta 
 
 // The finding's value (or the user's correction of it) saved into the
 // profile through the same path as a Profile edit, so the usual re-matching
-// follows.
+// follows. A list finding adds its new items to the list as it is now, so
+// two suggestions for one list both count. A fact a member said is saved
+// as typed by the user.
 export async function confirmFinding(firmId: string, finding: Finding, value: unknown = finding.value): Promise<void> {
   const scope: Scope = finding.scope
+  // What a list suggestion adds: the new items, or all of them when the
+  // list was empty at the time (another suggestion may have filled it since).
+  const added = value !== finding.value ? null : (addedTo(finding) ?? (Array.isArray(value) ? value.map(String) : null))
   const save = async (row: Record<string, unknown>, write: (answers: Answers, meta: ProfileMeta) => Promise<void>) => {
-    const answers = { ...fromRow(scope, row), [finding.field]: value }
-    await write(answers, webMeta(metaOf(row), [finding.field], finding.source_url))
+    const current = fromRow(scope, row)[finding.field]
+    const next = added && Array.isArray(current) ? [...current, ...added.filter(v => !current.some(c => String(c).toLowerCase() === v.toLowerCase()))] : value
+    const answers = { ...fromRow(scope, row), [finding.field]: next }
+    await write(answers, finding.source_url ? webMeta(metaOf(row), [finding.field], finding.source_url) : metaOf(row))
   }
   if (scope === 'firm') {
     await save((await fetchFirm(firmId)) as unknown as Record<string, unknown>, (answers, meta) => saveFirmAnswers(firmId, answers, meta))
@@ -766,11 +775,13 @@ export async function confirmFinding(firmId: string, finding: Finding, value: un
 // A fund or company the research found that the firm had not entered.
 export async function addFoundEntity(firmId: string, finding: Finding): Promise<void> {
   const found = finding.value as FoundEntity
+  // Only the web research finds new funds and companies.
+  const url = finding.source_url ?? ''
   if (finding.scope === 'fund') {
-    await addFund(firmId, { name: found.name }, webMeta({}, ['name'], finding.source_url))
+    await addFund(firmId, { name: found.name }, webMeta({}, ['name'], url))
   } else {
     const answers: Answers = { name: found.name, website: found.website || undefined, description: found.description || undefined }
-    await addPortfolioCompany(firmId, answers, webMeta({}, Object.keys(answers).filter(k => answers[k]), finding.source_url))
+    await addPortfolioCompany(firmId, answers, webMeta({}, Object.keys(answers).filter(k => answers[k]), url))
   }
   await decideFinding(finding.id, 'confirmed')
 }

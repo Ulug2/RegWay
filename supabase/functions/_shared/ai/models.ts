@@ -28,4 +28,7 @@ export const MODEL_FOR = {
   // Web research on a firm after onboarding: searching and telling one
   // firm from another with a similar name both need judgement.
   firmResearch: SONNET,
+  // Lasting facts in what a member typed, in the profile's fields (§17.6):
+  // mechanical, and every answer is checked in code.
+  factLearning: HAIKU,
 } as const

@@ -11,6 +11,7 @@ import { checkCitations } from '../../supabase/functions/_shared/roles/citationC
 import { matchAnnouncement, type Version } from '../../supabase/functions/_shared/duplicates.ts'
 import { generateImpact } from '../../supabase/functions/_shared/impact.ts'
 import { research } from '../../supabase/functions/research-firm/research.ts'
+import { proposeFacts } from '../../supabase/functions/_shared/learnFacts.ts'
 import { systemPrompt } from '../../supabase/functions/regway-ai-chat/prompt.ts'
 import { fakeClient, setClient, type Query } from './helpers/fakeSupabase'
 import { FIRM_ID, companies, firm, firmQueries, funds, stubModel, type ModelCall } from './helpers/firm'
@@ -230,6 +231,23 @@ describe('prompts sent to the AI', () => {
     )
     expect(model.length).toBeGreaterThanOrEqual(1)
     for (const [i, call] of model.entries()) await expect(asked(call)).toMatchFileSnapshot(`${DIR}/firm-research-${i + 1}.json`)
+  })
+
+  it('learning facts from what a member typed', async () => {
+    const admin = fakeClient((q: Query) => {
+      if (q.table === 'firms') return { data: { id: FIRM_ID, ...firm } }
+      if (q.table === 'funds') return { data: funds }
+      if (q.table === 'portfolio_companies') return { data: companies }
+    })
+    const { model } = stubModel({ submit_facts: { facts: [] } })
+    await proposeFacts(admin as never, {
+      firmId: FIRM_ID,
+      text: "No. GetixHealth doesn't bill Medicare any more.",
+      context: { source: "RegWay AI's earlier answer", text: 'Does GetixHealth bill Medicare?' },
+      functionName: 'regway-ai-chat',
+    })
+    expect(model).toHaveLength(1)
+    await expect(asked(model[0])).toMatchFileSnapshot(`${DIR}/learn-facts.json`)
   })
 
   it("the chat's instructions", async () => {

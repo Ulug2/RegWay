@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { addFoundEntity, confirmFinding, fetchFunds, fetchPortfolioCompanies, fetchResearch, getCachedFirm, rejectFinding, startResearch } from '../../lib/data'
-import { addedTo, groupFindings, hostOf, isNewEntity, questionOf, showValue, type Finding, type FoundEntity, type ResearchRun } from '../../lib/research'
+import { addedTo, groupFindings, hostOf, isNewEntity, isSaid, questionOf, saidWhere, showValue, type Finding, type FoundEntity, type ResearchRun } from '../../lib/research'
 import { ArrowSquareOut } from '../icons'
 
 const POLL_MS = 8000
@@ -13,10 +13,11 @@ interface Loaded {
   companies: { id: string; name: string }[]
 }
 
-// What RegWay's web research (roadmap item 18) found about the firm, its
-// funds and its companies, each with its source, for the user to confirm
-// into the profile or set aside. Nothing here is in the profile until it
-// is confirmed.
+// Suggested facts about the firm, its funds and its companies, each with
+// where it came from, for the user to confirm into the profile or set
+// aside: what RegWay's web research (roadmap item 18) found, and what a
+// member said in RegWay AI or a re-check note (§17.6). Nothing here is in
+// the profile until it is confirmed.
 export default function FoundOnWeb({ firmId }: { firmId: string }) {
   const [data, setData] = useState<Loaded | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -89,7 +90,7 @@ export default function FoundOnWeb({ firmId }: { firmId: string }) {
     <div className="space-y-6">
       <div className="flex items-start gap-4 flex-wrap">
         <p className="text-sm flex-1 min-w-[16rem]" style={{ color: 'var(--text-400)', lineHeight: 1.6 }}>
-          RegWay searches public pages (your website, SEC filings, the press) for facts about your firm, funds and companies. Each finding shows where it came from. Nothing is added to your profile until you confirm it; until then only RegWay AI sees it, marked as unconfirmed.
+          RegWay suggests facts about your firm, funds and companies from public pages it searches (your website, SEC filings, the press) and from what your team tells RegWay AI or writes when re-checking a match. Each shows where it came from. Nothing is added to your profile until you confirm it; until then only RegWay AI sees it, marked as unconfirmed.
         </p>
         <button className="btn-ghost btn-sm shrink-0" onClick={researchAgain} disabled={starting || running}>
           {running ? 'Researching…' : starting ? 'Starting…' : 'Research Again'}
@@ -110,7 +111,7 @@ export default function FoundOnWeb({ firmId }: { firmId: string }) {
       {error && <div className="notice is-warn" role="alert">{error}</div>}
 
       {!running && groups.length === 0 && found.length === 0 && (
-        <div className="empty-state">{run ? 'Nothing waiting for review. Run the research again after you add funds or companies.' : 'No research has run yet. Start one to see what RegWay finds about your firm.'}</div>
+        <div className="empty-state">{run ? 'Nothing waiting for review. Run the research again after you add funds or companies.' : 'Nothing waiting for review. Start a web research to see what RegWay finds about your firm.'}</div>
       )}
 
       {groups.map(g => (
@@ -137,7 +138,7 @@ export default function FoundOnWeb({ firmId }: { firmId: string }) {
                       {e.name} <span className="badge ml-1">{f.scope === 'fund' ? 'Fund' : 'Company'}</span>
                     </div>
                     {e.description && <p className="text-sm mt-1" style={{ color: 'var(--text-600)', lineHeight: 1.6 }}>{e.description}</p>}
-                    <Source url={f.source_url} />
+                    <Source finding={f} />
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <button className="btn-tool is-accent" onClick={() => act(f, () => addFoundEntity(firmId, f))} disabled={busy === f.id}>
@@ -157,12 +158,21 @@ export default function FoundOnWeb({ firmId }: { firmId: string }) {
   )
 }
 
-function Source({ url, quote }: { url: string; quote?: string }) {
+// Where a suggestion came from: the page and its words, or who said it.
+function Source({ finding: f, quote }: { finding: Finding; quote?: boolean }) {
+  if (isSaid(f) || !f.source_url) {
+    return (
+      <div className="text-xs mt-1.5" style={{ color: 'var(--text-400)', lineHeight: 1.5 }}>
+        {saidWhere(f)} on {fmt(f.created_at)}
+        {f.quote && <span>: “{f.quote}”</span>}
+      </div>
+    )
+  }
   return (
     <div className="text-xs mt-1.5" style={{ color: 'var(--text-400)', lineHeight: 1.5 }}>
-      {quote && <span>“{quote}” · </span>}
-      <a className="link inline-flex items-center gap-1" href={url} target="_blank" rel="noopener noreferrer">
-        {hostOf(url)}
+      {quote && f.quote && <span>“{f.quote}” · </span>}
+      <a className="link inline-flex items-center gap-1" href={f.source_url} target="_blank" rel="noopener noreferrer">
+        {hostOf(f.source_url)}
         <ArrowSquareOut size={12} aria-hidden="true" />
       </a>
     </div>
@@ -171,12 +181,13 @@ function Source({ url, quote }: { url: string; quote?: string }) {
 
 function FindingRow({ finding: f, busy, onConfirm, onReject }: { finding: Finding; busy: boolean; onConfirm: () => void; onReject: () => void }) {
   const q = questionOf(f)
+  const label = q?.id === 'notes' ? 'Other facts' : (q?.label ?? f.field)
   const added = addedTo(f)
   const conflict = f.recorded != null && !added
   return (
     <div className="p-4 sm:p-5 flex items-start gap-4 flex-wrap">
       <div className="flex-1 min-w-[14rem]">
-        <div className="text-[13px]" style={{ color: 'var(--text-400)' }}>{q?.label ?? f.field}</div>
+        <div className="text-[13px]" style={{ color: 'var(--text-400)' }}>{label}</div>
         <div className="text-sm font-semibold mt-0.5" style={{ color: 'var(--text-900)', lineHeight: 1.5 }}>
           {added ? `Adds: ${added.join(', ')}` : showValue(f.value)}
         </div>
@@ -185,13 +196,13 @@ function FindingRow({ finding: f, busy, onConfirm, onReject }: { finding: Findin
             Your profile says: {showValue(f.recorded)}
           </div>
         )}
-        <Source url={f.source_url} quote={f.quote} />
+        <Source finding={f} quote />
       </div>
       <div className="flex gap-2 shrink-0">
-        <button className="btn-tool is-accent" onClick={onConfirm} disabled={busy} aria-label={`Confirm ${q?.label ?? f.field}`}>
+        <button className="btn-tool is-accent" onClick={onConfirm} disabled={busy} aria-label={`Confirm ${label}`}>
           {busy ? 'Saving…' : conflict ? 'Use This' : 'Confirm'}
         </button>
-        <button className="btn-tool" onClick={onReject} disabled={busy} aria-label={`Not right: ${q?.label ?? f.field}`}>
+        <button className="btn-tool" onClick={onReject} disabled={busy} aria-label={`Not right: ${label}`}>
           Not Right
         </button>
       </div>

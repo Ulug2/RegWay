@@ -18,6 +18,10 @@
 // not just the first), so a match it no longer supports leaves that
 // entity's page. Dismissals are kept.
 //
+// A note that states a lasting fact ("we don't import batteries") is also
+// proposed for the firm's profile (_shared/learnFacts.ts, Sidekick §17.6),
+// read alongside the re-check; the answer lists what was suggested.
+//
 //   POST /functions/v1/rematch-regulation
 //   { "regulationId": "<uuid>", "note"?: "what's wrong with this match" }
 //   Authorization: Bearer <user session access_token>   — matches the caller's own firm
@@ -35,6 +39,7 @@ import {
   buildRelevanceRows,
   replaceRegulationVerdicts,
 } from '../_shared/relevance.ts'
+import { proposeFacts, saveProposals } from '../_shared/learnFacts.ts'
 import { judgeRegulations } from '../_shared/regulatoryJudge.ts'
 import { applySkeptic } from '../_shared/verdictReview.ts'
 
@@ -74,6 +79,9 @@ Deno.serve(async req => {
     const { firm, funds, companies } = await loadFirmEntities(admin, firmId)
     if (!firm) return json({ error: 'Firm not found' }, 404)
 
+    // Runs beside the re-check; never fails it.
+    const learning = note ? proposeFacts(admin, { firmId, text: note, context: { source: 'the development being re-checked', text: reg.title }, functionName: FUNCTION_NAME }) : Promise.resolve([])
+
     const judged =
       reg.category === 'geopolitical'
         ? await judgeGeopolitical(admin, {
@@ -104,7 +112,8 @@ Deno.serve(async req => {
     const perEntity = [...verdicts]
       .sort((a, b) => Number(b.relevant) - Number(a.relevant))
       .map(v => ({ entity: v.scope === 'firm' || !v.entity_name ? firm.name : v.entity_name, relevant: v.relevant, reason: v.reason }))
-    return json({ relevant, reason: perEntity[0].reason, verdicts: perEntity })
+    const learned = await saveProposals(admin, firmId, await learning, { origin: 'recheck', ref: regulationId })
+    return json({ relevant, reason: perEntity[0].reason, verdicts: perEntity, learned })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }

@@ -5,7 +5,9 @@ import { expect, FIRM_ID, signIn, test, type MockBackend } from './mockBackend'
 // dashboard and reviewed in Profile. Nothing enters the profile unconfirmed.
 
 const run = (over: Record<string, unknown> = {}) => ({ id: 'run-1', firm_id: FIRM_ID, status: 'done', note: null, found: 3, started_at: new Date(Date.now() - 3_600_000).toISOString(), finished_at: new Date().toISOString(), ...over })
-const finding = (id: string, over: Record<string, unknown>) => ({ id, firm_id: FIRM_ID, run_id: 'run-1', scope: 'firm', entity_id: null, recorded: null, quote: '', status: 'pending', created_at: new Date().toISOString(), ...over })
+const finding = (id: string, over: Record<string, unknown>) => ({ id, firm_id: FIRM_ID, run_id: 'run-1', scope: 'firm', entity_id: null, recorded: null, quote: '', status: 'pending', origin: 'web', created_at: new Date().toISOString(), ...over })
+// A fact a member said in RegWay AI (§17.6): no run, no page.
+const said = (id: string, note: string, quote: string) => finding(id, { run_id: null, field: 'notes', value: [note], source_url: null, origin: 'chat', quote, created_at: '2026-11-23T10:00:00Z' })
 
 function seedResearch(backend: MockBackend) {
   backend.tables.firm_research_runs.push(run())
@@ -20,7 +22,7 @@ async function openReview(page: Page) {
   await signIn(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Review' }).click()
-  await expect(page.getByRole('button', { name: 'Found on the Web', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Suggested Facts', exact: true })).toHaveAttribute('aria-pressed', 'true')
 }
 
 test.describe('web research on the firm', () => {
@@ -89,5 +91,26 @@ test.describe('web research on the firm', () => {
     await openReview(page)
     await page.getByRole('button', { name: 'Research Again' }).click()
     await expect.poll(() => backend.called('POST', 'functions/v1/research-firm').length).toBe(1)
+  })
+
+  test('facts a member said wait here too, and confirming two adds both', async ({ page, backend }) => {
+    backend.tables.firm_findings.push(
+      said('f-eu', 'None of our funds is marketed in the EU', "none of our funds is marketed in the EU"),
+      said('f-texas', 'Has no office in Texas', 'we have no office in Texas'),
+    )
+    await signIn(page)
+    await page.goto('/profile/research')
+    // The dashboard card is about the web research only; these are reviewed here.
+    await expect(page.getByText('Said in RegWay AI on Nov 23, 2026: “none of our funds is marketed in the EU”')).toBeVisible()
+    await expect(page.getByText('Other facts')).toHaveCount(2)
+
+    await page.getByRole('button', { name: 'Confirm Other facts' }).first().click()
+    await expect(page.getByText('Other facts')).toHaveCount(1)
+    await page.getByRole('button', { name: 'Confirm Other facts' }).click()
+    await expect(page.getByText('Other facts')).toHaveCount(0)
+
+    const saved = backend.called('PATCH', 'rest/v1/firms').at(-1)!.body
+    expect(saved.profile.notes).toEqual(['None of our funds is marketed in the EU', 'Has no office in Texas'])
+    expect(saved.profile_meta.notes).toMatchObject({ source: 'user' })
   })
 })

@@ -154,10 +154,12 @@ describe('research-firm', () => {
     expect(extract.tool).toBe('submit_findings')
     expect(promptText(extract)).toContain(`[${ADV}]`)
 
-    // Pending findings of an earlier run give way to this one's.
+    // Pending findings of an earlier run give way to this one's; facts a
+    // member said are not the research's to replace.
     const [superseded] = db.ran('firm_findings', 'update')
     expect(superseded.payload).toEqual({ status: 'superseded' })
     expect(hasFilter(superseded, 'eq', 'status', 'pending')).toBe(true)
+    expect(hasFilter(superseded, 'eq', 'origin', 'web')).toBe(true)
     const rows = db.ran('firm_findings', 'insert')[0].payload as Record<string, unknown>[]
     expect(rows.every(r => r.run_id === 'run-1' && r.firm_id === FIRM_ID)).toBe(true)
     expect(rows.map(r => r.field).sort()).toEqual(['new_entity', 'offices', 'size'])
