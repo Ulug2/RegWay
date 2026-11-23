@@ -9,6 +9,22 @@
 >
 > New entries go directly below this box, newest first.
 
+### Companies filtered by fund (2026-11-22, issue #11)
+- On the dashboard's Portfolio Companies level, a row of fund chips ("All
+  funds" first, each with its company count) narrows the list to one
+  fund's companies (`fund_holdings`); a company in two funds shows under
+  both. Companies no fund holds get their own "No fund recorded" chip,
+  shown only when there are any. The choice is kept in the address
+  (`/?fund=<id>`, `?fund=none`): a reload, a shared link and going back
+  from a company keep it; leaving the level drops it; a link to a deleted
+  fund shows all. On a phone the chips scroll sideways. Design decided by
+  the owner in session (chips, the "No fund recorded" choice, the
+  address). Logic in `src/lib/fundFilter.ts`.
+- **Verified:** 8 unit tests (`fundFilter.test.ts`), 5 browser tests
+  (`dashboard.spec.ts`, "companies by fund"), the rest of the dashboard
+  tests pass; looked at in light and dark at 1280 px and 390 px with 8
+  funds. Not decided: whether a fund's own page links to "see this fund's
+  companies".
 ### The matching score command (2026-11-22, Sidekick item 1)
 - `pnpm eval:matching <set.json> [--skeptic] [--yes]` (Deno,
   `scripts/eval-matching.ts`) runs RegWay's own regulatory and

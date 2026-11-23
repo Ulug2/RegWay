@@ -75,25 +75,6 @@ Ready-to-take versions of these, with acceptance criteria, are in
   photos go in `public/team/`). Needs the real bios, photos and the Codify
   members' names.
 
-- **Filter portfolio companies by fund** (M). On the dashboard's Portfolio
-  Companies level, choosing a fund shows only the companies that fund
-  holds. The data is already there: `fund_holdings` records which fund
-  holds which company (`fetchHoldings` in `src/lib/data.ts`), and a company
-  can sit in more than one fund.
-  - **Decided by the owner 2026-11-22** (issue #11): a row of fund chips
-    above the company list, "All funds" first, scrolling sideways on a
-    phone; companies with no fund recorded appear under "All funds" and
-    under their own "No fund recorded" chip (shown only when there are
-    any); the chosen fund is kept in the address (`?fund=`), so a reload
-    and a shared link keep it. The owner's answer replaces the sketch on
-    the issue. Still open: whether a fund's page offers "see this fund's
-    companies".
-  - **Done when**: choosing a fund narrows the list, "All funds" restores
-    it, a company in two funds shows under both, companies without a fund
-    stay reachable, and browser tests cover each.
-  - Files: `src/components/Dashboard.tsx` (one person at a time in this
-    file), `src/lib/data.ts`, `tests/e2e/dashboard.spec.ts`.
-
 ### 16i. Chat features (planned, owner 2026-10-23; S–M each)
 Asked for, not built. The conversation-list ones touch only the chat's
 screen and tables; the ones marked * change what the chat function returns,

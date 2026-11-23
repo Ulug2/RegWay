@@ -4,9 +4,11 @@ import { useCachedState } from '../lib/useCachedState'
 import { isScanning, needsScan, onScanChange, prewarmCompanies } from '../lib/scans'
 import { patchCache, writeCache } from '../lib/cache'
 import { supabase } from '../lib/supabase'
-import { fetchFirmRegulations, fetchPortfolioCompanies, fetchFunds, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchAiOutage, aiOutageText, type AiOutage, fetchImpactStatuses, matchGeopoliticalDevelopments, subscribeToMatches } from '../lib/data'
-import type { MatchedRegulation, PortfolioCompany, Fund, Firm } from '../lib/types'
+import { fetchFirmRegulations, fetchPortfolioCompanies, fetchFunds, fetchHoldings, dismissRegulation, getCachedCompanies, getFirmId, fetchFailingSources, fetchAiOutage, aiOutageText, type AiOutage, fetchImpactStatuses, matchGeopoliticalDevelopments, subscribeToMatches } from '../lib/data'
+import type { MatchedRegulation, PortfolioCompany, Fund, FundHolding, Firm } from '../lib/types'
+import { companiesInFund, fundFromSearch, fundOptions, searchWithFund, validChoice, type FundChoice } from '../lib/fundFilter'
 import { DEFAULT_FILTER, type FeedFilter } from '../lib/feedFilter'
+import Chip from './Chip'
 import type { DaySelection } from '../lib/feedDays'
 import { markVisit } from '../lib/lastVisit'
 import PageHeader from './PageHeader'
@@ -41,8 +43,17 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [firm, setFirm] = useCachedState<Firm | null>('firm', null)
   const [companies, setCompanies] = useCachedState<PortfolioCompany[]>('companies', [])
   const [funds, setFunds] = useCachedState<Fund[]>('funds', [])
-  // Which tab is open survives navigating to a headline or an entity page and back.
+  // Which fund holds which company; null until known.
+  const [holdings, setHoldings] = useCachedState<FundHolding[] | null>('holdings', null)
+  // The fund the company list is narrowed to, from the address (`?fund=`),
+  // so a reload or a shared link keeps it (lib/fundFilter).
+  const [fundChoice, setFundChoice] = useState<FundChoice>(() => fundFromSearch(window.location.search))
+  // Which tab is open survives navigating to a headline or an entity page
+  // and back. An address naming a fund opens the company list.
   const [activeToggle, setActiveToggle] = useCachedState<Toggle | null>('ui:activeToggle', null)
+  useEffect(() => {
+    if (fundChoice !== null && activeToggle !== 'portfolio') setActiveToggle('portfolio')
+  }, [])
 
   const [peRegs, setPeRegs] = useCachedState<MatchedRegulation[] | null>('regs:pe', null)
   // The day the General Partners list shows (null = today); funds and companies
@@ -69,14 +80,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         setFirmId(id)
         const { data: { session } } = await supabase.auth.getSession()
         if (session) setNewSince(markVisit(session.user.id, id))
-        const [{ data: firmRow }, cos, fs] = await Promise.all([
+        const [{ data: firmRow }, cos, fs, held] = await Promise.all([
           supabase.from('firms').select('*').eq('id', id).single(),
           fetchPortfolioCompanies(id),
           fetchFunds(id),
+          fetchHoldings(id).catch(() => null),
         ])
         if (firmRow) setFirm(firmRow)
         setCompanies(cos)
         setFunds(fs)
+        if (held) setHoldings(held)
         // Research every company that needs it now, in the background, so
         // results are already there when a company is opened.
         prewarmCompanies(id, cos)
@@ -175,11 +188,26 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     { key: 'portfolio', label: 'Portfolio Companies' },
   ]
 
+  // Writes the fund choice into the address without a new history entry.
+  const chooseFund = (fund: FundChoice) => {
+    setFundChoice(fund)
+    const search = searchWithFund(window.location.search, fund)
+    if (search !== window.location.search) window.history.replaceState(window.history.state, '', `${window.location.pathname}${search}${window.location.hash}`)
+  }
+
   const selectToggle = (key: Toggle) => {
     // Opening the General Partners list starts on today.
     if (key === 'pe' && activeToggle !== 'pe') setPeDay(null)
+    // The fund choice belongs to the company list; leaving it drops it.
+    if (activeToggle === 'portfolio') chooseFund(null)
     setActiveToggle(activeToggle === key ? null : key)
   }
+
+  // Fund chips appear once the funds and their holdings are known.
+  const showFundChips = funds.length > 0 && holdings !== null
+  const chosenFund = showFundChips ? validChoice(fundChoice, funds) : null
+  const listedCompanies = chosenFund === null ? companies : companiesInFund(companies, holdings ?? [], chosenFund)
+  const chosenFundName = funds.find(f => f.id === chosenFund)?.name
 
   // A fund or company opens its own page, on today's findings.
   const openEntity = (ref: EntityRef) => {
@@ -305,8 +333,22 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             companies.length === 0 ? (
               <EmptyState message="No portfolio companies on file yet." />
             ) : (
-              <div className="max-w-2xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {companies.map(co => (
+              <div className="max-w-2xl mx-auto">
+              {showFundChips && (
+                // One row on a phone, scrolled sideways; wrapped from sm up.
+                <div role="group" aria-label="Show companies held by" className="flex sm:flex-wrap items-center gap-2 overflow-x-auto sm:overflow-visible -mx-5 px-5 sm:mx-0 sm:px-0 mb-5 [&>*]:shrink-0">
+                  {fundOptions(funds, companies, holdings ?? []).map(o => (
+                    <Chip key={o.key ?? 'all'} selected={chosenFund === o.key} onClick={() => chooseFund(o.key)}>
+                      {o.label} <span className="num" style={{ opacity: 0.7 }}>{o.count}</span>
+                    </Chip>
+                  ))}
+                </div>
+              )}
+              {listedCompanies.length === 0 ? (
+                <EmptyState message={chosenFundName ? `No portfolio companies are recorded as held by ${chosenFundName}.` : 'No portfolio companies here.'} />
+              ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {listedCompanies.map(co => (
                   <button key={co.id} onClick={() => openEntity({ type: 'company', id: co.id })} className="glass-card-light glass-lift text-left p-5 min-w-0">
                     <div className="tile w-11 h-11 text-sm mb-4" style={co.logo_url ? { background: 'none' } : undefined} aria-hidden="true">
                       {co.logo_url ? (
@@ -325,6 +367,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                     )}
                   </button>
                 ))}
+              </div>
+              )}
               </div>
             )
           )}
