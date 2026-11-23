@@ -5,7 +5,7 @@ import { loadHandler, post, stubFetch } from './helpers/handler'
 // The public key is in every browser: a sync that accepted it could be run
 // by anyone, as often as they liked (and sync-sec-admin-proceedings spends
 // AI credit on every new item). Only the service key runs them now.
-const SYNCS = ['sync-federal-register', 'sync-regulator-feeds', 'sync-sec-enforcement', 'sync-finra-enforcement', 'sync-sec-admin-proceedings', 'sync-travel-advisories']
+const SYNCS = ['sync-federal-register', 'sync-regulator-feeds', 'sync-sec-enforcement', 'sync-finra-enforcement', 'sync-doj-press-releases', 'sync-sec-admin-proceedings', 'sync-travel-advisories']
 
 describe('sync functions', () => {
   it.each(SYNCS)('%s refuses the public key and no key, before fetching anything', async name => {

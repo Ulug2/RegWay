@@ -9,6 +9,33 @@
 >
 > New entries go directly below this box, newest first.
 
+### DOJ press releases (2026-11-22, issue #41)
+- New enforcement source `doj_press`: `sync-doj-press-releases`, hourly
+  (job `sync-doj-press-releases-hourly`, migration 0053), reads the newest
+  100 releases from the Justice Department's JSON API. The API's topic
+  filter does not work, so `_shared/doj.ts` filters in code before
+  anything is stored: a topic about companies (False Claims Act, antitrust,
+  FCPA, financial, environment, tax…) or the Antitrust Division, and a
+  settlement, a merger or a company name in the title and no sign the case
+  is about one person; the same release from two offices is kept once. On
+  400 real releases (16–21 Nov) it kept 5. Judged by
+  match-enforcement-relevance; its prompt and the enforcement analysis now
+  name DOJ (owner: "do what you think is right", 2026-11-22).
+- A case can be against the firm's own company (a DOJ settlement, a plea).
+  Before the judge, `_shared/namedParties.ts` looks for the firm's, its
+  funds' and its companies' names in the release (whole words, endings
+  like "Holding Corporation" dropped, names too short or ordinary to
+  search skipped). A case that names one is matched in code ("This release
+  names X, one of your portfolio companies. Check that it is the same
+  company.") and not sent to the judge; its analysis uses a variant prompt
+  that reports what the source says about the named party, with the
+  source's certainty (owner: "fix the gap", 2026-11-23).
+- **Verified:** 13 unit tests on real releases (`dojPressReleases.test.ts`)
+  plus the service-key test, 9 name tests (`namedParties.test.ts`), 2
+  matcher tests, a prompt snapshot (`analysis-enforcement-named.json`);
+  migration applied to a local database; run locally against the live
+  API: 100 releases read, 1 kept and stored.
+
 ### Companies filtered by fund (2026-11-22, issue #11)
 - On the dashboard's Portfolio Companies level, a row of fund chips ("All
   funds" first, each with its company count) narrows the list to one

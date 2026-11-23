@@ -30,7 +30,7 @@ const decodeOnce = (s: string) =>
 // pass leaves as a visible "&nbsp;" in the summary. A second pass runs only
 // when the first left an entity behind.
 const LEFT_OVER_ENTITY = /&(nbsp|quot|apos|lt|gt|amp|#\d+|#x[0-9a-f]+);/i
-const decodeEntities = (s: string) => {
+export const decodeEntities = (s: string) => {
   const once = decodeOnce(s)
   return LEFT_OVER_ENTITY.test(once) ? decodeOnce(once) : once
 }

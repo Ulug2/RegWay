@@ -235,4 +235,30 @@ describe('match-enforcement-relevance candidates', () => {
     expect(text).toContain('SEC Charges Adviser — The adviser charged undisclosed monitoring fees.')
     expect(text).not.toContain('END-OF-NARRATIVE')
   })
+
+  it("matches a case that names the firm's own company in code, says so, and does not ask the model about it", async () => {
+    const named = { ...rule('case-getix', 'GetixHealth Agrees to Pay $5M to Resolve False Claims Act Allegations'), raw: { narrative_text: 'GetixHealth, LLC billed Medicare for services not rendered.' } }
+    const { model, db, res, queued } = await run('match-enforcement-relevance', { candidates: [named, rule('case-other', 'SEC Charges Adviser')] }, [])
+    const [stored] = db.ran('regulation_relevance', 'upsert')
+    expect(stored.payload).toEqual([
+      {
+        regulation_id: 'case-getix',
+        firm_id: FIRM_ID,
+        fund_id: null,
+        portfolio_company_id: 'co-getix',
+        relevance_reason: 'This release names GetixHealth, one of your portfolio companies. Check that it is the same company.',
+      },
+    ])
+    expect(model).toHaveLength(1)
+    expect(promptText(model[0])).not.toContain('GetixHealth Agrees')
+    expect(promptText(model[0])).toContain('0. [Securities and Exchange Commission] SEC Charges Adviser')
+    expect(queued.map(q => q.regulationId)).toEqual(['case-getix'])
+    expect(await res.json()).toEqual({ evaluated: 1, relevant: 1 })
+  })
+
+  it('makes no AI call when every new case names one of the firm\'s entities', async () => {
+    const { model, rows } = await run('match-enforcement-relevance', { candidates: [rule('case-hig', 'H.I.G. Capital Settles Fee Charges')] }, [])
+    expect(model).toHaveLength(0)
+    expect(rows).toEqual([expect.objectContaining({ regulation_id: 'case-hig', fund_id: null, portfolio_company_id: null, relevance_reason: 'This release names H.I.G. Capital, your firm. Check that it is the same firm.' })])
+  })
 })

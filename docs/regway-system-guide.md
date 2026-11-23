@@ -213,6 +213,7 @@ AI failing now), `restore_reviewed_match`, `alert_recipients`.
    | `sync-regulator-feeds` | SEC, FTC, CFPB announcements; FCA, PRA, UK legislation, ESMA, EUR-Lex; EU and UK sanctions, OFSI (`_shared/regulatorFeeds.ts`) | regulatory / geopolitical |
    | `sync-sec-enforcement` | SEC litigation releases | enforcement |
    | `sync-finra-enforcement` | FINRA news releases, filtered to bars, fines, suspensions | enforcement |
+   | `sync-doj-press-releases` | DOJ press releases API, filtered in code to cases about companies: settlements, antitrust, FCPA, sanctions, environment (`_shared/doj.ts`; about 1 a day of ~70) | enforcement |
    | `sync-sec-admin-proceedings` | SEC administrative proceedings (PDFs, read by Claude: costs AI) | enforcement |
    | `sync-travel-advisories` | State Department advisories, levels 3 and 4 | geopolitical |
 
@@ -281,7 +282,7 @@ structured output where it returns data, and its cost recorded.
 |---|---|---|---|---|
 | Regulatory judge | Haiku 4.5 | `_shared/regulatoryJudge.ts` | Does a rule create a real obligation for this firm, a fund or a company? | Matching |
 | Geopolitical judge | Sonnet 4.5 | `_shared/geopoliticalJudge.ts` | Does a sanction, export control, trade measure or advisory reach an entity through where it is? | Matching |
-| Enforcement judge | Sonnet 4.5 | `match-enforcement-relevance` | Does a case against someone else overlap with an entity's own activity? | Matching |
+| Enforcement judge | Sonnet 4.5 | `match-enforcement-relevance` | Does a case against someone else overlap with an entity's own activity? (A case that names the firm, a fund or a company is matched in code first, by name, and never sent to it: `_shared/namedParties.ts`; its analysis says what the source says about the named party.) | Matching |
 | Skeptic | Sonnet 4.5 | `_shared/roles/skeptic.ts` | Try to break each match: keep, move, reject. Also checks chat claims. | After each judge; after chat answers |
 | Impact analyst | Sonnet 4.5 | `_shared/impact.ts` | Write the analysis of one development for one firm. | After a new match; on first open; after a profile edit |
 | Company scanner | Sonnet 4.5 + web search | `company-regulations` | Find recent regulatory activity for one portfolio company. | New company, after an edit, weekly |
@@ -494,7 +495,7 @@ also removes the jobs there.
 |---|---|---|---|
 | `sync-federal-register-30min` | every 30 min | sync-federal-register | no |
 | `sync-regulator-feeds-30min` | every 30 min | sync-regulator-feeds | no |
-| `sync-sec-enforcement-hourly`, `sync-finra-enforcement-hourly` | hourly | the enforcement syncs | no |
+| `sync-sec-enforcement-hourly`, `sync-finra-enforcement-hourly`, `sync-doj-press-releases-hourly` | hourly | the enforcement syncs | no |
 | `sync-sec-admin-proceedings-3h` | every 3 h | sync-sec-admin-proceedings | yes (PDFs) |
 | `sync-travel-advisories-6h` | every 6 h | sync-travel-advisories | no |
 | `group-duplicates-30min` | :08, :38 | group-duplicates | small (Haiku) |

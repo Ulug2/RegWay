@@ -76,6 +76,7 @@ export interface Regulation {
     | 'sec_enforcement'
     | 'sec_admin_proceedings'
     | 'finra_enforcement'
+    | 'doj_press'
     | 'state_travel_advisories'
     // Regulator feeds (supabase/functions/_shared/regulatorFeeds.ts).
     | 'sec_news'
