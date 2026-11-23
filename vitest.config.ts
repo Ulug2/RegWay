@@ -11,6 +11,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       'npm:@supabase/supabase-js@2.116.0': path.resolve(__dirname, './tests/unit/helpers/fakeSupabase.ts'),
+      // The real PDF reader (package.json pins the same version).
+      'npm:unpdf@2.1.0': 'unpdf',
     },
   },
   test: {

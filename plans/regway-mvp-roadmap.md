@@ -178,28 +178,28 @@ asks for.
    (`pnpm eval:matching <set.json> [--skeptic]`: prints the estimated cost
    and asks before calling the AI; results go in `plans/eval-history.md`).
    Owner: mark the right verdict for about 150 documents for H.I.G. in the
-   format of `tests/eval/matching-set.json`, and run it. Not covered yet:
-   the enforcement judge (not exported from its function) and the SEC
-   proceedings extraction's prompt.
-2. **Fence outside text in every prompt** (S–M, §17.2): built 2026-11-22
-   (history). Flagged text can be listed from `ai_traces` (query in the
-   guide, §17.2). Left: show it to the owner in the app; deploy (changes
-   what every AI job is sent).
-3. **The rest of the spend caps** (S, §17.3): built 2026-11-22 (migration
-   0051, history). Waits on the owner: apply 0051 in production, then
-   deploy every function (they all check the caps through
-   `_shared/ai/client.ts`); a later migration then drops `ai_spend_check`.
+   format of `tests/eval/matching-set.json`, and run it. Not covered yet
+   by the score: the enforcement judge (not exported from its function).
+2. **Fence outside text in every prompt** (S–M, §17.2): built and
+   deployed 2026-11-22/23 (history). Flagged text can be listed from
+   `ai_traces` (query in the guide, §17.2). Left: show it to the owner in
+   the app.
+3. **The rest of the spend caps** (S, §17.3): built and deployed (migration
+   0051 applied 2026-11-23, history). Left: a migration that drops
+   `ai_spend_check` (0048), now unused.
 4. **Citation check in code first** (S–M, §17.4).
 5. **The Skeptic must show evidence to reject** (S, §17.5). Merge only
    after the test set (1) shows recall up and precision not down.
 6. **Learn facts from what users type** (M, §17.6).
 7. **Chat queries the firm's data** (M, §17.7). Touches
    `regway-ai-chat`, where issues #38 and #39 also work: check with them.
-8. **Read SEC PDFs with code first** (S, §17.8). Adds pdf.js, a new
-   dependency (owner's review).
-9. **Run traces for every AI decision** (M, §17.9): storage built
-   2026-11-22 (migration 0052, history). Left: the owner-only page, export
-   to the test set. Waits on the owner: apply 0052, then deploy.
+8. **Read SEC PDFs with code first** (S, §17.8): built 2026-11-23 (pdf.js
+   through `unpdf` 2.1.0, owner approved; history). Waits on: merge and
+   deploy `sync-sec-admin-proceedings`; check its first run fills in the
+   stored orders that have no text.
+9. **Run traces for every AI decision** (M, §17.9): storage built and
+   deployed (migration 0052 applied 2026-11-23, history). Left: the
+   owner-only page, export to the test set.
 
 ## Owner and lead
 
