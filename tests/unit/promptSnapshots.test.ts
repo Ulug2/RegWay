@@ -164,6 +164,20 @@ describe('prompts sent to the AI', () => {
     await expect(asked(model[0])).toMatchFileSnapshot(`${DIR}/analysis-${category}.json`)
   })
 
+  it("the enforcement analysis of a release naming the firm's own company", async () => {
+    const db = fakeClient((q: Query) => {
+      const shared = firmQueries(q)
+      if (shared) return shared
+      if (q.table === 'regulation_impacts') return { data: null }
+      if (q.table === 'regulations') return { data: { id: 'reg-1', source: 'doj_press', title: 'GetixHealth Agrees to Pay $5M to Resolve False Claims Act Allegations', agency: 'Department of Justice (Civil Division)', jurisdiction: 'Federal', summary: null, published_date: '2026-11-20', effective_date: null, source_url: 'https://example.test/reg-1', raw: { narrative_text: 'GetixHealth, LLC agreed to pay $5 million. The claims are allegations only; there has been no determination of liability.' }, category: 'enforcement', on_public_inspection: false } }
+      if (q.table === 'regulation_relevance') return { data: [{ fund_id: null, portfolio_company_id: 'co-getix', relevance_reason: 'This release names GetixHealth, one of your portfolio companies. Check that it is the same company.' }] }
+      if (q.table === 'fund_holdings') return { data: [{ fund_id: 'fund-1', portfolio_company_id: 'co-getix' }] }
+    })
+    const { model } = stubModel({ submit_impact_analysis: { overview: '', scope: '', status: '', key_provisions: [], key_dates: [], impacts: [], considerations: [], limitations: '' } })
+    await generateImpact(db as never, 'reg-1', FIRM_ID)
+    await expect(asked(model[0])).toMatchFileSnapshot(`${DIR}/analysis-enforcement-named.json`)
+  })
+
   it('the company scan: search, then extraction', async () => {
     const company = { id: 'co-getix', name: 'GetixHealth', sectors: ['Healthcare'], regions: ['United States'], hq_location: 'Houston, Texas', firm_id: FIRM_ID, website: 'https://getixhealth.test', offerings: 'Revenue cycle management', profile: {} }
     setClient(

@@ -97,5 +97,27 @@ const geopolitical: ImpactPrompt = {
 
 export const IMPACT_PROMPTS: Record<Category, ImpactPrompt> = { regulatory, enforcement, geopolitical }
 
+// An enforcement release that names one of the firm's own entities
+// (`_shared/namedParties.ts`, found by name in code). The usual enforcement
+// framing ("this entity is not a party") would then be false. Says what the
+// source says about the named party, with the source's own certainty, and
+// that it may be another business with the same name. The names go in the
+// document heading (`documentLabel`), so the instructions stay the same for
+// every firm.
+export function enforcementNamingPrompt(names: string[]): ImpactPrompt {
+  return {
+    ...enforcement,
+    documentLabel: `ENFORCEMENT ACTION (SEC, FINRA or DOJ — state procedural posture exactly as the source describes it). It names ${names.join(', ')}, the same name as the firm's own entit${names.length === 1 ? 'y' : 'ies'} below.`,
+    system:
+      "You are a regulatory analyst writing for the general partners and compliance staff of a private equity firm, summarizing an SEC, FINRA or DOJ enforcement action (a litigation release, administrative proceeding, disciplinary action, or Justice Department press release) that names a party with the same name as one of the firm's own entities: the firm, a fund, or a portfolio company. It may be that entity or another business with the same name; the reader must confirm which, so say so once, plainly. Report what the source states about that party — the conduct alleged or found, the amount, the posture — exactly as the source states it: contested allegations if litigation is pending, an admission if the source reports a plea, a settlement's terms if it reports one (including whether liability was admitted). Never characterize it as more settled, more proven or more serious than the source states, and never add facts, consequences or other matters the source does not mention. For other entities of the firm named in the impacts, describe only a genuine factual overlap with their own activity, as for any enforcement action. Write in precise, neutral, plain prose. Do NOT give legal advice or rate severity, urgency, or risk. Base every statement on the source text or entity facts provided; never invent facts. Where a fact is missing, say so in open_questions instead of assuming.",
+    impacts: "One entry for each entity the release names (the heading lists them), and one for any other fund or company whose own activity genuinely overlaps with the conduct. A fund that holds a named company may have its own entry saying so.",
+    headline: 'One neutral sentence: for a named entity, what the source says happened to a party of that name; otherwise the specific factual overlap.',
+    howItApplies:
+      "One or two paragraphs. For a named entity: what the source says about the party of that name (conduct, amount, posture, dates), and that the reader should confirm it is the same entity. Otherwise: the specific, concrete similarity to this entity's own activity, noting this entity is not named.",
+    obligations: 'Terms the source itself states the named party agreed to or was ordered to do (payments, compliance undertakings, monitors, deadlines), exactly as stated; otherwise leave empty.',
+    considerations: "Neutral points to confirm: whether the named party is the firm's entity, which period and business line the case covers, anything the source leaves open. Not recommendations.",
+  }
+}
+
 export const impactPromptFor = (category: string | null | undefined): ImpactPrompt =>
   IMPACT_PROMPTS[(category ?? 'regulatory') as Category] ?? regulatory

@@ -25,6 +25,7 @@ import { callClaude, toolInput } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
 import { FENCE_RULE, untrusted } from '../_shared/security/guard.ts'
 import { automaticAiPaused } from '../_shared/ai/switch.ts'
+import { namedParties, namedPartyReason, releaseText } from '../_shared/namedParties.ts'
 
 const MODEL = MODEL_FOR.enforcementJudge
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void }
@@ -84,11 +85,35 @@ Deno.serve(async (req) => {
     const recent = candidates.filter(c => !evaluatedIds.has(c.id)).slice(0, BATCH_SIZE)
     // Older cases the window no longer reaches fill the rest of the batch.
     const older = await olderUnjudged<(typeof candidates)[number]>(admin, firmId, { category: 'enforcement', columns }, candidates.map(c => c.id), BATCH_SIZE - recent.length)
-    const unevaluated = [...recent, ...older]
+    const batch = [...recent, ...older]
 
-    if (unevaluated.length === 0) return json({ evaluated: 0, relevant: 0 })
+    if (batch.length === 0) return json({ evaluated: 0, relevant: 0 })
+
+    // A case that names the firm, a fund or a company is about that entity,
+    // not background: matched here, in code, and not sent to the judge,
+    // whose prompt assumes every case is against someone else.
+    const naming = batch.map(r => ({ r, parties: namedParties(releaseText(r), { firm, funds, companies }) }))
+    const namedRows = naming.flatMap(({ r, parties }) =>
+      parties.map(p => ({
+        regulation_id: r.id,
+        firm_id: firmId,
+        fund_id: p.scope === 'fund' ? p.id : null,
+        portfolio_company_id: p.scope === 'company' ? p.id : null,
+        relevance_reason: namedPartyReason(p),
+      })),
+    )
+    const unevaluated = naming.filter(n => n.parties.length === 0).map(n => n.r)
+    if (namedRows.length > 0) {
+      await upsertRelevanceRows(admin, namedRows)
+      const namedIds = [...new Set(namedRows.map(row => row.regulation_id))]
+      // The analysis is written now, as for any new match, unless automatic
+      // AI work is paused; opening the item writes it then.
+      if (!automaticAiPaused()) EdgeRuntime.waitUntil(generateImpacts(namedIds, firmId))
+    }
+    const named = { evaluated: namedRows.length, relevant: namedRows.length }
+    if (unevaluated.length === 0) return json(named)
     // Judged once the owner resumes automatic AI work (_shared/ai/switch.ts).
-    if (automaticAiPaused()) return json({ evaluated: 0, relevant: 0, paused: true })
+    if (automaticAiPaused()) return json({ ...named, paused: true })
 
     if (rateLimitClient && !reevaluate && !(await checkRateLimit(rateLimitClient, 'match-enforcement-relevance', 15, 60))) return rateLimited()
 
@@ -203,7 +228,7 @@ ${FENCE_RULE}`,
     const newlyRelevantIds = [...new Set(verdicts.filter(v => v.relevant).map(v => unevaluated[v.index]?.id).filter((id): id is string => !!id))]
     if (newlyRelevantIds.length > 0) EdgeRuntime.waitUntil(generateImpacts(newlyRelevantIds, firmId))
 
-    return json({ evaluated: rows.length, relevant: relevantCount })
+    return json({ evaluated: rows.length + named.evaluated, relevant: relevantCount + named.relevant })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }

@@ -282,7 +282,7 @@ structured output where it returns data, and its cost recorded.
 |---|---|---|---|---|
 | Regulatory judge | Haiku 4.5 | `_shared/regulatoryJudge.ts` | Does a rule create a real obligation for this firm, a fund or a company? | Matching |
 | Geopolitical judge | Sonnet 4.5 | `_shared/geopoliticalJudge.ts` | Does a sanction, export control, trade measure or advisory reach an entity through where it is? | Matching |
-| Enforcement judge | Sonnet 4.5 | `match-enforcement-relevance` | Does a case against someone else overlap with an entity's own activity? | Matching |
+| Enforcement judge | Sonnet 4.5 | `match-enforcement-relevance` | Does a case against someone else overlap with an entity's own activity? (A case that names the firm, a fund or a company is matched in code first, by name, and never sent to it: `_shared/namedParties.ts`; its analysis says what the source says about the named party.) | Matching |
 | Skeptic | Sonnet 4.5 | `_shared/roles/skeptic.ts` | Try to break each match: keep, move, reject. Also checks chat claims. | After each judge; after chat answers |
 | Impact analyst | Sonnet 4.5 | `_shared/impact.ts` | Write the analysis of one development for one firm. | After a new match; on first open; after a profile edit |
 | Company scanner | Sonnet 4.5 + web search | `company-regulations` | Find recent regulatory activity for one portfolio company. | New company, after an edit, weekly |

@@ -21,11 +21,20 @@
   400 real releases (16–21 Nov) it kept 5. Judged by
   match-enforcement-relevance; its prompt and the enforcement analysis now
   name DOJ (owner: "do what you think is right", 2026-11-22).
+- A case can be against the firm's own company (a DOJ settlement, a plea).
+  Before the judge, `_shared/namedParties.ts` looks for the firm's, its
+  funds' and its companies' names in the release (whole words, endings
+  like "Holding Corporation" dropped, names too short or ordinary to
+  search skipped). A case that names one is matched in code ("This release
+  names X, one of your portfolio companies. Check that it is the same
+  company.") and not sent to the judge; its analysis uses a variant prompt
+  that reports what the source says about the named party, with the
+  source's certainty (owner: "fix the gap", 2026-11-23).
 - **Verified:** 13 unit tests on real releases (`dojPressReleases.test.ts`)
-  plus the service-key test; migration applied to a local database; run
-  locally against the live API (below). Not done: the matcher still
-  assumes no case is against the firm's own companies, which a DOJ
-  settlement can be.
+  plus the service-key test, 9 name tests (`namedParties.test.ts`), 2
+  matcher tests, a prompt snapshot (`analysis-enforcement-named.json`);
+  migration applied to a local database; run locally against the live
+  API: 100 releases read, 1 kept and stored.
 
 ### Companies filtered by fund (2026-11-22, issue #11)
 - On the dashboard's Portfolio Companies level, a row of fund chips ("All

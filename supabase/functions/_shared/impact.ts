@@ -12,7 +12,8 @@ import { federalRegisterTextUrls, type FederalRegisterDocumentRef } from './fede
 import { fetchPlainText } from './text.ts'
 import { callClaude, toolInput } from './ai/client.ts'
 import { MODEL_FOR } from './ai/models.ts'
-import { impactPromptFor } from './impactPrompts.ts'
+import { enforcementNamingPrompt, impactPromptFor } from './impactPrompts.ts'
+import { namedParties, releaseText } from './namedParties.ts'
 import { automaticAiPaused } from './ai/switch.ts'
 
 const MODEL = MODEL_FOR.impactAnalysis
@@ -162,7 +163,10 @@ async function writeImpact(admin: SupabaseClient, regulationId: string, firmId: 
   // Category-specific wording (regulatory / enforcement / geopolitical) —
   // same output schema for all, so the UI needs no branching. See
   // impactPrompts.ts for why each category is framed the way it is.
-  const prompt = impactPromptFor(reg.category)
+  // An enforcement release that names the firm's own entity is about it,
+  // not background (_shared/namedParties.ts).
+  const named = reg.category === 'enforcement' ? namedParties(releaseText({ ...reg, raw: { narrative_text: fullText } }), { firm, funds, companies }) : []
+  const prompt = named.length > 0 ? enforcementNamingPrompt(named.map(p => p.name)) : impactPromptFor(reg.category)
 
   const result = await callClaude({
     model: MODEL,
