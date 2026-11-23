@@ -4,6 +4,13 @@
 -- timers are rescheduled to send the service key from Vault, like the
 -- other jobs. Same names and schedules as before.
 
+-- 0031 made a session function of the same name with other parameter
+-- names; `supabase db reset` runs every migration in one session, where
+-- `create or replace` cannot rename them. Added 2026-11-23 with the owner's
+-- approval (an edit to an applied migration: production ran this file on
+-- 2026-11-14 and never runs it again).
+drop function if exists pg_temp.schedule_sync(text, text, text);
+
 create or replace function pg_temp.schedule_sync(job_name text, cron_expr text, fn text) returns void language plpgsql as $fn$
 begin
   if exists (select 1 from cron.job where jobname = job_name) then
