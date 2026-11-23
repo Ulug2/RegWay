@@ -68,7 +68,7 @@ The full story (pipeline, AI agents, emails, timers) is in
 | `sync-sec-enforcement` | timer, hourly | SEC litigation releases | no |
 | `sync-finra-enforcement` | timer, hourly | FINRA bars, fines, suspensions | no |
 | `sync-doj-press-releases` | timer, hourly | DOJ press releases about companies (settlements, antitrust, FCPA) | no |
-| `sync-sec-admin-proceedings` | timer, 3 h | SEC administrative proceedings (PDFs read by Claude) | yes |
+| `sync-sec-admin-proceedings` | timer, 3 h | SEC administrative proceedings (PDF text read in code; Haiku headline; Sonnet for scans only) | yes |
 | `sync-travel-advisories` | timer, 6 h | State Department advisories, levels 3 and 4 | no |
 | `group-duplicates` | timer, 30 min | Links versions of one development | small |
 | `run-matching` | timer, 30 min | Runs the three matchers for enrolled firms | via matchers |

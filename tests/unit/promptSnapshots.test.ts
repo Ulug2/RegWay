@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { judgeRegulations } from '../../supabase/functions/_shared/regulatoryJudge.ts'
 import { judgeGeopolitical } from '../../supabase/functions/_shared/geopoliticalJudge.ts'
@@ -23,8 +25,6 @@ import { SERVICE_KEY } from './helpers/setup'
 // the updated files with the change: the diff shows exactly what the AI is
 // now told.
 //
-// Not covered: the SEC administrative-proceedings extraction (it reads a PDF;
-// no test drives it yet).
 
 const DIR = './prompts'
 
@@ -176,6 +176,30 @@ describe('prompts sent to the AI', () => {
     const { model } = stubModel({ submit_impact_analysis: { overview: '', scope: '', status: '', key_provisions: [], key_dates: [], impacts: [], considerations: [], limitations: '' } })
     await generateImpact(db as never, 'reg-1', FIRM_ID)
     await expect(asked(model[0])).toMatchFileSnapshot(`${DIR}/analysis-enforcement-named.json`)
+  })
+
+  it('the SEC order headline (text read in code) and the reading of a scan', async () => {
+    const pdf = (name: string) => readFileSync(path.join(__dirname, 'fixtures', name))
+    setClient(fakeClient((q: Query) => (q.table === 'regulations' && q.op === 'select' ? { data: [] } : undefined)))
+    const { handler } = await loadHandler('sync-sec-admin-proceedings')
+    const { model } = stubModel(
+      { submit_headline: { headline: 'A headline.' }, submit_extraction: { headline: 'A headline.', narrative_text: 'Text.' } },
+      url => {
+        if (url.pathname.endsWith('/rss'))
+          return new Response(
+            '<rss><channel><item><title>Harbor Peak Advisers LLC</title><link>https://www.sec.gov/a/ia-1.pdf</link><pubDate>Fri, 20 Nov 2026 12:00:00 -0500</pubDate><dc:creator>IA-1</dc:creator></item><item><title>Scan</title><link>https://www.sec.gov/a/scan-2.pdf</link><pubDate>Fri, 20 Nov 2026 12:00:00 -0500</pubDate><dc:creator>34-2</dc:creator></item></channel></rss>',
+          )
+        if (url.pathname.endsWith('ia-1.pdf')) return new Response(pdf('sec-order-text.pdf'))
+        if (url.pathname.endsWith('scan-2.pdf')) return new Response(pdf('sec-order-scanned.pdf'))
+      },
+    )
+    await handler(post('sync-sec-admin-proceedings', { token: SERVICE_KEY }))
+    const call = (tool: string) => model.find(m => m.tool === tool)!
+    await expect(asked(call('submit_headline'))).toMatchFileSnapshot(`${DIR}/sec-order-headline.json`)
+    // The PDF itself is replaced by its size: its bytes are the fixture's, not a prompt.
+    const scan = structuredClone(call('submit_extraction'))
+    scan.body.messages[0].content[0].source.data = `<${scan.body.messages[0].content[0].source.data.length} base64 characters>`
+    await expect(asked(scan)).toMatchFileSnapshot(`${DIR}/sec-order-scan.json`)
   })
 
   it('the company scan: search, then extraction', async () => {

@@ -214,7 +214,7 @@ AI failing now), `restore_reviewed_match`, `alert_recipients`.
    | `sync-sec-enforcement` | SEC litigation releases | enforcement |
    | `sync-finra-enforcement` | FINRA news releases, filtered to bars, fines, suspensions | enforcement |
    | `sync-doj-press-releases` | DOJ press releases API, filtered in code to cases about companies: settlements, antitrust, FCPA, sanctions, environment (`_shared/doj.ts`; about 1 a day of ~70) | enforcement |
-   | `sync-sec-admin-proceedings` | SEC administrative proceedings (PDFs, read by Claude: costs AI) | enforcement |
+   | `sync-sec-admin-proceedings` | SEC administrative proceedings (PDFs: text read in code, a Haiku headline; only scans read by Sonnet) | enforcement |
    | `sync-travel-advisories` | State Department advisories, levels 3 and 4 | geopolitical |
 
 2. **Group.** `group-duplicates` links versions of one development, so the
@@ -291,7 +291,8 @@ structured output where it returns data, and its cost recorded.
 | Chat | Sonnet 4.5 + web search | `regway-ai-chat` | Answer questions about the firm's situation. | Each message |
 | Claim gate | Haiku 4.5 | `_shared/roles/claimGate.ts` | Does a chat answer claim something applies to an entity? | After each chat answer |
 | Citation check | Haiku 4.5 | `_shared/roles/citationCheck.ts` | Does what the answer says about a rule match the passage it cited? | After an answer with claims |
-| SEC PDF reader | Sonnet 4.5 | `sync-sec-admin-proceedings` | Turn an SEC proceeding PDF into a headline and plain text. | That sync, every 3 hours |
+| SEC order headline | Haiku 4.5 | `sync-sec-admin-proceedings` | One headline sentence from an SEC order's text, read in code (`_shared/pdfText.ts`). | That sync, every 3 hours |
+| SEC PDF reader | Sonnet 4.5 | `sync-sec-admin-proceedings` | Turn a scanned SEC proceeding PDF (no text layer) into a headline and plain text. | That sync, scans only |
 
 All model choices are in one file, `_shared/ai/models.ts`. A model is
 changed only after its accuracy on that job was checked (the regulatory
@@ -869,7 +870,15 @@ badly ("how many German companies had sanctions matches this month?").
 
 ### 17.8 Read SEC PDFs with code first
 
-`sync-sec-admin-proceedings` sends every PDF to Sonnet every 3 hours (§4,
+**Built 2026-11-23** (`_shared/pdfText.ts`, with pdf.js as packaged by
+`unpdf` 2.1.0 for serverless runtimes; history). Each run also fills in up
+to 3 stored orders that have no text from their PDF's text layer (never
+Sonnet); a scan is marked `raw.text_layer = false` and not tried again.
+Production on 2026-11-22: 9 of the 10 newest orders had no text, because
+every Sonnet reading since 2026-10-09 had failed (credit, or the 45 s
+timeout).
+
+`sync-sec-admin-proceedings` sent every PDF to Sonnet every 3 hours (§4,
 §13). Most are text PDFs:
 
 - Extract the text with pdf.js (free); if it yields real text, send only

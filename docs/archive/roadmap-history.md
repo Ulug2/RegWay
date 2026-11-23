@@ -9,6 +9,32 @@
 >
 > New entries go directly below this box, newest first.
 
+### SEC orders read in code first (2026-11-23, Sidekick item 8)
+- `sync-sec-admin-proceedings` reads each order's PDF text in code
+  (`_shared/pdfText.ts`: pdf.js as packaged by `unpdf` 2.1.0, which needs
+  no worker or native canvas, so it loads in the edge runtime; plain pdf.js
+  tried to load a native drawing library). With real text (enough letters
+  per page; a stamp or page number is not enough), the whole text, up to
+  60,000 characters, is kept as `narrative_text` and only its first 6,000
+  characters, fenced, go to Haiku for the headline (temperature 0, 30 s).
+  If the headline call fails, the order is stored with its text and the
+  feed title. Only a scan goes to Sonnet, as before. Each run also fills in
+  up to 3 stored orders without text (text layer only, never Sonnet; a
+  scan is marked `text_layer: false`). Why: production had text for 1 of
+  the 10 newest orders; every Sonnet reading from 2026-10-09 to 11-18 had
+  failed (credit, or the 45 s timeout), and each cost about 6 cents.
+- `unpdf` is pinned in the function import and in `package.json`
+  (devDependency, for the unit tests and `pnpm audit`, which finds
+  nothing); `functionImports.test.ts` keeps them equal. Dependency approved
+  by the owner ("8 OK", 2026-11-22).
+- **Verified:** 10 unit tests (`secPdfText.test.ts`) on two PDFs made for
+  the tests (an SEC-style order with a text layer, and an image-only page);
+  prompt snapshots for the headline and the scan reading
+  (`sec-order-headline.json`, `sec-order-scan.json`); 2 version tests. Not
+  tried on real SEC PDFs from a laptop: sec.gov refuses them to RegWay's
+  user agent there (it serves the functions), so the first production run
+  is the real check.
+
 ### DOJ press releases (2026-11-22, issue #41)
 - New enforcement source `doj_press`: `sync-doj-press-releases`, hourly
   (job `sync-doj-press-releases-hourly`, migration 0053), reads the newest

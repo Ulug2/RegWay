@@ -15,13 +15,17 @@
 // upserts them into `regulations` with category 'enforcement'.
 //
 // Unlike litigation releases, every item here links to a PDF, not an HTML
-// page (see docs/notes/23-enforcement-monitoring-investigate.md) — there's no
-// cheap regex-based text extraction path for a PDF, so this function sends
-// the PDF directly to Claude (native PDF document support) to extract a
-// clean plain-text narrative and one-line headline. That's a real API cost
-// (and several seconds) per new item, unlike the free litigation-release
-// sync, which is why MAX_ITEMS is kept conservative here and the request
-// runs synchronously rather than in the background (see processItems below).
+// page (see docs/notes/23-enforcement-monitoring-investigate.md). Since
+// Sidekick §17.8 the PDF's text is read in code first (`_shared/pdfText.ts`,
+// free): the whole text is kept as the narrative, and only its opening is
+// sent to Haiku for a one-line headline. Only a scanned PDF (no text layer)
+// is still sent whole to Sonnet, which reads the images. Before, every PDF
+// went to Sonnet: about 6 cents each, and from 2026-10-09 to 11-18 every
+// one of those calls failed (credit, or the 45 s timeout), so 9 of the 10
+// newest orders had no text at all.
+//
+// Each run also fills in up to BACKFILL_ITEMS stored orders that have no
+// text, from their PDF's text layer (never Sonnet for those).
 //
 //   curl -X POST https://<project-ref>.supabase.co/functions/v1/sync-sec-admin-proceedings \
 //     -H "Authorization: Bearer <SERVICE_ROLE_KEY>"
@@ -33,10 +37,20 @@ import { recordSyncRun } from '../_shared/syncRun.ts'
 import { AnthropicError, callClaude, toolInput, type ClaudeResponse } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
 import { automaticAiPaused } from '../_shared/ai/switch.ts'
+import { pdfText } from '../_shared/pdfText.ts'
+import { FENCE_RULE, untrusted } from '../_shared/security/guard.ts'
 
 const SOURCE = 'sec_admin_proceedings'
 const ADMIN_PROCEEDINGS_RSS = 'https://www.sec.gov/enforcement-litigation/administrative-proceedings/rss'
 const MODEL = MODEL_FOR.secExtraction
+const HEADLINE_MODEL = MODEL_FOR.secHeadline
+// The opening of the order is enough for the headline: the caption, the
+// title of the order and the first findings.
+const HEADLINE_CHARS = 6000
+// What is kept of a long order (the impact analysis reads 60,000 characters).
+const NARRATIVE_CHARS = 60000
+// Stored orders without text, filled in per run.
+const BACKFILL_ITEMS = 3
 // Conservative cap: each item costs a real Claude call (PDF extraction) that
 // takes several seconds, run synchronously in the request (see below) — kept
 // small enough that ordinary daily volume (a handful of genuinely new items)
@@ -62,6 +76,9 @@ function toBase64(buf: ArrayBuffer): string {
   return btoa(binary)
 }
 
+const HEADLINE_DESCRIPTION =
+  'One neutral sentence (under 200 characters) summarizing what the document states — the charge, finding, or sanction — starting with the procedural posture if the document is a settled/consent order.'
+
 async function extractFromPdf(admin: SupabaseClient, pdfBase64: string): Promise<{ headline: string; narrative_text: string } | null> {
   // Every other fetch in this function has a timeout; this one didn't, and a
   // single stalled Anthropic request would hang the entire invocation
@@ -81,7 +98,7 @@ async function extractFromPdf(admin: SupabaseClient, pdfBase64: string): Promise
           input_schema: {
             type: 'object',
             properties: {
-              headline: { type: 'string', description: 'One neutral sentence (under 200 characters) summarizing what the document states — the charge, finding, or sanction — starting with the procedural posture if the document is a settled/consent order.' },
+              headline: { type: 'string', description: HEADLINE_DESCRIPTION },
               narrative_text: {
                 type: 'string',
                 description:
@@ -115,19 +132,68 @@ async function extractFromPdf(admin: SupabaseClient, pdfBase64: string): Promise
   return toolInput<{ headline: string; narrative_text: string }>(result, 'submit_extraction') ?? null
 }
 
-async function buildRow(admin: SupabaseClient, item: FeedItem) {
-  let extracted: { headline: string; narrative_text: string } | null = null
+// A one-sentence headline from the order's text, by Haiku. Null when the
+// call fails: the order is still stored, with its full text.
+async function headlineFromText(admin: SupabaseClient, text: string): Promise<string | null> {
   try {
-    const pdfRes = await fetch(item.link, {
-      signal: AbortSignal.timeout(20000),
-      headers: { 'User-Agent': 'RegWay/1.0 (regulatory research; contact via app)' },
-    })
-    if (pdfRes.ok) {
-      const buf = await pdfRes.arrayBuffer()
-      if (buf.byteLength > 0 && buf.byteLength <= MAX_PDF_BYTES) {
-        extracted = await extractFromPdf(admin, toBase64(buf))
-      }
-    }
+    const result = await callClaude({
+      model: HEADLINE_MODEL,
+      max_tokens: 300,
+      temperature: 0,
+      tool_choice: { type: 'tool', name: 'submit_headline' },
+      tools: [
+        {
+          name: 'submit_headline',
+          description: 'Submit the headline of this SEC administrative proceeding document.',
+          input_schema: {
+            type: 'object',
+            properties: { headline: { type: 'string', description: HEADLINE_DESCRIPTION } },
+            required: ['headline'],
+          },
+        },
+      ],
+      messages: [
+        {
+          role: 'user',
+          content: `Write the headline of this SEC administrative proceeding document, from its opening pages, per the submit_headline tool.\n\n${FENCE_RULE}\n\n${untrusted('SEC administrative proceeding', text.slice(0, HEADLINE_CHARS))}`,
+        },
+      ],
+    }, { usage: { admin, functionName: 'sync-sec-admin-proceedings' }, timeoutMs: 30000 })
+    const headline = toolInput<{ headline?: string }>(result, 'submit_headline')?.headline?.trim()
+    return headline || null
+  } catch (err) {
+    if (!(err instanceof AnthropicError)) throw err
+    console.error('admin-proceedings headline failed', err.status, err.body)
+    return null
+  }
+}
+
+async function fetchPdf(link: string): Promise<ArrayBuffer | null> {
+  const pdfRes = await fetch(link, {
+    signal: AbortSignal.timeout(20000),
+    headers: { 'User-Agent': 'RegWay/1.0 (regulatory research; contact via app)' },
+  })
+  if (!pdfRes.ok) return null
+  const buf = await pdfRes.arrayBuffer()
+  return buf.byteLength > 0 && buf.byteLength <= MAX_PDF_BYTES ? buf : null
+}
+
+// The order's text and headline: read in code when it has a text layer,
+// else (a scan, `scans: true`) by Sonnet from the PDF itself.
+export async function readOrder(admin: SupabaseClient, pdf: ArrayBuffer, opts: { scans: boolean }): Promise<{ headline: string | null; narrative_text: string } | null> {
+  const read = await pdfText(pdf)
+  if (read?.readable) {
+    const narrative_text = read.pages.join('\n\n').slice(0, NARRATIVE_CHARS)
+    return { headline: await headlineFromText(admin, narrative_text), narrative_text }
+  }
+  return opts.scans ? await extractFromPdf(admin, toBase64(pdf)) : null
+}
+
+async function buildRow(admin: SupabaseClient, item: FeedItem) {
+  let extracted: { headline: string | null; narrative_text: string } | null = null
+  try {
+    const pdf = await fetchPdf(item.link)
+    if (pdf) extracted = await readOrder(admin, pdf, { scans: true })
   } catch (err) {
     // Fall through and store the item from feed data alone — a failed
     // extraction shouldn't drop real, matchable coverage.
@@ -176,6 +242,39 @@ async function processItems(admin: SupabaseClient, newItems: FeedItem[]) {
   return rows.length
 }
 
+// Stored orders with no text (their Sonnet reading failed), newest first:
+// read from the PDF's text layer. A scan is marked (`text_layer: false`) and
+// not tried again; it is never sent to Sonnet from here.
+async function backfill(admin: SupabaseClient): Promise<number> {
+  const { data: missing, error } = await admin
+    .from('regulations')
+    .select('id, source_url, summary, raw')
+    .eq('source', SOURCE)
+    .is('raw->>narrative_text', null)
+    .is('raw->>text_layer', null)
+    .order('published_date', { ascending: false })
+    .limit(BACKFILL_ITEMS)
+  if (error) throw error
+  let filled = 0
+  for (const order of missing ?? []) {
+    try {
+      const pdf = order.source_url ? await fetchPdf(order.source_url) : null
+      if (!pdf) continue
+      const read = await readOrder(admin, pdf, { scans: false })
+      const raw = { ...(order.raw ?? {}), ...(read ? { narrative_text: read.narrative_text } : { text_layer: false }) }
+      const { error: updateError } = await admin
+        .from('regulations')
+        .update({ raw, ...(read?.headline ? { summary: read.headline.slice(0, 600) } : {}) })
+        .eq('id', order.id)
+      if (updateError) throw updateError
+      if (read) filled++
+    } catch (err) {
+      console.error('admin-proceedings backfill failed', order.id, (err as Error).message)
+    }
+  }
+  return filled
+}
+
 Deno.serve(async req => {
   const preflight = handleOptions(req)
   if (preflight) return preflight
@@ -205,9 +304,10 @@ Deno.serve(async req => {
     const newItems = items.filter(i => !knownIds.has(i.creator))
 
     const newCount = newItems.length > 0 ? await processItems(admin, newItems) : 0
+    const filled = await backfill(admin)
 
-    await recordSyncRun(admin, SOURCE, true, `${newCount} new of ${items.length} fetched`)
-    return json({ fetched: items.length, new: newCount })
+    await recordSyncRun(admin, SOURCE, true, `${newCount} new of ${items.length} fetched${filled ? `, ${filled} older filled in` : ''}`)
+    return json({ fetched: items.length, new: newCount, filled })
   } catch (err) {
     await recordSyncRun(admin, SOURCE, false, (err as Error).message)
     return json({ error: (err as Error).message }, 500)

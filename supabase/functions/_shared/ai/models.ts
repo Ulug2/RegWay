@@ -9,7 +9,10 @@ export const MODEL_FOR = {
   chat: SONNET,
   impactAnalysis: SONNET,
   companyScan: SONNET,
+  // A scanned SEC order, read from its images.
   secExtraction: SONNET,
+  // One headline sentence from an SEC order's text, read in code (§17.8).
+  secHeadline: HAIKU,
   // 40 of 40 verdicts agreed with Sonnet at temperature 0 (2026-10-05).
   regulatoryJudge: HAIKU,
   // Haiku linked sanctions on persons in a country to any company there.
