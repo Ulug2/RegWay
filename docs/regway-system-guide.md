@@ -213,6 +213,7 @@ AI failing now), `restore_reviewed_match`, `alert_recipients`.
    | `sync-regulator-feeds` | SEC, FTC, CFPB announcements; FCA, PRA, UK legislation, ESMA, EUR-Lex; EU and UK sanctions, OFSI (`_shared/regulatorFeeds.ts`) | regulatory / geopolitical |
    | `sync-sec-enforcement` | SEC litigation releases | enforcement |
    | `sync-finra-enforcement` | FINRA news releases, filtered to bars, fines, suspensions | enforcement |
+   | `sync-doj-press-releases` | DOJ press releases API, filtered in code to cases about companies: settlements, antitrust, FCPA, sanctions, environment (`_shared/doj.ts`; about 1 a day of ~70) | enforcement |
    | `sync-sec-admin-proceedings` | SEC administrative proceedings (PDFs, read by Claude: costs AI) | enforcement |
    | `sync-travel-advisories` | State Department advisories, levels 3 and 4 | geopolitical |
 
@@ -494,7 +495,7 @@ also removes the jobs there.
 |---|---|---|---|
 | `sync-federal-register-30min` | every 30 min | sync-federal-register | no |
 | `sync-regulator-feeds-30min` | every 30 min | sync-regulator-feeds | no |
-| `sync-sec-enforcement-hourly`, `sync-finra-enforcement-hourly` | hourly | the enforcement syncs | no |
+| `sync-sec-enforcement-hourly`, `sync-finra-enforcement-hourly`, `sync-doj-press-releases-hourly` | hourly | the enforcement syncs | no |
 | `sync-sec-admin-proceedings-3h` | every 3 h | sync-sec-admin-proceedings | yes (PDFs) |
 | `sync-travel-advisories-6h` | every 6 h | sync-travel-advisories | no |
 | `group-duplicates-30min` | :08, :38 | group-duplicates | small (Haiku) |

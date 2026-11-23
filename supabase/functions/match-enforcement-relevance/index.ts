@@ -1,5 +1,5 @@
 // Matches enforcement actions (SEC litigation releases, SEC administrative
-// proceedings, and FINRA disciplinary actions today; any future
+// proceedings, FINRA disciplinary actions and DOJ press releases today; any future
 // `category: enforcement` source tomorrow) to a firm's funds and portfolio
 // companies. Deliberately a separate function from match-relevance, not a
 // shared prompt: a regulation is matched against jurisdiction/sector, but an
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       const excerpt = narrative ? narrative.slice(0, CASE_EXCERPT_CHARS) : (r.summary ?? 'no summary')
       return `${r.title} — ${excerpt}`
     }
-    const caseList = untrusted('SEC and FINRA enforcement releases', unevaluated.map((r, i) => `${i}. [${r.agency ?? 'SEC/FINRA'}] ${caseExcerpt(r)}`).join('\n\n'))
+    const caseList = untrusted('enforcement releases', unevaluated.map((r, i) => `${i}. [${r.agency ?? 'agency not given'}] ${caseExcerpt(r)}`).join('\n\n'))
 
     const result = await callClaude({
       model: MODEL,
@@ -175,7 +175,7 @@ ${fundList}
 Portfolio companies:
 ${companyList}
 
-Below are numbered SEC and FINRA enforcement actions (litigation releases, administrative proceedings, and disciplinary actions) against named respondents/defendants who are NOT this firm, its funds, or its portfolio companies. Some are contested and pending (allegations only); others are settled or concluded (the source's stated findings, often via a consent order where the respondent neither admits nor denies them) — treat each with whatever certainty its own text states, never more.
+Below are numbered SEC, FINRA and DOJ enforcement actions (litigation releases, administrative proceedings, disciplinary actions, and Justice Department press releases) against named respondents/defendants who are NOT this firm, its funds, or its portfolio companies. Some are contested and pending (allegations only); others are settled or concluded (the source's stated findings, often via a consent order where the respondent neither admits nor denies them) — treat each with whatever certainty its own text states, never more.
 
 For each one, decide whether it is meaningfully relevant background awareness for this firm, a fund, or a portfolio company — meaning the alleged conduct (the instrument sold, the customer type targeted, the practice used, the role played) genuinely overlaps with that specific entity's own described activity. A shared label like "both are in financial services" or "both are private funds" is NOT sufficient — you must be able to name the specific concrete practice or activity in common. Be strict: most enforcement actions will not be relevant to most entities. If you cannot point to a real overlap in what was actually done, mark it not relevant.
 

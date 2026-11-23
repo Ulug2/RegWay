@@ -66,7 +66,7 @@ sees a document only after something judged that it applies to them.
 
 1. **Sync.** A timer calls a sync function (`sync-federal-register`,
    `sync-regulator-feeds`, `sync-sec-enforcement`, `sync-finra-enforcement`,
-   `sync-sec-admin-proceedings`, `sync-travel-advisories`). It fetches from
+   `sync-doj-press-releases`, `sync-sec-admin-proceedings`, `sync-travel-advisories`). It fetches from
    the public source and saves rows in `regulations`. No AI, no cost. Each
    run is logged in `sync_runs`; a failing source shows as a banner on the
    dashboard.

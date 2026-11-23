@@ -118,17 +118,18 @@ so ask the owner first (item 17a).
 
 ### 16h. Sources that need their own feed (M each; the owner approves each)
 The Federal Register is read for 64 agencies, plus SEC, FTC and CFPB
-announcements, SEC and FINRA enforcement, travel advisories, and UK and EU
+announcements, SEC, FINRA and DOJ enforcement, travel advisories, and UK and EU
 regulators and sanctions. Not read, each needing its own feed: NFA, MSRB,
-PCAOB, NERC, Fannie Mae / Freddie Mac / Ginnie Mae guides, NAIC, DOJ and
-U.S. Attorney press releases, HHS OIG and EPA enforcement, CFTC and CFPB
+PCAOB, NERC, Fannie Mae / Freddie Mac / Ginnie Mae guides, NAIC, HHS OIG
+and EPA enforcement, CFTC and CFPB
 enforcement pages, court decisions, Congress.gov, Regulations.gov dockets,
 the Unified Agenda. Compared against the owner's source registry document
 (`Regway_US_Regulatory_Source_Master_Registry_Comprehensive_V2`, kept by
 the owner; ask for it if your task needs it).
 
-Research issues: #41 (NAIC, DOJ, HHS OIG, EPA and CFPB enforcement;
-started 2026-11-22), #42 (Congress.gov, Regulations.gov, the Unified
+Research issues: #41 (researched 2026-11-22: DOJ built; CFPB enforcement
+has had no items since August 2025; HHS OIG later, mostly repeats DOJ; EPA
+blocks servers; NAIC never), #42 (Congress.gov, Regulations.gov, the Unified
 Agenda; waits on an api.data.gov key held by the owner, never in the
 repository), #15 (MSRB, PCAOB, CFTC and OFAC; the owner's).
 
