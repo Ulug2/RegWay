@@ -91,6 +91,17 @@
   migration applied to a local database; run locally against the live
   API: 100 releases read, 1 kept and stored.
 
+### The fund filter is a menu (2026-11-25)
+- The owner asked for a dropdown in RegWay's style instead of the row of
+  fund chips: the Portfolio Companies level now has one menu ("All funds
+  (3)", each fund with its company count, "No fund recorded" when there
+  are any), styled like the filters on a fund's or company's page
+  (`glass-input-rect`), 288 px wide from `sm` up and full width on a
+  phone. Same choices, same address (`?fund=`), same logic
+  (`src/lib/fundFilter.ts`).
+- **Verified:** the 5 browser tests for the filter, rewritten for the
+  menu, pass; looked at in light and dark at 1280 px and 390 px.
+
 ### Companies filtered by fund (2026-11-22, issue #11)
 - On the dashboard's Portfolio Companies level, a row of fund chips ("All
   funds" first, each with its company count) narrows the list to one

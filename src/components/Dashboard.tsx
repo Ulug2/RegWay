@@ -8,7 +8,6 @@ import { fetchFirmRegulations, fetchPortfolioCompanies, fetchFunds, fetchHolding
 import type { MatchedRegulation, PortfolioCompany, Fund, FundHolding, Firm } from '../lib/types'
 import { companiesInFund, fundFromSearch, fundOptions, searchWithFund, validChoice, type FundChoice } from '../lib/fundFilter'
 import { DEFAULT_FILTER, type FeedFilter } from '../lib/feedFilter'
-import Chip from './Chip'
 import type { DaySelection } from '../lib/feedDays'
 import { markVisit } from '../lib/lastVisit'
 import PageHeader from './PageHeader'
@@ -203,9 +202,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     setActiveToggle(activeToggle === key ? null : key)
   }
 
-  // Fund chips appear once the funds and their holdings are known.
-  const showFundChips = funds.length > 0 && holdings !== null
-  const chosenFund = showFundChips ? validChoice(fundChoice, funds) : null
+  // The fund menu appears once the funds and their holdings are known.
+  const showFundMenu = funds.length > 0 && holdings !== null
+  const chosenFund = showFundMenu ? validChoice(fundChoice, funds) : null
   const listedCompanies = chosenFund === null ? companies : companiesInFund(companies, holdings ?? [], chosenFund)
   const chosenFundName = funds.find(f => f.id === chosenFund)?.name
 
@@ -334,14 +333,23 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <EmptyState message="No portfolio companies on file yet." />
             ) : (
               <div className="max-w-2xl mx-auto">
-              {showFundChips && (
-                // One row on a phone, scrolled sideways; wrapped from sm up.
-                <div role="group" aria-label="Show companies held by" className="flex sm:flex-wrap items-center gap-2 overflow-x-auto sm:overflow-visible -mx-5 px-5 sm:mx-0 sm:px-0 mb-5 [&>*]:shrink-0">
-                  {fundOptions(funds, companies, holdings ?? []).map(o => (
-                    <Chip key={o.key ?? 'all'} selected={chosenFund === o.key} onClick={() => chooseFund(o.key)}>
-                      {o.label} <span className="num" style={{ opacity: 0.7 }}>{o.count}</span>
-                    </Chip>
-                  ))}
+              {showFundMenu && (
+                // A menu, like the filters on a fund's or company's page;
+                // full width on a phone (the select's own class sets its
+                // width, so the wrapper sizes it). '' is "All funds".
+                <div className="sm:w-72 mb-5">
+                  <select
+                    className="glass-input-rect"
+                    aria-label="Show companies held by"
+                    value={chosenFund ?? ''}
+                    onChange={e => chooseFund(e.target.value || null)}
+                  >
+                    {fundOptions(funds, companies, holdings ?? []).map(o => (
+                      <option key={o.key ?? 'all'} value={o.key ?? ''}>
+                        {o.label} ({o.count})
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
               {listedCompanies.length === 0 ? (

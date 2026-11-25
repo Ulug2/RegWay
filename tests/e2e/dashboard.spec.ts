@@ -198,8 +198,14 @@ test.describe('fund and company pages', () => {
 })
 
 test.describe('companies by fund (issue #11)', () => {
-  const fundChips = (page: Page) => page.getByRole('group', { name: 'Show companies held by' })
-  const chip = (page: Page, name: RegExp) => fundChips(page).getByRole('button', { name })
+  const fundMenu = (page: Page) => page.getByRole('combobox', { name: 'Show companies held by' })
+  // Chooses the option whose label starts with `name`.
+  async function choose(page: Page, name: string) {
+    const label = (await fundMenu(page).locator('option').allTextContents()).find(t => t.startsWith(`${name} (`))
+    if (!label) throw new Error(`no fund option ${name}`)
+    await fundMenu(page).selectOption({ label })
+  }
+  const chosen = (page: Page) => fundMenu(page).locator('option:checked')
   const cards = (page: Page) => page.locator('main .grid button .font-semibold')
 
   // Aero in Fund I, GetixHealth in both funds, Cobalt Labs in none.
@@ -216,28 +222,28 @@ test.describe('companies by fund (issue #11)', () => {
     await signIn(page)
     await page.goto(path)
     if (path === '/') await page.getByRole('button', { name: 'Portfolio Companies' }).click()
-    await expect(fundChips(page)).toBeVisible()
+    await expect(fundMenu(page)).toBeVisible()
   }
 
   test('choosing a fund shows only its companies, a company in two funds under both, and All funds shows them all', async ({ page, backend }) => {
     holdings(backend)
     await openCompanies(page)
-    await expect(fundChips(page).getByRole('button')).toHaveText(['All funds 3', 'Harbor Fund I 2', 'Harbor Fund II 1', 'No fund recorded 1'])
-    await expect(chip(page, /^All funds/)).toHaveAttribute('aria-pressed', 'true')
+    await expect(fundMenu(page).locator('option')).toHaveText(['All funds (3)', 'Harbor Fund I (2)', 'Harbor Fund II (1)', 'No fund recorded (1)'])
+    await expect(chosen(page)).toHaveText('All funds (3)')
     await expect(cards(page)).toHaveText(['Aero Logistics', 'Cobalt Labs', 'GetixHealth'])
 
-    await chip(page, /^Harbor Fund I \d/).click()
+    await choose(page, 'Harbor Fund I')
     await expect(cards(page)).toHaveText(['Aero Logistics', 'GetixHealth'])
-    await chip(page, /^Harbor Fund II \d/).click()
+    await choose(page, 'Harbor Fund II')
     await expect(cards(page)).toHaveText(['GetixHealth'])
-    await chip(page, /^All funds/).click()
+    await choose(page, 'All funds')
     await expect(cards(page)).toHaveText(['Aero Logistics', 'Cobalt Labs', 'GetixHealth'])
   })
 
   test('companies with no fund recorded stay reachable under their own choice, which goes when every company has a fund', async ({ page, backend }) => {
     holdings(backend)
     await openCompanies(page)
-    await chip(page, /^No fund recorded/).click()
+    await choose(page, 'No fund recorded')
     await expect(cards(page)).toHaveText(['Cobalt Labs'])
     await cards(page).first().click()
     await expect(page.getByRole('heading', { name: 'Cobalt Labs' })).toBeVisible()
@@ -245,24 +251,24 @@ test.describe('companies by fund (issue #11)', () => {
     backend.tables.fund_holdings.push({ firm_id: FIRM_ID, fund_id: 'fund-2', portfolio_company_id: 'co-cobalt' })
     await page.goto('/')
     await page.getByRole('button', { name: 'Portfolio Companies' }).click()
-    await expect(fundChips(page).getByRole('button')).toHaveText(['All funds 3', 'Harbor Fund I 2', 'Harbor Fund II 2'])
+    await expect(fundMenu(page).locator('option')).toHaveText(['All funds (3)', 'Harbor Fund I (2)', 'Harbor Fund II (2)'])
   })
 
   test('a fund holding nothing says so', async ({ page, backend }) => {
     backend.tables.fund_holdings.push({ firm_id: FIRM_ID, fund_id: 'fund-1', portfolio_company_id: 'co-aero' })
     await openCompanies(page)
-    await chip(page, /^Harbor Fund II \d/).click()
+    await choose(page, 'Harbor Fund II')
     await expect(page.getByText('No portfolio companies are recorded as held by Harbor Fund II.')).toBeVisible()
   })
 
   test('the choice is kept in the address: a reload and a shared link keep it, going back from a company keeps it, leaving the list drops it', async ({ page, backend }) => {
     holdings(backend)
     await openCompanies(page)
-    await chip(page, /^Harbor Fund II \d/).click()
+    await choose(page, 'Harbor Fund II')
     await expect(page).toHaveURL(/\/\?fund=fund-2$/)
 
     await page.reload()
-    await expect(chip(page, /^Harbor Fund II \d/)).toHaveAttribute('aria-pressed', 'true')
+    await expect(chosen(page)).toHaveText('Harbor Fund II (1)')
     await expect(cards(page)).toHaveText(['GetixHealth'])
 
     await cards(page).first().click()
@@ -278,11 +284,11 @@ test.describe('companies by fund (issue #11)', () => {
   test('a link naming a fund opens the company list on it; one naming a deleted fund shows all', async ({ page, backend }) => {
     holdings(backend)
     await openCompanies(page, '/?fund=fund-1')
-    await expect(chip(page, /^Harbor Fund I \d/)).toHaveAttribute('aria-pressed', 'true')
+    await expect(chosen(page)).toHaveText('Harbor Fund I (2)')
     await expect(cards(page)).toHaveText(['Aero Logistics', 'GetixHealth'])
 
     await page.goto('/?fund=fund-gone')
-    await expect(chip(page, /^All funds/)).toHaveAttribute('aria-pressed', 'true')
+    await expect(chosen(page)).toHaveText('All funds (3)')
     await expect(cards(page)).toHaveText(['Aero Logistics', 'Cobalt Labs', 'GetixHealth'])
   })
 })
