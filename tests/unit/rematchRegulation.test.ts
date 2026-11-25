@@ -95,6 +95,32 @@ describe('rematch-regulation', () => {
     expect(verdictCalls[0].body.temperature).toBe(0)
   })
 
+  it('suggests a fact the note states for the profile, beside the re-check', async () => {
+    const said = { scope: 'company', entity_name: 'GetixHealth', field: 'notes', value: ['Does not bill Medicare'], quote: 'we stopped billing Medicare' }
+    const db = fakeClient((q: Query) => {
+      const shared = firmQueries(q, {})
+      if (shared) return shared
+      if (q.table === 'regulations') return { data: regulation() }
+      if (q.table === 'regulation_relevance') return { data: [] }
+      if (q.table === 'firm_findings' && q.op === 'insert') return { data: [{ id: 'f-1', ...(q.payload as object[])[0] }] }
+      if (q.table === 'firm_findings') return { data: [] }
+      if (q.table === 'fund_holdings') return { data: [] }
+    })
+    setClient(db)
+    const { handler } = await loadHandler('rematch-regulation')
+    const { model } = stubModel({ submit_verdicts: { verdicts: noLonger }, submit_facts: { facts: [said] }, submit_reviews: { reviews: [] } })
+    const res = await handler(post('rematch-regulation', { token: 'user-jwt', body: { regulationId: REG, note: 'GetixHealth? We stopped billing Medicare last year.' } }))
+    const body = await res.json()
+
+    const learn = model.find(m => m.tool === 'submit_facts')!
+    expect(promptText(learn)).toContain('<untrusted_content source="the development being re-checked">\nMedicare payment update')
+    expect(db.ran('firm_findings', 'insert')[0].payload).toEqual([
+      { scope: 'company', entity_id: 'co-getix', field: 'notes', value: ['Does not bill Medicare'], recorded: null, quote: 'we stopped billing Medicare', firm_id: FIRM_ID, origin: 'recheck', origin_ref: REG },
+    ])
+    expect(body.learned).toEqual([expect.objectContaining({ id: 'f-1', field: 'notes', value: ['Does not bill Medicare'] })])
+    expect(body.relevant).toBe(false)
+  })
+
   it('re-checks without a note too', async () => {
     const { verdictCalls } = await recheck({}, noLonger)
     expect(promptText(verdictCalls[0])).toContain('with no further detail')
@@ -107,6 +133,8 @@ describe('rematch-regulation', () => {
       relevant: false,
       reason: 'GetixHealth stopped billing Medicare.',
       verdicts: [{ entity: 'H.I.G. Capital', relevant: false, reason: 'GetixHealth stopped billing Medicare.' }],
+      // No note, so nothing to learn and no call to learn it.
+      learned: [],
     })
     expect(hasFilter(db.ran('regulation_relevance', 'delete')[0], 'in', 'id', ['old-company-match'])).toBe(true)
     expect(db.ran('regulation_relevance', 'upsert')[0].payload).toEqual([

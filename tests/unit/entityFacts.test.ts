@@ -10,6 +10,11 @@ describe('what the AI is told about an entity', () => {
     expect(facts(null, FIRM_FACTS)).toBe('')
   })
 
+  it("gives the firm's own notes, each quoted so a comma inside one can't split it", () => {
+    const company = { sectors: ['Energy'], profile: { notes: ['Does not import batteries, only finished packs', 'Sold its Texas plant'] } }
+    expect(facts(company, COMPANY_FACTS)).toBe('sectors: Energy; notes: "Does not import batteries, only finished packs", "Sold its Texas plant"')
+  })
+
   it('names a blank fact that would change a conclusion as not recorded, never as "no"', () => {
     const company = { hq_location: 'Houston, Texas', sectors: ['Healthcare'], regions: ['Texas'], profile: { sensitive_data: ['Health / patient information'], trade: 'No' } }
     const text = facts(company, COMPANY_FACTS, COMPANY_UNKNOWNS)

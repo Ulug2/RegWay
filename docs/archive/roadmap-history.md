@@ -9,6 +9,35 @@
 >
 > New entries go directly below this box, newest first.
 
+### Facts learned from what users type (2026-11-23, Sidekick item 6)
+- A chat message or re-check note that states a lasting fact ("we don't
+  import batteries") becomes a suggestion in Profile → **Suggested Facts**
+  (the tab was "Found on the Web"), beside the web research's, with who
+  said it, when and their words. Nothing enters the profile until a member
+  confirms it. `_shared/learnFacts.ts`: a check in code skips messages
+  with no statement; otherwise one Haiku call (`MODEL_FOR.factLearning`,
+  temperature 0, fenced) proposes facts in the questionnaire's fields;
+  code keeps only those that name a listed entity, a field a member can
+  answer, a value it allows, something new, and a quote the member typed.
+- A fact that fits no field goes to a new answer on every entity,
+  **Other facts** (`notes`), read (quoted) by the Skeptic, the analyses,
+  the chat and its check. The judges don't read it yet.
+- The chat reads the user's message while the answer streams, saves after
+  the answer is saved, and shows "Suggested for your profile: …" under the
+  answer (`regway_learned` event). A re-check returns `learned` and shows
+  the same line. The chat's prompt lists unconfirmed facts a member said
+  apart from web findings. Research runs no longer supersede them.
+- Migration 0054: `firm_findings.origin` (web, chat, recheck),
+  `origin_ref`; `run_id` and `source_url` only required for web.
+- Found while testing: confirming two suggestions for one list kept only
+  the second. Confirming now adds a list suggestion's items to the list
+  as it is.
+- **Verified:** 15 unit tests (`learnFacts.test.ts`), chat (3), re-check
+  (1), research (superseding web only), entity facts (notes quoted); a
+  prompt snapshot (`learn-facts.json`); browser tests for the tab (a said
+  fact, confirming two) and the chat line. Screens checked in both themes
+  at 1280 and 390 px.
+
 ### SEC orders read in code first (2026-11-23, Sidekick item 8)
 - `sync-sec-admin-proceedings` reads each order's PDF text in code
   (`_shared/pdfText.ts`: pdf.js as packaged by `unpdf` 2.1.0, which needs

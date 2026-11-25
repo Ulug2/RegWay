@@ -33,6 +33,9 @@ export interface Question {
   // Pre-selected recommendation. Counts as answered for completion purposes.
   defaultValue?: unknown
   showIf?: (a: Answers) => boolean
+  // A list whose entries are sentences: only Enter adds one, since a comma
+  // belongs inside a sentence.
+  sentences?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -179,6 +182,11 @@ const includesUS = (v: unknown) => Array.isArray(v) && v.includes('United States
 // Registry
 // ---------------------------------------------------------------------------
 
+// Facts that fit no other question (Sidekick §17.6).
+const NOTES_HELP = "Short facts in your own words, one at a time. RegWay's AI reads them when it checks a match, writes an analysis or answers in chat. What you tell RegWay AI or write when you re-check a match is suggested here for you to confirm."
+const notes = (scope: Scope, placeholder: string): Question => ({ id: 'notes', scope, stage: 'later', section: 'Other facts', label: 'Anything else RegWay should know?', type: 'tags', required: false, sentences: true, placeholder, help: NOTES_HELP })
+
+
 export const QUESTIONS: Question[] = [
   // ---- Firm: signup ----
   { id: 'name', scope: 'firm', stage: 'onboarding', section: 'Your firm', label: 'Firm name', type: 'text', required: true, placeholder: 'e.g. Meridian Capital Partners' },
@@ -199,6 +207,7 @@ export const QUESTIONS: Question[] = [
   { id: 'aum', scope: 'firm', stage: 'later', section: 'Firm size', label: 'Approximately how much does your firm manage?', type: 'select', required: false, options: FIRM_AUM },
   { id: 'teams', scope: 'firm', stage: 'later', section: 'Using RegWay', label: 'Which teams will primarily use RegWay?', type: 'multi', required: true, options: TEAMS },
   { id: 'goals', scope: 'firm', stage: 'later', section: 'Using RegWay', label: 'What would you like RegWay to help your firm with?', type: 'multi', required: true, options: GOALS },
+  notes('firm', 'e.g. None of our funds is marketed in the EU'),
 
   // ---- Fund: signup ----
   { id: 'name', scope: 'fund', stage: 'onboarding', section: 'Fund basics', label: 'Fund name', type: 'text', required: true, placeholder: 'e.g. Meridian Fund VI' },
@@ -220,6 +229,7 @@ export const QUESTIONS: Question[] = [
   { id: 'notifications', scope: 'fund', stage: 'later', section: 'Monitoring preferences', label: 'How would you like to receive important updates?', type: 'multi', required: false, options: NOTIFICATIONS, defaultValue: ['RegWay dashboard'], help: 'Email alerts are on for everyone; switch them off in Profile → Account. The other choices are saved for when they launch.' },
   { id: 'financial_monitoring', scope: 'fund', stage: 'later', section: 'Optional extras', label: 'Monitor portfolio-company financial performance?', type: 'yesno', required: false, help: 'You can enable this later. Financials are not required for regulatory monitoring.' },
   { id: 'ai_diligence', scope: 'fund', stage: 'later', section: 'Optional extras', label: 'Use RegWay AI for diligence and investment analysis?', type: 'yesno', required: false },
+  notes('fund', 'e.g. Has no investors outside the U.S.'),
 
   // ---- Company: signup ----
   { id: 'name', scope: 'company', stage: 'onboarding', section: 'Company basics', label: 'Company name', type: 'text', required: true, placeholder: 'e.g. NovaPay' },
@@ -250,6 +260,7 @@ export const QUESTIONS: Question[] = [
   { id: 'gov_level', scope: 'company', stage: 'later', section: 'Regulatory profile', label: 'Which level of government?', type: 'select', required: false, options: GOV_LEVEL, showIf: a => a.gov_contracts === 'Yes' },
   { id: 'trade', scope: 'company', stage: 'later', section: 'Regulatory profile', label: 'Does the company import or export goods or services?', type: 'select', required: false, options: YES_NO_UNSURE },
   { id: 'trade_regions', scope: 'company', stage: 'later', section: 'Regulatory profile', label: 'Which major countries or regions?', type: 'tags', required: false, placeholder: 'e.g. Mexico, China', showIf: a => a.trade === 'Yes' },
+  notes('company', 'e.g. Does not import batteries'),
 ]
 
 export function questionsFor(scope: Scope, stage?: Stage): Question[] {

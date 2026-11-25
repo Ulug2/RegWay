@@ -24,7 +24,7 @@ const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'firm', label: 'Firm' },
   { key: 'funds', label: 'Funds' },
   { key: 'portfolio', label: 'Portfolio Companies' },
-  { key: 'research', label: 'Found on the Web' },
+  { key: 'research', label: 'Suggested Facts' },
   { key: 'dismissed', label: 'Dismissed' },
   { key: 'hidden', label: 'Hidden' },
 ]

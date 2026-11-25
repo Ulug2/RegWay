@@ -75,7 +75,7 @@ invented funds and companies whose names end in "(test)".
 | `/funds/:id`, `/companies/:id` | Fund or company page | Everything matched to that one entity, its recorded facts, and a company's web-scan results. |
 | `/developments/:id` | A development | The document, why it applies, the analysis, other versions ("also published as"), flag, notes, dismiss, "this match looks wrong" (re-check), and "Ask RegWay AI" about it. |
 | (drawer over any screen) | RegWay AI chat | Questions about the firm, a fund, a company or one development. Streams the answer, cites sources, keeps a conversation history. |
-| `/profile`, `/profile/:tab` | Profile | **Account** (name, email, password, theme, email alerts), **Firm**, **Funds**, **Portfolio** (the full questionnaire and fund holdings), **Found on the Web** (research to confirm), **Dismissed**, **Hidden** (matches the Skeptic took away, with a Restore button). |
+| `/profile`, `/profile/:tab` | Profile | **Account** (name, email, password, theme, email alerts), **Firm**, **Funds**, **Portfolio** (the full questionnaire and fund holdings), **Suggested Facts** (facts to confirm: found by the web research, or said in RegWay AI or a re-check note), **Dismissed**, **Hidden** (matches the Skeptic took away, with a Restore button). |
 
 "Profile" means the person (name, email, password). The firm's details, funds
 and companies are edited in the other Profile tabs.
@@ -291,6 +291,7 @@ structured output where it returns data, and its cost recorded.
 | Chat | Sonnet 4.5 + web search | `regway-ai-chat` | Answer questions about the firm's situation. | Each message |
 | Claim gate | Haiku 4.5 | `_shared/roles/claimGate.ts` | Does a chat answer claim something applies to an entity? | After each chat answer |
 | Citation check | Haiku 4.5 | `_shared/roles/citationCheck.ts` | Does what the answer says about a rule match the passage it cited? | After an answer with claims |
+| Fact learner | Haiku 4.5 | `_shared/learnFacts.ts` | Which lasting facts about the firm, a fund or a company does what a member typed state? | After a chat message or re-check note with a statement in it (questions are skipped in code) |
 | SEC order headline | Haiku 4.5 | `sync-sec-admin-proceedings` | One headline sentence from an SEC order's text, read in code (`_shared/pdfText.ts`). | That sync, every 3 hours |
 | SEC PDF reader | Sonnet 4.5 | `sync-sec-admin-proceedings` | Turn a scanned SEC proceeding PDF (no text layer) into a headline and plain text. | That sync, scans only |
 
@@ -347,7 +348,9 @@ limited to 15 calls an hour per user.
 `rematch-regulation` re-judges one development with the exact prompt the
 original matcher used, plus the user's note ("we don't import batteries"),
 against the profile as it is now. It replaces the firm's verdicts on that
-development (a match no longer supported leaves the entity's page).
+development (a match no longer supported leaves the entity's page). A note
+that states a lasting fact is also suggested for the profile (§17.6), and
+the result says so.
 Enforcement re-checks are not supported yet.
 
 ### 7.4 The Skeptic
@@ -413,7 +416,7 @@ finds public facts about the firm, its funds and its companies, then a
 forced-tool extraction maps them onto questionnaire fields. A finding is
 kept only if it cites a page the search read, names a listed entity and
 fits that question's options. Nothing enters the profile until the user
-confirms it in Profile → Found on the Web; until then only the chat sees
+confirms it in Profile → Suggested Facts; until then only the chat sees
 it, marked unconfirmed. On H.I.G.: 13 findings in about 2 minutes for
 $0.61.
 
@@ -440,6 +443,11 @@ After the answer has streamed, **the check** (`regway-ai-chat/review.ts`,
 
 Stop works by stamping the conversation (`stopped_at`), which the function
 watches; a stopped answer is not saved.
+
+**Facts the user states** ("we don't import batteries") are read by the
+fact learner while the answer streams (§17.6), saved as suggestions once
+the answer is saved, and shown under the answer ("Suggested for your
+profile: …", with a link to Profile → Suggested Facts).
 
 ---
 
@@ -838,6 +846,31 @@ rule for the Skeptic:
 
 ### 17.6 Learn facts from what users type
 
+**Built 2026-11-23** (`_shared/learnFacts.ts`, migration 0054). As planned
+below, with these choices:
+
+- A fact that fits no question goes to a new answer, **Other facts**
+  (`notes`, a list of short sentences, on the firm, each fund and each
+  company). The Skeptic, the impact analysis, the chat and its check read
+  notes, each quoted (`_shared/entityFacts.ts`); the judges do not yet, so
+  confirming a note rewrites analyses but does not re-judge rejections.
+- A message with no statement (only questions, or under three words) is
+  skipped in code. Otherwise one Haiku call (temperature 0, the member's
+  words and what they replied to both fenced). Kept only if it names one
+  of the firm's entities, a question a member can answer (every fact
+  question but the name; settings are not facts), a value that question
+  allows, something not already recorded, and **quotes words the member
+  typed** (checked in code). At most 5 per message; a suggestion already
+  waiting is not added twice.
+- Suggestions live in `firm_findings` beside the web research's, with
+  `origin` chat or recheck, `origin_ref` (the chat message, or the
+  development re-checked) and the member's words in `quote`. A new
+  research run replaces only its own (`origin` web). Confirming one saves
+  it as typed by the user (`profile_meta` source `user`); a list
+  suggestion adds its items to the list as it is then.
+- The chat gives the model unconfirmed facts a member said in their own
+  section, apart from the web research's.
+
 A note on "this match looks wrong" ("we don't import batteries") is used
 for that one re-check (§7.3), then forgotten. The next battery rule is
 misjudged the same way.
@@ -846,8 +879,8 @@ misjudged the same way.
   output) pulls out lasting facts about the firm, a fund or a company, only
   from the user's own words, never from documents, web pages or the AI's
   answer (Sidekick's `factsFromAnswer` and `updateSessionNotesAndFacts`).
-- Each fact becomes a **proposal** in Profile → Found on the Web (renamed
-  "Suggested facts"), with where it came from ("you said in a re-check on
+- Each fact becomes a **proposal** in Profile → Suggested Facts (was
+  "Found on the Web"), with where it came from ("you said in a re-check on
   …"). Nothing enters the profile until the user confirms it; until then
   only the chat sees it, marked unconfirmed (§7.7's rule).
 - A confirmed fact goes through `apply-profile-changes` (§9), so recent

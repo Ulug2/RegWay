@@ -154,7 +154,7 @@ for (const scheme of ['light', 'dark'] as const) {
         await page.getByRole('button', { name: /Harbor Capital/ }).first().click().catch(() => {})
         await settle(page)
         await shot(page, `${prefix}-profile-firm`)
-        for (const tab of ['Funds', 'Portfolio Companies', 'Found on the Web', 'Dismissed', 'Hidden']) {
+        for (const tab of ['Funds', 'Portfolio Companies', 'Suggested Facts', 'Dismissed', 'Hidden']) {
           await page.getByRole('button', { name: tab, exact: true }).click()
           await settle(page)
           await shot(page, `${prefix}-profile-${tab.toLowerCase().replace(/ /g, '-')}`)
