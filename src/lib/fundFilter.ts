@@ -28,8 +28,9 @@ export function companiesInFund(companies: PortfolioCompany[], holdings: FundHol
   return companies.filter(c => inFund.has(c.id))
 }
 
-// "All funds", each fund in the order given, then "No fund recorded" only
-// when some company has none. Counts are of the companies each would list.
+// The fund menu: "All funds", each fund in the order given, then "No fund
+// recorded" only when some company has none. Counts are of the companies
+// each would list.
 export function fundOptions(funds: Fund[], companies: PortfolioCompany[], holdings: FundHolding[]): FundOption[] {
   const options: FundOption[] = [
     { key: null, label: 'All funds', count: companies.length },
