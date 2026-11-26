@@ -4,7 +4,7 @@ import { checkCitations, distinctSources } from '../../supabase/functions/_share
 import { composeReview } from '../../supabase/functions/regway-ai-chat/review.ts'
 import { fakeClient, hasFilter, setClient, type Query } from './helpers/fakeSupabase'
 import { promptText, stubModel } from './helpers/firm'
-import { jsonResponse, loadHandler, post, stubFetch } from './helpers/handler'
+import { answerFields, jsonResponse, loadHandler, post, stubFetch, toolAnswer } from './helpers/handler'
 import { setEnv } from './helpers/setup'
 
 afterEach(() => setEnv('CHAT_REVIEW', undefined))
@@ -203,9 +203,9 @@ describe('stopping during the check', () => {
     stubFetch((url, init) => {
       if (url.hostname !== 'api.anthropic.com') return undefined
       const body = JSON.parse(init!.body as string)
-      const tool = body.tool_choice?.name
-      if (!tool) return new Response(ANSWER)
-      if (tool === 'submit_claims') return jsonResponse({ content: [{ type: 'tool_use', name: 'submit_claims', input: { claims: FOUND } }] })
+      const fields = answerFields(body)
+      if (!fields.length) return new Response(ANSWER)
+      if (fields.includes('claims')) return toolAnswer(body, 'submit_claims', { claims: FOUND })
       started++
       init!.signal!.addEventListener('abort', () => aborted++)
       return hang()
@@ -253,9 +253,10 @@ describe('stopping, as the server sees it', () => {
     let aborted = 0
     stubFetch((url, init) => {
       if (url.hostname !== 'api.anthropic.com') return undefined
-      const tool = JSON.parse(init!.body as string).tool_choice?.name
-      if (!tool) return new Response(ANSWER)
-      if (tool === 'submit_claims') return jsonResponse({ content: [{ type: 'tool_use', name: 'submit_claims', input: { claims: FOUND } }] })
+      const body = JSON.parse(init!.body as string)
+      const fields = answerFields(body)
+      if (!fields.length) return new Response(ANSWER)
+      if (fields.includes('claims')) return toolAnswer(body, 'submit_claims', { claims: FOUND })
       init!.signal!.addEventListener('abort', () => aborted++)
       return new Promise<Response>(() => {})
     })

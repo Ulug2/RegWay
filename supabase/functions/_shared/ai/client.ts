@@ -22,6 +22,7 @@ import { mergeUsage, recordUsage, type UsageTotals } from '../usage.ts'
 import { stripFence, stripFenceDeep } from '../security/guard.ts'
 
 import { recordTrace } from './trace.ts'
+import { adaptRequest, adaptResponse } from './modelRules.ts'
 
 export const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages'
 
@@ -251,7 +252,9 @@ async function send(request: ClaudeRequest, signal: AbortSignal): Promise<Respon
   return res
 }
 
-export async function callClaude(request: ClaudeRequest, opts: CallOptions = {}): Promise<ClaudeResponse> {
+export async function callClaude(asWritten: ClaudeRequest, opts: CallOptions = {}): Promise<ClaudeResponse> {
+  // In the shape the model accepts (./modelRules.ts).
+  const { request, answerTool } = adaptRequest(asWritten)
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS)
   let res: Response
   if (opts.usage) {
@@ -271,7 +274,7 @@ export async function callClaude(request: ClaudeRequest, opts: CallOptions = {})
     }
     throw err
   }
-  const result = (await res.json()) as ClaudeResponse
+  const result = adaptResponse((await res.json()) as ClaudeResponse, answerTool)
   if (opts.usage) {
     await recordCall(opts.usage, request.model, result.usage)
     await recordTrace(opts.usage.admin, { ...traceTarget(opts.usage), model: request.model, request, response: result })
@@ -287,7 +290,7 @@ export async function streamClaude(request: ClaudeRequest, opts: Omit<CallOption
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(new DOMException('The request timed out', 'TimeoutError')), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS)
   try {
-    const res = await send({ ...request, stream: true }, controller.signal)
+    const res = await send({ ...adaptRequest(request).request, stream: true }, controller.signal)
     if (!res.body) throw new AnthropicError(res.status, 'empty response body')
     return res
   } finally {

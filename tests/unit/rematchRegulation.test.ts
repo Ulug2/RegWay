@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { fakeClient, hasFilter, setClient, type Query } from './helpers/fakeSupabase'
 import { FIRM_ID, firmQueries, promptText, stubModel, type FirmState } from './helpers/firm'
-import { loadHandler, post } from './helpers/handler'
+import { answerSchema, loadHandler, post } from './helpers/handler'
 import { setEnv } from './helpers/setup'
 
 const REG = 'reg-1'
@@ -180,7 +180,7 @@ describe('rematch-regulation', () => {
     expect(text).toContain('Overlapping profile facts: Aero Logistics (company) — headquarters: Italy')
     expect(text).toContain('provided this correction: "We sold the Naples site."')
     // Funds are never asked about: their rows follow from holdings.
-    expect(verdictCalls[0].body.tools[0].input_schema.properties.verdicts.items.properties.scope.enum).toEqual(['firm', 'company'])
+    expect(answerSchema(verdictCalls[0].body).properties.verdicts.items.properties.scope.enum).toEqual(['firm', 'company'])
     expect(db.ran('fund_holdings')).toHaveLength(2) // the roll-up, then the analysis
     expect((await res.json()).relevant).toBe(true)
   })

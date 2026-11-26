@@ -8,6 +8,36 @@ Record: the date, the set's name and size, the commit, the models, precision
 and recall with the judges alone and with the Skeptic, the cost, and what
 changed since the previous run.
 
+## 2026-11-25: off Sonnet 4.5 (branch `feat/new-models`)
+
+- **Why:** Sonnet 4.5 retires on 2026-11-30. Every Sonnet job moves to
+  Sonnet 5.5 (geopolitical and enforcement judges, Skeptic, analyses,
+  chat, research, scans). Claude 5 requests are reshaped in one place
+  (`_shared/ai/modelRules.ts`: no temperature, the forced tool becomes a
+  JSON format, effort `low`). The regulatory judge was also tried on the
+  Claude 5 models. **Set:** "H.I.G. Capital, 2026-11-25", 146 documents.
+  (right, shown wrongly, missed) in brackets.
+
+| Run | Regulatory judge | Judges alone | Judges + Skeptic | Cost |
+|---|---|---|---|---|
+| A1 | Haiku 4.5 (kept) | 44.0% / 44.0% (11, 14, 14) | 62.5% / 40.0% (10, 6, 15) | $0.32 |
+| B1 | Haiku 5.5 | 81.8% / 36.0% (9, 2, 16) | 60.0% / 12.0% (3, 2, 22) | $0.15 |
+| B2 | Haiku 5.5 | 66.7% / 24.0% (6, 3, 19) | 72.7% / 32.0% (8, 3, 17) | $0.15 |
+| C1 | Sonnet 5.5 | 88.9% / 32.0% (8, 1, 17) | 83.3% / 20.0% (5, 1, 20) | $0.36 |
+| C2 | Sonnet 5.5 | 100% / 24.0% (6, 0, 19) | 71.4% / 20.0% (5, 2, 20) | $0.38 |
+
+- **Kept:** Haiku 4.5 for the regulatory judge (not retiring). With the
+  Skeptic on Sonnet 5.5 it scores as before the move (last run, Sonnet
+  4.5: 66.7% / 40.0%, 10 right, 5 wrong; now 10 right, 6 wrong), for about
+  two thirds of the cost.
+- **The Claude 5 judges** are far more precise alone (1 to 3 wrong instead
+  of 14) but find fewer, and vary much more from run to run: without
+  temperature 0, B found 9 and then 6. Not switched: two runs can't tell
+  them apart from Haiku 4.5 on 25 real matches.
+- B1's Skeptic took back 6 of 9: read on a separate run, it kept all 4 of
+  the matches the judge gave it. Run-to-run variation, not a harsher
+  Skeptic.
+
 ## 2026-11-26: the judges read every recorded fact (branch `feat/judges-full-profiles`)
 
 - **Changed:** the regulatory and enforcement judges read each entity's

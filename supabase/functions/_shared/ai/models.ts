@@ -2,8 +2,12 @@
 // here, made only after the job's accuracy was checked on the new model (as
 // the regulatory judge's move to Haiku was, roadmap item 6.3).
 
-export const SONNET = 'claude-sonnet-4-5'
+// Sonnet 4.5 retires on 2026-11-30; Sonnet 5.5 replaces it everywhere, at
+// two thirds of its price. The request changes it needs are made for every
+// job in ./modelRules.ts.
+export const SONNET = 'claude-sonnet-5-5'
 export const HAIKU = 'claude-haiku-4-5'
+export const HAIKU_5_5 = 'claude-haiku-5-5'
 
 export const MODEL_FOR = {
   chat: SONNET,

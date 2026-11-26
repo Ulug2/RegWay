@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fakeClient, setClient, type Query, type Resolver } from './helpers/fakeSupabase'
-import { jsonResponse, loadHandler, post, stubFetch } from './helpers/handler'
+import { answerSchema, jsonResponse, loadHandler, post, stubFetch } from './helpers/handler'
 import { SERVICE_KEY } from './helpers/setup'
 
 const REG = 'reg-1'
@@ -108,7 +108,7 @@ describe('regulation-impact, opened by a user', () => {
 
     const [request] = anthropicCalls(net)
     const body = JSON.parse(request.init!.body as string)
-    expect(body.tool_choice).toEqual({ type: 'tool', name: 'submit_impact_analysis' })
+    expect(answerSchema(body).properties).toHaveProperty('overview')
     expect(body.messages[0].content[0].text).toContain('The agency is amending its payment regulations.')
     const entities = body.messages[0].content[1].text as string
     expect(entities).toContain('Why it was matched to this firm: GetixHealth bills Medicare.')

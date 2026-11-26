@@ -42,3 +42,14 @@ export function stubFetch(route: (url: URL, init?: RequestInit) => Response | Pr
 }
 
 export const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+// A request to a Claude 5 model asks for its answer in a JSON format instead
+// of a forced tool call (_shared/ai/modelRules.ts). The answer's fields, and
+// the reply in whichever shape was asked for.
+// deno-lint-ignore no-explicit-any
+export const answerFields = (body: any): string[] => Object.keys(body.output_config?.format?.schema?.properties ?? body.tools?.find((t: { name?: string }) => t.name === body.tool_choice?.name)?.input_schema?.properties ?? {})
+// deno-lint-ignore no-explicit-any
+export const answerSchema = (body: any) => body.output_config?.format?.schema ?? body.tools?.[0]?.input_schema
+// deno-lint-ignore no-explicit-any
+export const toolAnswer = (body: any, name: string, input: unknown, usage = { input_tokens: 100, output_tokens: 20 }) =>
+  jsonResponse({ content: [body.output_config?.format ? { type: 'text', text: JSON.stringify(input) } : { type: 'tool_use', name, input }], usage })

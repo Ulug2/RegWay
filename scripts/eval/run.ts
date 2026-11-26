@@ -68,7 +68,8 @@ export interface EvalResult {
   costUsd: number
 }
 
-export async function runEval(set: MatchingSet, opts: { skeptic: boolean; firmId?: string }): Promise<EvalResult> {
+// `models`: a model to try for a judge instead of its own (ai/models.ts).
+export async function runEval(set: MatchingSet, opts: { skeptic: boolean; firmId?: string; models?: { regulatory?: string; geopolitical?: string } }): Promise<EvalResult> {
   const firmId = opts.firmId ?? 'eval-firm'
   const db = noDatabase()
   const admin = db.client as never
@@ -85,7 +86,7 @@ export async function runEval(set: MatchingSet, opts: { skeptic: boolean; firmId
   for (let start = 0; start < regulatory.length; start += BATCH) {
     const batch = regulatory.slice(start, start + BATCH)
     const candidates = batch.map(d => ({ id: d.id, title: d.title, agency: d.agency, jurisdiction: d.jurisdiction ?? null, summary: d.summary }))
-    const judged = await judgeRegulations(admin, { firmId, entities, candidates, functionName: 'eval/match-relevance' })
+    const judged = await judgeRegulations(admin, { firmId, entities, candidates, functionName: 'eval/match-relevance', model: opts.models?.regulatory })
     const verdicts = await skeptic('regulatory', batch, judged, 'eval/match-relevance')
     batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected ?? [], predicted: relevantTo(set, verdicts, i) }))
   }
@@ -95,7 +96,7 @@ export async function runEval(set: MatchingSet, opts: { skeptic: boolean; firmId
   for (let start = 0; start < geopolitical.length; start += BATCH) {
     const batch = geopolitical.slice(start, start + BATCH)
     const candidates: Candidate[] = batch.map(d => ({ id: d.id, title: d.title, agency: d.agency, summary: d.summary, countries: d.countries ?? [], published_date: d.published_date ?? null }))
-    const judged = await judgeGeopolitical(admin, { firmId, firmName: set.firm.name, companies: companies as never, footprints, candidates, functionName: 'eval/match-geopolitical-relevance' })
+    const judged = await judgeGeopolitical(admin, { firmId, firmName: set.firm.name, companies: companies as never, footprints, candidates, functionName: 'eval/match-geopolitical-relevance', model: opts.models?.geopolitical })
     const verdicts = await skeptic('geopolitical', batch, judged, 'eval/match-geopolitical-relevance')
     batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected ?? [], predicted: relevantTo(set, verdicts, i) }))
   }
