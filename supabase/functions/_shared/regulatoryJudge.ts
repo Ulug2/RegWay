@@ -7,7 +7,7 @@
 import { FENCE_RULE, untrusted } from './security/guard.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { describe, type FirmEntities, type Verdict } from './relevance.ts'
-import { otherFacts } from './entityFacts.ts'
+import { entityList } from './entityFacts.ts'
 import { callClaude, toolInput } from './ai/client.ts'
 import { MODEL_FOR } from './ai/models.ts'
 
@@ -40,43 +40,14 @@ export async function judgeRegulations(
 ): Promise<Verdict[]> {
   const { firmId, candidates, functionName, model = REGULATORY_MODEL } = opts
   // undefined: a normal match. null: a user re-check with no note.
-  const { firm, funds, companies } = opts.entities
 
-  // Questionnaire answers (stored in `profile`) sharpen the match: adviser
-  // registration decides which SEC rules apply, strategy/industries narrow
-  // sector rules, and the fund's proposed-vs-final preference is honoured.
-  const firmProfile = [
-    describe(firm.profile, [
-      ['firm_type', 'firm type'],
-      ['adviser_registration', 'adviser registration'],
-      ['strategies', 'strategies'],
-      ['industries', 'industries'],
-      ['geographies', 'geographies'],
-    ]),
-    otherFacts(firm.profile),
-  ]
-    .filter(Boolean)
-    .join('; ')
-
-  const fundDetail = (profile: Record<string, unknown> | null) =>
-    [
-      describe(profile, [
-        ['status', 'status'],
-        ['strategy', 'strategy'],
-        ['ownership', 'ownership'],
-        ['priority_areas', 'priority areas'],
-        ['proposed_regs', 'proposed-rule preference'],
-      ]),
-      otherFacts(profile),
-    ]
-      .filter(Boolean)
-      .join('; ')
-
-  const fundList = (funds ?? []).map(f => `- ${f.name} (${f.structure ?? 'structure n/a'}, jurisdictions: ${(f.jurisdictions ?? []).join('/')}${fundDetail(f.profile) ? '; ' + fundDetail(f.profile) : ''})`).join('\n') || 'none on file'
-  const companyList =
-    (companies ?? [])
-      .map(c => `- ${c.name} (sectors: ${(c.sectors ?? []).join('/')}, regions: ${(c.regions ?? []).join('/')}${c.offerings ? `; does: ${c.offerings}` : ''}${otherFacts(c.profile) ? `; ${otherFacts(c.profile)}` : ''})`)
-      .join('\n') || 'none on file'
+  // Every recorded fact about the firm, its funds and its companies
+  // (entityFacts.ts), and each fund's matching preferences: priority areas,
+  // and whether it wants proposed rules.
+  const entityText = entityList(opts.entities as never, profile => describe(profile, [
+    ['priority_areas', 'priority areas'],
+    ['proposed_regs', 'proposed-rule preference'],
+  ]))
   // A non-U.S. item says where it applies: the issuer's name alone ("ESMA")
   // doesn't tell the model it binds only entities connected to that place.
   const issuer = (r: RegulatoryCandidate) => (r.agency && r.jurisdiction && NON_US.has(r.jurisdiction) ? `${r.agency}, ${r.jurisdiction}` : (r.agency ?? r.jurisdiction))
@@ -129,14 +100,7 @@ export async function judgeRegulations(
             // list below which never repeats.
             type: 'text',
             cache_control: { type: 'ephemeral' },
-            text: `Firm: ${firm.name}, headquartered in ${firm.hq_location ?? 'unknown'}, operating in: ${(firm.jurisdictions ?? []).join(', ') || 'unspecified'}.${firmProfile ? `
-Firm profile — ${firmProfile}.` : ''}
-
-Funds:
-${fundList}
-
-Portfolio companies:
-${companyList}
+            text: `${entityText}
 
 For each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like "may have," "could be exposed to," or "might apply," mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just "this firm is generally in a regulated industry." Some items are a regulator's own announcement of a proposal, rule, guidance or relief rather than the published document: judge them by the measure they announce. An item marked United Kingdom or European Union binds only an entity established, authorised, marketing or operating there: mark it relevant only when the facts above record that connection for the entity you name.
 

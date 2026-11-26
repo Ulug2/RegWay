@@ -869,8 +869,9 @@ below, with these choices:
   (`notes`, a list of short sentences, on the firm, each fund and each
   company). The Skeptic, the impact analysis, the chat and its check read
   notes, each quoted (`_shared/entityFacts.ts`); since 2026-11-26 the
-  three judges do too (`otherFacts`: in each entity's line, and in the
-  geopolitical footprints), so a confirmed "does not import batteries" is
+  three judges do too (the regulatory and enforcement judges with every
+  other fact, `entityList`; the geopolitical judge in its footprints,
+  `otherFacts`), so a confirmed "does not import batteries" is
   weighed before a battery rule is matched. With no notes their prompts
   are unchanged. Confirming a note rewrites analyses but does not re-judge
   earlier rejections: `notes` is not among the matching facts

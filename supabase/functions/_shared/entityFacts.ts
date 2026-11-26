@@ -23,6 +23,16 @@ export const COMPANY_FACTS = [
   'sensitive_data', 'regulated', 'license_types', 'gov_contracts', 'trade', 'outside_us', 'foreign_countries', 'ownership', 'notes',
 ]
 
+// What the judges read besides: where the firm has offices, and what a
+// company makes, where its facilities are and where it trades. A rule on
+// aircraft parts, a London-only regime or a US import measure turns on
+// these (first scored test set, 2026-11-25).
+export const JUDGE_FIRM_FACTS = ['hq_location', 'legal_domicile', 'jurisdictions', 'offices', 'firm_type', 'adviser_registration', 'strategies', 'industries', 'geographies', 'notes']
+export const JUDGE_COMPANY_FACTS = [
+  'hq_location', 'sectors', 'regions', 'operating_locations', 'facility_locations', 'supplier_locations', 'offerings', 'products', 'customers', 'consumer_facing',
+  'sensitive_data', 'regulated', 'license_types', 'gov_contracts', 'trade', 'trade_regions', 'outside_us', 'foreign_countries', 'ownership', 'notes',
+]
+
 // Facts whose absence changes what can be concluded, so a blank one is
 // stated as "not recorded" rather than left out (spec: missing information
 // stays visibly unknown; a company with no supplier locations entered
@@ -95,4 +105,31 @@ export const facts = (row: Record<string, unknown> | null | undefined, keys: str
 export const otherFacts = (profile: Record<string, unknown> | null | undefined): string => {
   const notes = Array.isArray(profile?.notes) ? profile.notes.map(n => String(n ?? '').trim()).filter(Boolean) : []
   return notes.length ? `other facts: ${notes.map(n => `"${n}"`).join('; ')}` : ''
+}
+
+type EntityRow = Record<string, unknown> & { name: string; profile?: Record<string, unknown> | null }
+
+// The firm, its funds and its companies as the regulatory and enforcement
+// judges read them: every recorded fact, as the Skeptic and the analyses
+// read them, with the unknowns that matter stated as not recorded (first
+// scored test set, 2026-11-25: the judges saw only sectors, regions and a
+// one-line description, and missed matches that turned on a company's
+// products, facilities or trade). `fundSettings` adds a fund's matching
+// preferences (priority areas, proposed rules), which are not facts.
+export function entityList(
+  entities: { firm: EntityRow; funds: EntityRow[] | null; companies: EntityRow[] | null },
+  fundSettings: (profile: Record<string, unknown> | null | undefined) => string = () => '',
+): string {
+  const line = (row: EntityRow, keys: string[], unknowns: string[], extra = '') => `${[facts(row, keys, unknowns), extra].filter(Boolean).join('; ') || 'nothing recorded'}`
+  const funds = (entities.funds ?? []).map(f => `- ${f.name}: ${line(f, FUND_FACTS, FUND_UNKNOWNS, fundSettings(f.profile))}`)
+  const companies = (entities.companies ?? []).map(c => `- ${c.name}: ${line(c, JUDGE_COMPANY_FACTS, COMPANY_UNKNOWNS)}`)
+  return `Firm: ${entities.firm.name}: ${line(entities.firm, JUDGE_FIRM_FACTS, FIRM_UNKNOWNS)}.
+
+Funds:
+${funds.join('\n') || 'none on file'}
+
+Portfolio companies:
+${companies.join('\n') || 'none on file'}
+
+${FACT_MARKERS}`
 }

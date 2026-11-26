@@ -20,7 +20,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { generateImpacts } from '../_shared/impact.ts'
 import { corsHeaders, handleOptions, json } from '../_shared/cors.ts'
-import { otherFacts } from '../_shared/entityFacts.ts'
+import { entityList } from '../_shared/entityFacts.ts'
 import { resolveFirmContext, loadFirmEntities, describe, checkRateLimit, buildRelevanceRows, upsertRelevanceRows, type Verdict, forgetRejections, requestScheduledRematch, olderUnjudged } from '../_shared/relevance.ts'
 import { callClaude, toolInput } from '../_shared/ai/client.ts'
 import { MODEL_FOR } from '../_shared/ai/models.ts'
@@ -118,39 +118,9 @@ Deno.serve(async (req) => {
 
     if (rateLimitClient && !reevaluate && !(await checkRateLimit(rateLimitClient, 'match-enforcement-relevance', 15, 60))) return rateLimited()
 
-    const firmProfile = [
-      describe(firm.profile, [
-        ['firm_type', 'firm type'],
-        ['adviser_registration', 'adviser registration'],
-        ['strategies', 'strategies'],
-        ['industries', 'industries'],
-        ['geographies', 'geographies'],
-      ]),
-      otherFacts(firm.profile),
-    ]
-      .filter(Boolean)
-      .join('; ')
-
-    const fundDetail = (profile: Record<string, unknown> | null) =>
-      [
-        describe(profile, [
-          ['status', 'status'],
-          ['strategy', 'strategy'],
-          ['ownership', 'ownership'],
-          ['priority_areas', 'priority areas'],
-        ]),
-        otherFacts(profile),
-      ]
-        .filter(Boolean)
-        .join('; ')
-
-    const fundList =
-      (funds ?? []).map(f => `- ${f.name} (${f.structure ?? 'structure n/a'}${fundDetail(f.profile) ? '; ' + fundDetail(f.profile) : ''})`).join('\n') || 'none on file'
-    const companyList =
-      (companies ?? [])
-        .map(c => `- ${c.name} (sectors: ${(c.sectors ?? []).join('/')}, regions: ${(c.regions ?? []).join('/')}${c.offerings ? `; does: ${c.offerings}` : ''}${otherFacts(c.profile) ? `; ${otherFacts(c.profile)}` : ''})`)
-        .join('\n') ||
-      'none on file'
+    // Every recorded fact about the firm, its funds and its companies
+    // (entityFacts.ts), and each fund's priority areas.
+    const entityText = entityList({ firm, funds, companies } as never, profile => describe(profile, [['priority_areas', 'priority areas']]))
 
     const caseExcerpt = (r: { title: string; agency: string | null; summary: string | null; raw: Record<string, unknown> | null }) => {
       const narrative = (r.raw?.narrative_text as string | undefined) ?? ''
@@ -204,14 +174,7 @@ Deno.serve(async (req) => {
             {
               type: 'text',
               cache_control: { type: 'ephemeral' },
-              text: `Firm: ${firm.name}, headquartered in ${firm.hq_location ?? 'unknown'}.${firmProfile ? `
-Firm profile — ${firmProfile}.` : ''}
-
-Funds:
-${fundList}
-
-Portfolio companies:
-${companyList}
+              text: `${entityText}
 
 Below are numbered SEC, FINRA and DOJ enforcement actions (litigation releases, administrative proceedings, disciplinary actions, and Justice Department press releases) against named respondents/defendants who are NOT this firm, its funds, or its portfolio companies. Some are contested and pending (allegations only); others are settled or concluded (the source's stated findings, often via a consent order where the respondent neither admits nor denies them) — treat each with whatever certainty its own text states, never more.
 

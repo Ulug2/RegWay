@@ -91,6 +91,25 @@
   migration applied to a local database; run locally against the live
   API: 100 releases read, 1 kept and stored.
 
+### The judges read every recorded fact (2026-11-26)
+- Owner, 2026-11-26. The regulatory and enforcement judges were given only
+  sectors, regions and a one-line description of each company, and a few
+  answers for the firm and funds. They now read `entityList`
+  (`_shared/entityFacts.ts`): every fact the Skeptic and the analyses
+  read, plus the firm's offices and a company's products, facility
+  locations and trade regions (`JUDGE_FIRM_FACTS`,
+  `JUDGE_COMPANY_FACTS`), with the facts that decide a match stated as not
+  recorded when blank, and the same note on reading them. Funds keep their
+  matching preferences (priority areas, proposed rules). One list for
+  both judges instead of two written by hand.
+- Scored twice (`plans/eval-history.md`): on seven hard documents the
+  judges alone found 2 and 3 instead of 1; the totals moved within the
+  run-to-run noise (one match). Giving the Skeptic the new facts too
+  took back four real matches, so it keeps its own list.
+- **Verified:** prompt snapshots updated (the judges' entity text only),
+  the matcher and notes tests updated; 818 unit tests and both type
+  checks pass.
+
 ### The matchers read "Other facts" (2026-11-26, Sidekick item 6, follow-up)
 - Owner, 2026-11-25. The regulatory, geopolitical and enforcement judges
   now read each entity's "Other facts" (`notes`: a member's own words,

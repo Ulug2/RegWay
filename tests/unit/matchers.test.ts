@@ -172,9 +172,13 @@ describe.each(['match-relevance', 'match-enforcement-relevance'])('%s', name => 
     const { model } = await run(name, { candidates: three }, [])
     const text = promptText(model[0])
     expect(text).toContain('H.I.G. Capital')
-    expect(text).toContain('firm type: Private equity')
-    expect(text).toContain('- Fund I (Delaware LP')
-    expect(text).toContain('- GetixHealth (sectors: Healthcare, regions: United States; does: Revenue cycle management)')
+    // Every recorded fact, as the Skeptic reads them (entityFacts.ts).
+    expect(text).toContain('firm_type: Private equity')
+    expect(text).toContain('- Fund I: structure: Delaware LP; size: $1B; jurisdictions: United States; strategy: Buyout')
+    expect(text).toContain('- GetixHealth: hq_location: Houston, Texas; sectors: Healthcare; regions: United States; offerings: Revenue cycle management')
+    // A fact that would decide a match is stated as unknown, not left out.
+    expect(text).toMatch(/- GetixHealth: [^\n]*not recorded: [^\n]*supplier_locations/)
+    expect(text).toContain('A fact listed under "not recorded" is unknown')
   })
 
   it("a signed-in user's call is matched for their own firm and counted against the rate limit", async () => {
