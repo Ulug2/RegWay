@@ -4,6 +4,7 @@
 // every role describes an entity from the same facts and marks the same
 // gaps as "not recorded".
 
+import { resolveEntity } from '../entityNames.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { COMPANY_FACTS, COMPANY_UNKNOWNS, FIRM_FACTS, FIRM_UNKNOWNS, FUND_FACTS, FUND_UNKNOWNS, facts } from '../entityFacts.ts'
 import { companyFootprint, describeFootprint, firmFootprint } from '../footprint.ts'
@@ -78,11 +79,9 @@ export function describeRecord(record: FirmRecord, opts: { footprints?: boolean 
   return opts.footprints ? `${lines.join('\n')}\n\nLocation footprints:\n${record.footprints.join('\n')}` : lines.join('\n')
 }
 
-// The exact name of the entity a model named, matched case-insensitively,
-// or null when it names none of the firm's entities.
+// The entity a model named, found even under a shortened name
+// (entityNames.ts), or null when it names none of the firm's entities.
 export function findEntity(record: FirmRecord, scope: EntityScope, name: string | null | undefined): EntityRecord | null {
   if (scope === 'firm') return record.entities.find(e => e.scope === 'firm') ?? null
-  if (!name) return null
-  const wanted = name.trim().toLowerCase()
-  return record.entities.find(e => e.scope === scope && e.name.toLowerCase() === wanted) ?? null
+  return resolveEntity(record.entities.filter(e => e.scope === scope), name)
 }

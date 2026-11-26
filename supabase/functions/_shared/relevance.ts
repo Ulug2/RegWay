@@ -8,6 +8,7 @@
 // tasks. This module exists so neither duplicates the ~100 lines around that
 // difference.
 
+import { resolveEntity } from './entityNames.ts'
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { json } from './cors.ts'
 
@@ -136,21 +137,21 @@ export function buildRelevanceRows(
   funds: { id: string; name: string }[],
   companies: { id: string; name: string }[],
 ): RelevanceRow[] {
-  const fundByName = new Map(funds.map(f => [f.name.toLowerCase(), f.id]))
-  const companyByName = new Map(companies.map(c => [c.name.toLowerCase(), c.id]))
-
   return verdicts
     .map(v => {
       const reg = candidates[v.index]
       if (!reg) return null
-      const fundId = v.scope === 'fund' && v.entity_name ? (fundByName.get(v.entity_name.toLowerCase()) ?? null) : null
-      const companyId = v.scope === 'company' && v.entity_name ? (companyByName.get(v.entity_name.toLowerCase()) ?? null) : null
+      const fundId = v.scope === 'fund' ? (resolveEntity(funds, v.entity_name)?.id ?? null) : null
+      const companyId = v.scope === 'company' ? (resolveEntity(companies, v.entity_name)?.id ?? null) : null
+      // A fund or company that can't be found is not the firm's match: kept
+      // only as the "already judged" marker, so it isn't asked again.
+      const lost = v.scope !== 'firm' && !fundId && !companyId
       return {
         regulation_id: reg.id,
         firm_id: firmId,
         fund_id: fundId,
         portfolio_company_id: companyId,
-        relevance_reason: v.relevant ? v.reason : `NOT_RELEVANT: ${v.reason}`,
+        relevance_reason: v.relevant && !lost ? v.reason : `NOT_RELEVANT: ${lost && v.relevant ? `named "${v.entity_name}", not one of the firm's funds or companies. ` : ''}${v.reason}`,
       }
     })
     .filter((r): r is RelevanceRow => r !== null)

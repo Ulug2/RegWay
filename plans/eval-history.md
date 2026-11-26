@@ -8,6 +8,28 @@ Record: the date, the set's name and size, the commit, the models, precision
 and recall with the judges alone and with the Skeptic, the cost, and what
 changed since the previous run.
 
+## 2026-11-26: names found when shortened (branch `fix/entity-names`)
+
+- **Set:** as below. **Models:** unchanged. **Changed:** a fund or
+  company is found even under a shortened name (`_shared/entityNames.ts`),
+  when saving a match, in the geopolitical judge, the Skeptic and the
+  scoring; a name still not found is no longer saved as the firm's match.
+
+| | Precision | Recall | Right / shown wrongly / missed | Documents exactly right | Cost |
+|---|---|---|---|---|---|
+| Judges alone | 40.7% | 44.0% | 11 / 16 / 14 | 123 of 146 | $0.16 |
+| Judges + Skeptic | 71.4% | 40.0% | 10 / 4 / 15 | 132 of 146 | $0.24 |
+
+- Left, with the Skeptic: 6 of the 15 misses are UK employment law the
+  marker gave to the firm, Brightwell and A.L.A. on their London presence
+  (UK staff are not recorded: debatable); the rest are the EU Customs
+  Code and the cobalt-exposure directive (Rheintal, A.L.A.), A.L.A. on US
+  aircraft-parts tariffs, ITAR and the end of IEEPA tariffs, the Hazard
+  Communication Standard (Cascade), and the firm on the FCA
+  client-categorisation rule and EU investment screening. Wrongly shown:
+  the SEC retail private-markets proposal (firm), two FCA items for
+  Brightwell, a UK fund-scheme amendment for H.I.G. Europe Partners.
+
 ## 2026-11-25: first score (`main` at 08cb759)
 
 - **Set:** "H.I.G. Capital, 2026-11-25" (`tests/eval/hig-2026-11-25.json`),

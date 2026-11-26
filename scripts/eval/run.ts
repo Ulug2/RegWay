@@ -6,6 +6,7 @@
 // Not covered yet: the enforcement judge (it lives inside its function,
 // match-enforcement-relevance, and is not exported).
 
+import { resolveEntity } from '../../supabase/functions/_shared/entityNames.ts'
 import { judgeRegulations } from '../../supabase/functions/_shared/regulatoryJudge.ts'
 import { judgeGeopolitical, type Candidate } from '../../supabase/functions/_shared/geopoliticalJudge.ts'
 import { companyFootprint, firmFootprint } from '../../supabase/functions/_shared/footprint.ts'
@@ -49,8 +50,16 @@ function noDatabase() {
   return { client, cost: () => costUsd }
 }
 
-const relevantTo = (verdicts: Verdict[], index: number): EntityRef[] =>
-  verdicts.filter(v => v.relevant && v.index === index).map(v => ({ scope: v.scope, name: v.scope === 'firm' ? null : v.entity_name }))
+// What production would save: a fund or company found as buildRelevanceRows
+// finds it (a shortened name is the entity's); one it can't find is no match.
+const relevantTo = (set: MatchingSet, verdicts: Verdict[], index: number): EntityRef[] =>
+  verdicts
+    .filter(v => v.relevant && v.index === index)
+    .flatMap((v): EntityRef[] => {
+      if (v.scope === 'firm') return [{ scope: 'firm', name: null }]
+      const found = resolveEntity(v.scope === 'fund' ? set.funds : set.companies, v.entity_name)
+      return found ? [{ scope: v.scope, name: found.name }] : []
+    })
 
 export interface EvalResult {
   label: string
@@ -78,7 +87,7 @@ export async function runEval(set: MatchingSet, opts: { skeptic: boolean; firmId
     const candidates = batch.map(d => ({ id: d.id, title: d.title, agency: d.agency, jurisdiction: d.jurisdiction ?? null, summary: d.summary }))
     const judged = await judgeRegulations(admin, { firmId, entities, candidates, functionName: 'eval/match-relevance' })
     const verdicts = await skeptic('regulatory', batch, judged, 'eval/match-relevance')
-    batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected ?? [], predicted: relevantTo(verdicts, i) }))
+    batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected ?? [], predicted: relevantTo(set, verdicts, i) }))
   }
 
   const geopolitical = set.documents.filter(d => d.category === 'geopolitical')
@@ -88,7 +97,7 @@ export async function runEval(set: MatchingSet, opts: { skeptic: boolean; firmId
     const candidates: Candidate[] = batch.map(d => ({ id: d.id, title: d.title, agency: d.agency, summary: d.summary, countries: d.countries ?? [], published_date: d.published_date ?? null }))
     const judged = await judgeGeopolitical(admin, { firmId, firmName: set.firm.name, companies: companies as never, footprints, candidates, functionName: 'eval/match-geopolitical-relevance' })
     const verdicts = await skeptic('geopolitical', batch, judged, 'eval/match-geopolitical-relevance')
-    batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected ?? [], predicted: relevantTo(verdicts, i) }))
+    batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected ?? [], predicted: relevantTo(set, verdicts, i) }))
   }
 
   return { label: opts.skeptic ? 'judges + Skeptic' : 'judges alone', results, score: score(results), costUsd: db.cost() }
