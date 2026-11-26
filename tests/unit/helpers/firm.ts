@@ -40,16 +40,36 @@ export interface ModelCall {
 // Stubs the network: Anthropic answers each forced tool call with
 // `replies[tool name]`, and analysis jobs handed to regulation-impact are
 // recorded in `queued` rather than run.
+// A Claude 5 model is asked for an answer in a JSON format instead of a
+// forced tool call (_shared/ai/modelRules.ts): the reply is the one whose
+// fields the format has.
+export function answerTool(replies: Record<string, unknown>, schema: { properties?: Record<string, unknown> }): string | undefined {
+  const fields = Object.keys(schema.properties ?? {})
+  const names = Object.keys(replies).filter(name => name !== 'text')
+  // The reply using the most of the format's fields.
+  const size = (name: string) => Object.keys(replies[name] as object).length
+  const fits = names
+    .filter(name => {
+      const reply = replies[name]
+      return reply && typeof reply === 'object' && Object.keys(reply).length > 0 && Object.keys(reply).every(k => fields.includes(k))
+    })
+    .sort((a, b) => size(b) - size(a))[0]
+  // A reply made by a function can't be read in advance: the only one.
+  return fits ?? (names.length === 1 ? names[0] : undefined)
+}
+
 export function stubModel(replies: Record<string, unknown | (() => Response)>, extra: (url: URL) => Response | undefined = () => undefined) {
   const model: ModelCall[] = []
   const queued: { regulationId: string; firmId: string; force: boolean }[] = []
   stubFetch((url, init) => {
     if (url.hostname === 'api.anthropic.com') {
       const body = JSON.parse(init!.body as string)
-      const tool = body.tool_choice?.name as string | undefined
+      const format = body.output_config?.format?.schema
+      const tool = (body.tool_choice?.name ?? (format && answerTool(replies, format))) as string | undefined
       model.push({ body, tool })
       const reply = replies[tool ?? 'text']
       if (typeof reply === 'function') return (reply as () => Response)()
+      if (tool && format) return jsonResponse({ content: [{ type: 'text', text: JSON.stringify(reply) }], usage: { input_tokens: 1000, output_tokens: 200 } })
       return jsonResponse(tool ? { content: [{ type: 'tool_use', name: tool, input: reply }], usage: { input_tokens: 1000, output_tokens: 200 } } : reply)
     }
     if (url.pathname === '/functions/v1/regulation-impact') {

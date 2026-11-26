@@ -31,8 +31,8 @@ const DIR = './prompts'
 
 // The parts of a request that decide what the AI is asked.
 function asked(call: ModelCall): string {
-  const { model, temperature, max_tokens, system, tools, tool_choice, messages } = call.body
-  return `${JSON.stringify({ model, temperature, max_tokens, tool_choice, system, tools, messages }, null, 2)}\n`
+  const { model, temperature, max_tokens, output_config, system, tools, tool_choice, messages } = call.body
+  return `${JSON.stringify({ model, temperature, max_tokens, output_config, tool_choice, system, tools, messages }, null, 2)}\n`
 }
 
 // Prompts carry today's date in places; fix it.

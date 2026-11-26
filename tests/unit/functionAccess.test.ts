@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fakeClient, setClient, setSessionClients, type FakeClient, type Query, type Result } from './helpers/fakeSupabase'
-import { jsonResponse, loadHandler, post, stubFetch } from './helpers/handler'
+import { answerFields, jsonResponse, loadHandler, post, stubFetch, toolAnswer } from './helpers/handler'
 import { SERVICE_KEY } from './helpers/setup'
 
 // Every server function, called the way an attacker would (issue #13,
@@ -98,11 +98,8 @@ function stubOutbound() {
     if (url.hostname === 'api.anthropic.com') {
       const body = JSON.parse((init?.body as string) ?? '{}')
       const tool = body.tool_choice?.name as string | undefined
-      return jsonResponse(
-        tool
-          ? { content: [{ type: 'tool_use', name: tool, input: {} }], usage: { input_tokens: 10, output_tokens: 10 } }
-          : { content: [{ type: 'text', text: 'ok' }], usage: { input_tokens: 10, output_tokens: 10 } },
-      )
+      if (tool || body.output_config?.format) return toolAnswer(body, tool ?? '', {}, { input_tokens: 10, output_tokens: 10 })
+      return jsonResponse({ content: [{ type: 'text', text: 'ok' }], usage: { input_tokens: 10, output_tokens: 10 } })
     }
     return new Response('not found', { status: 404 })
   })

@@ -1,16 +1,11 @@
 {
-  "model": "claude-sonnet-4-5",
-  "temperature": 0,
-  "max_tokens": 4096,
-  "tool_choice": {
-    "type": "tool",
-    "name": "submit_verdicts"
-  },
-  "tools": [
-    {
-      "name": "submit_verdicts",
-      "description": "Submit a relevance verdict for every numbered geopolitical development.",
-      "input_schema": {
+  "model": "claude-sonnet-5-5",
+  "max_tokens": 20096,
+  "output_config": {
+    "effort": "low",
+    "format": {
+      "type": "json_schema",
+      "schema": {
         "type": "object",
         "properties": {
           "verdicts": {
@@ -45,19 +40,18 @@
                 "relevant",
                 "reason",
                 "scope"
-              ]
+              ],
+              "additionalProperties": false
             }
           }
         },
         "required": [
           "verdicts"
-        ]
-      },
-      "cache_control": {
-        "type": "ephemeral"
+        ],
+        "additionalProperties": false
       }
     }
-  ],
+  },
   "messages": [
     {
       "role": "user",

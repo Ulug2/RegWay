@@ -1,4 +1,7 @@
-// pnpm eval:matching [set.json] [--skeptic] [--yes]
+// pnpm eval:matching [set.json] [--skeptic] [--yes] [--regulatory-model=ID] [--geopolitical-model=ID]
+//
+// A model flag tries that model for the judge instead of its own; the
+// AI_EFFORT variable sets how hard a Claude 5 model thinks (ai/modelRules.ts).
 //
 // Scores RegWay's matcher against a hand-marked test set (system guide
 // §17.1): precision, recall and cost, with the judges alone and, with
@@ -16,6 +19,8 @@ import { runEval } from './eval/run.ts'
 
 const args = Deno.args
 const path = args.find(a => !a.startsWith('--')) ?? 'tests/eval/matching-set.json'
+const flag = (name: string) => args.find(a => a.startsWith(`--${name}=`))?.split('=')[1]
+const models = { regulatory: flag('regulatory-model'), geopolitical: flag('geopolitical-model') }
 const withSkeptic = args.includes('--skeptic')
 
 const set = JSON.parse(await Deno.readTextFile(path)) as MatchingSet
@@ -38,7 +43,7 @@ if (!args.includes('--yes') && prompt('Spend it? Type yes to go on:') !== 'yes')
 }
 
 for (const skeptic of runs) {
-  const result = await runEval(set, { skeptic })
+  const result = await runEval(set, { skeptic, models })
   console.log(`\n${formatScore(result.label, result.score, result.costUsd)}`)
   const why = new Map(set.documents.map(d => [d.id, d]))
   for (const m of result.score.mistakes) {

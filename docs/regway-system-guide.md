@@ -281,25 +281,28 @@ structured output where it returns data, and its cost recorded.
 | Agent | Model | Where | Job | Runs when |
 |---|---|---|---|---|
 | Regulatory judge | Haiku 4.5 | `_shared/regulatoryJudge.ts` | Does a rule create a real obligation for this firm, a fund or a company? | Matching |
-| Geopolitical judge | Sonnet 4.5 | `_shared/geopoliticalJudge.ts` | Does a sanction, export control, trade measure or advisory reach an entity through where it is? | Matching |
-| Enforcement judge | Sonnet 4.5 | `match-enforcement-relevance` | Does a case against someone else overlap with an entity's own activity? (A case that names the firm, a fund or a company is matched in code first, by name, and never sent to it: `_shared/namedParties.ts`; its analysis says what the source says about the named party.) | Matching |
-| Skeptic | Sonnet 4.5 | `_shared/roles/skeptic.ts` | Try to break each match: keep, move, reject. Also checks chat claims. | After each judge; after chat answers |
-| Impact analyst | Sonnet 4.5 | `_shared/impact.ts` | Write the analysis of one development for one firm. | After a new match; on first open; after a profile edit |
-| Company scanner | Sonnet 4.5 + web search | `company-regulations` | Find recent regulatory activity for one portfolio company. | New company, after an edit, weekly |
-| Firm researcher | Sonnet 4.5 + web search | `research-firm` | Find public facts about the firm, its funds and companies, as proposals to confirm. | After onboarding; "Research Again" |
+| Geopolitical judge | Sonnet 5.5 | `_shared/geopoliticalJudge.ts` | Does a sanction, export control, trade measure or advisory reach an entity through where it is? | Matching |
+| Enforcement judge | Sonnet 5.5 | `match-enforcement-relevance` | Does a case against someone else overlap with an entity's own activity? (A case that names the firm, a fund or a company is matched in code first, by name, and never sent to it: `_shared/namedParties.ts`; its analysis says what the source says about the named party.) | Matching |
+| Skeptic | Sonnet 5.5 | `_shared/roles/skeptic.ts` | Try to break each match: keep, move, reject. Also checks chat claims. | After each judge; after chat answers |
+| Impact analyst | Sonnet 5.5 | `_shared/impact.ts` | Write the analysis of one development for one firm. | After a new match; on first open; after a profile edit |
+| Company scanner | Sonnet 5.5 + web search | `company-regulations` | Find recent regulatory activity for one portfolio company. | New company, after an edit, weekly |
+| Firm researcher | Sonnet 5.5 + web search | `research-firm` | Find public facts about the firm, its funds and companies, as proposals to confirm. | After onboarding; "Research Again" |
 | Announcement matcher | Haiku 4.5 | `_shared/duplicates.ts` | Which agency announcement (if any) announced this Federal Register document? | `group-duplicates` |
-| Chat | Sonnet 4.5 + web search | `regway-ai-chat` | Answer questions about the firm's situation. | Each message |
+| Chat | Sonnet 5.5 + web search | `regway-ai-chat` | Answer questions about the firm's situation. | Each message |
 | Claim gate | Haiku 4.5 | `_shared/roles/claimGate.ts` | Does a chat answer claim something applies to an entity? | After each chat answer |
 | Citation check | Haiku 4.5 | `_shared/roles/citationCheck.ts` | Does what the answer says about a rule match the passage it cited? | After an answer with claims |
 | Fact learner | Haiku 4.5 | `_shared/learnFacts.ts` | Which lasting facts about the firm, a fund or a company does what a member typed state? | After a chat message or re-check note with a statement in it (questions are skipped in code) |
 | SEC order headline | Haiku 4.5 | `sync-sec-admin-proceedings` | One headline sentence from an SEC order's text, read in code (`_shared/pdfText.ts`). | That sync, every 3 hours |
-| SEC PDF reader | Sonnet 4.5 | `sync-sec-admin-proceedings` | Turn a scanned SEC proceeding PDF (no text layer) into a headline and plain text. | That sync, scans only |
+| SEC PDF reader | Sonnet 5.5 | `sync-sec-admin-proceedings` | Turn a scanned SEC proceeding PDF (no text layer) into a headline and plain text. | That sync, scans only |
 
 All model choices are in one file, `_shared/ai/models.ts`. A model is
 changed only after its accuracy on that job was checked (the regulatory
 judge moved to Haiku after agreeing with Sonnet on 40 of 40 verdicts;
 Haiku was rejected for the geopolitical judge because it linked sanctions
-on people in a country to any company there).
+on people in a country to any company there). Sonnet 4.5 retires on
+2026-11-30, so every Sonnet job moved to Sonnet 5.5 (two thirds of the
+price); the matchers were scored first (`plans/eval-history.md`,
+2026-11-25).
 
 ### 7.1 How every call is made
 
@@ -310,6 +313,15 @@ on people in a country to any company there).
   review missing for one match).
 - A timeout on every call, one retry when Anthropic is overloaded (429,
   5xx), no retry on a bad request or no credit.
+- A request to a Claude 5 model is reshaped in one place
+  (`_shared/ai/modelRules.ts`): those models refuse `temperature` and
+  (Sonnet 5.5) a forced tool call. The forced tool's schema becomes the
+  answer's JSON format and the answer is read back as that tool's call, so
+  no job changed; the other tools of a forced call are dropped (none was
+  ever used under it). They think first: 16,000 tokens are added to
+  `max_tokens`, and `effort` is `low` unless the caller or the `AI_EFFORT`
+  secret says otherwise. Without temperature 0 a verdict can differ from
+  run to run: score a change more than once.
 - Prompt caching: the firm's facts and the tool definitions are marked
   cacheable, since they repeat across batches.
 - Every call, successful or failed, recorded in `usage_events` with why it
@@ -755,9 +767,11 @@ matches the Skeptic hid, so over-rejection is invisible.
 - **Prompt snapshots:** a unit test compares every judge, Skeptic and chat
   prompt with a saved copy, so a prompt can't change by accident (Sidekick's
   `prompts.json`; update the copy only for an intended change).
-- **First use:** test the Claude 5.5 models. Haiku 5.5 is listed at $0.10 in
-  / $0.50 out per million tokens, about a tenth of Haiku 4.5; Sonnet 5.5 at
-  $2 / $10. Switch a role only when it scores at least as well (§7).
+- **First use (2026-11-25):** the Claude 5.5 models. Sonnet 5.5 replaced
+  Sonnet 4.5 everywhere (it retires); with it the matchers score as before.
+  Haiku 5.5 and Sonnet 5.5 as the regulatory judge were more precise but
+  found fewer and varied more from run to run, so Haiku 4.5 stays
+  (`plans/eval-history.md`).
 
 ### 17.2 Fence outside text in every prompt
 

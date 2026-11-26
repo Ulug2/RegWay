@@ -34,8 +34,8 @@ describe('the Skeptic reviewing matches', () => {
     await reviewVerdicts({ record: record(), category: 'regulatory', items }, { admin: db as never, functionName: 'match-relevance/skeptic', firmId: FIRM_ID })
 
     const call = model[0]
-    expect(call.body.model).toBe('claude-sonnet-4-5')
-    expect(call.body.temperature).toBe(0)
+    expect(call.body.model).toBe('claude-sonnet-5-5')
+    expect(call.body.output_config.format.schema.required).toEqual(['reviews'])
     expect(call.tool).toBe('submit_reviews')
     const text = promptText(call)
     expect(text).toContain('FIRM — H.I.G. Capital: hq_location: Miami, Florida')
@@ -146,7 +146,7 @@ describe('applySkeptic', () => {
       decision: 'reject',
       original: { scope: 'firm', entity_name: null, reason: 'H.I.G. is headquartered in Florida.' },
       unsupported_assumptions: ['portfolio companies with air emissions in Florida'],
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-5-5',
     })
     expect(rows[1]).toMatchObject({ regulation_id: 'reg-era', decision: 'move', scope: 'company', entity_name: 'Aero Logistics' })
   })

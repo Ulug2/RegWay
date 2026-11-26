@@ -1,15 +1,11 @@
 {
-  "model": "claude-sonnet-4-5",
-  "max_tokens": 2048,
-  "tool_choice": {
-    "type": "tool",
-    "name": "submit_regulations"
-  },
-  "tools": [
-    {
-      "name": "submit_regulations",
-      "description": "Submit the structured list of distinct regulations found.",
-      "input_schema": {
+  "model": "claude-sonnet-5-5",
+  "max_tokens": 18048,
+  "output_config": {
+    "effort": "low",
+    "format": {
+      "type": "json_schema",
+      "schema": {
         "type": "object",
         "properties": {
           "items": {
@@ -52,16 +48,18 @@
                 "jurisdiction",
                 "summary",
                 "source_url"
-              ]
+              ],
+              "additionalProperties": false
             }
           }
         },
         "required": [
           "items"
-        ]
+        ],
+        "additionalProperties": false
       }
     }
-  ],
+  },
   "messages": [
     {
       "role": "user",

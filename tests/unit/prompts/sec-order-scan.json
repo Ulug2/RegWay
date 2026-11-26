@@ -1,15 +1,11 @@
 {
-  "model": "claude-sonnet-4-5",
-  "max_tokens": 4000,
-  "tool_choice": {
-    "type": "tool",
-    "name": "submit_extraction"
-  },
-  "tools": [
-    {
-      "name": "submit_extraction",
-      "description": "Submit the extracted content of this SEC administrative proceeding document.",
-      "input_schema": {
+  "model": "claude-sonnet-5-5",
+  "max_tokens": 20000,
+  "output_config": {
+    "effort": "low",
+    "format": {
+      "type": "json_schema",
+      "schema": {
         "type": "object",
         "properties": {
           "headline": {
@@ -24,13 +20,11 @@
         "required": [
           "headline",
           "narrative_text"
-        ]
-      },
-      "cache_control": {
-        "type": "ephemeral"
+        ],
+        "additionalProperties": false
       }
     }
-  ],
+  },
   "messages": [
     {
       "role": "user",

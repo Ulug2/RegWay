@@ -54,15 +54,16 @@ describe.each(['match-relevance', 'match-enforcement-relevance'])('%s', name => 
     expect(res.status).toBe(200)
   })
 
-  it('asks for verdicts at temperature 0, so an item gets the same answer every run', async () => {
+  it('asks for verdicts in a fixed shape: at temperature 0 on Haiku 4.5, as a JSON format on a Claude 5 model', async () => {
     const { model } = await run(name, { candidates: three }, [])
-    expect(model[0].body.temperature).toBe(0)
+    if (model[0].body.model === 'claude-haiku-4-5') expect(model[0].body.temperature).toBe(0)
+    else expect(model[0].body.output_config.format.schema.required).toEqual(['verdicts'])
   })
 
   it('uses the model chosen for this matcher', async () => {
     const { model } = await run(name, { candidates: three }, [])
     // Regulatory moved to Haiku after the 2026-10-05 comparison; enforcement was not compared.
-    expect(model[0].body.model).toBe(name === 'match-relevance' ? 'claude-haiku-4-5' : 'claude-sonnet-4-5')
+    expect(model[0].body.model).toBe(name === 'match-relevance' ? 'claude-haiku-4-5' : 'claude-sonnet-5-5')
   })
 
   it('after a profile edit, forgets its rejections on the items it looks at (never matches or dismissals) and asks scheduled matching to continue', async () => {

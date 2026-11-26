@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { judgeGeopolitical, type Candidate } from '../../supabase/functions/_shared/geopoliticalJudge.ts'
 import { companyFootprint, firmFootprint } from '../../supabase/functions/_shared/footprint.ts'
 import { fakeClient } from './helpers/fakeSupabase'
-import { jsonResponse, stubFetch } from './helpers/handler'
+import { answerSchema, jsonResponse, stubFetch } from './helpers/handler'
 
 const firm = { name: 'Harbor Capital', hq_location: 'Miami, Florida', jurisdictions: null, profile: null }
 const aero = { id: 'aero', name: 'Aero Logistics', hq_location: 'Naples, Italy', sectors: ['Aerospace'], regions: null, offerings: null, profile: null }
@@ -39,7 +39,7 @@ describe('judgeGeopolitical', () => {
   it('never asks the model about funds: fund exposure is derived from holdings', async () => {
     const calls = model([])
     await judge()
-    const scope = prompt(calls).body.tools[0].input_schema.properties.verdicts.items.properties.scope
+    const scope = answerSchema(prompt(calls).body).properties.verdicts.items.properties.scope
     expect(scope.enum).toEqual(['firm', 'company'])
   })
 

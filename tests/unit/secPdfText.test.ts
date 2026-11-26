@@ -3,7 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { isReadable, pdfText, tidy } from '../../supabase/functions/_shared/pdfText'
 import { fakeClient, hasFilter, setClient, type Query } from './helpers/fakeSupabase'
-import { jsonResponse, loadHandler, post, stubFetch } from './helpers/handler'
+import { answerFields, jsonResponse, loadHandler, post, stubFetch, toolAnswer } from './helpers/handler'
 import { SERVICE_KEY } from './helpers/setup'
 
 // Two PDFs made for these tests (tests/unit/fixtures): an SEC-style order
@@ -72,11 +72,11 @@ async function sync(opts: { headline?: () => Response; missing?: Record<string, 
     if (url.pathname.endsWith('.pdf')) return new Response(url.pathname.includes('34-') ? SCANNED_PDF : TEXT_PDF)
     if (url.hostname === 'api.anthropic.com') {
       const body = JSON.parse(init!.body as string)
-      const tool = body.tool_choice.name
+      const tool = body.tool_choice?.name ?? (answerFields(body).includes('narrative_text') ? 'submit_extraction' : 'submit_headline')
       model.push({ model: body.model, tool, body })
       if (tool === 'submit_headline' && opts.headline) return opts.headline()
       const input = tool === 'submit_headline' ? { headline: 'Settled order: adviser charged undisclosed monitoring fees.' } : { headline: 'Scanned order headline.', narrative_text: 'Text Sonnet read from the scan.' }
-      return jsonResponse({ content: [{ type: 'tool_use', name: tool, input }], usage: { input_tokens: 100, output_tokens: 20 } })
+      return toolAnswer(body, tool, input)
     }
   })
   const res = await handler(post('sync-sec-admin-proceedings', { token: SERVICE_KEY }))
@@ -103,7 +103,7 @@ describe('sync-sec-admin-proceedings reads PDFs in code first', () => {
     const { rows, model } = await sync()
     const sonnet = model.filter(m => m.tool === 'submit_extraction')
     expect(sonnet).toHaveLength(1)
-    expect(sonnet[0].model).toBe('claude-sonnet-4-5')
+    expect(sonnet[0].model).toBe('claude-sonnet-5-5')
     expect(sonnet[0].body.messages[0].content[0].type).toBe('document')
     expect(rows.find(r => r.external_id === '34-9002')!.raw.narrative_text).toBe('Text Sonnet read from the scan.')
   })

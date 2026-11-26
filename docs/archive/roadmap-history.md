@@ -9,6 +9,29 @@
 >
 > New entries go directly below this box, newest first.
 
+### Off Sonnet 4.5 (2026-11-25)
+- Sonnet 4.5 retires on 2026-11-30. Every job on it (geopolitical and
+  enforcement judges, Skeptic, analyses, chat, company scan, firm
+  research, SEC scans) moved to Sonnet 5.5 (`SONNET` in
+  `_shared/ai/models.ts`), at two thirds of the price.
+- The Claude 5 models refuse `temperature` and (Sonnet 5.5) a forced tool
+  call. `_shared/ai/modelRules.ts`, applied by `callClaude` and
+  `streamClaude`, reshapes every request: no sampling settings; the forced
+  tool's schema becomes the answer's JSON format (`output_config.format`,
+  every object closed, number and length limits dropped) and the answer is
+  read back as that tool's call, so no job changed; 16,000 more
+  `max_tokens` for thinking; effort `low` unless the caller or the
+  `AI_EFFORT` secret says otherwise. Older models get the request as
+  written. Prices for Sonnet 5.5 and Haiku 5.5 in `_shared/usage.ts`.
+- Scored first (`plans/eval-history.md`): with the Skeptic on Sonnet 5.5
+  the matchers score as before (10 right, 6 shown wrongly, against 10 and
+  5). Haiku 5.5 and Sonnet 5.5 as the regulatory judge were more precise
+  but found fewer and varied more; Haiku 4.5 stays. `pnpm eval:matching`
+  takes `--regulatory-model=` / `--geopolitical-model=` to try one.
+- Tests: `tests/unit/modelRules.test.ts`; the AI stand-ins in the tests
+  answer a JSON format as well as a forced tool; 12 prompt snapshots
+  updated (model, format, no temperature).
+
 ### Facts learned from what users type (2026-11-23, Sidekick item 6)
 - A chat message or re-check note that states a lasting fact ("we don't
   import batteries") becomes a suggestion in Profile → **Suggested Facts**

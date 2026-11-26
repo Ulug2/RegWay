@@ -22,6 +22,9 @@ const SONNET_4_5: Prices = { input: 3.0, cacheWrite: 3.75, cacheRead: 0.3, outpu
 const PRICES: Record<string, Prices> = {
   'claude-sonnet-4-5': SONNET_4_5,
   'claude-haiku-4-5': { input: 1.0, cacheWrite: 1.25, cacheRead: 0.1, output: 5.0 },
+  'claude-sonnet-5-5': { input: 2.0, cacheWrite: 2.5, cacheRead: 0.1, output: 10.0 },
+  // For a prompt of 100K tokens or fewer, which is every RegWay prompt.
+  'claude-haiku-5-5': { input: 0.1, cacheWrite: 0.125, cacheRead: 0.01, output: 0.5 },
 }
 const PRICE_PER_WEB_SEARCH = 0.01
 const highest = (key: keyof Prices) => Math.max(...Object.values(PRICES).map(p => p[key]))

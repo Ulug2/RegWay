@@ -84,10 +84,10 @@ describe('a run, with the AI stubbed', () => {
       submit_verdicts: () => new Response(JSON.stringify({ content: [{ type: 'tool_use', name: 'submit_verdicts', input: replies[call++] }], usage: { input_tokens: 1_000_000, output_tokens: 0 } }), { status: 200, headers: { 'content-type': 'application/json' } }),
     })
     const result = await runEval(EXAMPLE, { skeptic: false })
-    expect(calls.map(c => c.body.model)).toEqual(['claude-haiku-4-5', 'claude-sonnet-4-5'])
+    expect(calls.map(c => c.body.model)).toEqual(['claude-haiku-4-5', 'claude-sonnet-5-5'])
     expect(result.score).toMatchObject({ truePositives: 2, falsePositives: 1, falseNegatives: 1, exact: 3 })
     expect(result.score.mistakes).toEqual([{ id: 'ex-medicare', extra: ['firm'], missed: ['company:getixhealth'] }])
-    // A million input tokens on Haiku ($1) and on Sonnet ($3).
-    expect(result.costUsd).toBeCloseTo(4)
+    // A million input tokens on Haiku 4.5 ($1) and on Sonnet 5.5 ($2).
+    expect(result.costUsd).toBeCloseTo(3)
   })
 })
