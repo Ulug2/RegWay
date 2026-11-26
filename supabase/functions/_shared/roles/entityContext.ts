@@ -68,7 +68,7 @@ export function firmRecord(entities: FirmEntities & { firm: NonNullable<FirmEnti
   return {
     firmName: firm.name,
     entities: records,
-    footprints: [firmFootprint(firm), ...companies.map(companyFootprint)].map(describeFootprint),
+    footprints: [firmFootprint(firm), ...companies.map(companyFootprint)].map(fp => describeFootprint(fp)),
   }
 }
 

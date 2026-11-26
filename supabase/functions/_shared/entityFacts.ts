@@ -86,3 +86,13 @@ export const facts = (row: Record<string, unknown> | null | undefined, keys: str
   if (missing.length) parts.push(`not recorded: ${missing.join(', ')}`)
   return parts.join('; ')
 }
+
+// The facts a member recorded in their own words for an entity ("Other
+// facts" in Profile, or learned from a chat or a re-check note and
+// confirmed): quoted, as the Skeptic and the analyses read them
+// (`facts` above). Empty when there are none, so a profile without them
+// leaves the matchers' prompts unchanged.
+export const otherFacts = (profile: Record<string, unknown> | null | undefined): string => {
+  const notes = Array.isArray(profile?.notes) ? profile.notes.map(n => String(n ?? '').trim()).filter(Boolean) : []
+  return notes.length ? `other facts: ${notes.map(n => `"${n}"`).join('; ')}` : ''
+}

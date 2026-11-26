@@ -11,6 +11,7 @@
 
 import { countryOfLocation } from './countries.ts'
 import type { CompanyRow, FirmRow } from './relevance.ts'
+import { otherFacts } from './entityFacts.ts'
 
 export type ConnectionKind = 'headquarters' | 'legal domicile' | 'facilities' | 'operations' | 'suppliers'
 
@@ -34,6 +35,9 @@ export interface EntityFootprint {
   // parts reaches an aerospace company, not a software firm in the same
   // country), so the matcher needs this alongside the places.
   activities: string[]
+  // "Other facts" in the firm's own words (relevance.ts otherFacts); printed
+  // only where asked, since the Skeptic reads them with the entity's facts.
+  otherFacts?: string
 }
 
 const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : v == null || v === '' ? [] : [v])
@@ -59,7 +63,7 @@ export function firmFootprint(firm: FirmRow): EntityFootprint {
     collect(facts, 'legal domicile', asList(profile.legal_domicile)),
   ].some(Boolean)
   const activities = [...asList(profile.firm_type), ...asList(profile.strategies)].filter((a): a is string => typeof a === 'string')
-  return { scope: 'firm', name: firm.name, facts, unplacedLocations: unplaced, suppliersRecorded: false, activities }
+  return { scope: 'firm', name: firm.name, facts, unplacedLocations: unplaced, suppliersRecorded: false, activities, otherFacts: otherFacts(profile) }
 }
 
 export function companyFootprint(company: CompanyRow): EntityFootprint {
@@ -78,7 +82,7 @@ export function companyFootprint(company: CompanyRow): EntityFootprint {
     collect(facts, 'suppliers', suppliers),
   ].some(Boolean)
   const activities = [...(company.sectors ?? []), ...asList(company.offerings)].filter((a): a is string => typeof a === 'string' && a.trim() !== '')
-  return { scope: 'company', name: company.name, facts, unplacedLocations: unplaced, suppliersRecorded: suppliers.length > 0, activities }
+  return { scope: 'company', name: company.name, facts, unplacedLocations: unplaced, suppliersRecorded: suppliers.length > 0, activities, otherFacts: otherFacts(profile) }
 }
 
 // Every non-U.S. country any of these entities is connected to. The U.S. is
@@ -101,8 +105,9 @@ export function overlaps(footprints: EntityFootprint[], countries: string[]): st
   )
 }
 
-// One prompt line per entity, stating unknowns explicitly.
-export function describeFootprint(fp: EntityFootprint): string {
+// One prompt line per entity, stating unknowns explicitly; with
+// `withOtherFacts`, the entity's other facts at the end.
+export function describeFootprint(fp: EntityFootprint, withOtherFacts = false): string {
   const byKind = (kind: ConnectionKind) => fp.facts.filter(f => f.kind === kind).map(f => f.country)
   const part = (label: string, kind: ConnectionKind) => (byKind(kind).length ? `${label}: ${byKind(kind).join(', ')}` : '')
   const parts = [
@@ -113,6 +118,7 @@ export function describeFootprint(fp: EntityFootprint): string {
     part('operates in', 'operations'),
     fp.scope === 'company' ? (fp.suppliersRecorded ? part('key suppliers in', 'suppliers') || 'key suppliers: recorded but not placed in a specific country' : 'key suppliers: NOT RECORDED') : '',
     fp.unplacedLocations ? 'also has locations recorded without a country (e.g. "International" or a bare city name)' : '',
+    withOtherFacts ? (fp.otherFacts ?? '') : '',
   ].filter(Boolean)
   return `- ${fp.name} (${fp.scope}): ${parts.join('; ') || 'no locations recorded'}`
 }

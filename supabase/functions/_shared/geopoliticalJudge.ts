@@ -138,7 +138,7 @@ export async function judgeGeopolitical(
             type: 'text',
             cache_control: { type: 'ephemeral' },
             text: `Firm: ${opts.firmName}. Recorded location footprints:
-${footprints.map(describeFootprint).join('\n')}
+${footprints.map(fp => describeFootprint(fp, true)).join('\n')}
 
 ${INSTRUCTIONS}`,
           },

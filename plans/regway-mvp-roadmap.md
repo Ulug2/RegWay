@@ -195,8 +195,9 @@ asks for.
    after the test set (1) shows recall up and precision not down.
 6. **Learn facts from what users type** (M, §17.6): built 2026-11-23,
    migration 0054 applied and 10 functions deployed 2026-11-25 (history).
-   Next (owner, 2026-11-25): the judges read "Other facts" too, scored
-   against the test set (1).
+   The judges read "Other facts" too (2026-11-26, history). Open (owner):
+   should a confirmed note re-judge earlier rejections (`notes` in
+   `src/lib/matchingFacts.ts`; costs a re-check per note)?
 7. **Chat queries the firm's data** (M, §17.7). Touches
    `regway-ai-chat`, where issues #38 and #39 also work: check with them.
 8. **Read SEC PDFs with code first** (S, §17.8): built and deployed

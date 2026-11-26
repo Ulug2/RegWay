@@ -91,6 +91,22 @@
   migration applied to a local database; run locally against the live
   API: 100 releases read, 1 kept and stored.
 
+### The matchers read "Other facts" (2026-11-26, Sidekick item 6, follow-up)
+- Owner, 2026-11-25. The regulatory, geopolitical and enforcement judges
+  now read each entity's "Other facts" (`notes`: a member's own words,
+  entered in Profile or learned from a chat or re-check note and
+  confirmed), quoted as the Skeptic and the analyses read them:
+  `otherFacts` (`_shared/entityFacts.ts`) at the end of the firm's, each
+  fund's and each company's line, and in the geopolitical judge's
+  footprints (`describeFootprint(fp, true)`; the Skeptic's footprints
+  leave them out, its entity facts already carry them).
+- No profile has notes yet, and with none the prompts are byte for byte
+  the same (the prompt snapshots pass unchanged), so the test set's score
+  is unchanged and no re-score was needed.
+- **Verified:** 4 unit tests (`judgesReadNotes.test.ts`: quoting and
+  empty; the regulatory judge for the firm, a fund and a company; the
+  geopolitical footprints; the enforcement judge through its handler).
+
 ### A fund or company found under a shortened name (2026-11-26)
 - The first scored test set showed the matchers often shorten a name
   ("Brightwell Wealth" for "Brightwell Wealth (test)", "A.L.A. S.p.A."
