@@ -7,6 +7,7 @@
 import { FENCE_RULE, untrusted } from './security/guard.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { describe, type FirmEntities, type Verdict } from './relevance.ts'
+import { otherFacts } from './entityFacts.ts'
 import { callClaude, toolInput } from './ai/client.ts'
 import { MODEL_FOR } from './ai/models.ts'
 
@@ -44,26 +45,38 @@ export async function judgeRegulations(
   // Questionnaire answers (stored in `profile`) sharpen the match: adviser
   // registration decides which SEC rules apply, strategy/industries narrow
   // sector rules, and the fund's proposed-vs-final preference is honoured.
-  const firmProfile = describe(firm.profile, [
-    ['firm_type', 'firm type'],
-    ['adviser_registration', 'adviser registration'],
-    ['strategies', 'strategies'],
-    ['industries', 'industries'],
-    ['geographies', 'geographies'],
-  ])
+  const firmProfile = [
+    describe(firm.profile, [
+      ['firm_type', 'firm type'],
+      ['adviser_registration', 'adviser registration'],
+      ['strategies', 'strategies'],
+      ['industries', 'industries'],
+      ['geographies', 'geographies'],
+    ]),
+    otherFacts(firm.profile),
+  ]
+    .filter(Boolean)
+    .join('; ')
 
   const fundDetail = (profile: Record<string, unknown> | null) =>
-    describe(profile, [
-      ['status', 'status'],
-      ['strategy', 'strategy'],
-      ['ownership', 'ownership'],
-      ['priority_areas', 'priority areas'],
-      ['proposed_regs', 'proposed-rule preference'],
-    ])
+    [
+      describe(profile, [
+        ['status', 'status'],
+        ['strategy', 'strategy'],
+        ['ownership', 'ownership'],
+        ['priority_areas', 'priority areas'],
+        ['proposed_regs', 'proposed-rule preference'],
+      ]),
+      otherFacts(profile),
+    ]
+      .filter(Boolean)
+      .join('; ')
 
   const fundList = (funds ?? []).map(f => `- ${f.name} (${f.structure ?? 'structure n/a'}, jurisdictions: ${(f.jurisdictions ?? []).join('/')}${fundDetail(f.profile) ? '; ' + fundDetail(f.profile) : ''})`).join('\n') || 'none on file'
   const companyList =
-    (companies ?? []).map(c => `- ${c.name} (sectors: ${(c.sectors ?? []).join('/')}, regions: ${(c.regions ?? []).join('/')}${c.offerings ? `; does: ${c.offerings}` : ''})`).join('\n') || 'none on file'
+    (companies ?? [])
+      .map(c => `- ${c.name} (sectors: ${(c.sectors ?? []).join('/')}, regions: ${(c.regions ?? []).join('/')}${c.offerings ? `; does: ${c.offerings}` : ''}${otherFacts(c.profile) ? `; ${otherFacts(c.profile)}` : ''})`)
+      .join('\n') || 'none on file'
   // A non-U.S. item says where it applies: the issuer's name alone ("ESMA")
   // doesn't tell the model it binds only entities connected to that place.
   const issuer = (r: RegulatoryCandidate) => (r.agency && r.jurisdiction && NON_US.has(r.jurisdiction) ? `${r.agency}, ${r.jurisdiction}` : (r.agency ?? r.jurisdiction))

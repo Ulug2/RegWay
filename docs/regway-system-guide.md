@@ -868,8 +868,13 @@ below, with these choices:
 - A fact that fits no question goes to a new answer, **Other facts**
   (`notes`, a list of short sentences, on the firm, each fund and each
   company). The Skeptic, the impact analysis, the chat and its check read
-  notes, each quoted (`_shared/entityFacts.ts`); the judges do not yet, so
-  confirming a note rewrites analyses but does not re-judge rejections.
+  notes, each quoted (`_shared/entityFacts.ts`); since 2026-11-26 the
+  three judges do too (`otherFacts`: in each entity's line, and in the
+  geopolitical footprints), so a confirmed "does not import batteries" is
+  weighed before a battery rule is matched. With no notes their prompts
+  are unchanged. Confirming a note rewrites analyses but does not re-judge
+  earlier rejections: `notes` is not among the matching facts
+  (`src/lib/matchingFacts.ts`), which would cost a re-check on every note.
 - A message with no statement (only questions, or under three words) is
   skipped in code. Otherwise one Haiku call (temperature 0, the member's
   words and what they replied to both fenced). Kept only if it names one
