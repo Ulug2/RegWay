@@ -177,11 +177,12 @@ asks for.
    prompt snapshots (`tests/unit/prompts/`) and the scoring command
    (`pnpm eval:matching <set.json> [--skeptic]`: prints the estimated cost
    and asks before calling the AI; results go in `plans/eval-history.md`).
-   The set is built (2026-11-25, `tests/eval/hig-2026-11-25.json`, 146
-   documents, history); 5 marked by Claude Fable 5.2 as a pilot. Owner:
-   `pnpm eval:mark submit` for the other 141 (about $7.70 by batch), then
-   `collect`, read the low-confidence marks, and run `pnpm eval:matching
-   tests/eval/hig-2026-11-25.json --skeptic`. Not covered yet by the
+   The set is built and marked (2026-11-25, `tests/eval/hig-2026-11-25.json`,
+   146 documents, Claude Fable 5.2, $3.40; history). First score in
+   `plans/eval-history.md`: precision 36.4%, recall 32.0% with the
+   Skeptic. Next: production saves a match under a shortened company name
+   ("Brightwell Wealth" for "Brightwell Wealth (test)") as the firm's
+   (`buildRelevanceRows`); fix, then score again. Not covered yet by the
    score: the enforcement judge (not exported from its function).
 2. **Fence outside text in every prompt** (S–M, §17.2): built and
    deployed 2026-11-22/23 (history). Flagged text can be listed from
