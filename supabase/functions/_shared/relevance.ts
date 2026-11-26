@@ -70,6 +70,7 @@ export interface FundRow {
   id: string
   name: string
   structure: string | null
+  size?: string | null
   jurisdictions: string[] | null
   profile: Record<string, unknown> | null
 }
@@ -93,7 +94,7 @@ export interface FirmEntities {
 export async function loadFirmEntities(admin: SupabaseClient, firmId: string): Promise<FirmEntities> {
   const [{ data: firm }, { data: funds }, { data: companies }] = await Promise.all([
     admin.from('firms').select('name, hq_location, jurisdictions, profile').eq('id', firmId).single(),
-    admin.from('funds').select('id, name, structure, jurisdictions, profile').eq('firm_id', firmId),
+    admin.from('funds').select('id, name, structure, size, jurisdictions, profile').eq('firm_id', firmId),
     admin.from('portfolio_companies').select('id, name, hq_location, sectors, regions, offerings, profile').eq('firm_id', firmId),
   ])
   return { firm: firm ?? null, funds: funds ?? [], companies: companies ?? [] }

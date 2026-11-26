@@ -11,8 +11,9 @@ import { SERVICE_KEY } from './helpers/setup'
 // The matchers read "Other facts" (owner, 2026-11-25): a member's own words
 // about an entity, recorded in Profile or learned from a chat and
 // confirmed, so a confirmed "does not import batteries" is weighed before
-// a battery rule is matched, not only by the Skeptic afterwards. With no
-// other facts the prompts are unchanged (promptSnapshots.test.ts).
+// a battery rule is matched, not only by the Skeptic afterwards. The
+// regulatory and enforcement judges read them with every other fact
+// (entityList); the geopolitical judge with each footprint.
 
 const withNotes = {
   firm: { ...firm, profile: { ...firm.profile, notes: ['Has no UK employees'] } },
@@ -36,9 +37,9 @@ describe('other facts in the matchers', () => {
       functionName: 'match-relevance',
     })
     const text = promptText(model[0])
-    expect(text).toContain('Firm profile — firm type: Private equity; adviser registration: SEC-registered; other facts: "Has no UK employees".')
-    expect(text).toContain('strategy: Buyout; other facts: "Closed to new investors")')
-    expect(text).toContain('does: Revenue cycle management; other facts: "Does not import batteries"; "Sells only to hospitals")')
+    expect(text).toMatch(/Firm: H\.I\.G\. Capital: [^\n]*notes: "Has no UK employees"/)
+    expect(text).toMatch(/- Fund I: [^\n]*notes: "Closed to new investors"/)
+    expect(text).toMatch(/- GetixHealth: [^\n]*notes: "Does not import batteries", "Sells only to hospitals"/)
   })
 
   it('reach the geopolitical judge with each footprint', async () => {
@@ -73,8 +74,8 @@ describe('other facts in the matchers', () => {
     await handler(post('match-enforcement-relevance', { token: SERVICE_KEY, body: { firmId: FIRM_ID } }))
     await Promise.all(background)
     const text = promptText(model[0])
-    expect(text).toContain('other facts: "Has no UK employees"')
-    expect(text).toContain('other facts: "Closed to new investors"')
-    expect(text).toContain('other facts: "Does not import batteries"; "Sells only to hospitals"')
+    expect(text).toContain('notes: "Has no UK employees"')
+    expect(text).toContain('notes: "Closed to new investors"')
+    expect(text).toContain('notes: "Does not import batteries", "Sells only to hospitals"')
   })
 })
