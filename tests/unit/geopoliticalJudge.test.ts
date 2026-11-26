@@ -51,7 +51,7 @@ describe('judgeGeopolitical', () => {
       { index: 2, relevant: false, reason: 'Designation of named persons.', scope: 'firm', entity_name: '' },
     ])
     const verdicts = await judge()
-    expect(verdicts.filter(v => v.relevant).map(v => v.entity_name)).toEqual(['aero logistics'])
+    expect(verdicts.filter(v => v.relevant).map(v => v.entity_name)).toEqual(['Aero Logistics'])
     expect(verdicts.find(v => v.index === 2)).toMatchObject({ relevant: false, scope: 'firm' })
   })
 

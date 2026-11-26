@@ -3,6 +3,7 @@
 // user flagged, with their correction). One prompt, so a re-check is judged
 // by exactly the rules the original match was.
 
+import { resolveEntity } from './entityNames.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { FENCE_RULE, untrusted } from './security/guard.ts'
 import { describeFootprint, overlaps, type EntityFootprint } from './footprint.ts'
@@ -150,10 +151,10 @@ ${INSTRUCTIONS}`,
   // A company verdict naming no real company would otherwise fall through
   // buildRelevanceRows to a firm-level row, putting a company's connection
   // on the firm page. Drop it.
-  const companyNames = new Set(companies.map(c => c.name.toLowerCase()))
-  const verdicts: Verdict[] = (toolInput<{ verdicts?: Verdict[] }>(result, 'submit_verdicts')?.verdicts ?? []).filter(
-    (v: Verdict) => v.scope === 'firm' || (v.scope === 'company' && !!v.entity_name && companyNames.has(v.entity_name.toLowerCase())),
-  )
+  // A shortened name is the company's (entityNames.ts), written in full.
+  const verdicts: Verdict[] = (toolInput<{ verdicts?: Verdict[] }>(result, 'submit_verdicts')?.verdicts ?? [])
+    .map((v: Verdict) => (v.scope === 'company' ? { ...v, entity_name: resolveEntity(companies, v.entity_name)?.name ?? null } : v))
+    .filter((v: Verdict) => v.scope === 'firm' || (v.scope === 'company' && !!v.entity_name))
 
   // Any development the model skipped still gets a firm-level marker, so
   // it isn't re-sent (and re-billed) on every run.
