@@ -30,10 +30,22 @@ export interface SetDocument {
   summary: string | null
   countries?: string[]
   published_date?: string | null
-  // The right answer: every entity it applies to; empty for "not relevant".
-  expected: EntityRef[]
+  // The right answer: every entity it applies to; empty for "not relevant";
+  // null until marked (a set with an unmarked document can't be scored).
+  expected: EntityRef[] | null
   // Why, in the marker's words (shown next to a mistake).
-  why?: string
+  why?: string | null
+  // Written by scripts/eval-build-set.ts and eval-mark-set.ts; not used to
+  // score.
+  source?: string
+  source_url?: string | null
+  effective_date?: string | null
+  // More of the document than the summary, for the marker only.
+  text?: string | null
+  // What RegWay's matchers said in production when the set was built.
+  regway?: { verdict: string; entities: EntityRef[]; reason: string | null }
+  confidence?: 'high' | 'medium' | 'low'
+  marked_by?: string
 }
 
 // Problems that would make a score meaningless; empty when there are none.

@@ -14,6 +14,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "eval:matching": "deno run --env-file=supabase/functions/.env --allow-env --allow-read --allow-net=api.anthropic.com scripts/eval-matching.ts",
+    "eval:build-set": "deno run --allow-env --allow-read --allow-write=tests/eval --allow-net scripts/eval-build-set.ts",
+    "eval:mark": "deno run --env-file=supabase/functions/.env --allow-env --allow-read --allow-write=tests/eval --allow-net=api.anthropic.com scripts/eval-mark-set.ts",
     "test:all": "pnpm typecheck && pnpm typecheck:functions && pnpm test && pnpm test:e2e"
   },
   "dependencies": {

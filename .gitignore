@@ -38,10 +38,12 @@ supabase/.branches/
 # Everything in /plans/ stays local-only by default (YC execution doc,
 # cost-model notes, etc.) EXCEPT the two roadmap docs below, which are
 # tracked deliberately so a cloud Claude Code session (e.g. started from
-# the Claude app, no laptop needed) can actually see current priorities.
+# the Claude app, no laptop needed) can actually see current priorities,
+# and the matching scores, which a prompt change is checked against.
 /plans/*
 !/plans/regway-mvp-roadmap.md
 !/plans/regway-ai-multi-agent-architecture.md
+!/plans/eval-history.md
 
 .DS_Store
 # Playwright CLI output (may contain credentials)

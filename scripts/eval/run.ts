@@ -78,7 +78,7 @@ export async function runEval(set: MatchingSet, opts: { skeptic: boolean; firmId
     const candidates = batch.map(d => ({ id: d.id, title: d.title, agency: d.agency, jurisdiction: d.jurisdiction ?? null, summary: d.summary }))
     const judged = await judgeRegulations(admin, { firmId, entities, candidates, functionName: 'eval/match-relevance' })
     const verdicts = await skeptic('regulatory', batch, judged, 'eval/match-relevance')
-    batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected, predicted: relevantTo(verdicts, i) }))
+    batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected ?? [], predicted: relevantTo(verdicts, i) }))
   }
 
   const geopolitical = set.documents.filter(d => d.category === 'geopolitical')
@@ -88,7 +88,7 @@ export async function runEval(set: MatchingSet, opts: { skeptic: boolean; firmId
     const candidates: Candidate[] = batch.map(d => ({ id: d.id, title: d.title, agency: d.agency, summary: d.summary, countries: d.countries ?? [], published_date: d.published_date ?? null }))
     const judged = await judgeGeopolitical(admin, { firmId, firmName: set.firm.name, companies: companies as never, footprints, candidates, functionName: 'eval/match-geopolitical-relevance' })
     const verdicts = await skeptic('geopolitical', batch, judged, 'eval/match-geopolitical-relevance')
-    batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected, predicted: relevantTo(verdicts, i) }))
+    batch.forEach((d, i) => results.push({ id: d.id, expected: d.expected ?? [], predicted: relevantTo(verdicts, i) }))
   }
 
   return { label: opts.skeptic ? 'judges + Skeptic' : 'judges alone', results, score: score(results), costUsd: db.cost() }
