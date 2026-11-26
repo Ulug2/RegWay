@@ -8,6 +8,7 @@
 // tasks. This module exists so neither duplicates the ~100 lines around that
 // difference.
 
+import { POSSIBLE_PREFIX, possibleReason } from './possibleMatch.ts'
 import { resolveEntity } from './entityNames.ts'
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { json } from './cors.ts'
@@ -118,6 +119,9 @@ export interface Verdict {
   reason: string
   scope: 'firm' | 'fund' | 'company'
   entity_name: string | null
+  // A not-relevant verdict that turns on one unrecorded fact: that fact as
+  // a yes/no question (./possibleMatch.ts).
+  depends_on?: string | null
 }
 
 export interface RelevanceRow {
@@ -152,7 +156,11 @@ export function buildRelevanceRows(
         firm_id: firmId,
         fund_id: fundId,
         portfolio_company_id: companyId,
-        relevance_reason: v.relevant && !lost ? v.reason : `NOT_RELEVANT: ${lost && v.relevant ? `named "${v.entity_name}", not one of the firm's funds or companies. ` : ''}${v.reason}`,
+        relevance_reason: v.relevant && !lost
+          ? v.reason
+          : !v.relevant && !lost && v.depends_on?.trim()
+            ? possibleReason(v.depends_on, v.reason)
+            : `NOT_RELEVANT: ${lost && v.relevant ? `named "${v.entity_name}", not one of the firm's funds or companies. ` : ''}${v.reason}`,
       }
     })
     .filter((r): r is RelevanceRow => r !== null)
@@ -160,13 +168,16 @@ export function buildRelevanceRows(
 
 // A model can return two verdicts that land on the same row (e.g. two
 // firm-scope verdicts for one item), and Postgres rejects an upsert that
-// touches a row twice. Keep one per row, preferring a relevant verdict.
+// touches a row twice. Keep one per row, preferring a relevant verdict,
+// then a possible one.
+const rank = (reason: string) => (!reason.startsWith('NOT_RELEVANT') ? 2 : reason.startsWith(POSSIBLE_PREFIX) ? 1 : 0)
+
 function dedupeRows(rows: RelevanceRow[]): RelevanceRow[] {
   const byKey = new Map<string, RelevanceRow>()
   for (const row of rows) {
     const key = `${row.regulation_id}|${row.fund_id ?? ''}|${row.portfolio_company_id ?? ''}`
     const existing = byKey.get(key)
-    if (!existing || (existing.relevance_reason.startsWith('NOT_RELEVANT') && !row.relevance_reason.startsWith('NOT_RELEVANT'))) {
+    if (!existing || rank(row.relevance_reason) > rank(existing.relevance_reason)) {
       byKey.set(key, row)
     }
   }

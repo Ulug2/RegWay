@@ -8,6 +8,7 @@ import { FENCE_RULE, untrusted } from './security/guard.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { describe, type FirmEntities, type Verdict } from './relevance.ts'
 import { entityList } from './entityFacts.ts'
+import { DEPENDS_ON_FIELD, POSSIBLE_RULE } from './possibleMatch.ts'
 import { callClaude, toolInput } from './ai/client.ts'
 import { MODEL_FOR } from './ai/models.ts'
 
@@ -77,6 +78,7 @@ export async function judgeRegulations(
                   reason: { type: 'string', description: 'One sentence: why this does or does not affect the firm' },
                   scope: { type: 'string', enum: ['firm', 'fund', 'company'] },
                   entity_name: { type: 'string', description: 'Exact fund or company name if scope is fund/company, else empty string' },
+                  depends_on: DEPENDS_ON_FIELD,
                 },
                 required: ['index', 'relevant', 'reason', 'scope'],
               },
@@ -103,6 +105,8 @@ export async function judgeRegulations(
             text: `${entityText}
 
 For each numbered regulation below, decide whether it creates a real compliance obligation or material exposure for this specific firm, one of its funds, or one of its portfolio companies — based on jurisdiction, sector, and structure match. Be strict: a generic federal rule that doesn't actually touch this firm's jurisdictions, fund structures, or portfolio sectors should be marked not relevant. Speculative or hypothetical connections are not sufficient grounds for relevance — if your reasoning would need words like "may have," "could be exposed to," or "might apply," mark it not relevant instead. Also mark not relevant anything that is purely administrative or procedural and creates no new obligation — an award determination, an individual's case outcome, a routine data-availability or agency-organizational notice, or a state-program approval that doesn't itself bind this firm. Mark relevant only when you can name the specific new obligation, deadline, or requirement being created, and the specific fund, portfolio company, or jurisdiction it actually touches — not just "this firm is generally in a regulated industry." Some items are a regulator's own announcement of a proposal, rule, guidance or relief rather than the published document: judge them by the measure they announce. An item marked United Kingdom or European Union binds only an entity established, authorised, marketing or operating there: mark it relevant only when the facts above record that connection for the entity you name.
+
+${POSSIBLE_RULE}
 
 ${FENCE_RULE}`,
           },

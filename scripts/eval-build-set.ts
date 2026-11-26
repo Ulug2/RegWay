@@ -1,4 +1,9 @@
-// pnpm eval:build-set [--firm 'H.I.G.*'] [--out tests/eval/<file>.json] [--text-chars 6000]
+// pnpm eval:build-set [--firm 'H.I.G.*'] [--out tests/eval/<file>.json] [--text-chars 6000] [--exclude <set.json>]
+//
+// --exclude leaves out every document already in another set, to build a
+// second set that adds to it. --rejected N takes N regulatory documents the
+// judges rejected instead of PLAN's number (half from agencies near the
+// firm's business), to fill a set when the matched ones are used up.
 //
 // Builds the test set for matching (system guide §17.1) from a database:
 // the firm as it stands today (every profile answer, where each came from,
@@ -18,7 +23,7 @@
 // published full text from federalregister.gov, for the marker only (the
 // matchers are scored on the title and summary, as in production).
 
-import { classify, pick, type PoolDoc, type RelevanceRow, type ReviewRow } from './eval/selectSet.ts'
+import { classify, pick, PLAN, type PoolDoc, type RelevanceRow, type ReviewRow } from './eval/selectSet.ts'
 import type { SetDocument } from './eval/matchingSet.ts'
 
 const arg = (name: string, fallback: string) => {
@@ -30,6 +35,7 @@ const firmPattern = arg('firm', 'H.I.G.*')
 const out = arg('out', `tests/eval/hig-${today}.json`)
 const textChars = Number(arg('text-chars', '6000'))
 const seed = arg('seed', today)
+const exclude = arg('exclude', '')
 
 const url = Deno.env.get('SUPABASE_URL')
 const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -71,7 +77,10 @@ const pool = await rows<PoolDoc>('regulations?select=id,source,category,agency,p
 const fundName = new Map(funds.map(f => [f.id, f.name]))
 const companyName = new Map(companies.map(c => [c.id, c.name]))
 const judgements = classify(relevance, reviews, { funds: fundName, companies: companyName })
-const picked = pick(pool, judgements, seed)
+const taken = new Set<string>(exclude ? (JSON.parse(await Deno.readTextFile(exclude)) as { documents: { id: string }[] }).documents.map(d => d.id) : [])
+const rejected = Number(arg('rejected', String(PLAN.regulatory.rejected)))
+const plan = { ...PLAN, regulatory: { ...PLAN.regulatory, rejected } }
+const picked = pick(pool.filter(d => !taken.has(d.id)), judgements, seed, plan)
 
 interface RegulationRow {
   id: string

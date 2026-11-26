@@ -17,6 +17,7 @@ import EntityFeed from './EntityFeed'
 import AiAskBar from './AiAskBar'
 import { dayKey, type EntityRef } from './EntityPage'
 import ProfileReminder from './ProfileReminder'
+import QuestionsCard from './QuestionsCard'
 import ResearchCard from './ResearchCard'
 import { useProfileCompletion } from '../lib/useProfileCompletion'
 
@@ -275,6 +276,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           )}
 
           <ResearchCard firmId={firmId} firmName={firm?.name} onReview={() => onNavigate('profile', { tab: 'research' })} />
+
+          <QuestionsCard firmId={firmId} firmName={firm?.name} onAnswer={() => onNavigate('profile', { tab: 'questions' })} />
 
           <ProfileReminder completion={completion} onOpen={(tab, focusId) => onNavigate('profile', { tab, focusId })} />
 

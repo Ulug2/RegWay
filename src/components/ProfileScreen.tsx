@@ -14,10 +14,11 @@ import FundsProfile from './profile/FundsProfile'
 import CompaniesProfile from './profile/CompaniesProfile'
 import DismissedRegulations from './profile/DismissedRegulations'
 import HiddenByReview from './profile/HiddenByReview'
+import PossibleMatches from './profile/PossibleMatches'
 import FoundOnWeb from './profile/FoundOnWeb'
 import EmailAlerts from './profile/EmailAlerts'
 
-export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio' | 'research' | 'dismissed' | 'hidden'
+export type ProfileTab = 'account' | 'firm' | 'funds' | 'portfolio' | 'research' | 'questions' | 'dismissed' | 'hidden'
 
 const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'account', label: 'Account' },
@@ -25,6 +26,7 @@ const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'funds', label: 'Funds' },
   { key: 'portfolio', label: 'Portfolio Companies' },
   { key: 'research', label: 'Suggested Facts' },
+  { key: 'questions', label: 'Questions' },
   { key: 'dismissed', label: 'Dismissed' },
   { key: 'hidden', label: 'Hidden' },
 ]
@@ -211,6 +213,7 @@ export default function ProfileScreen({ onBack, backLabel = 'Back to Dashboard',
 
         {tab === 'research' && firmId && <FoundOnWeb firmId={firmId} />}
         {tab === 'dismissed' && firmId && <DismissedRegulations firmId={firmId} />}
+        {tab === 'questions' && firmId && <PossibleMatches firmId={firmId} />}
         {tab === 'hidden' && firmId && <HiddenByReview firmId={firmId} />}
 
         {tab === 'account' && (

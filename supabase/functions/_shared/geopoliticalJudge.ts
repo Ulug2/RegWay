@@ -4,6 +4,7 @@
 // by exactly the rules the original match was.
 
 import { resolveEntity } from './entityNames.ts'
+import { DEPENDS_ON_FIELD, POSSIBLE_RULE } from './possibleMatch.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { FENCE_RULE, untrusted } from './security/guard.ts'
 import { describeFootprint, overlaps, type EntityFootprint } from './footprint.ts'
@@ -59,6 +60,8 @@ Language rules for every reason (these are hard rules):
 - State the possible effect conditionally ("could affect", "if it sources from") and name what is unknown.
 
 Scope: "company" (with the exact company name) for a portfolio company's connection; "firm" only for the firm's own headquarters/domicile. Never use "fund": a fund's exposure is derived automatically from the companies it is recorded as holding, so judge companies and the firm only. Return at least one verdict for every numbered development; add one verdict per additional company the same development connects to.
+
+${POSSIBLE_RULE}
 
 ${FENCE_RULE}`
 
@@ -118,6 +121,7 @@ export async function judgeGeopolitical(
                   },
                   scope: { type: 'string', enum: ['firm', 'company'] },
                   entity_name: { type: 'string', description: 'Exact portfolio company name if scope is company, else empty string' },
+                  depends_on: DEPENDS_ON_FIELD,
                 },
                 required: ['index', 'relevant', 'reason', 'scope'],
               },
