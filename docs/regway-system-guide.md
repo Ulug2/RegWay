@@ -723,12 +723,28 @@ Today accuracy is measured by hand ("10 of 11 right" after the Skeptic,
 §7.4). That counts only the matches a user saw. Nothing measures the real
 matches the Skeptic hid, so over-rejection is invisible.
 
-- **The set:** about 150 documents from `regulations` (regulatory,
-  geopolitical, enforcement; some easy, some borderline, some that fooled a
-  judge before), each with the right verdict for H.I.G. marked by hand: the
-  entity it applies to, or "not relevant". Stored in the repo as a fixture
-  with H.I.G.'s profile at that date, so a profile edit doesn't change the
-  answers.
+- **The set:** about 150 documents from `regulations`, each with the right
+  verdict for H.I.G.: the entity it applies to, or "not relevant". Stored in
+  the repo as a fixture with H.I.G.'s profile at that date, so a profile
+  edit doesn't change the answers. Built 2026-11-25
+  (`tests/eval/hig-2026-11-25.json`, 146 documents) by `pnpm
+  eval:build-set` (`scripts/eval/selectSet.ts`): what production matched,
+  what the Skeptic rejected, what the judges rejected (half from agencies
+  close to the firm's business) and what was never judged, regulatory and
+  geopolitical, shared across sources by the square root of their size;
+  each keeps what production said (`regway`) and, for the marker only, the
+  start of a Federal Register document's full text. Enforcement is left
+  out (its judge isn't scored yet), and so are company web-scan results.
+- **Marking:** by the owner's choice (2026-11-25), Claude Fable 5.2 at
+  extra-high effort, used for this only (`pnpm eval:mark`,
+  `scripts/eval/markSet.ts`): it sees every recorded fact about the firm,
+  its funds and companies, with where each came from and the holdings,
+  never what RegWay said, and marks by the judges' own standard with a
+  reason and a confidence; code drops answers that name an entity the firm
+  doesn't have or a fund on a geopolitical item. `estimate` (free),
+  `pilot`, `submit` (batch, half price), `collect`, `compare` (free: the
+  marks against production). Measured: $0.11 a document direct, $0.054 by
+  batch. Read the low-confidence marks before trusting a score.
 - **The score:** precision (of what we show, how much is right), recall (of
   what is right, how much we show) and cost, per judge, with and without
   the Skeptic. One command runs it (`pnpm eval:matching`); it calls the real

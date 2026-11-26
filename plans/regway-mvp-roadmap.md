@@ -177,9 +177,12 @@ asks for.
    prompt snapshots (`tests/unit/prompts/`) and the scoring command
    (`pnpm eval:matching <set.json> [--skeptic]`: prints the estimated cost
    and asks before calling the AI; results go in `plans/eval-history.md`).
-   Owner: mark the right verdict for about 150 documents for H.I.G. in the
-   format of `tests/eval/matching-set.json`, and run it. Not covered yet
-   by the score: the enforcement judge (not exported from its function).
+   The set is built (2026-11-25, `tests/eval/hig-2026-11-25.json`, 146
+   documents, history); 5 marked by Claude Fable 5.2 as a pilot. Owner:
+   `pnpm eval:mark submit` for the other 141 (about $7.70 by batch), then
+   `collect`, read the low-confidence marks, and run `pnpm eval:matching
+   tests/eval/hig-2026-11-25.json --skeptic`. Not covered yet by the
+   score: the enforcement judge (not exported from its function).
 2. **Fence outside text in every prompt** (S–M, §17.2): built and
    deployed 2026-11-22/23 (history). Flagged text can be listed from
    `ai_traces` (query in the guide, §17.2). Left: show it to the owner in
@@ -190,10 +193,10 @@ asks for.
 4. **Citation check in code first** (S–M, §17.4).
 5. **The Skeptic must show evidence to reject** (S, §17.5). Merge only
    after the test set (1) shows recall up and precision not down.
-6. **Learn facts from what users type** (M, §17.6): built 2026-11-23
-   (history). Waits on: migration 0054, then deploy `regway-ai-chat`,
-   `rematch-regulation`, `research-firm` and the functions that read
-   entity facts. Later: the judges reading notes.
+6. **Learn facts from what users type** (M, §17.6): built 2026-11-23,
+   migration 0054 applied and 10 functions deployed 2026-11-25 (history).
+   Next (owner, 2026-11-25): the judges read "Other facts" too, scored
+   against the test set (1).
 7. **Chat queries the firm's data** (M, §17.7). Touches
    `regway-ai-chat`, where issues #38 and #39 also work: check with them.
 8. **Read SEC PDFs with code first** (S, §17.8): built and deployed

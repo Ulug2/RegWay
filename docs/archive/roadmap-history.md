@@ -91,6 +91,37 @@
   migration applied to a local database; run locally against the live
   API: 100 releases read, 1 kept and stored.
 
+### The test set for matching, built and marked by Fable 5.2 (2026-11-25, Sidekick item 1)
+- `pnpm eval:build-set` (`scripts/eval-build-set.ts`, choice in
+  `scripts/eval/selectSet.ts`) reads a firm from a database with the
+  service key, passed in the environment from `supabase projects api-keys`
+  and never written down, and writes a set: the firm, funds, companies
+  and holdings as they stand, and documents by kind (regulatory: matched
+  15, Skeptic-rejected 25, judge-rejected 45 of which half from agencies
+  near the firm's business, unjudged 25; geopolitical: 6, 8, 12, 10),
+  shared across sources by the square root of their size (103 Federal
+  Register, 43 from nine other sources). Each keeps what production said;
+  Federal Register documents carry the start of their full text (6,000
+  characters) for the marker. No AI, no cost.
+- `pnpm eval:mark` (`scripts/eval-mark-set.ts`, prompt and checks in
+  `scripts/eval/markSet.ts`): Claude Fable 5.2 at extra-high effort, by
+  the owner's choice for this job only; structured output, five documents
+  a request with the firm's context cached; Anthropic's batch service for
+  the full run. The marker never sees production's answer.
+- **Pilot, 5 documents:** $0.54 (2,316 output tokens a document), every
+  answer passed the checks. Four of five differ from production: two
+  firm-level matches the marker gives to a company instead (an EU
+  workplace-exposure directive: the battery maker; an FCA
+  transaction-reporting consultation: the UK wealth manager), and two where
+  it adds an entity (the battery maker on the new EU Customs Code; the
+  firm, for its London office, on an FCA client-categorisation rule). The
+  other 141 would cost about $7.70 by batch, more than the credit left, so
+  they wait for the owner.
+- **Verified:** 6 unit tests (`evalSet.test.ts`: production's verdicts
+  told apart, the same seed picks the same documents, the marker sees
+  every fact but never production's answer, answers checked, batches
+  priced), `deno check` on the three scripts.
+
 ### The fund filter is a menu (2026-11-25)
 - The owner asked for a dropdown in RegWay's style instead of the row of
   fund chips: the Portfolio Companies level now has one menu ("All funds
