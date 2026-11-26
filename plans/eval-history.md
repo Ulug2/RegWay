@@ -8,6 +8,51 @@ Record: the date, the set's name and size, the commit, the models, precision
 and recall with the judges alone and with the Skeptic, the cost, and what
 changed since the previous run.
 
+## 2026-11-25: possible matches, and a second set (branch `feat/possible-matches`)
+
+- **Changed:** the regulatory and geopolitical judges name a fact a
+  document turns on, when it isn't recorded, as a yes/no question
+  (`depends_on`, `_shared/possibleMatch.ts`). Those are saved as possible
+  matches, not matches: precision and recall are unchanged in meaning, and
+  a new line counts the possible ones: a missed match a question brings
+  back, and a question about something that doesn't apply.
+  **Models:** as `feat/new-models` (Sonnet 5.5 Skeptic and geopolitical
+  judge); the regulatory judge as given. **Set:** "H.I.G. Capital,
+  2026-11-25", 146 documents, 25 real matches.
+
+| Run | Regulatory judge | Judges + Skeptic | Possible: found / about nothing | Cost |
+|---|---|---|---|---|
+| D1 | Haiku 4.5 | 66.7% / 32.0% (8, 4, 17) | 4 / 4 | $0.31 |
+| D2 | Haiku 4.5 | 53.8% / 28.0% (7, 6, 18) | 4 / 7 | $0.28 |
+| F1 | Haiku 5.5, effort low | 70.0% / 28.0% (7, 3, 18) | 4 / 5 | $0.17 |
+| E1 | Haiku 5.5, effort medium (all jobs) | 70.0% / 28.0% (7, 3, 18) | 6 / 8 | $0.16 |
+| E2 | Haiku 5.5, effort medium (all jobs) | 61.5% / 32.0% (8, 5, 17) | 4 / 10 | $0.17 |
+
+- **What it adds:** every run brought back 4 to 6 of the missed matches
+  as one question each: with one answer, 11 to 13 of the 25 instead of 7
+  or 8. At a cost of 4 to 10 questions per 146 documents whose answer is
+  no (each no is saved as a fact too).
+- The questions read well, e.g. "Does H.I.G. Capital employ workers in the
+  United Kingdom?" (UK employment law, twice), "Does A.L.A. S.p.A. ship or
+  export defense articles on the U.S. Munitions List?" (ITAR), "Does A.L.A.
+  S.p.A. import aircraft or engine parts into the United States?". The
+  reason under a question does not always say what would apply if yes:
+  the page labels it "For <entity>:".
+- Recall with the Skeptic is a little under the last run (7 or 8 right,
+  against 10): within what two runs vary by (D1 and D2 had the same
+  prompt), and the possible matches more than make it up.
+- **Second set:** "H.I.G. Capital, 2026-11-26"
+  (`tests/eval/hig-2026-11-25-b.json`), 150 more documents none of which
+  is in the first (`--exclude`), marked by Fable 5.2 for $2.98. The first
+  set had taken every document production matched, so this one is the
+  Skeptic's rejections (16), the judges' rejections (87, half from
+  agencies near H.I.G.'s business; `--rejected 87`) and never-judged ones.
+  **Only 6 of the 150 apply:** production's rejections were right about 96
+  times in 100. Together: 296 documents, 31 real matches
+  (`pnpm eval:matching <set> <set> --skeptic` scores them as one). Not yet
+  scored together: the account reached its monthly API limit (until
+  2026-12-01) as these runs started.
+
 ## 2026-11-25: off Sonnet 4.5 (branch `feat/new-models`)
 
 - **Why:** Sonnet 4.5 retires on 2026-11-30. Every Sonnet job moves to

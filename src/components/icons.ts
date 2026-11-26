@@ -24,6 +24,7 @@ export {
   Moon,
   NotePencil,
   PaperPlaneRight,
+  Question,
   Paperclip,
   Plus,
   SidebarSimple,

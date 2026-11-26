@@ -181,8 +181,13 @@ asks for.
    146 documents, Claude Fable 5.2, $3.40; history). First score in
    `plans/eval-history.md`: precision 36.4%, recall 32.0% with the
    Skeptic. Shortened names fixed 2026-11-26 (with the Skeptic: precision
-   71.4%, recall 40.0%). Not covered yet by the
-   score: the enforcement judge (not exported from its function).
+   71.4%, recall 40.0%). A second set, 150 more documents (6 apply),
+   2026-11-25: `tests/eval/hig-2026-11-25-b.json`, scored together with
+   the first by passing both. Possible matches (one question each) scored
+   2026-11-25. Not covered yet by the score: the enforcement judge (not
+   exported from its function). Open (owner): score both sets together once
+   the API limit resets (2026-12-01), then decide Haiku 4.5 or 5.5 for the
+   regulatory judge.
 2. **Fence outside text in every prompt** (S–M, §17.2): built and
    deployed 2026-11-22/23 (history). Flagged text can be listed from
    `ai_traces` (query in the guide, §17.2). Left: show it to the owner in

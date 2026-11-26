@@ -640,6 +640,49 @@ export async function fetchHiddenByReview(firmId: string): Promise<HiddenMatch[]
     }))
 }
 
+// Possible matches: a development that applies if one unrecorded fact is
+// true, stored as not relevant with that fact as a question in front of its
+// reason (POSSIBLE_PREFIX in supabase/functions/_shared/possibleMatch.ts).
+const POSSIBLE = 'NOT_RELEVANT: Possible: '
+
+export interface PossibleMatch {
+  id: string
+  regulation: Regulation
+  // The fund or company it would apply to; null for the firm itself.
+  entity: string | null
+  question: string
+  // The judge's reason, about the entity.
+  reason: string
+}
+
+export async function fetchPossibleMatches(firmId: string): Promise<PossibleMatch[]> {
+  const { data, error } = await supabase
+    .from('regulation_relevance')
+    .select('id, relevance_reason, created_at, funds(name), portfolio_companies(name), regulations(*)')
+    .eq('firm_id', firmId)
+    .is('dismissed_at', null)
+    .like('relevance_reason', `${POSSIBLE}%`)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  type Row = { id: string; relevance_reason: string; funds: { name: string } | null; portfolio_companies: { name: string } | null; regulations: Regulation | null }
+  return (data as unknown as Row[])
+    .filter(r => r.regulations)
+    .map(r => {
+      const [question, ...reason] = r.relevance_reason.slice(POSSIBLE.length).split('\n')
+      return { id: r.id, regulation: r.regulations as Regulation, entity: r.portfolio_companies?.name ?? r.funds?.name ?? null, question, reason: reason.join('\n') }
+    })
+}
+
+// Answers the question (migration 0055): the answer joins the entity's
+// other facts, and every possible match of it on the same question becomes
+// a match (yes) or is set aside (no). Returns how many it settled.
+export async function answerPossibleMatch(relevanceId: string, yes: boolean): Promise<number> {
+  const { data, error } = await supabase.rpc('answer_possible_match', { p_relevance_id: relevanceId, p_yes: yes })
+  if (error) throw error
+  dropCache('regs:pe', 'regs:fund', 'regs:company')
+  return Number(data ?? 0)
+}
+
 // Puts a hidden match back with the reason the matcher gave
 // (migration 0040), so it returns to the dashboard.
 export async function restoreHiddenMatch(relevanceId: string): Promise<void> {

@@ -1,6 +1,7 @@
-// pnpm eval:matching [set.json] [--skeptic] [--yes] [--regulatory-model=ID] [--geopolitical-model=ID]
+// pnpm eval:matching [set.json ...] [--skeptic] [--yes] [--regulatory-model=ID] [--geopolitical-model=ID]
 //
-// A model flag tries that model for the judge instead of its own; the
+// Several sets of the same firm are scored as one (their documents
+// together). A model flag tries that model for the judge instead of its own; the
 // AI_EFFORT variable sets how hard a Claude 5 model thinks (ai/modelRules.ts).
 //
 // Scores RegWay's matcher against a hand-marked test set (system guide
@@ -18,12 +19,20 @@ import { formatScore } from './eval/score.ts'
 import { runEval } from './eval/run.ts'
 
 const args = Deno.args
-const path = args.find(a => !a.startsWith('--')) ?? 'tests/eval/matching-set.json'
+const paths = args.filter(a => !a.startsWith('--'))
+if (!paths.length) paths.push('tests/eval/matching-set.json')
+const path = paths.join(' + ')
 const flag = (name: string) => args.find(a => a.startsWith(`--${name}=`))?.split('=')[1]
 const models = { regulatory: flag('regulatory-model'), geopolitical: flag('geopolitical-model') }
 const withSkeptic = args.includes('--skeptic')
 
-const set = JSON.parse(await Deno.readTextFile(path)) as MatchingSet
+const sets = await Promise.all(paths.map(async p => JSON.parse(await Deno.readTextFile(p)) as MatchingSet))
+const sameFirm = (a: MatchingSet, b: MatchingSet) => JSON.stringify([a.firm, a.funds, a.companies, a.holdings]) === JSON.stringify([b.firm, b.funds, b.companies, b.holdings])
+if (sets.some(s => !sameFirm(s, sets[0]))) {
+  console.error('These sets record the firm differently; score them one at a time.')
+  Deno.exit(1)
+}
+const set: MatchingSet = { ...sets[0], name: sets.map(s => s.name).join(' + '), documents: sets.flatMap(s => s.documents) }
 const problems = problemsWith(set)
 if (problems.length) {
   console.error(`The set in ${path} can't be scored:\n- ${problems.join('\n- ')}`)
@@ -51,5 +60,6 @@ for (const skeptic of runs) {
     console.log(`  ${m.id} ${doc.title.slice(0, 80)}`)
     if (m.extra.length) console.log(`    shown wrongly: ${m.extra.join(', ')}`)
     if (m.missed.length) console.log(`    missed: ${m.missed.join(', ')}${doc.why ? ` (marked because: ${doc.why})` : ''}`)
+    if (m.possible.length) console.log(`    possible: ${m.possible.join(', ')}`)
   }
 }

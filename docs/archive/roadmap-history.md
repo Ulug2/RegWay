@@ -9,6 +9,33 @@
 >
 > New entries go directly below this box, newest first.
 
+### Possible matches, and a second test set (2026-11-25)
+- A document that applies to an entity only if one unrecorded fact is
+  true (and what is recorded points towards it) was a plain rejection no
+  one saw; most of the matches the test set missed were such. The
+  regulatory and geopolitical judges now name the fact as a yes/no
+  question (`depends_on`, `_shared/possibleMatch.ts`), saved as
+  `NOT_RELEVANT: Possible: <question>` + the reason: off the dashboard,
+  out of emails and analyses. A match beats a possible match beats a
+  rejection for the same row.
+- The dashboard says how many are waiting (`QuestionsCard`); Profile →
+  **Questions** lists them with Yes / No. `answer_possible_match`
+  (migration 0055, no AI call) saves the answer to the entity's other
+  facts (with its source) and settles every possible match of that entity
+  on the same question: yes makes them matches with the answer in the
+  reason, no sets them aside. Tested on the local database: both rows on
+  one question settled by one yes, the fact saved once, a no recorded, a
+  row that isn't a possible match refused.
+- Scored (`plans/eval-history.md`): 4 to 6 of the 25 missed matches come
+  back as one question each, for 4 to 10 questions per 146 documents whose
+  answer is no.
+- A second test set: 150 documents not in the first, marked by Fable 5.2
+  for $2.98 (`eval:build-set --exclude <set> --rejected N`). Only 6 apply:
+  production's rejections were right about 96 times in 100.
+  `pnpm eval:matching` scores several sets of one firm as one.
+- Tests: `tests/unit/possibleMatch.test.ts`, `tests/e2e/possibleMatches.spec.ts`;
+  the browser mock's `like` now matches across lines, as Postgres does.
+
 ### Off Sonnet 4.5 (2026-11-25)
 - Sonnet 4.5 retires on 2026-11-30. Every job on it (geopolitical and
   enforcement judges, Skeptic, analyses, chat, company scan, firm

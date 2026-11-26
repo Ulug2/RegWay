@@ -143,7 +143,7 @@ function matches(row: Row, column: string, expr: string): boolean {
   if (op === 'in') return arg.slice(1, -1).split(',').map(v => v.replace(/^"|"$/g, '')).includes(String(value))
   if (op === 'gt') return String(value) > arg
   if (op === 'not') return !matches(row, column, arg)
-  if (op === 'like') return new RegExp(`^${arg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%|\\\*/g, '.*')}$`).test(String(value ?? ''))
+  if (op === 'like') return new RegExp(`^${arg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%|\\\*/g, '.*')}$`, 's').test(String(value ?? ''))
   throw new Error(`mockBackend: unsupported filter ${column}=${expr}`)
 }
 

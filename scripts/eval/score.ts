@@ -19,6 +19,9 @@ export interface DocumentResult {
   id: string
   expected: EntityRef[]
   predicted: EntityRef[]
+  // Shown as possible matches, each behind one yes/no question
+  // (_shared/possibleMatch.ts); not counted in precision or recall.
+  possible?: EntityRef[]
 }
 
 export interface Score {
@@ -31,8 +34,12 @@ export interface Score {
   recall: number | null
   // Documents RegWay got exactly right (the same set of entities).
   exact: number
+  // Possible matches: a missed match a question would bring back, and a
+  // question about something that doesn't apply.
+  possibleRight: number
+  possibleWrong: number
   // Per document, what went wrong, for reading.
-  mistakes: { id: string; extra: string[]; missed: string[] }[]
+  mistakes: { id: string; extra: string[]; missed: string[]; possible: string[] }[]
 }
 
 export function score(results: DocumentResult[]): Score {
@@ -40,17 +47,22 @@ export function score(results: DocumentResult[]): Score {
   let fp = 0
   let fn = 0
   let exact = 0
+  let possibleRight = 0
+  let possibleWrong = 0
   const mistakes: Score['mistakes'] = []
   for (const r of results) {
     const expected = new Set(r.expected.map(entityKey))
     const predicted = new Set(r.predicted.map(entityKey))
     const extra = [...predicted].filter(k => !expected.has(k))
     const missed = [...expected].filter(k => !predicted.has(k))
+    const possible = [...new Set((r.possible ?? []).map(entityKey))].filter(k => !predicted.has(k))
+    possibleRight += possible.filter(k => expected.has(k)).length
+    possibleWrong += possible.filter(k => !expected.has(k)).length
     tp += predicted.size - extra.length
     fp += extra.length
     fn += missed.length
     if (extra.length === 0 && missed.length === 0) exact += 1
-    else mistakes.push({ id: r.id, extra, missed })
+    if (extra.length || missed.length || possible.length) mistakes.push({ id: r.id, extra, missed, possible })
   }
   return {
     documents: results.length,
@@ -60,6 +72,8 @@ export function score(results: DocumentResult[]): Score {
     precision: tp + fp ? tp / (tp + fp) : null,
     recall: tp + fn ? tp / (tp + fn) : null,
     exact,
+    possibleRight,
+    possibleWrong,
     mistakes,
   }
 }
@@ -67,5 +81,5 @@ export function score(results: DocumentResult[]): Score {
 const pct = (n: number | null) => (n === null ? 'n/a' : `${(n * 100).toFixed(1)}%`)
 
 export function formatScore(label: string, s: Score, costUsd: number): string {
-  return `${label}: precision ${pct(s.precision)}, recall ${pct(s.recall)} (${s.truePositives} right, ${s.falsePositives} shown wrongly, ${s.falseNegatives} missed), ${s.exact} of ${s.documents} documents exactly right, $${costUsd.toFixed(3)}`
+  return `${label}: precision ${pct(s.precision)}, recall ${pct(s.recall)} (${s.truePositives} right, ${s.falsePositives} shown wrongly, ${s.falseNegatives} missed), ${s.exact} of ${s.documents} documents exactly right, $${costUsd.toFixed(3)}${s.possibleRight || s.possibleWrong ? `; possible matches: ${s.possibleRight} of the missed found by one question, ${s.possibleWrong} questions about something that doesn't apply` : ''}`
 }

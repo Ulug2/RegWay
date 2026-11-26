@@ -355,6 +355,22 @@ limited to 15 calls an hour per user.
   label. The reason must never imply the entity did anything wrong. Not yet
   reviewed by the Skeptic.
 
+- **Possible matches** (regulatory and geopolitical judges,
+  `_shared/possibleMatch.ts`). When a document would apply to an entity
+  only if one unrecorded fact is true, and what is recorded points towards
+  it (an aerospace logistics company and ITAR, when whether it ships defense
+  articles isn't recorded), the judge marks it not relevant and names the
+  fact as a yes/no question (`depends_on`). It is saved as
+  `NOT_RELEVANT: Possible: <question>` + the reason, so it stays off the
+  dashboard, out of emails and analyses. The dashboard says how many are
+  waiting; Profile → Questions lists them. A member's answer
+  (`answer_possible_match`, migration 0055, no AI call) is saved to the
+  entity's other facts, which every matcher reads, and settles every
+  possible match of that entity on the same question: a yes makes them
+  matches, with the answer in the reason; a no sets them aside. Before, most
+  of the matches the test set missed turned on such a fact and were never
+  seen.
+
 ### 7.3 Re-checks
 
 `rematch-regulation` re-judges one development with the exact prompt the
