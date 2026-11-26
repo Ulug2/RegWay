@@ -91,6 +91,25 @@
   migration applied to a local database; run locally against the live
   API: 100 releases read, 1 kept and stored.
 
+### A fund or company found under a shortened name (2026-11-26)
+- The first scored test set showed the matchers often shorten a name
+  ("Brightwell Wealth" for "Brightwell Wealth (test)", "A.L.A. S.p.A."
+  without its bracketed part). `buildRelevanceRows` looked names up
+  exactly and saved such a match as the firm's (two rows on H.I.G.: the
+  FCA transaction-reporting consultation and the EU cobalt-exposure
+  directive); the geopolitical judge dropped it; the Skeptic's
+  `findEntity` and review-existing-matches missed it too.
+- `resolveEntity` (`_shared/entityNames.ts`): the exact name in any case,
+  then the name without brackets and punctuation, then one name starting
+  with the other word for word; two candidates give nothing. Used when
+  saving a match, in the geopolitical judge, the Skeptic, the review job,
+  the fact learner and the scoring. A fund or company still not found is
+  kept only as a not-relevant marker, never as the firm's match.
+- **Verified:** 6 unit tests (`entityNames.test.ts`); 814 unit tests and
+  the function type checks pass. Scored against the set: with the
+  Skeptic, precision 36.4% → 71.4%, recall 32.0% → 40.0%
+  (`plans/eval-history.md`, $0.40).
+
 ### The test set for matching, built and marked by Fable 5.2 (2026-11-25, Sidekick item 1)
 - `pnpm eval:build-set` (`scripts/eval-build-set.ts`, choice in
   `scripts/eval/selectSet.ts`) reads a firm from a database with the

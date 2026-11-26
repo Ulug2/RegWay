@@ -26,6 +26,7 @@
 //
 //   Authorization: Bearer <service key>
 
+import { resolveEntity } from '../_shared/entityNames.ts'
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { handleOptions, json } from '../_shared/cors.ts'
 import { syncHoldingsRollup } from '../_shared/holdings.ts'
@@ -137,7 +138,7 @@ interface StoredReview {
 
 // The (fund_id, portfolio_company_id) pair a moved match is stored under.
 function targetOf(review: StoredReview, funds: FundRow[], companies: CompanyRow[]): { fund_id: string | null; portfolio_company_id: string | null } | null {
-  const named = (rows: { id: string; name: string }[]) => rows.find(r => r.name.toLowerCase() === (review.entity_name ?? '').toLowerCase())?.id
+  const named = (rows: { id: string; name: string }[]) => resolveEntity(rows, review.entity_name)?.id
   if (review.scope === 'firm') return { fund_id: null, portfolio_company_id: null }
   const id = named(review.scope === 'fund' ? funds : companies)
   if (!id) return null

@@ -180,9 +180,8 @@ asks for.
    The set is built and marked (2026-11-25, `tests/eval/hig-2026-11-25.json`,
    146 documents, Claude Fable 5.2, $3.40; history). First score in
    `plans/eval-history.md`: precision 36.4%, recall 32.0% with the
-   Skeptic. Next: production saves a match under a shortened company name
-   ("Brightwell Wealth" for "Brightwell Wealth (test)") as the firm's
-   (`buildRelevanceRows`); fix, then score again. Not covered yet by the
+   Skeptic. Shortened names fixed 2026-11-26 (with the Skeptic: precision
+   71.4%, recall 40.0%). Not covered yet by the
    score: the enforcement judge (not exported from its function).
 2. **Fence outside text in every prompt** (S–M, §17.2): built and
    deployed 2026-11-22/23 (history). Flagged text can be listed from

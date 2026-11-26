@@ -18,6 +18,7 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { fromRow, type Scope } from '../../../src/lib/questionnaire.ts'
+import { resolveEntity } from './entityNames.ts'
 import { MODEL_FOR } from './ai/models.ts'
 import { runTool, type ToolSpec } from './ai/structured.ts'
 import { SAYABLE, catalogue, compare, normalise, questionFor } from './research/fields.ts'
@@ -132,7 +133,7 @@ const squash = (s: string) =>
     .replace(/\s+/g, ' ')
     .trim()
 
-const byName = (rows: Row[], name: string) => rows.find(r => r.name.trim().toLowerCase() === name.trim().toLowerCase())
+const byName = (rows: Row[], name: string) => resolveEntity(rows, name) ?? undefined
 
 // What the model proposed, kept only where it checks out.
 export function vetFacts(entities: Entities, extracted: Extracted, text: string): Proposal[] {
