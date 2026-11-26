@@ -975,8 +975,15 @@
         ],
         "reason": "This CMS final rule updates Medicare physician fee schedule, Part B payment policies, and Medicare Shared Savings Program requirements; GetixHealth provides revenue cycle management and billing services to healthcare providers and is affected by changes to Medicare payment and coverage policies."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "company",
+          "name": "GetixHealth"
+        }
+      ],
+      "why": "The CY 2027 Physician Fee Schedule final rule changes Medicare Part B coding, payment and billing policies and codifies Medicare coverage limits from January 1, 2027. GetixHealth's medical billing and coding, insurance billing, claims management and eligibility services for providers nationwide must apply these to the claims it prepares. The rule binds providers directly and GetixHealth only as their billing agent, and its clients' Medicare Part B volume is not recorded.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "46e963e0-e29b-4959-aeea-41957c62983f",
@@ -1001,8 +1008,14 @@
         ],
         "reason": "H.I.G. Capital is an SEC-registered investment adviser; the proposed rescission of the political contribution rule under the Advisers Act directly affects the firm's compliance obligations and current restrictions on political contributions by the adviser and its employees."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "firm"
+        }
+      ],
+      "why": "The SEC proposes to rescind the pay-to-play rule (206(4)-5) and amend the rule 204-2 political-contribution records, which bind H.I.G. Capital as an SEC-registered investment adviser to private funds. That would change its pay-to-play policies, code of ethics and recordkeeping. The duty sits with the adviser, not the funds or portfolio companies; whether the funds have government-entity investors is not recorded.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "14076793-5058-4073-b96a-4ddaa8aebfc1",
@@ -1027,8 +1040,10 @@
         ],
         "reason": "H.I.G. Capital is an SEC-registered investment adviser required to file on EDGAR; updates to the EDGAR Filer Manual create new technical and procedural filing requirements that the firm must comply with."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a routine EDGAR Filer Manual update: XBRL technical text is relocated, a Form 13F cover-page label is corrected, and electronic filing is introduced for ANE Exception Notices and Form 1 (security-based swap entities and exchanges). It creates no new obligation for the firm, its funds or its companies.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "f07c45ee-52a6-41ab-8079-c996f71ac87e",
@@ -1053,8 +1068,10 @@
         ],
         "reason": "This CMS final rule updates Medicare home health payment rates, quality reporting requirements, and DMEPOS policies; GetixHealth provides revenue cycle management and billing services to healthcare providers and is affected by changes to Medicare payment policies and provider enrollment requirements."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The rule sets CY 2027 home health payment rates and quality reporting, DMEPOS policies and Medicare provider and supplier enrollment requirements, which bind home health agencies, DME suppliers and enrolled providers. GetixHealth is a revenue cycle vendor, not an enrolled provider or supplier, and no home health or DME clients are recorded. The answer would change only if it bills for such clients, which is unknown.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "1ea9f891-efd6-43de-a68a-751e58021c79",
@@ -1079,8 +1096,10 @@
         ],
         "reason": "This proposed rule reforms Medicare and Medicaid regulations to reduce administrative burdens on healthcare providers; GetixHealth provides revenue cycle management solutions to healthcare providers and is directly affected by changes to Medicare and Medicaid administrative requirements."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposal would pare back health-and-safety Conditions of Participation and Medicaid institutional payment reporting for hospitals, long-term care facilities and other certified providers and suppliers. No recorded entity is such a provider; GetixHealth supplies billing and revenue cycle services and is not subject to these conditions.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "0bc31300-78d2-4daf-a34a-598f9d9fa59c",
@@ -1105,8 +1124,14 @@
         ],
         "reason": "This CFTC rule expands exemptions from commodity pool operator registration for SEC-registered investment advisers managing commodity pools; H.I.G. Capital is an SEC-registered investment adviser that may manage commodity pools or related investment vehicles, making this rule potentially relevant to its registration and compliance obligations."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "firm"
+        }
+      ],
+      "why": "The proposal would add a CPO registration exemption (and a related CTA one) for SEC-registered investment advisers operating pools limited to sophisticated investors, and would supersede existing staff no-action positions; H.I.G. is an SEC-registered adviser to private funds, so its CPO/CTA status analysis would change. It turns on whether its funds trade commodity interests such as swaps or futures, which is not recorded; the registration question sits with the operator, so no fund is matched.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "152c473d-626a-4db0-a1ea-eb5a264db69c",
@@ -1131,8 +1156,14 @@
         ],
         "reason": "H.I.G. Capital is an SEC Registered Investment Adviser to private funds (H.I.G. Capital Partners VII and H.I.G. Advantage Buyout Fund), making it subject to Form PF reporting requirements and this compliance date extension to July 1, 2027."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "firm"
+        }
+      ],
+      "why": "H.I.G. is an SEC-registered investment adviser to private funds with $25B+ AUM, so it files Form PF, and this joint final rule moves its compliance date for the 2024 Form PF amendments from October 1, 2026 to July 1, 2027. The filing obligation is the adviser's, not the fund vehicles'.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "231bd9f8-490d-4ff6-b550-58b6dac2a984",
@@ -1157,8 +1188,10 @@
         ],
         "reason": "H.I.G. Capital is an SEC Registered Investment Adviser managing multiple funds; if any fund qualifies as a QPAM under ERISA, the proposed QROAD class exemption may provide relief from disqualification events, creating a potential compliance pathway relevant to the firm's fund management operations. Depends on facts not recorded: whether H.I.G. Capital or any of its funds qualifies as a QPAM under ERISA."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposed exemption only gives a re-eligibility path to a QPAM that manages ERISA plan assets under PTE 84-14 and has had a disqualifying event under Section I(g). Nothing recorded shows H.I.G. acts as a QPAM, manages plan assets, or has had such an event, and no portfolio company is an asset manager for ERISA plans.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "09ee5069-f80d-4d96-b524-07b1afd02a2e",
@@ -1183,8 +1216,10 @@
         ],
         "reason": "SEC proposal to expand retail access to private markets and regulated fund structures; H.I.G. Capital manages private equity funds and this proposal directly affects fund structure and retail distribution options."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposal is permissive and aimed at retail access through regulated fund structures; the recorded H.I.G. funds are private LP/SCSp vehicles, and no registered fund, BDC or retail product is recorded, so no specific obligation can be named. The summary is truncated, so this turns on whether the full proposal also changes private-fund offering rules such as investor eligibility.",
+      "confidence": "low",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "e4202c28-7ab7-433e-badc-c2c1e7ef12cd",
@@ -1209,8 +1244,22 @@
         ],
         "reason": "A.L.A. S.p.A. operates in the United Kingdom and must comply with UK employment law under the Employment Rights Act 2025 commencement regulations."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "company",
+          "name": "Brightwell Wealth (test)"
+        },
+        {
+          "scope": "company",
+          "name": "A.L.A. S.p.A. (Advanced Logistics for Aerospace)"
+        },
+        {
+          "scope": "firm"
+        }
+      ],
+      "why": "The regulations bring Employment Rights Act 2025 provisions into force on 30 October 2026; the summary does not list them, but the government's October 2026 tranche (as I recall it) covers fire-and-rehire limits, the 'all reasonable steps' harassment duty and third-party harassment liability, all binding on UK employers. Brightwell is a London-headquartered employer of 500-999 staff, A.L.A. has a London facility and UK operations, and the firm has a London office; A.L.A. and the firm turn on their having UK staff, which is not recorded.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "a5b5e3e6-50f2-42e1-860a-b9977e77b3c9",
@@ -1235,8 +1284,10 @@
         ],
         "reason": "ESMA MAR guidelines on delay in disclosure of inside information bind issuers and market participants, but the fund's recorded structure (Luxembourg SCSp) and strategy (buyout) do not establish that it is an issuer or market participant subject to Market Abuse Regulation."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The MAR guidelines on delaying disclosure of inside information bind issuers with financial instruments admitted to trading on EU venues. No fund or company is recorded as a listed issuer (A.L.A. and Rheintal are recorded only as sponsor-controlled private companies, and Brightwell is UK-only), and the firm is an adviser, not an issuer.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "52b766b8-28c0-4a59-a72d-380564a79c61",
@@ -1261,8 +1312,10 @@
         ],
         "reason": "ESMA guidance on T+1 settlement transition binds entities engaged in securities trading and settlement, but the fund's recorded structure (Luxembourg SCSp) and strategy (buyout) do not establish that it is a market participant subject to settlement obligations rather than an investment vehicle."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The EU move to T+1 on 11 October 2027 falls on CSDs, trading venues, investment firms and others that trade and settle EU transferable securities. The firm and its funds are recorded as buyout, growth and special-situations investors with no recorded listed-securities trading in the EU, and Brightwell Wealth is recorded as authorised and operating only in the UK, so the EU measure does not bind it. The answer would turn on unrecorded EU securities trading.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "0b134b77-1045-4fa4-8424-e0012d7b3a4e",
@@ -1287,8 +1340,10 @@
         ],
         "reason": "EU Regulation 2026/2381 on acceleration of permit-granting processes for defence readiness projects applies to entities undertaking defence readiness projects requiring permits, but A.L.A. S.p.A. provides logistics services for aerospace and defence manufacturers and nothing is recorded about it undertaking permit-requiring defence readiness projects."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This regulation obliges Member State authorities to speed up permit-granting for defence readiness projects; it places no duty on companies. A.L.A. S.p.A. is a defence and aerospace logistics distributor in Italy and France, but no permit-dependent project is recorded for it, so there is no specific obligation or exposure to name.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "89d9d43a-7a4c-47b7-bfd4-1b1535f45fbb",
@@ -1313,8 +1368,14 @@
         ],
         "reason": "The regulation amends the Annex to EU Regulation 2019/452 on FDI screening framework, but this is an administrative amendment to a list; it does not itself create, change or remove an obligation for the fund, and the underlying screening obligations would apply at the time of specific investments."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "firm"
+        }
+      ],
+      "why": "The amended Annex updates the list of Union-interest programmes whose involvement triggers a Commission opinion under Article 8 of the FDI Screening Regulation, changing the screening exposure of non-EU investors buying EU targets. H.I.G. is a Delaware-domiciled, US-headquartered sponsor actively making control investments in Europe, including in defence and aerospace, so its EU acquisitions and add-ons are foreign direct investments within that mechanism. The regulation imposes no direct filing duty, and the match turns on whether targets take part in listed programmes, which is not recorded.",
+      "confidence": "low",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "ed899545-8b97-41e5-bead-5213dc479e68",
@@ -1339,8 +1400,10 @@
         ],
         "reason": "EU Regulation 2026/2387 establishes the AGILE programme for defence innovation funding and support, but A.L.A. S.p.A. provides logistics and distribution services for aerospace and defence manufacturers, and the measure creates obligations or opportunities for programme participants and administrators, not for logistics service providers in the sector."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "AGILE is an EU funding programme for defence innovation; it offers an opportunity and creates no compliance obligation or deadline. A.L.A. S.p.A. is a defence and aerospace logistics distributor with no recorded participation in or application to EU defence funding, so nothing binds it.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "bbe28ef2-aa0d-4cc4-90ad-2c93972bce7e",
@@ -1365,8 +1428,10 @@
         ],
         "reason": "The FCA consultation concerns workplace pension schemes operated by FCA-regulated firms and their ability to invest in private equity funds, not obligations on the private equity funds themselves; H.I.G. Europe Partners is a Luxembourg SCSp private equity fund, not an FCA-regulated workplace pension scheme operator."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The consultation would relax the charge cap for FCA-regulated firms operating workplace default pension schemes. Brightwell Wealth's recorded pension and ISA platform serves retail consumers and no workplace or auto-enrolment default scheme is recorded, so this turns on that unknown fact. For H.I.G. as a private equity manager it creates only a possible fundraising opportunity, not an obligation.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "318e394a-775d-4c78-852f-d52a415944d3",
@@ -1391,8 +1456,10 @@
         ],
         "reason": "FCA's consolidated tape provider income sharing and operational incident reporting requirements apply to consolidated tape providers and their data contributors (trading venues and APAs), but Brightwell Wealth is recorded as a wealth manager and investment platform, not as a trading venue, APA or consolidated tape provider."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposed rules cover income sharing and incident reporting for UK consolidated tape providers and their data contributors (trading venues and APAs). No entity is recorded as either; Brightwell Wealth is a retail wealth manager and platform.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "93c56d2d-1a84-4730-88e5-37bedec23517",
@@ -1417,8 +1484,10 @@
         ],
         "reason": "FCA guidance on loan-to-income ratios in mortgage lending applies to mortgage lenders; Brightwell Wealth is recorded as providing discretionary portfolio management, pension and ISA platform, and financial advice, with no mortgage lending activity recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The guidance on the FPC loan-to-income flow limit applies to UK mortgage lenders. No entity is recorded as lending on mortgages; Brightwell Wealth offers portfolio management, a pension and ISA platform, and financial advice.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "bba5816e-7ce6-42cb-9ffc-b264aad5ef3d",
@@ -1443,8 +1512,10 @@
         ],
         "reason": "The rule prohibits Medicaid/CHIP payment for specific procedures, but GetixHealth's recorded activity is revenue cycle management services (billing, coding, claims management), not the provision of medical procedures or the determination of which procedures to cover; the connection assumes GetixHealth decides what claims to process rather than processing claims as directed by its healthcare provider clients, which is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The rule binds State Medicaid and CHIP agencies' plans and federal matching funds, not vendors. GetixHealth is a billing and revenue cycle vendor to providers; any effect on it is indirect, and nothing recorded shows its clients furnish or bill these procedures.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "73cc5a29-40d8-4b7b-af3e-5c6e57f60b1c",
@@ -1469,8 +1540,15 @@
         ],
         "reason": "The HIPAA Privacy Rule applies to covered entities (healthcare providers, health plans, and healthcare clearinghouses), but GetixHealth is recorded as providing medical billing and revenue cycle management services, and whether it is a covered entity or business associate under HIPAA is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "company",
+          "name": "GetixHealth"
+        }
+      ],
+      "why": "GetixHealth handles patient health information while doing billing, claims and patient-access work for healthcare providers, which makes it a HIPAA business associate. The final rule changes the right-of-access, fee and business-associate required-disclosure provisions, and it must comply by July 19, 2027, including updating procedures and business associate agreements.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "69dd78de-c34e-45df-93e7-003f29e827cf",
@@ -1495,8 +1573,10 @@
         ],
         "reason": "FINRA rules bind broker-dealers and their members, not investment advisers; H.I.G. Capital is recorded as an SEC-registered investment adviser, not a FINRA member or broker-dealer, and the document extends a reporting exception without creating new obligations."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This extends a temporary exception for FINRA member broker-dealers from reporting overnight OTC trades in NMS stocks to the Trade Reporting Facilities before 8:00 a.m. The firm is recorded as an SEC-registered investment adviser, not a FINRA member, and no fund or portfolio company is recorded as a US broker-dealer with trade reporting obligations.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "95b3e0f8-0f20-411a-b925-8403ccb2b316",
@@ -1521,8 +1601,10 @@
         ],
         "reason": "The EPA rule updates Florida air quality reporting and permitting requirements for facilities with air emissions; H.I.G. Capital is headquartered in Florida but is an investment adviser, and whether any portfolio companies have air emissions facilities in Florida is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is EPA approval of a Florida air-plan revision on emissions reporting and permit forms for stationary sources. The firm's Miami headquarters is an office, not a permitted emissions source, and no portfolio company has recorded Florida facilities, so it binds no one here.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "d22bf855-3020-4d04-ad57-517f5327f0a6",
@@ -1543,16 +1625,14 @@
           {
             "scope": "company",
             "name": "GetixHealth"
-          },
-          {
-            "scope": "company",
-            "name": "GetixHealth"
           }
         ],
         "reason": "The CLIA rule regulates clinical laboratories that perform testing; GetixHealth provides medical billing, coding, and claims management services, and whether it performs laboratory testing or processes laboratory data in a way that triggers CLIA requirements is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposed CLIA amendments would bind clinical laboratories certified to test human specimens (virtual access, proficiency testing, personnel qualifications). GetixHealth is a revenue cycle management and billing provider, not a laboratory, and no other entity performs lab testing.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "574d2f1a-3932-4966-bedd-5120c942ad6b",
@@ -1581,8 +1661,10 @@
         ],
         "reason": "The CPSC safety standard is limited to lithium-ion batteries used in micromobility products (e-scooters, e-bikes, hoverboards), but Rheintal Batterie GmbH manufactures battery modules for electric vehicles and industrial storage, which are not micromobility products."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a procedural notice of an oral-comment hearing on a CPSC proposal covering lithium-ion batteries in micromobility consumer products sold in the US. Rheintal Batterie makes EV and industrial storage battery modules for large businesses in Germany, France and Poland, with no recorded micromobility products or US sales.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "f7d23c05-485c-44e6-9135-be94f77362b4",
@@ -1607,8 +1689,10 @@
         ],
         "reason": "PHMSA's proposed LNG facility safety regulations apply to operators of liquefied natural gas facilities, but Cascade Pipeline Services is recorded as providing inspection, maintenance and integrity services for natural gas and hazardous-liquid pipelines, not as operating LNG facilities."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposed changes to 49 CFR Parts 191 and 193 would bind operators of LNG facilities (design, siting, operations, reporting). Cascade Pipeline Services is recorded as a contractor inspecting and maintaining natural gas and hazardous-liquid pipelines and compressor stations, with no recorded LNG facility ownership, operation or service work; the answer turns on that unrecorded fact.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "ead24798-a50a-4d53-aa16-7137ba4b7020",
@@ -1629,16 +1713,14 @@
           {
             "scope": "company",
             "name": "GetixHealth"
-          },
-          {
-            "scope": "company",
-            "name": "GetixHealth"
           }
         ],
         "reason": "The GLOBE Model changes Medicare Part B drug inflation rebate calculation methods, but GetixHealth's recorded activity is revenue cycle management services (billing, coding, claims management) for healthcare providers, not drug pricing, purchasing, or rebate negotiation; the connection assumes GetixHealth's billing services are affected by drug pricing methodology changes, which is not established by recorded facts."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The GLOBE Model changes how Medicare Part B drug inflation rebates are calculated, and the obligation falls on manufacturers of separately payable Part B drugs and biologicals. GetixHealth, the only healthcare entity, is a revenue cycle management vendor to providers and does not make drugs or owe rebates, so nothing here binds it.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "fd0fd5b1-236c-46e5-9553-cbc2c0a8d0e7",
@@ -1663,8 +1745,10 @@
         ],
         "reason": "The Customer Due Diligence Rule applies to financial institutions as defined by FinCEN, but Meridian Pay is recorded as a consumer payments app with buy now pay later loans and prepaid debit cards, and whether it is a covered financial institution under the CDD Rule is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposal amends the Customer Due Diligence Rule, which binds only covered financial institutions: banks, broker-dealers, mutual funds, futures commission merchants and introducing brokers. Meridian Pay is recorded as a non-bank payments, instalment-loan and prepaid-card app, and the firm is an SEC-registered adviser, neither of which is a covered institution; this turns on Meridian Pay not holding a bank charter, which is not recorded.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "3f46cc0a-d9be-4122-8491-1ae7f951af7c",
@@ -1689,8 +1773,10 @@
         ],
         "reason": "The measure approves revised standard permits for concrete batch plants in Texas, but Cascade Pipeline Services provides pipeline inspection, leak detection and repair, and compressor station maintenance for natural gas and hazardous-liquid pipelines; no recorded activity involves operating or servicing concrete batch plants."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a proposed EPA approval of Texas air-plan revisions to the standard permit for concrete batch plants. No entity operates a concrete batch plant; Cascade Pipeline Services is in Texas but provides pipeline inspection and maintenance services, so the permit does not reach it.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "1560d4e2-870e-4229-839d-251f6b94a278",
@@ -1715,8 +1801,10 @@
         ],
         "reason": "PRA policy statement on high loan-to-income lending applies to mortgage lenders; Brightwell Wealth is recorded as providing discretionary portfolio management, pension and ISA platform, and financial advice, with no mortgage lending activity recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This joint PRA/FCA policy statement concerns the limit on high loan-to-income residential mortgage lending, which binds UK mortgage lenders. Brightwell Wealth, the only UK-authorised entity, is a wealth manager and pension/ISA platform with no recorded mortgage lending, so no obligation arises.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "4845806f-7643-47dd-af21-c7348d86aaf6",
@@ -1741,8 +1829,10 @@
         ],
         "reason": "PRA supervisory statement on high loan-to-income lending applies to mortgage lenders; Brightwell Wealth is recorded as providing discretionary portfolio management, pension and ISA platform, and financial advice, with no mortgage lending activity recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This PRA supervisory statement sets expectations for firms subject to the high loan-to-income mortgage lending limit. Brightwell Wealth is a UK wealth manager and investment platform, not a mortgage lender, and no other entity lends on UK mortgages.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "f50b4e35-fb1b-48d1-a8c0-a8309af7f6cc",
@@ -1767,8 +1857,10 @@
         ],
         "reason": "The SEC compensation disclosure reforms apply to public companies and their executive compensation disclosures, not to investment advisers' own compensation practices; H.I.G. Capital is a private investment adviser, not a public company subject to these disclosure requirements."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposal would amend executive and director compensation disclosure for SEC reporting companies (Regulation S-K Item 402). The firm is a private adviser and no fund or portfolio company is recorded as a public registrant, so no obligation arises.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "b12d3b2c-d9a5-40a8-89a8-2c7981cdf93b",
@@ -1789,24 +1881,18 @@
           {
             "scope": "firm",
             "name": null
-          },
-          {
-            "scope": "firm",
-            "name": null
-          },
-          {
-            "scope": "firm",
-            "name": null
-          },
-          {
-            "scope": "firm",
-            "name": null
           }
         ],
         "reason": "The SEC crypto custody proposal applies to advisers and funds that hold or custody crypto assets; whether H.I.G. Capital or its funds hold or consider crypto assets is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "firm"
+        }
+      ],
+      "why": "The proposed crypto custody framework is addressed to SEC-registered investment advisers, and H.I.G. is recorded as one, so it would have to follow it for any crypto assets held for its client funds. Whether a practical obligation arises turns on whether any H.I.G. fund holds crypto assets, which is not recorded; the funds are private LPs, not registered investment companies or BDCs, so no fund matches.",
+      "confidence": "low",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "313811ab-3367-4663-9ddc-94817f9ef80d",
@@ -1831,8 +1917,22 @@
         ],
         "reason": "The UK regulation requires employers to provide written statements of trade union rights to workers in the UK, but A.L.A. S.p.A. is headquartered in Naples, Italy, and while it operates internationally including in the UK and France, whether it employs workers in the UK is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "company",
+          "name": "Brightwell Wealth (test)"
+        },
+        {
+          "scope": "company",
+          "name": "A.L.A. S.p.A. (Advanced Logistics for Aerospace)"
+        },
+        {
+          "scope": "firm"
+        }
+      ],
+      "why": "These Regulations govern the written statement of trade union rights that employers must give workers under section 136A of the 1992 Act, which binds employers with workers in Great Britain. Brightwell is a London-headquartered employer of 500-999 staff; A.L.A. (London facility) and the firm (London office) are matched on the inference that those sites employ UK workers. No other entity has a recorded UK presence.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "848cbc7d-abe0-4c5e-85df-b1d60a62dec8",
@@ -1857,8 +1957,10 @@
         ],
         "reason": "The UK Collective Investment Schemes amendment concerns temporary recognition under FSMA 2000 Part 17, but whether H.I.G. Europe Partners is marketed in the UK or seeks recognition as a collective investment scheme under Part 17 is not recorded; the fund is recorded as a Luxembourg SCSp with no recorded UK marketing activity."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The amendment concerns temporary recognition under FSMA Part 17, which covers EEA UCITS retail funds marketed in the UK. H.I.G. Europe Partners is a Luxembourg SCSp buyout fund, not a UCITS, and Brightwell is not recorded as operating or distributing temporarily recognised EEA schemes, so no obligation is identified.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "dd7b0a4f-bb9e-4fdf-a5b3-b8cc543a1995",
@@ -1883,8 +1985,10 @@
         ],
         "reason": "The measure applies to placing batteries on the market in Northern Ireland, but Rheintal Batterie GmbH is recorded as operating only in Germany, France, and Poland with no recorded UK operations or market presence."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "These Regulations implement EU Batteries Regulation 2023/1542 in Northern Ireland and bind those placing batteries on the Northern Ireland market. Rheintal Batterie makes battery modules, but its recorded markets and facilities are Germany, France and Poland with no UK or Northern Ireland presence, so this instrument does not bind it on the recorded facts.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "570565fc-0c9c-42b4-b40d-c4843ddb1f4a",
@@ -1904,8 +2008,10 @@
         "entities": [],
         "reason": "This ESMA announcement seeks nominations for a stakeholder group on tokenisation standards; it is a call for participation in a standards-development initiative and does not create binding compliance obligations for H.I.G. Capital or its portfolio companies."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a call for wholesale industry stakeholders to volunteer for a tokenisation standards group. It is a procedural notice that creates no obligation, deadline or exposure for the firm, its funds or its companies.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "2ce174bd-64f7-47b0-9db4-8f4c5aecb09f",
@@ -1925,8 +2031,10 @@
         "entities": [],
         "reason": "EU air passenger compensation regulation applies only to air carriers operating flights within EU jurisdiction; H.I.G. Capital is an investment firm and none of its portfolio companies are air carriers."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The amendments to Regulation 261/2004 and the air carrier liability regulation bind air carriers that carry passengers. A.L.A. S.p.A. distributes aerospace components and manages supply chains and is not recorded as operating flights; no other entity is an airline.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "6c03066a-4c90-4742-bc4e-00136835d767",
@@ -1946,8 +2054,10 @@
         "entities": [],
         "reason": "This regulation addresses incidental catches of dolphins in Bay of Biscay fishing operations; H.I.G. Capital and its portfolio companies have no fishing, marine extraction, or maritime operations in that region."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a fisheries measure on dolphin by-catch that binds fishing vessels in the Bay of Biscay. No recorded entity has fishing or maritime operations.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "e8bd4316-6727-4665-9782-1e9f9e59de55",
@@ -1967,8 +2077,10 @@
         "entities": [],
         "reason": "EU Central Securities Depository regulation applies to CSDs and their competent authorities; H.I.G. Capital is not a CSD and does not operate in that capacity."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The amended technical standards govern what a Central Securities Depository must report to its competent authority under the Central Securities Depositories Regulation. None of the firm, its funds or its companies is a depository of that kind; Brightwell Wealth is a UK retail wealth manager and platform, not an EU depository.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "6eb8c706-086d-4c0e-8048-1d5e108a8d3e",
@@ -1988,8 +2100,10 @@
         "entities": [],
         "reason": "FCA UK Sustainability Reporting Standards apply only to listed companies on UK regulated markets; H.I.G. Capital is not a listed issuer."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The final rules require UK-listed issuers to report against UK Sustainability Reporting Standards on a comply-or-explain basis. Brightwell Wealth is FCA-authorised but recorded as a majority-controlled private equity holding, not a listed issuer, and no other entity is recorded as having a UK listing.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "4c9d603d-d169-486b-aa8d-4aeaae4a2508",
@@ -2009,8 +2123,10 @@
         "entities": [],
         "reason": "FCA streamlined UK EMIR intragroup regime applies only to over-the-counter derivatives counterparties; H.I.G. Capital's investment advisory and fund management activities do not trigger EMIR intragroup transaction requirements."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The FCA's final technical standards for the UK EMIR intragroup exemption only matter to UK counterparties that trade OTC derivatives with their own group entities, and they reduce burdens rather than add them. Brightwell Wealth is FCA-authorised, but its recorded business is UK-only retail portfolio management, pension/ISA platform and advice, with no recorded intragroup derivatives; the same is true of the firm's London office and A.L.A.'s London facility. The answer turns on that unrecorded fact.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "e659f81a-2c19-4064-a5c5-06c30ddae335",
@@ -2030,8 +2146,10 @@
         "entities": [],
         "reason": "This FAA proposed rule clarifies conditions for commercial space launch and reentry vehicle operators regarding flight abort requirements; H.I.G. Capital and its portfolio companies do not operate commercial space launch or reentry vehicles."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This FAA proposal amends 14 CFR Part 450 flight-abort rules, which bind licensed commercial space launch and reentry vehicle operators. No entity is one: A.L.A. distributes aerospace components and provides logistics, and does not operate launch vehicles.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "26adba3f-0499-4f61-89a8-0e074fa9996d",
@@ -2051,8 +2169,10 @@
         "entities": [],
         "reason": "This FDA classification of a high throughput DNA sequencing test system into class II does not affect H.I.G. Capital's portfolio companies, which do not manufacture this device."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This FDA order classifies a DNA sequencing test system for hereditary cancer risk into class II, which binds makers of that in vitro diagnostic device. GetixHealth, the only healthcare company, provides billing and revenue cycle services and makes no devices.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "e5cd4669-d2c3-404d-bbfc-e034ed87f0f9",
@@ -2072,8 +2192,10 @@
         "entities": [],
         "reason": "IRS information reporting requirements for qualified opportunity zones apply only to investors in such zones; H.I.G. Capital's investment strategies and portfolio do not indicate participation in opportunity zone investments."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a one-line Federal Register correction of a date in the DATES section of a proposed rule on Qualified Opportunity Fund reporting and certification, which creates no obligation itself. No fund is recorded as a Qualified Opportunity Fund or as investing in opportunity zones.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "b03b595a-3a04-45a2-9f6c-ad91d04a6366",
@@ -2093,8 +2215,10 @@
         "entities": [],
         "reason": "This EPA regulation establishes a pesticide tolerance exemption for Bacillus amyloliquefaciens; H.I.G. Capital and its portfolio companies do not manufacture or distribute pesticides."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This EPA rule exempts residues of a microbial pesticide from tolerance requirements, which affects crop and animal producers, food manufacturers and pesticide makers. No entity is in agriculture, food or pesticide manufacturing.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "b526c3d4-7317-44c2-8bfe-fcc2c8b217b2",
@@ -2114,8 +2238,10 @@
         "entities": [],
         "reason": "This establishes a pesticide tolerance for sodium salt of acifluorfen on sugar beet; H.I.G. Capital has no portfolio companies in agricultural production or pesticide manufacturing."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This EPA final rule sets a pesticide residue tolerance for acifluorfen on sugar beet, which affects crop producers, food manufacturers and pesticide makers. No recorded entity is in agriculture, food or pesticide manufacturing, so it creates no obligation or exposure.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "a99ec495-88a5-4a5b-93a0-8ee45b6b599c",
@@ -2135,8 +2261,10 @@
         "entities": [],
         "reason": "Federal Reserve procedures for payment stablecoin issuance by insured depository institution subsidiaries do not apply to H.I.G. Capital, which is an investment adviser, not a bank or stablecoin issuer."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposed rule sets application procedures only for insured State member banks seeking Board approval for a subsidiary to issue payment stablecoins under the GENIUS Act. Neither the firm nor any company is a State member bank, and Meridian Pay's recorded products (BNPL loans, P2P payments, prepaid card) do not include stablecoin issuance.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "78202aed-b7e0-461f-bb9e-f034ab804e52",
@@ -2156,8 +2284,10 @@
         "entities": [],
         "reason": "This is a technical correction to EPA Title V emergency affirmative defense rules with no substantive changes; H.I.G. Capital's portfolio companies are not subject to Title V permitting obligations that would be affected."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a correcting amendment fixing a typographical error ('bought my' to 'brought for') in 40 CFR 70.6(g)(2) and 71.6(g)(2), with no substantive change to the Title V emergency affirmative defense. It creates no new obligation, and no entity is recorded as holding a Title V operating permit.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "63bf88bb-cbfd-4407-b6d6-19f951d9c4d2",
@@ -2177,8 +2307,10 @@
         "entities": [],
         "reason": "Federal Reserve stress capital buffer requirements apply only to large bank holding companies and similar banking organizations supervised by the Federal Reserve; H.I.G. Capital is an investment adviser, not a banking organization."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The final rule changes the stress capital buffer calculation and FR Y-14 reporting for large bank holding companies, savings and loan holding companies, U.S. intermediate holding companies and Board-supervised nonbank financial companies. The firm is an SEC-registered investment adviser and no portfolio company is a Board-supervised banking organisation, so nothing here binds them.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "d51e9054-7952-42aa-9a1e-a08ad5984515",
@@ -2198,8 +2330,10 @@
         "entities": [],
         "reason": "FTC Telemarketing Sales Rule fees apply only to entities accessing the National Do Not Call Registry for telemarketing purposes; H.I.G. Capital does not engage in telemarketing activities."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is the routine annual CPI adjustment to National Do Not Call Registry access fees ($82 to $85 per area code), with no change to any other Telemarketing Sales Rule requirement. No entity is recorded as a telemarketer or seller accessing the Registry; GetixHealth's billing and patient-responsibility work and Meridian Pay's consumer app are not recorded as involving outbound telemarketing.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "2cef214f-6c1e-4cbf-9eb2-4a80fcaf9d57",
@@ -2219,8 +2353,10 @@
         "entities": [],
         "reason": "This CMS document corrects a typographical error in a proposed rule; a correction to a proposed rule creates no new compliance obligations for H.I.G. Capital or its portfolio companies."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This notice only corrects a mistyped docket number for submitting comments on a CMS proposed rule on Medicare Advantage and Part D (42 CFR Parts 422 and 423), and creates no obligation. The underlying rule addresses Medicare plans, not a revenue cycle vendor such as GetixHealth, and no recorded entity is a Medicare Advantage organisation or Part D sponsor.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "366f0358-4c12-42a2-87c9-7d3cf0409c2f",
@@ -2240,8 +2376,10 @@
         "entities": [],
         "reason": "SEC notice of FINRA proposed rule change regarding market-wide circuit breaker halt procedures and extended trading hours; H.I.G. Capital is an investment adviser and not a FINRA member broker-dealer subject to these trading rules."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "FINRA Rule 6121.02 governs when FINRA member broker-dealers may resume over-the-counter trading in NMS stocks after a Level 3 circuit breaker halt, and the change keeps the existing 4:00 a.m. resumption time. The firm is recorded as an SEC-registered investment adviser, and no fund or company is recorded as a FINRA member, so nothing binds them.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "3e05baca-2860-45e7-9572-a725a1c54331",
@@ -2261,8 +2399,10 @@
         "entities": [],
         "reason": "FINRA rule change modifying implementation schedule for amendments to Schedule A is an internal SRO procedural matter; H.I.G. Capital is not a FINRA member firm."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This filing changes the timing of FINRA fee increases, which are paid by FINRA member broker-dealers. The firm is recorded as an SEC-registered investment adviser with no recorded broker-dealer affiliate; Meridian Pay is a payments and lending app and Brightwell Wealth is FCA-authorised in the UK, so neither is a FINRA member.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "773121ad-6ee7-43bf-a90c-6b7f3dcfef7c",
@@ -2282,8 +2422,10 @@
         "entities": [],
         "reason": "This FDA classification of an anti-TNF alpha monoclonal antibody test system into Class II is a device classification; H.I.G. Capital and its portfolio companies do not manufacture or distribute this device."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This FDA order classifies a specific in vitro diagnostic test system into class II with special controls, which binds makers of that device. No recorded company makes or distributes medical devices or diagnostics; GetixHealth provides billing and revenue cycle services only.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "377bb8ff-c9f6-457d-8e9f-d582c14f75ba",
@@ -2303,8 +2445,10 @@
         "entities": [],
         "reason": "This DOL final rule removes affirmative action requirements and streamlines nondiscrimination obligations for Registered Apprenticeship program sponsors; H.I.G. Capital and its portfolio companies do not operate registered apprenticeship programs."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This DOL final rule revises 29 CFR Parts 29 and 30 and binds only sponsors of Registered Apprenticeship programs, replacing affirmative action requirements with a simpler nondiscrimination standard. No entity is recorded as sponsoring a registered apprenticeship program; it would apply if one did (Cascade Pipeline Services, with a skilled-trades workforce, is the most plausible), but that fact is not recorded.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "ead55596-84e6-425c-bc2b-657ffaebe776",
@@ -2324,8 +2468,10 @@
         "entities": [],
         "reason": "FTC announcement of consideration to update impersonation rules is a preliminary notice of potential future rulemaking; no current compliance obligation exists."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is an FTC request for comment on whether to update the Impersonation Rule to address platforms that promote impersonation scams; it is pre-proposal and creates no obligation or deadline. Meridian Pay's consumer payments app is the nearest entity, but nothing recorded shows it is a platform promoting such content, and whether a future rule would reach payment apps is unknown.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "82c0ab89-532f-4a15-9134-1e419fbf6107",
@@ -2345,8 +2491,10 @@
         "entities": [],
         "reason": "SEC advisory committee meeting announcement is procedural and does not create new compliance obligations for H.I.G. Capital or its portfolio companies."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a notice of an SEC advisory committee meeting on IPO modernization and Regulation Crowdfunding. It is purely procedural and creates no obligation for the firm, its funds or its companies.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "00b2a84e-5bcf-4622-8e3d-7374d7e33dde",
@@ -2366,8 +2514,10 @@
         "entities": [],
         "reason": "This SEC proposal to rescind Rule 14a-8 applies to public companies; H.I.G. Capital is a private PE firm and its portfolio companies are not public."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposed rescission of Rule 14a-8 and the proxy solicitation reforms affect issuers with securities registered under the Exchange Act and their shareholder proponents. No portfolio company is recorded as a US public registrant, and the proposal places no obligation on the firm as a private fund adviser or on its fund vehicles.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "6c6cfcbc-df6a-46b5-96e5-a89cb0fc30d5",
@@ -2387,8 +2537,10 @@
         "entities": [],
         "reason": "EU marine protected area conservation measures for Baltic Sea areas do not apply to H.I.G. Capital or its portfolio companies, which do not conduct fishing or marine activities in those specific areas."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This EU measure sets fisheries conservation rules in Baltic Sea marine protected areas and binds fishing vessels there. No entity has recorded fishing or maritime operations in those areas.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "0907415f-503b-4b1f-9992-dc554c927e79",
@@ -2408,8 +2560,10 @@
         "entities": [],
         "reason": "EU technical measures for red seabream fishing apply only to fishing operators; H.I.G. Capital and its portfolio companies do not conduct fishing activities."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This EU measure sets technical fishing rules for red seabream in ICES subareas 6 to 8 and applies only to commercial fishing operators. No entity is recorded in fishing or seafood.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "01b1434f-4dde-4b71-9d9c-9241934a8a89",
@@ -2429,8 +2583,10 @@
         "entities": [],
         "reason": "FCA sustainability disclosure rules apply only to listed issuers on UK regulated markets; H.I.G. Capital is not a listed issuer."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This FCA consultation covers guidance on sustainability disclosures for UK listed issuers under the listing regime. Brightwell Wealth is an FCA-authorised wealth manager but is not recorded as a listed issuer, and no other entity is recorded as having UK-listed securities.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "48bd90de-66c7-4d40-b5da-55e842c0d2ec",
@@ -2450,8 +2606,10 @@
         "entities": [],
         "reason": "South Carolina SIP revision updating department name references is a procedural administrative change that does not create new compliance obligations for H.I.G. Capital or its portfolio companies."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This EPA approval of a South Carolina SIP revision only updates agency name references and creates no new obligation. No entity has recorded facilities or operations in South Carolina.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "d697f03a-9d80-422e-b1e0-ac9ebbbe318e",
@@ -2471,8 +2629,10 @@
         "entities": [],
         "reason": "MSHA elimination of final pillar mining requirements applies to underground mining operations; H.I.G. Capital does not operate mining businesses."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This MSHA rule removes an obsolete underground coal mine provision on final mining of pillars (30 CFR 75.386). Neither the firm nor any fund or portfolio company operates coal mines.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "a3628564-a20d-46ee-af04-a56c16b0a0e3",
@@ -2492,8 +2652,10 @@
         "entities": [],
         "reason": "Coachella Valley ozone attainment determination applies to California sources; H.I.G. Capital operates in Florida and Europe, not California."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This EPA determination that Coachella Valley, California attained the revoked 1997 ozone standard imposes no new obligation. No entity has recorded facilities or emitting operations in that area.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "5468035a-548e-40c0-ad6c-f642bc068263",
@@ -2513,8 +2675,10 @@
         "entities": [],
         "reason": "This proposed rule lists the Mazama newt as endangered in Crater Lake National Park, Oregon; it has no connection to H.I.G. Capital's investment activities or portfolio company operations."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This proposed endangered listing covers the Mazama newt, a species confined to the Crater Lake caldera in Crater Lake National Park, Oregon. No entity has recorded operations, facilities or projects there; Cascade Pipeline Services operates only in Texas, Louisiana and Oklahoma.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "059dd4e3-bfed-4660-a564-da0b4ce8620e",
@@ -2534,8 +2698,10 @@
         "entities": [],
         "reason": "Calcium carbonate pesticide tolerance exemption applies to agricultural commodity producers; H.I.G. Capital and its portfolio companies do not operate in agriculture."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This EPA tolerance exemption for calcium carbonate residues affects agricultural producers, food manufacturers and pesticide manufacturers. No recorded entity is in any of those sectors, so it creates no obligation or exposure for the firm, its funds or its companies.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "1b9d719b-4a85-4a9e-9fe8-c939996039f0",
@@ -2555,8 +2721,10 @@
         "entities": [],
         "reason": "EPA NOX emissions rule for Missouri applies only to operators of large stationary internal combustion engines in Missouri; H.I.G. Capital and its portfolio companies do not operate such engines."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is EPA approval of a Missouri SIP revision on NOx from large stationary internal combustion engines, binding only owners and operators of such engines in Missouri. Cascade Pipeline Services does compressor station maintenance but is recorded only in Texas, Louisiana and Oklahoma and as a service provider, so it is not in scope.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "c2aecce4-87fd-4377-9c5f-4773628a91d1",
@@ -2576,8 +2744,10 @@
         "entities": [],
         "reason": "No summary provided; cannot assess relevance of EPA's response to New Hampshire's Clean Air Act Section 176A petition without substantive content."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a Federal Register correction of dates in a proposed response to New Hampshire's Clean Air Act section 176A petition. It is purely administrative and creates no obligation for any recorded entity.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "a22f22cb-c655-4ad1-8f66-340554df3419",
@@ -2597,8 +2767,10 @@
         "entities": [],
         "reason": "USPS revision of mailing standards for live animal shipments; H.I.G. is not a postal service operator and this creates no material obligation for the firm."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "These USPS Publication 52 revisions set packaging and addressing requirements for mailers of live animals. No recorded entity ships live animals by mail, so nothing here binds the firm, its funds or its companies.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "b090b86e-b456-4cbf-bb0a-d1c666b212f9",
@@ -2618,8 +2790,10 @@
         "entities": [],
         "reason": "This FDA action removes certain solvents from authorized uses in color additives for food; H.I.G. Capital and its portfolio companies do not manufacture or use these color additives."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This FDA order removes the authorized use of methylene chloride as a diluent in color additive inks for marking fruit and vegetables. No recorded entity makes or uses food color additives or produce-marking inks, so it creates no obligation or exposure.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "ac86a0c7-d559-45c6-af1d-e41c03b91f74",
@@ -2639,8 +2813,10 @@
         "entities": [],
         "reason": "This EPA rule approves Wisconsin's 2015 ozone SIP elements for Chicago, Milwaukee, and Sheboygan areas; H.I.G. Capital and its portfolio companies do not operate in these Wisconsin jurisdictions."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "EPA's approval of Wisconsin's ozone SIP elements only approves state law for the Kenosha, Milwaukee and Sheboygan areas and imposes no new requirements. No entity has recorded facilities or emitting operations in Wisconsin (Cascade Pipeline Services is in Texas, Louisiana and Oklahoma).",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "7c1d73dd-27cf-4ee2-8dc6-a36e641e4bc3",
@@ -2660,8 +2836,10 @@
         "entities": [],
         "reason": "FCC ultra-wideband device rules do not apply to H.I.G. Capital or its portfolio companies, which do not manufacture or operate UWB devices."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The FCC proposal would revise Part 15 technical rules for makers and marketers of unlicensed ultra-wideband radio devices. No entity is recorded as making or selling UWB or other radio-frequency devices (Rheintal makes battery modules and 3Pillar provides software services), so it creates no obligation.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "d60f9d25-dcda-4e23-91d3-a3a2b18ec248",
@@ -2681,8 +2859,10 @@
         "entities": [],
         "reason": "This NRC final rule amending regulations to expand exemptions from materials licensing is deregulatory and does not create new compliance obligations for H.I.G. Capital or its portfolio companies."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The NRC direct final rule is deregulatory, expanding exemptions from materials licensing for certain byproduct material uses and for DOE contractors. No entity is recorded as holding an NRC or Agreement State materials licence or as a DOE contractor (Cascade's pipeline inspection work has no recorded radioactive-source use), and a relief measure would add no obligation anyway.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "e188a63c-858b-4c64-80e3-1f68d2de6fa2",
@@ -2702,8 +2882,10 @@
         "entities": [],
         "reason": "FCC announcement of OMB approval for information collection under SIM Swap and Port-Out Fraud rules; this is a procedural notice of compliance date announcement and creates no new substantive obligation for H.I.G. Capital or its portfolio companies."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The compliance date for the SIM-swap rules in 47 CFR 64.2010(h) binds covered wireless providers. No entity is a telecommunications carrier: Meridian Pay is a consumer payments app, not a mobile service provider, so it bears no obligation under these rules.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "8680e770-84a2-4ca7-a58a-9928a77fb67b",
@@ -2723,8 +2905,10 @@
         "entities": [],
         "reason": "FDA announcement of a color additive petition for calcium sulfate is a procedural notice; H.I.G. Capital has no portfolio companies manufacturing or using calcium sulfate as a food additive."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a procedural notice that FDA has filed a third party's color additive petition for calcium sulfate in foods. It creates no obligation, and no entity makes food or color additives.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "37fc2ead-9d3c-4bec-97a3-23f42bbe8b4e",
@@ -2744,8 +2928,10 @@
         "entities": [],
         "reason": "CFTC swap execution facility order book requirement does not apply to H.I.G. Capital, a private equity firm that does not operate as a SEF or engage in swap execution activities."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This CFTC proposal amends 17 CFR Part 37 to remove the order book requirement for permitted transactions, which binds only registered swap execution facilities. Neither the firm nor any fund or company is recorded as operating a SEF, and the change is deregulatory.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "dbcaa7ec-255e-4d3a-b291-415a0b728a80",
@@ -2765,8 +2951,10 @@
         "entities": [],
         "reason": "EPA approval of Alaska UIC Class VI primacy applies only to geologic carbon sequestration injection well operators in Alaska; H.I.G. Capital and its portfolio companies do not operate such wells."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "EPA proposes to approve Alaska's primacy for Class VI carbon sequestration injection wells, a state-program approval that binds no recorded entity. Cascade Pipeline Services provides pipeline services in Texas, Louisiana and Oklahoma and has no recorded Alaska operations or Class VI wells.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "04576385-bb10-4511-8edd-53f5b5278270",
@@ -2786,8 +2974,10 @@
         "entities": [],
         "reason": "This SEC order grants exemptive relief from Inline XBRL filing requirements; H.I.G. Capital is a private PE firm and does not file XBRL reports."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The order grants relief from Inline XBRL requirements adopted on 16 December 2024, which I understand to be the Exchange Act electronic-filing amendments for exchanges, clearing agencies, broker-dealers and security-based swap entities. No recorded entity is one of those filer types (the firm is recorded only as an SEC-registered investment adviser), and exemptive relief creates no new obligation; the summary is truncated, so the exact filings covered are not shown.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "6b1be9e2-0e14-487f-800b-f0d8833bd852",
@@ -2807,8 +2997,10 @@
         "entities": [],
         "reason": "UK Financial Services (Gibraltar) transitional arrangements apply only to Gibraltar-based and UK-based firms providing cross-border financial services; H.I.G. Capital is not a Gibraltar-based firm."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The instrument extends by 12 months the existing transitional arrangements for Gibraltar-based firms serving the UK and UK firms accessing Gibraltar. Brightwell Wealth is FCA-authorised and operates only in the United Kingdom with no recorded Gibraltar business, and the extension imposes no new obligation.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "970d2ac5-a780-4761-9a83-90beb263a41e",
@@ -2828,8 +3020,10 @@
         "entities": [],
         "reason": "This UK statutory instrument amends the Financial Services and Markets Act 2023 but does not specify which enactments are added or what obligations they create; without knowing the substantive content, no concrete compliance obligation can be identified for H.I.G. Capital or its entities."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "Only the title is given; on my reading this adds enactments to the FSMA 2023 list that the Treasury may modify for financial market infrastructure sandboxes, an enabling measure. On that reading it creates no obligation for Brightwell Wealth, a retail wealth manager, or for any other recorded entity.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "75583393-6486-4979-95fc-cdb141ab4222",
@@ -2849,8 +3043,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This delegated regulation sets procedural details for registered EU design proceedings before the EUIPO. No entity is recorded as holding, filing or litigating EU registered designs, so it creates no specific obligation or exposure for any of them, including the EU-based companies.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "61f24589-d369-417d-9ea2-7eb7d2f1b1b9",
@@ -2870,8 +3066,15 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "company",
+          "name": "Brightwell Wealth (test)"
+        }
+      ],
+      "why": "The FCA proposes to update its Financial Crime Guide (fraud, sanctions and related systems-and-controls expectations), which FCA-authorised firms are expected to follow. Brightwell Wealth is recorded as an FCA-authorised wealth manager and retail investment platform in London, so it would have to review its financial crime controls against the revised guide. The firm has a London office but is recorded only as an SEC-registered adviser, so it is left out; that turns on whether it holds FCA authorisation, which is not recorded.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "2ba181d4-0191-42f8-8c74-3c938f82b05c",
@@ -2891,8 +3094,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a procedural notice that EPA has received pesticide tolerance petitions for residues on food commodities and is inviting comment. No entity makes, registers or uses pesticides or produces food commodities, so it creates no obligation for any of them.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "37a425b3-43ab-454e-9d4c-99b800360c22",
@@ -2912,8 +3117,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This FMCSA final rule removes the requirement for commercial motor vehicles to carry spare fuses; it is deregulatory and imposes no new obligation. No entity is recorded as a motor carrier or as operating a commercial vehicle fleet. Cascade Pipeline Services and A.L.A. may run service or delivery vehicles, but that is not recorded, and the relief would be immaterial even if they did.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "2132bb5b-2dd5-4905-bdd5-910bb98c69ac",
@@ -2933,8 +3140,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is EPA's approval of Rhode Island's regional haze state implementation plan, a state-program approval that binds no recorded entity. No entity has facilities, operations or emission sources in Rhode Island.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "239ce61b-31d9-4197-934e-a24d331471b0",
@@ -2954,8 +3163,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This EPA rule sets pesticide residue tolerances for pyriofenone on apples, berries and cherries, which affects crop producers, food manufacturers and pesticide makers. Neither the firm nor any fund or portfolio company is recorded in agriculture, food or pesticide manufacturing.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "3a783cd4-03e2-4f49-bdbc-c98e2f04aada",
@@ -2975,8 +3186,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The revised section 1071 rule requires lenders that originate business-purpose credit to small businesses above the origination threshold to collect and report application data by January 1, 2028. Meridian Pay's recorded lending is consumer buy now, pay later instalment loans, which are not covered business credit. It turns on whether it also makes business-purpose loans to its small-business customers at covered volume and size, which is not recorded.",
+      "confidence": "low",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "fd11518d-92dc-4832-a8da-849e6d28b8b7",
@@ -2996,8 +3209,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "These IRS regulations let Indian fishing rights income count as compensation for section 415 retirement plan limits, and affect only Tribal plan sponsors, administrators and participants. No recorded entity sponsors a Tribal plan or carries on fishing rights activity.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "d14c58a6-0052-46b6-98e2-71e3696e7d06",
@@ -3017,8 +3232,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This NCUA rule amends supervisory committee audit requirements that bind only federally insured credit unions. Neither the firm nor any fund or portfolio company is a credit union; Meridian Pay is a nonbank payments app and Brightwell Wealth is a UK wealth manager.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "797c96a2-697b-47c1-9631-a4fa738f25c2",
@@ -3038,8 +3255,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a one-line correction to the heading of an OCC rule on real estate lending escrow accounts and creates no obligation of its own. The underlying rule covers national banks and federal savings associations, and no recorded entity is one or does real estate lending.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "2dcd38c4-ac1d-4c25-bdac-550fe85c7224",
@@ -3059,8 +3278,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This notice only reopens the comment period on OSHA's burden-reducing proposal to revise respirator provisions of the asbestos standards. No entity has recorded asbestos work or exposure; Cascade Pipeline's maintenance work is not recorded as involving asbestos-containing materials.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "1ae7fbad-329d-4a0c-b102-2d030a073891",
@@ -3080,8 +3301,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposed disclosure duty falls on pharmacy benefit managers and their affiliated brokers and consultants serving self-insured ERISA group health plans. No entity is one: GetixHealth does revenue cycle management for healthcare providers, not pharmacy benefit management. Whether any US portfolio company sponsors a self-insured plan, and so would receive the disclosures as plan fiduciary, is not recorded.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "adbe036f-c96f-4c85-9abc-4d69a35937b0",
@@ -3101,8 +3324,15 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "company",
+          "name": "Cascade Pipeline Services (test)"
+        }
+      ],
+      "why": "The rule moves the Hazard Communication Standard deadlines, including the employer deadline to update workplace labelling, the written hazard communication program and training (now November 20, 2026 for substances, May 19, 2028 for mixtures). Cascade is a US employer whose crews work on natural gas and hazardous-liquid pipelines and compressor stations in Texas, Louisiana and Oklahoma. No entity is recorded as a US chemical manufacturer, importer or distributor; Rheintal Batterie has no recorded US operations.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "0b6e6db4-b96c-440f-906f-0c7a375e2c4a",
@@ -3122,8 +3352,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This FDA order classifies an ingestible gastrointestinal blood detection capsule into class II with special controls, which binds makers of that device type. No entity makes or markets medical devices; GetixHealth provides billing and revenue cycle services only.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "916ddcb6-d737-4af4-bd66-fa793419879a",
@@ -3143,8 +3375,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "EPA is approving the District of Columbia's negative declarations that it has no large municipal waste combustors, oil and gas facilities or electric generating units; this is a state-program approval that binds no entity. No entity has recorded facilities in the District, and Cascade Pipeline operates in Texas, Louisiana and Oklahoma.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "b2ac249e-35ec-4215-a97c-29e90c5b9339",
@@ -3164,8 +3398,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This Cboe C2 fee-schedule change passes through FINRA registration and continuing-education fees for registered persons of C2 Trading Permit Holders that are not FINRA members. H.I.G. is recorded as an SEC-registered investment adviser, not a broker-dealer or C2 permit holder, and no fund or portfolio company is recorded as one.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "3242918f-dff4-4777-8bbc-dfbb1c52eb65",
@@ -3185,8 +3421,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a procedural OSHA notice scheduling informal hearings on previously published, largely deregulatory proposals covering substance-specific standards, respirator medical evaluations, color codes and walking-working surfaces. It creates no new obligation or deadline for any entity, and no recorded fact ties a company such as Cascade Pipeline Services or Rheintal Batterie to the specific standards beyond being a general-industry employer.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "cef65e80-cc02-4bdc-84a9-b0e6d63cd29f",
@@ -3206,8 +3444,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The Federal Reserve policy statement on section 9(13) governs the permissible activities of state member banks and uninsured state-chartered applicants for membership. No entity is recorded as a state member bank or bank charter applicant; Meridian Pay is a consumer payments fintech, not a bank.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "17b81b69-f8c8-4bfd-ad28-c7fa9bfbbd91",
@@ -3227,8 +3467,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The CBP proposal would require customs bonds to be transmitted electronically by the surety, or by the principal only where the bond is secured by cash in lieu of surety. No entity is recorded as a surety or a cash-bond principal. A.L.A. S.p.A. has a New York facility and US trade, but whether it holds a customs bond at all is not recorded, and for a surety-backed bond the duty would fall on the surety.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "560302b4-c02b-4c3f-ac8e-596375f756e3",
@@ -3248,8 +3490,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "EPA's proposed clean data determination for the Missouri portion of the St. Louis ozone nonattainment area would only suspend certain planning submissions owed by the State of Missouri. No entity has recorded facilities or operations in Missouri; Cascade Pipeline Services operates in Texas, Louisiana and Oklahoma. The action imposes nothing on private parties.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "3385d999-b73e-4c3d-b577-92b87b1294a5",
@@ -3269,8 +3513,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a procedural SEC notice extending the time to act on a FINRA proposal about short-interest and fail-to-deliver reporting by FINRA member broker-dealers. H.I.G. is recorded as an SEC-registered investment adviser, not a FINRA member, and no portfolio company is recorded as a broker-dealer, so no obligation arises.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "fdb66583-c92b-4bea-8902-f068cc88c6c7",
@@ -3290,8 +3536,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The FDA order revokes the listing of the colour additive Orange B for frankfurter and sausage casings, which affects only food and colour-additive manufacturers. No recorded entity makes or sells food products or colour additives.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "88594f6f-b9de-40c3-9f45-a9e826725e92",
@@ -3311,8 +3559,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The DEA/HHS temporary rule extends telemedicine flexibilities for DEA-registered practitioners prescribing controlled medications. GetixHealth is a revenue cycle management (billing and claims) vendor, not a prescriber or telehealth provider, so the rule creates no obligation or exposure for it or any other entity.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "324a99b4-672c-438e-920d-2d83abff9c0f",
@@ -3332,8 +3582,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "EPA is approving California local air district VOC rules for crude oil and natural gas production facilities in San Joaquin Valley, Ventura and South Coast. Cascade Pipeline Services is a pipeline services business operating only in Texas, Louisiana and Oklahoma, with no recorded California operations or production facilities.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "365a5c79-a6e6-4068-98d2-131aab759022",
@@ -3353,8 +3605,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This UK order revalues transitional state pension amounts under the Pensions Act 2014 and is administered by the government (DWP). It places no compliance obligation on private firms; Brightwell Wealth's private pension and ISA platform is not bound by state pension revaluation.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "fd2a6564-4fed-441a-a887-12fa3fda4d48",
@@ -3377,16 +3631,14 @@
           {
             "scope": "company",
             "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "fund",
-            "name": "H.I.G. Europe Partners (test)"
           }
         ],
         "reason": "Indirect: Rheintal Batterie GmbH has key suppliers in China; this notice extends product exclusions from Section 301 additional duties on products of China. If the company sources excluded products from China, the extension could continue to benefit its supply chain costs, though which products it imports is not recorded. Depends on facts not recorded: whether Rheintal Batterie GmbH imports any of the 178 excluded products from its Chinese suppliers."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The notice extends 178 existing Section 301 tariff exclusions for specific Chinese-origin products imported into the United States, which is relief for US importers of those products. No entity is recorded as importing Chinese goods into the US: Rheintal Batterie's Chinese suppliers feed its German and Polish plants, and A.L.A.'s US facility has no recorded Chinese sourcing.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "f06c5a55-94f1-4931-976a-0cdde936e25a",
@@ -3426,20 +3678,14 @@
           {
             "scope": "company",
             "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "fund",
-            "name": "H.I.G. Advantage Buyout Fund"
-          },
-          {
-            "scope": "fund",
-            "name": "H.I.G. Europe Partners (test)"
           }
         ],
         "reason": "Direct: 3Pillar Global has facilities and operates in India. This Section 301 investigation covers acts, policies, and practices relating to structural excess capacity and production in manufacturing sectors in India (among other countries), which could affect its operations there if India is found to have such practices. The investigation's outcome and applicability to software services are not yet determined."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This only opens Section 301 investigations and invites comments and hearing requests; it imposes no duty or compliance obligation, and any tariff would come from a later action. Rheintal Batterie is an EU manufacturer but has no recorded US sales, and 3Pillar's India operations are services, so any exposure is speculative.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "f364ac0b-7b4d-436f-bbe4-8a701a086c56",
@@ -3458,18 +3704,16 @@
         "verdict": "matched",
         "entities": [
           {
-            "scope": "fund",
-            "name": "H.I.G. Growth Fund (test)"
-          },
-          {
             "scope": "company",
             "name": "Meridian Pay (test)"
           }
         ],
         "reason": "Indirect: H.I.G. Growth Fund (test) holds Meridian Pay (test), which has a direct connection: Meridian Pay (test) provides buy now, pay later loans and peer-to-peer payments (FinTech/Financial Services) and is headquartered in the United States. This proposed rule imposes AML/CFT and sanctions compliance obligations on permitted payment stablecoin issuers, which could affect its operations if it issues or interacts with payment stablecoins. Whether it does so is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The proposed anti-money-laundering and sanctions programme requirements bind only permitted payment stablecoin issuers under the GENIUS Act. Meridian Pay offers instalment loans, peer-to-peer payments and a prepaid debit card, with no recorded stablecoin issuance, and neither the firm nor any other entity issues stablecoins.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "3b05538e-9fd8-4319-9a4e-011627649cc1",
@@ -3488,18 +3732,21 @@
         "verdict": "matched",
         "entities": [
           {
-            "scope": "fund",
-            "name": "H.I.G. Europe Partners (test)"
-          },
-          {
             "scope": "company",
             "name": "A.L.A. S.p.A. (Advanced Logistics for Aerospace)"
           }
         ],
         "reason": "Indirect: H.I.G. Europe Partners (test) holds A.L.A. S.p.A. (Advanced Logistics for Aerospace), which has a connection: A.L.A. S.p.A. (Advanced Logistics for Aerospace) is recorded as doing mission-critical logistics and distribution services for aerospace and defense manufacturers, specifically logistics and supply chain management for aerospace components. This global measure on imports of commercial aircraft, jet engines, and aircraft and engine parts could affect A.L.A.'s logistics and distribution activities for aerospace components if any of those components are imported into the United States, though the specific volumes and sourcing are not recorded. Depends on facts not recorded: whether A.L.A. S.p.A. handles imports of commercial aircraft, jet engines, or aircraft and engine parts into the United States."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "company",
+          "name": "A.L.A. S.p.A. (Advanced Logistics for Aerospace)"
+        }
+      ],
+      "why": "The Section 232 proclamation adjusts imports of commercial aircraft, jet engines and aircraft and engine parts into the US. A.L.A. distributes aerospace components from Italy, France and the UK, trades with the United States and has a New York facility, so parts it brings into the US face the import measures and related customs requirements. The extent turns on which covered parts it actually imports and on any country-specific treatment for EU or UK goods in the part of the proclamation not shown.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "c0850b95-e9b1-4693-a9fa-12564b33d266",
@@ -3523,16 +3770,14 @@
           {
             "scope": "company",
             "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "fund",
-            "name": "H.I.G. Europe Partners (test)"
           }
         ],
         "reason": "Direct and indirect: Rheintal Batterie GmbH (test) operates in China and has key suppliers in China. This rule revises license review policy for exports of certain advanced semiconductors to China from presumption of denial to case-by-case review. The company manufactures lithium-ion battery modules, which could use advanced semiconductors. This easing of restrictions could facilitate access to components if the company sources such semiconductors, though whether it does is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The rule changes the licence review policy and certification conditions for exporters of advanced computing chips (Nvidia H200 class) to China and Macau. No entity exports such semiconductors: 3Pillar is a software services business, and Rheintal Batterie's China link is as a buyer of battery inputs.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "99270832-5da0-4be0-bd8c-6e390c9aa776",
@@ -3553,16 +3798,19 @@
           {
             "scope": "company",
             "name": "A.L.A. S.p.A. (Advanced Logistics for Aerospace)"
-          },
-          {
-            "scope": "fund",
-            "name": "H.I.G. Europe Partners (test)"
           }
         ],
         "reason": "Direct: A.L.A. S.p.A. (Advanced Logistics for Aerospace) is headquartered in Italy with facilities in Italy, United States, France, and United Kingdom, and does mission-critical logistics and distribution services for aerospace and defense manufacturers including supply chain management for aerospace components. This proposed amendment to ITAR controls on the U.S. Munitions List could affect its logistics operations for defense articles, though the extent of its ITAR-controlled shipments is not recorded. Depends on facts not recorded: whether A.L.A. S.p.A. ships ITAR-controlled defense articles."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "company",
+          "name": "A.L.A. S.p.A. (Advanced Logistics for Aerospace)"
+        }
+      ],
+      "why": "The proposed ITAR rule would move items, including catch-all parts and components, from the USML to the EAR and add a licence exemption, so A.L.A. would have to reclassify and relicense the aerospace and defense components it distributes through its New York facility and US trade under government authorization. It turns on A.L.A. actually handling USML-controlled items, which is not expressly recorded; no other entity exports defense articles.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "78c3fd58-6213-4ba1-ab78-3279e0eb72ae",
@@ -3585,20 +3833,14 @@
           {
             "scope": "company",
             "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
           }
         ],
         "reason": "This is a request for comments on the development of future negotiations with China, not a measure that creates or changes an obligation or exposure; it is administrative and informational."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a USTR request for comments on a possible US-China managed-trade mechanism and imposes no tariff, obligation or deadline on anyone. No recorded entity trades goods between the US and China; Rheintal's Chinese suppliers feed its German and Polish plants, not US imports.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "8e2859cd-f970-42dc-8611-66da06df3e7c",
@@ -3621,16 +3863,14 @@
           {
             "scope": "company",
             "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
           }
         ],
         "reason": "This is a notice initiating a review process that may result in continuation or termination of Section 301 tariffs, not a measure that creates or changes an obligation; the review's outcome is not yet determined."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a procedural notice opening the window for domestic industries that benefit from the Section 301 China tariffs to request their continuation; it changes no duty. No recorded entity imports Chinese goods into the US or is a benefiting domestic industry representative.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "c8b2fbce-0985-4f0e-823d-0ef8d73324d5",
@@ -3653,20 +3893,14 @@
           {
             "scope": "company",
             "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
           }
         ],
         "reason": "The Section 301 action targets China's maritime, logistics, and shipbuilding sectors, but Rheintal Batterie GmbH is recorded as a maker of lithium-ion battery modules for electric vehicles and industrial storage, not as operating in those targeted sectors."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This extends the suspension of the Section 301 maritime fees and ship-to-shore crane duties to January 10, 2027, so no liability accrues. No recorded entity operates vessels or imports Chinese cargo-handling equipment; A.L.A. is an aerospace components distributor, not a maritime carrier.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "44ae3439-b711-43f7-bbc2-5c0ecfa218b5",
@@ -3691,8 +3925,10 @@
         ],
         "reason": "The reason assumes Rheintal Batterie imports processed critical minerals into the United States, but import activity is not recorded."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "Proclamation 11001 concerns Section 232 action on imports of processed critical minerals and derivatives into the US and, as I recall it, directs negotiations with trading partners rather than imposing duties now. Rheintal Batterie makes lithium-ion modules but is recorded as operating in Germany, France and Poland with no US trade, and no US portfolio company imports such products.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "459d3a24-8781-4eb4-8d0e-29f4fe192b45",
@@ -3715,20 +3951,14 @@
           {
             "scope": "company",
             "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
           }
         ],
         "reason": "These are conforming amendments to update tariff schedule references for existing product exclusions due to USITC statistical changes, not measures that create or change obligations or exposures."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a technical conforming amendment that renumbers the HTSUS statistical codes for four existing China Section 301 exclusions (pump parts under 8413.91 and plastic articles under 3926.90) and keeps coverage unchanged, so it creates no new obligation. No recorded entity imports these Chinese-origin goods into the United States; Rheintal's Chinese supply feeds its German and Polish plants, and Cascade records no trade.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "c9b7ae63-19e9-41e1-a81c-8bcebbe1f718",
@@ -3755,8 +3985,10 @@
         ],
         "reason": "The Section 301 action imposes tariffs on semiconductors from China, but Rheintal Batterie GmbH's recorded activity is manufacturing lithium-ion battery modules for electric vehicles and industrial storage, not semiconductors (scope of measure check failed)."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The Section 301 tariff (0% now, rising June 23, 2027) falls on US importers of Chinese-origin semiconductors, and no recorded entity is one. Rheintal sources from China but manufactures and sells in Germany, Poland and France, A.L.A. records no Chinese suppliers, and 3Pillar and Meridian Pay provide services rather than import goods.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "56261cc5-da7f-4cf9-ab69-4c94bec3faa0",
@@ -3779,20 +4011,14 @@
           {
             "scope": "company",
             "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
           }
         ],
         "reason": "The proposed Section 301 action targets China's maritime, logistics, and shipbuilding sectors, but Rheintal Batterie GmbH is recorded as a maker of lithium-ion battery modules for electric vehicles and industrial storage, not as operating in those targeted sectors."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The notice proposes to extend the suspension of the Section 301 port fees on Chinese-operated or Chinese-built vessels and the duties on ship-to-shore cranes and cargo-handling equipment. No recorded entity operates vessels calling at US ports or imports that equipment; A.L.A. is an aerospace-parts distributor, not a maritime carrier, so no obligation or exposure arises.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "3f39e5e3-c826-4d2c-9517-89318ec05201",
@@ -3815,20 +4041,14 @@
           {
             "scope": "company",
             "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
-          },
-          {
-            "scope": "company",
-            "name": "Rheintal Batterie GmbH (test)"
           }
         ],
         "reason": "This is a conforming amendment to update tariff schedule references for an existing product exclusion due to USITC statistical changes, not a measure that creates or changes an obligation or exposure."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a technical conforming amendment that renumbers the HTSUS statistical code for one existing China Section 301 exclusion (machinery parts under 8479.90.9591) and keeps coverage unchanged. No recorded entity imports those Chinese-origin goods into the United States, so it creates no obligation or exposure.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "0217e0c5-60a1-4dc8-904b-d0a298d5082e",
@@ -3848,8 +4068,10 @@
         "entities": [],
         "reason": "This is a designation action adding persons to the SDN List. It does not impose measures on any country or sector. Without knowing the specific designees, there is no supported connection to any recorded entity."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a routine SDN List notice of designations under the counter-terrorism and Iran-sector orders (E.O. 13224 and E.O. 13902), with the names in omitted graphics. No recorded fact ties the firm or any company to Iran or to the designated persons beyond the general duty of every US person to screen. The answer turns on who was designated, which the text does not show.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "9cb31d45-c080-49dd-b44c-500fa02c43cd",
@@ -3869,8 +4091,10 @@
         "entities": [],
         "reason": "This is publication of a sector determination pursuant to an Executive Order. Without details on the specific sector or restrictions, and given it is administrative publication of a previously issued determination, there is no new restriction to evaluate."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The determination exposes persons operating in Iran's aviation, digital asset, gold, shipping and technology sectors to blocking sanctions. No Iranian operations, customers, suppliers or trade are recorded for the firm or any company; A.L.A.'s aerospace logistics and 3Pillar's software work are in the same sectors but have no recorded Iran link, so nothing specific is touched.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "bb85343d-f7fd-4139-9e30-88b4d1c73d12",
@@ -3890,8 +4114,10 @@
         "entities": [],
         "reason": "This is a continuation of the exercise of certain authorities under the Trading With the Enemy Act. It is administrative and adds no new measures or restrictions."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is the routine annual continuation of Trading With the Enemy Act authorities underlying the existing Cuba embargo and creates no new obligation. No Cuban operations, trade or counterparties are recorded for the firm or any company.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "c63ea042-c4ed-48bf-af81-2b8c8f0c9c56",
@@ -3911,8 +4137,10 @@
         "entities": [],
         "reason": "This is an administrative update to OFAC website information, contact details, and general license provisions for legal services payments. It creates no new restriction on any recorded location."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is an administrative OFAC clean-up: updated website and contact details, typographical and cross-reference fixes, and a swap of reporting for recordkeeping in the legal-services general license under the Darfur regulations (part 546). It creates no new obligation touching any recorded fact about the firm, funds or companies.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "e27e6798-6cff-4691-a78a-28addf8e754e",
@@ -3932,8 +4160,10 @@
         "entities": [],
         "reason": "This is publication of a general license for Global Terrorism and Illicit Drug Trade sanctions. It is administrative and creates no new restrictions on any recorded location or activity."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is Federal Register publication of a wind-down general license that already expired on May 14, 2026, covering dealings with specific blocked Mexican entities (CAMSA, Casino Centenario, Diamante Casino). No entity has recorded Mexican operations or dealings with those parties.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "42327e82-a2d4-4f3d-9ddc-61063fe1fa2b",
@@ -3953,8 +4183,10 @@
         "entities": [],
         "reason": "This is a continuation of an existing national emergency with no new measures added. It is administrative only."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a procedural one-year continuation of the national emergency under Executive Order 14257 (the basis for the reciprocal tariffs); it sets or changes no tariff rate and imposes no new obligation. The closest link is A.L.A.'s recorded US trade and New York facility, but whether it imports tariffed goods into the US is not recorded, and the notice itself adds no new exposure.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "ba231e9a-8113-4f6b-9971-b6118409cb55",
@@ -3974,8 +4206,10 @@
         "entities": [],
         "reason": "This is an administrative update to identifying information on OFAC sanctions lists. It creates no new restriction."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is an administrative OFAC notice that standardises and corrects identifying information on existing sanctions list entries. It adds no designations or prohibitions, and nothing recorded ties the firm or any company to the affected entries.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "8b773c24-49fb-4c4e-a228-0f1a9137445e",
@@ -3995,8 +4229,10 @@
         "entities": [],
         "reason": "This notice announces the removal of persons from the SDN List (unblocking). It does not impose any restriction on any recorded location."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This notice removes persons from the SDN List and unblocks their property, which lifts restrictions rather than imposing any. The names are not reproduced, and no recorded fact links the firm or any company to a delisted person.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "2a3eeba7-e6c3-4127-b62a-03ccb388cf70",
@@ -4016,8 +4252,10 @@
         "entities": [],
         "reason": "This measure continues suspension of duty-free de minimis treatment for imports. Supplier locations are NOT RECORDED for all companies, so no import activity can be confirmed. Foreign facilities or operations alone do not establish import activity."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The order continues the existing suspension of duty-free de minimis entry for shipments of $800 or less into the US and resets how duties are collected on postal shipments. No entity has recorded low-value or postal imports into the US. A.L.A. is the closest, with US trade and a New York facility, but it is a business-to-business aerospace distributor and whether it sends sub-$800 consignments is not recorded.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "990b35bc-93d7-48f6-aa7d-b5cd73dbedf6",
@@ -4037,8 +4275,10 @@
         "entities": [],
         "reason": "This notice determines procurement thresholds for implementation of the Trade Agreements Act. It is administrative and creates no restriction on any recorded location or activity."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a routine biennial reset of the dollar thresholds at which trade-agreement procurement rules apply to US government purchases. It creates no new obligation for Cascade Pipeline Services, a domestic services contractor with government customers, and no other entity has recorded US government procurement facts that it touches.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "b3efa7b1-41f2-4714-8234-699df57804ee",
@@ -4061,8 +4301,10 @@
         "entities": [],
         "reason": "This modifies beef tariff-rate quota allocations for Uruguay and the United Kingdom. A.L.A. S.p.A. has facilities and operations in the UK, and Brightwell Wealth is headquartered and operates in the UK, but neither company's recorded activity involves beef or agricultural products."
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The notice reallocates US beef tariff-rate quota volumes to create a UK country-specific quota. No firm, fund or portfolio company has recorded beef, agricultural or food import activity.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "c58221b1-28ba-4593-8285-3d49cb41fc72",
@@ -4082,8 +4324,15 @@
         "entities": [],
         "reason": "This measure ends certain tariff actions. Ending restrictions creates no new restriction on any recorded location or activity."
       },
-      "expected": null,
-      "why": null
+      "expected": [
+        {
+          "scope": "company",
+          "name": "A.L.A. S.p.A. (Advanced Logistics for Aerospace)"
+        }
+      ],
+      "why": "The order ends collection of the IEEPA ad valorem duties, including the reciprocal tariff on EU/UK-origin goods. A.L.A. distributes aerospace components with recorded trade between Italy/France/UK and the United States and a New York facility, so its US import duty cost and any refund position change. This turns on whether its parts actually bore IEEPA duties and whether it is importer of record, neither of which is recorded. No other entity has recorded goods imports into the US: 3Pillar's cross-border trade is services and Rheintal's China/Korea supply feeds its EU plants.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "942c3c8a-459b-4165-8991-78f7f5586a22",
@@ -4105,8 +4354,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This implementing regulation adds names to the asset-freeze list under Regulation 269/2014. The firm's EU offices, A.L.A. and Rheintal are EU-established and carry the general freeze and screening duty, but none has any recorded Russia/Ukraine operations, suppliers, customers or trade. Whether any of them deals with a newly listed person is unknown, so no specific exposure can be named.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "c8df27a8-c892-4d7c-95cf-bdbb7bc6aa7b",
@@ -4128,8 +4379,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is an OFAC SDN designation under Iran-related and counter-terrorism authorities (E.O. 13902, 13224, 13876), and the names are not reproduced in the text. No entity has recorded Iran-linked operations, suppliers, customers or trade. The firm's Dubai and Hong Kong offices alone do not establish dealings with the blocked persons, so only the generic US-person screening duty remains.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "e3a165ee-7967-4ae1-a019-a47a322ca3a2",
@@ -4151,8 +4404,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a procedural one-year continuation of the existing Syria national emergency under E.O. 13894 and creates no new obligation. No entity has recorded Syria locations, operations, suppliers or trade.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "b44c0049-789f-4d42-b842-3b7029fe3436",
@@ -4174,8 +4429,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a procedural one-year continuation of the 1995 emergency under E.O. 12978 targeting designated narcotics traffickers; it adds no designations or obligations. The firm's Bogotá office does not bring it in scope, because the measure targets listed traffickers rather than Colombia-based business generally.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "6796ea76-0760-4f44-af73-09a908bce3ec",
@@ -4197,8 +4454,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is the routine annual continuation of the Nicaragua national emergency under E.O. 13851 and creates no new obligation. No recorded office, operation, supplier or trade of the firm or any portfolio company is in Nicaragua; the firm's Latin America offices are Bogotá, Rio de Janeiro and São Paulo.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "a5610538-22f9-4cf2-b9d0-8ab09ecd02dd",
@@ -4220,8 +4479,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This BIS conforming change removes Cambodia from EAR Country Group D:5, which is a relaxation and imposes no new obligation. No entity has recorded Cambodian operations, customers, suppliers or trade; A.L.A.'s recorded trade regions are Italy, France, the UK and the US.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "6c3c5ab7-0caf-4de6-b11d-5ba397102764",
@@ -4243,8 +4504,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "General License 131B only authorises negotiating contingent contracts to buy Lukoil International GmbH and related maintenance or wind-down dealings, and it expired on 28 February 2026. Nothing recorded shows the firm or any portfolio company bidding for, or dealing with, Lukoil entities, so it creates no obligation or exposure.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "e8adfd9e-6d28-42aa-a93c-b537d04be079",
@@ -4266,8 +4529,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "E.O. 14384 ends the additional 25% duty on goods that are products of India imported into the United States. 3Pillar Global is the only entity with an India link (a Noida facility and India as a trade region), but its recorded offerings are software engineering services, which are not subject to customs duties. This turns on the unrecorded fact of whether 3Pillar imports any Indian-origin goods; no other entity has recorded Indian suppliers.",
+      "confidence": "medium",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "70d6d401-74e5-4018-bc2e-32d98cd37f53",
@@ -4289,8 +4554,10 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "The Level 4 travel advisory concerns Iran, where neither the firm nor any portfolio company has recorded offices, facilities, operations, suppliers or trade. The firm's Dubai office is not in the advisory's scope, and the advisory creates no compliance obligation.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     },
     {
       "id": "f64beaba-bd23-45d9-b498-7660ae0349c9",
@@ -4312,13 +4579,15 @@
         "entities": [],
         "reason": null
       },
-      "expected": null,
-      "why": null
+      "expected": [],
+      "why": "This is a State Department Level 4 travel advisory for Somalia. Neither the firm's offices nor any portfolio company's recorded locations, facilities, suppliers or trade touch Somalia, so it creates no obligation or material exposure; the FAA notice it mentions binds aircraft operators, not A.L.A.'s aerospace parts logistics.",
+      "confidence": "high",
+      "marked_by": "claude-fable-5-2 (xhigh), 2026-11-26"
     }
   ],
   "marking": {
     "model": "claude-fable-5-2",
     "effort": "xhigh",
-    "cost_usd": 0.543
+    "cost_usd": 3.396
   }
 }

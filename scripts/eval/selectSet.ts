@@ -27,6 +27,9 @@ export interface RelevanceRow {
   fund_id: string | null
   portfolio_company_id: string | null
   relevance_reason: string
+  // A fund's row added because it holds a matched company: not a judge's
+  // answer, so not counted as production naming the fund.
+  via_holdings?: boolean
 }
 
 export interface ReviewRow {
@@ -72,7 +75,9 @@ export function classify(
   for (const [id, rows] of byDoc) {
     const matched = rows.filter(r => !r.relevance_reason.startsWith(NOT_RELEVANT))
     if (matched.length) {
-      out.set(id, { verdict: 'matched', entities: matched.map(entityOf), reason: matched[0].relevance_reason })
+      const judged = matched.filter(r => !r.via_holdings)
+      const entities = [...new Map((judged.length ? judged : matched).map(entityOf).map(e => [`${e.scope}:${e.name ?? ''}`, e])).values()]
+      out.set(id, { verdict: 'matched', entities, reason: matched[0].relevance_reason })
       continue
     }
     const skeptic = rejectedBySkeptic.get(id)

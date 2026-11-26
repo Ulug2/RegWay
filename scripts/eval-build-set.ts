@@ -62,7 +62,7 @@ const firm = firms[0]
 const funds = await rows<Row>(`funds?select=*&firm_id=eq.${firm.id}&order=name`)
 const companies = await rows<Row>(`portfolio_companies?select=*&firm_id=eq.${firm.id}&order=name`)
 const holdings = await rows<{ fund_id: string; portfolio_company_id: string }>(`fund_holdings?select=fund_id,portfolio_company_id&firm_id=eq.${firm.id}`)
-const relevance = await rows<RelevanceRow>(`regulation_relevance?select=regulation_id,fund_id,portfolio_company_id,relevance_reason&firm_id=eq.${firm.id}`)
+const relevance = await rows<RelevanceRow>(`regulation_relevance?select=regulation_id,fund_id,portfolio_company_id,relevance_reason,via_holdings&firm_id=eq.${firm.id}`)
 const reviews = await rows<ReviewRow>(`verdict_reviews?select=regulation_id,decision,scope,entity_name,reason,restored_at&firm_id=eq.${firm.id}`)
 // Company web-scan results (ai_search) are found by a different path, not
 // the judges, so they are left out.

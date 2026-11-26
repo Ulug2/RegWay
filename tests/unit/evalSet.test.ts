@@ -18,6 +18,8 @@ describe('what production said', () => {
     const judged = classify(
       [
         { regulation_id: 'm', fund_id: null, portfolio_company_id: 'c1', relevance_reason: 'Bills Medicare.' },
+        // Added for the fund that holds the company: not a judge's answer.
+        { regulation_id: 'm', fund_id: 'f1', portfolio_company_id: null, relevance_reason: 'Bills Medicare.', via_holdings: true },
         { regulation_id: 's', fund_id: null, portfolio_company_id: null, relevance_reason: 'NOT_RELEVANT: Skeptic: no obligation.' },
         { regulation_id: 'r', fund_id: 'f1', portfolio_company_id: null, relevance_reason: 'NOT_RELEVANT: Trucking only.' },
       ],
